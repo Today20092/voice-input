@@ -94,6 +94,7 @@ android {
         jvmTarget = '1.8'
     }
     buildFeatures {
+        buildConfig true
         compose true
         viewBinding true
         mlModelBinding true
