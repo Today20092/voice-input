@@ -24,29 +24,22 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
-import org.futo.voiceinput.ENGLISH_MODELS
-import org.futo.voiceinput.MULTILINGUAL_MODELS
 import org.futo.voiceinput.R
 import org.futo.voiceinput.migration.ConditionalModelUpdate
 import org.futo.voiceinput.migration.NeedsMigration
 import org.futo.voiceinput.parakeet.isParakeetModelDownloaded
 import org.futo.voiceinput.parakeet.startParakeetModelDownloadActivity
 import org.futo.voiceinput.settings.DISMISS_MIGRATION_TIP
-import org.futo.voiceinput.settings.ENABLE_MULTILINGUAL
-import org.futo.voiceinput.settings.ENGLISH_MODEL_INDEX
 import org.futo.voiceinput.settings.LANGUAGE_TOGGLES
 import org.futo.voiceinput.settings.MANUALLY_SELECT_LANGUAGE
 import org.futo.voiceinput.settings.MODELS_MIGRATED
-import org.futo.voiceinput.settings.MULTILINGUAL_MODEL_INDEX
 import org.futo.voiceinput.settings.PERSONAL_DICTIONARY
 import org.futo.voiceinput.settings.ScreenTitle
 import org.futo.voiceinput.settings.ScrollableList
 import org.futo.voiceinput.settings.SettingItem
-import org.futo.voiceinput.settings.SettingRadio
 import org.futo.voiceinput.settings.SettingToggleDataStore
 import org.futo.voiceinput.settings.SettingsViewModel
 import org.futo.voiceinput.settings.Tip
-import org.futo.voiceinput.settings.USE_LANGUAGE_SPECIFIC_MODELS
 import org.futo.voiceinput.settings.getSettingBlocking
 import org.futo.voiceinput.settings.useDataStore
 
@@ -135,10 +128,7 @@ fun ModelsScreen(
     settingsViewModel: SettingsViewModel = viewModel(),
     navController: NavHostController = rememberNavController()
 ) {
-    val (useMultilingual, _) = useDataStore(ENABLE_MULTILINGUAL)
-
     val (languages, _) = useDataStore(LANGUAGE_TOGGLES)
-    val (useLanguageSpecificModels, _) = useDataStore(USE_LANGUAGE_SPECIFIC_MODELS)
 
     val needsUpdate = NeedsMigration()
 
@@ -169,27 +159,5 @@ fun ModelsScreen(
         }
 
         ParakeetModelStatus()
-
-        Spacer(modifier = Modifier.height(32.dp))
-
-        if (useMultilingual) {
-            SettingRadio(
-                stringResource(R.string.multilingual_model),
-                MULTILINGUAL_MODELS.indices.toList(),
-                MULTILINGUAL_MODELS.map { it.name },
-                MULTILINGUAL_MODEL_INDEX
-            )
-        }
-
-        if((!useMultilingual) || (languages.contains("en") && useLanguageSpecificModels)) {
-            SettingRadio(
-                stringResource(R.string.english_model),
-                ENGLISH_MODELS.indices.toList(),
-                ENGLISH_MODELS.map { it.name },
-                ENGLISH_MODEL_INDEX
-            )
-        }
-
-        Tip(stringResource(R.string.parameter_count_tip))
     }
 }
