@@ -28,10 +28,13 @@ import kotlinx.coroutines.yield
 import org.futo.voiceinput.ml.RunState
 import org.futo.voiceinput.settings.ENABLE_30S_LIMIT
 import org.futo.voiceinput.settings.IS_VAD_ENABLED
+import org.futo.voiceinput.settings.PARAKEET_KEEP_WARM
+import org.futo.voiceinput.settings.PARAKEET_KEEP_WARM_TIMEOUT_MS
 import org.futo.voiceinput.settings.SPEECH_BACKEND
 import org.futo.voiceinput.settings.SpeechBackendType
 import org.futo.voiceinput.settings.getSetting
 import org.futo.voiceinput.parakeet.ParakeetBackend
+import org.futo.voiceinput.parakeet.ParakeetEngineManager
 import org.futo.voiceinput.parakeet.SpeechBackend
 import org.futo.voiceinput.parakeet.isParakeetModelDownloaded
 import org.futo.voiceinput.settings.toSpeechBackendType
@@ -133,7 +136,10 @@ abstract class AudioRecognizer {
 
         lifecycleScope.launch {
             modelJob?.join()
-            backend?.close()
+            ParakeetEngineManager.forceClose()
+            if (backend !is ParakeetBackend) {
+                backend?.close()
+            }
             backend = null
         }
     }
@@ -185,23 +191,31 @@ abstract class AudioRecognizer {
         try {
             val backendType = context.getSetting(SPEECH_BACKEND).toSpeechBackendType()
             backend = when (backendType) {
-                SpeechBackendType.Parakeet -> ParakeetBackend()
-                SpeechBackendType.WhisperGGML -> WhisperGGMLBackend(
-                    onStatusUpdate = { decodingStatus(it) },
-                    onPartialDecode = {
-                        lifecycleScope.launch {
-                            withContext(Dispatchers.Main) {
-                                partialResult(it)
+                SpeechBackendType.Parakeet -> ParakeetEngineManager.acquire(context)
+                SpeechBackendType.WhisperGGML -> {
+                    ParakeetEngineManager.forceClose()
+                    WhisperGGMLBackend(
+                        onStatusUpdate = { decodingStatus(it) },
+                        onPartialDecode = {
+                            lifecycleScope.launch {
+                                withContext(Dispatchers.Main) {
+                                    partialResult(it)
+                                }
                             }
-                        }
-                    },
-                    forceLanguageProvider = { forcedLanguage }
-                )
-            }.also {
-                it.load(context)
+                        },
+                        forceLanguageProvider = { forcedLanguage }
+                    ).also {
+                        it.load(context)
+                    }
+                }
             }
         } catch(e: OutOfMemoryError) {
             decodingStatus(RunState.OOMError)
+            ParakeetEngineManager.forceClose()
+            if (backend !is ParakeetBackend) {
+                backend?.close()
+            }
+            backend = null
 
             for(i in 0 until 2) {
                 System.gc()
@@ -235,7 +249,7 @@ abstract class AudioRecognizer {
             val backendType = context.getSetting(SPEECH_BACKEND).toSpeechBackendType()
             when (backendType) {
                 SpeechBackendType.Parakeet -> {
-                    if (!context.isParakeetModelDownloaded()) {
+                    if (!context.isParakeetModelDownloaded(verifyHashes = true)) {
                         needParakeetModelDownload()
                         return@launch
                     }
@@ -485,7 +499,12 @@ abstract class AudioRecognizer {
             backend!!.transcribe(floatArray)
         } catch(e: OutOfMemoryError) {
             decodingStatus(RunState.OOMError)
-            backend!!.close()
+            val backendType = context.getSetting(SPEECH_BACKEND).toSpeechBackendType()
+            if (backendType == SpeechBackendType.Parakeet) {
+                ParakeetEngineManager.forceClose()
+            } else {
+                backend!!.close()
+            }
             backend = null
             loadModelJob = null
 
@@ -500,7 +519,16 @@ abstract class AudioRecognizer {
             return runModel()
         }
 
-        backend!!.close()
+        val backendType = context.getSetting(SPEECH_BACKEND).toSpeechBackendType()
+        val keepWarmEnabled = context.getSetting(PARAKEET_KEEP_WARM)
+        if (backendType == SpeechBackendType.Parakeet && keepWarmEnabled) {
+            val timeoutMs = context.getSetting(PARAKEET_KEEP_WARM_TIMEOUT_MS)
+            ParakeetEngineManager.markIdle(lifecycleScope, timeoutMs)
+        } else if (backendType == SpeechBackendType.Parakeet) {
+            ParakeetEngineManager.forceClose()
+        } else {
+            backend!!.close()
+        }
         backend = null
 
         lifecycleScope.launch {

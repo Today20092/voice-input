@@ -12,5 +12,7 @@ object ParakeetNative {
     @JvmStatic external fun init(context: Context)
     @JvmStatic external fun isLoaded(): Boolean
     @JvmStatic external fun transcribe(samples: FloatArray): String
+    @JvmStatic external fun markIdle()
+    @JvmStatic external fun unloadIfIdle(timeoutMs: Long): Boolean
     @JvmStatic external fun close()
 }

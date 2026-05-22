@@ -63,7 +63,7 @@ fun modelsSubtitle(): String? {
     val (backend, _) = useDataStore(SPEECH_BACKEND)
     return when (backend.toSpeechBackendType()) {
         SpeechBackendType.Parakeet -> {
-            if (context.isParakeetModelDownloaded()) {
+            if (context.isParakeetModelDownloaded(verifyHashes = true)) {
                 stringResource(R.string.parakeet_model_active_subtitle)
             } else {
                 stringResource(R.string.parakeet_model_download_required)
@@ -106,12 +106,12 @@ fun PersonalDictionaryEditor(disabled: Boolean) {
 fun ParakeetModelStatus() {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
-    val isDownloaded = remember { mutableStateOf(context.isParakeetModelDownloaded()) }
+    val isDownloaded = remember { mutableStateOf(context.isParakeetModelDownloaded(verifyHashes = true)) }
 
     DisposableEffect(lifecycleOwner, context) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
-                isDownloaded.value = context.isParakeetModelDownloaded()
+                isDownloaded.value = context.isParakeetModelDownloaded(verifyHashes = true)
             }
         }
 

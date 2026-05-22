@@ -2,7 +2,7 @@ use jni::objects::{JObject, JObjectArray};
 use jni::JNIEnv;
 use std::path::PathBuf;
 
-const ASSET_DIR: &str = "parakeet-tdt-0.6b-v3-int8";
+const ASSET_DIR: &str = "parakeet-unified-en-0.6b-onnx";
 const DOWNLOAD_COMPLETE_MARKER: &str = ".download_complete";
 
 pub fn model_dir(env: &mut JNIEnv, context: &JObject) -> anyhow::Result<PathBuf> {
