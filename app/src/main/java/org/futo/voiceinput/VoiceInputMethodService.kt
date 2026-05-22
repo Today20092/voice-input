@@ -62,6 +62,7 @@ import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.findViewTreeSavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import org.futo.voiceinput.migration.scheduleModelMigrationJob
+import org.futo.voiceinput.parakeet.startParakeetModelDownloadActivity
 import org.futo.voiceinput.settings.pages.ConditionalUnpaidNoticeInVoiceInputWindow
 import org.futo.voiceinput.theme.UixThemeAuto
 import org.futo.voiceinput.updates.scheduleUpdateCheckingJob
@@ -277,6 +278,16 @@ class VoiceInputMethodService : InputMethodService(), LifecycleOwner, ViewModelS
             // TODO: We could launch an activity and request it that way
 
             permissionResultRejected()
+        }
+
+        override fun requestParakeetModelDownload() {
+            this@VoiceInputMethodService.startParakeetModelDownloadActivity()
+            onCancel()
+        }
+
+        override fun requestWhisperModelDownload(models: List<ModelData>) {
+            this@VoiceInputMethodService.startModelDownloadActivity(models)
+            onCancel()
         }
 
         @Composable

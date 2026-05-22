@@ -256,9 +256,9 @@ fun ColumnScope.RecognizeMicError(openSettings: () -> Unit) {
 }
 
 @Composable
-fun ColumnScope.RecognizeModelDownloadRequired(onDownload: () -> Unit) {
+fun ColumnScope.RecognizeModelDownloadRequired(body: String, onDownload: () -> Unit) {
     Text(
-        stringResource(R.string.parakeet_download_required_body),
+        body,
         modifier = Modifier
             .padding(12.dp, 2.dp)
             .align(Alignment.CenterHorizontally),
@@ -310,7 +310,8 @@ abstract class RecognizerView {
     abstract fun sendResult(result: String)
     abstract fun sendPartialResult(result: String): Boolean
     abstract fun requestPermission()
-    abstract fun requestModelDownload()
+    abstract fun requestParakeetModelDownload()
+    abstract fun requestWhisperModelDownload(models: List<ModelData>)
 
     abstract fun decodingStarted()
 
@@ -431,15 +432,34 @@ abstract class RecognizerView {
             }
         }
 
-        override fun needModelDownload() {
+        override fun needParakeetModelDownload() {
             setContent {
                 this@RecognizerView.Window(
                     onClose = { cancelRecognizer() },
-                    onFinish = { requestModelDownload() },
+                    onFinish = { requestParakeetModelDownload() },
                     onPauseVAD = { },
                     allowClick = false
                 ) {
-                    RecognizeModelDownloadRequired(onDownload = { requestModelDownload() })
+                    RecognizeModelDownloadRequired(
+                        body = context.getString(R.string.parakeet_download_required_body),
+                        onDownload = { requestParakeetModelDownload() }
+                    )
+                }
+            }
+        }
+
+        override fun needWhisperModelDownload(models: List<ModelData>) {
+            setContent {
+                this@RecognizerView.Window(
+                    onClose = { cancelRecognizer() },
+                    onFinish = { requestWhisperModelDownload(models) },
+                    onPauseVAD = { },
+                    allowClick = false
+                ) {
+                    RecognizeModelDownloadRequired(
+                        body = context.getString(R.string.whisper_download_required_body),
+                        onDownload = { requestWhisperModelDownload(models) }
+                    )
                 }
             }
         }

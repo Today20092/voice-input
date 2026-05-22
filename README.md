@@ -1,6 +1,6 @@
 # FUTO Parakeet Voice Input
 
-This is a personal fork of FUTO Voice Input that keeps the FUTO voice keyboard experience and replaces the speech recognizer backend with NVIDIA Parakeet TDT 0.6B V3 running through ONNX Runtime.
+This is a personal fork of FUTO Voice Input that keeps the FUTO voice keyboard experience and uses NVIDIA Parakeet TDT 0.6B V3 through ONNX Runtime by default. The legacy FUTO Whisper/GGML backend can also be selected from Model Options.
 
 This fork's Parakeet integration and repository changes were built with AI assistance using Codex (GPT-5).
 
@@ -9,15 +9,16 @@ The goal is straightforward: keep the FUTO UI, recording flow, dark theme suppor
 ## What Changed
 
 - FUTO Voice Input remains the base Android app and UI.
-- The old Whisper/ggml recognition path is bypassed for transcription.
-- A new Kotlin backend layer calls a Rust JNI library.
+- Parakeet is the default speech backend.
+- The legacy Whisper/GGML recognition path can be selected as an optional backend.
+- A Kotlin backend layer calls a Rust JNI library for Parakeet.
 - The Rust library loads Parakeet ONNX models through `transcribe-rs` and ONNX Runtime.
-- The Model Options screen shows Parakeet as the active backend.
-- The old English and multilingual model choices are still visible for now, but they are not used by transcription.
+- The Model Options screen lets you choose Parakeet or Whisper/GGML.
+- Only the selected backend's model files are required before voice input starts.
 
 ## Active Model
 
-The active backend is:
+The default backend is:
 
 ```text
 Unified Parakeet TDT 0.6B V3
@@ -45,6 +46,8 @@ Downloaded model files are stored in app-private storage:
 ```text
 filesDir/parakeet-tdt-0.6b-v3-int8/
 ```
+
+If you select **Whisper/GGML** in Model Options, the app uses the legacy FUTO English and multilingual GGML model settings and downloader. Those GGML files are also stored in app-private storage and run offline after download. Parakeet downloads from Hugging Face, while Whisper/GGML models download through the existing FUTO model downloader.
 
 ## Building Locally
 
@@ -122,7 +125,7 @@ You can also run the workflow manually from the Actions tab. Manual runs upload 
 - This is intended for sideloading and personal testing.
 - The normal APK does not include the Parakeet ONNX model files. The model downloads at runtime from Hugging Face.
 - Parakeet currently returns a final transcript after recording stops; live partial transcripts are not implemented.
-- The app requires network access to download the model the first time, then transcription runs offline.
+- The app requires network access to download the selected backend's model the first time, then transcription runs offline.
 
 ## Attribution And License
 

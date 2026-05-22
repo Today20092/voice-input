@@ -114,6 +114,17 @@ val ENABLE_MULTILINGUAL = SettingsKey(booleanPreferencesKey("enable_multilingual
 val DISALLOW_SYMBOLS = SettingsKey(booleanPreferencesKey("disallow_symbols"), true)
 val ENABLE_30S_LIMIT = SettingsKey(booleanPreferencesKey("enable_30s_limit"), false)
 
+enum class SpeechBackendType(val id: String) {
+    Parakeet("parakeet"),
+    WhisperGGML("whisper_ggml")
+}
+
+fun String.toSpeechBackendType(): SpeechBackendType {
+    return SpeechBackendType.values().firstOrNull { it.id == this } ?: SpeechBackendType.Parakeet
+}
+
+val SPEECH_BACKEND = SettingsKey(stringPreferencesKey("speech_backend"), SpeechBackendType.Parakeet.id)
+
 val ENGLISH_MODEL_INDEX = SettingsKey(intPreferencesKey("english_model_index"), 0)
 
 val MULTILINGUAL_MODEL_INDEX = SettingsKey(intPreferencesKey("multilingual_model_index"), 1)

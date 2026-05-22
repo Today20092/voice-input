@@ -152,8 +152,12 @@ class RecognizeActivity : ComponentActivity() {
             this@RecognizeActivity.requestPermission()
         }
 
-        override fun requestModelDownload() {
-            this@RecognizeActivity.requestModelDownload()
+        override fun requestParakeetModelDownload() {
+            this@RecognizeActivity.requestParakeetModelDownload()
+        }
+
+        override fun requestWhisperModelDownload(models: List<ModelData>) {
+            this@RecognizeActivity.requestWhisperModelDownload(models)
         }
 
         override fun decodingStarted() {
@@ -206,8 +210,12 @@ class RecognizeActivity : ComponentActivity() {
             onCancel()
         }
     }
-    private fun requestModelDownload() {
+    private fun requestParakeetModelDownload() {
         modelDownload.launch(parakeetModelDownloadIntent())
+    }
+
+    private fun requestWhisperModelDownload(models: List<ModelData>) {
+        modelDownload.launch(modelDownloadIntent(models))
     }
 
     private fun sendResult(result: String) {

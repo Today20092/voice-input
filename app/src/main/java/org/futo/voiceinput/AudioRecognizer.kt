@@ -28,10 +28,13 @@ import kotlinx.coroutines.yield
 import org.futo.voiceinput.ml.RunState
 import org.futo.voiceinput.settings.ENABLE_30S_LIMIT
 import org.futo.voiceinput.settings.IS_VAD_ENABLED
+import org.futo.voiceinput.settings.SPEECH_BACKEND
+import org.futo.voiceinput.settings.SpeechBackendType
 import org.futo.voiceinput.settings.getSetting
 import org.futo.voiceinput.parakeet.ParakeetBackend
 import org.futo.voiceinput.parakeet.SpeechBackend
 import org.futo.voiceinput.parakeet.isParakeetModelDownloaded
+import org.futo.voiceinput.settings.toSpeechBackendType
 import java.nio.FloatBuffer
 import java.nio.ShortBuffer
 import kotlin.math.min
@@ -84,7 +87,8 @@ abstract class AudioRecognizer {
     protected abstract fun decodingStatus(status: RunState)
 
     protected abstract fun loading()
-    protected abstract fun needModelDownload()
+    protected abstract fun needParakeetModelDownload()
+    protected abstract fun needWhisperModelDownload(models: List<ModelData>)
     protected abstract fun needPermission()
     protected abstract fun permissionRejected()
 
@@ -179,7 +183,21 @@ abstract class AudioRecognizer {
 
     private suspend fun loadModelInner() {
         try {
-            backend = ParakeetBackend().also {
+            val backendType = context.getSetting(SPEECH_BACKEND).toSpeechBackendType()
+            backend = when (backendType) {
+                SpeechBackendType.Parakeet -> ParakeetBackend()
+                SpeechBackendType.WhisperGGML -> WhisperGGMLBackend(
+                    onStatusUpdate = { decodingStatus(it) },
+                    onPartialDecode = {
+                        lifecycleScope.launch {
+                            withContext(Dispatchers.Main) {
+                                partialResult(it)
+                            }
+                        }
+                    },
+                    forceLanguageProvider = { forcedLanguage }
+                )
+            }.also {
                 it.load(context)
             }
         } catch(e: OutOfMemoryError) {
@@ -213,15 +231,29 @@ abstract class AudioRecognizer {
     fun create() {
         loading()
 
-        if (!context.isParakeetModelDownloaded()) {
-            needModelDownload()
-            return
-        }
+        lifecycleScope.launch {
+            val backendType = context.getSetting(SPEECH_BACKEND).toSpeechBackendType()
+            when (backendType) {
+                SpeechBackendType.Parakeet -> {
+                    if (!context.isParakeetModelDownloaded()) {
+                        needParakeetModelDownload()
+                        return@launch
+                    }
+                }
+                SpeechBackendType.WhisperGGML -> {
+                    val requiredModels = context.selectedWhisperModelsForCurrentSettings(forcedLanguage)
+                    if (requiredModels.any { context.modelNeedsDownloading(it) }) {
+                        needWhisperModelDownload(requiredModels)
+                        return@launch
+                    }
+                }
+            }
 
-        if (context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-            needPermission()
-        } else {
-            startRecording()
+            if (context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+                needPermission()
+            } else {
+                startRecording()
+            }
         }
     }
 

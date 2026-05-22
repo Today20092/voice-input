@@ -120,18 +120,25 @@ fun Context.startModelDownloadActivity(models: List<ModelData>) {
     @Suppress("NAME_SHADOWING") val models = models.filter { this.modelNeedsDownloading(it) }
     if(models.isEmpty()) return
 
-    val intent = Intent(this, DownloadActivity::class.java)
-    intent.putStringArrayListExtra("models", ArrayList(models.map { model ->
-        arrayListOf(
-            model.ggml.ggml_file
-        )
-    }.flatten()))
+    val intent = modelDownloadIntent(models)
 
     if(this !is Activity) {
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
     }
 
     startActivity(intent)
+}
+
+fun Context.modelDownloadIntent(models: List<ModelData>): Intent {
+    @Suppress("NAME_SHADOWING") val models = models.filter { this.modelNeedsDownloading(it) }
+
+    return Intent(this, DownloadActivity::class.java).apply {
+        putStringArrayListExtra("models", ArrayList(models.map { model ->
+            arrayListOf(
+                model.ggml.ggml_file
+            )
+        }.flatten()))
+    }
 }
 
 fun <T> Context.startAppActivity(activity: Class<T>, clearTop: Boolean = false) {
@@ -426,4 +433,39 @@ suspend fun Context.getLanguageModelMap(): Map<String, ModelData> {
     //if(!manuallySelectLanguage && !useLanguageSpecificModels)
 
     return map
+}
+
+suspend fun Context.selectedWhisperModelsForCurrentSettings(forceLanguage: String?): List<ModelData> {
+    val englishModelIdx = getSetting(ENGLISH_MODEL_INDEX)
+    val multilingualModelIdx = getSetting(MULTILINGUAL_MODEL_INDEX)
+    val languages = getSetting(LANGUAGE_TOGGLES)
+    val useLanguageSpecificModels = getSetting(USE_LANGUAGE_SPECIFIC_MODELS)
+
+    val selected = if (forceLanguage != null) {
+        listOf(
+            if (forceLanguage == "en") {
+                ENGLISH_MODELS[englishModelIdx]
+            } else {
+                MULTILINGUAL_MODELS[multilingualModelIdx]
+            }
+        )
+    } else {
+        val mappedModels = getLanguageModelMap().values.distinct()
+        val primaryModel = mappedModels.firstOrNull { it in MULTILINGUAL_MODELS }
+            ?: mappedModels.firstOrNull()
+            ?: ENGLISH_MODELS[englishModelIdx]
+        listOf(primaryModel)
+    }
+
+    val includeEnglishFallback = forceLanguage == null &&
+            languages.contains("en") &&
+            useLanguageSpecificModels &&
+            selected.any { it in MULTILINGUAL_MODELS }
+
+    return (selected + if (includeEnglishFallback) listOf(ENGLISH_MODELS[englishModelIdx]) else emptyList())
+        .distinct()
+}
+
+suspend fun Context.whisperModelsNeedDownloading(forceLanguage: String?): Boolean {
+    return selectedWhisperModelsForCurrentSettings(forceLanguage).any { modelNeedsDownloading(it) }
 }

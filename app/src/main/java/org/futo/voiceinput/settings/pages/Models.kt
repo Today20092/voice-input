@@ -24,32 +24,51 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
+import org.futo.voiceinput.ENGLISH_MODELS
+import org.futo.voiceinput.MULTILINGUAL_MODELS
+import org.futo.voiceinput.ModelData
 import org.futo.voiceinput.R
+import org.futo.voiceinput.modelNeedsDownloading
 import org.futo.voiceinput.migration.ConditionalModelUpdate
 import org.futo.voiceinput.migration.NeedsMigration
 import org.futo.voiceinput.parakeet.isParakeetModelDownloaded
 import org.futo.voiceinput.parakeet.startParakeetModelDownloadActivity
 import org.futo.voiceinput.settings.DISMISS_MIGRATION_TIP
+import org.futo.voiceinput.settings.ENABLE_MULTILINGUAL
+import org.futo.voiceinput.settings.ENGLISH_MODEL_INDEX
 import org.futo.voiceinput.settings.LANGUAGE_TOGGLES
 import org.futo.voiceinput.settings.MANUALLY_SELECT_LANGUAGE
 import org.futo.voiceinput.settings.MODELS_MIGRATED
+import org.futo.voiceinput.settings.MULTILINGUAL_MODEL_INDEX
 import org.futo.voiceinput.settings.PERSONAL_DICTIONARY
+import org.futo.voiceinput.settings.SPEECH_BACKEND
 import org.futo.voiceinput.settings.ScreenTitle
 import org.futo.voiceinput.settings.ScrollableList
 import org.futo.voiceinput.settings.SettingItem
+import org.futo.voiceinput.settings.SettingRadio
 import org.futo.voiceinput.settings.SettingToggleDataStore
 import org.futo.voiceinput.settings.SettingsViewModel
+import org.futo.voiceinput.settings.SpeechBackendType
 import org.futo.voiceinput.settings.Tip
+import org.futo.voiceinput.settings.USE_LANGUAGE_SPECIFIC_MODELS
 import org.futo.voiceinput.settings.getSettingBlocking
+import org.futo.voiceinput.settings.toSpeechBackendType
 import org.futo.voiceinput.settings.useDataStore
+import org.futo.voiceinput.startModelDownloadActivity
 
 @Composable
 fun modelsSubtitle(): String? {
     val context = LocalContext.current
-    return if (context.isParakeetModelDownloaded()) {
-        stringResource(R.string.parakeet_model_active_subtitle)
-    } else {
-        stringResource(R.string.parakeet_model_download_required)
+    val (backend, _) = useDataStore(SPEECH_BACKEND)
+    return when (backend.toSpeechBackendType()) {
+        SpeechBackendType.Parakeet -> {
+            if (context.isParakeetModelDownloaded()) {
+                stringResource(R.string.parakeet_model_active_subtitle)
+            } else {
+                stringResource(R.string.parakeet_model_download_required)
+            }
+        }
+        SpeechBackendType.WhisperGGML -> stringResource(R.string.whisper_ggml_model_active_subtitle)
     }
 }
 
@@ -123,12 +142,92 @@ fun ParakeetModelStatus() {
 }
 
 @Composable
+fun WhisperModelRadio(
+    title: String,
+    models: List<ModelData>,
+    setting: org.futo.voiceinput.settings.SettingsKey<Int>
+) {
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val modelIndex = useDataStore(setting)
+    val refresh = remember { mutableStateOf(0) }
+
+    DisposableEffect(lifecycleOwner, context) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                refresh.value += 1
+            }
+        }
+
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
+    ScreenTitle(title)
+    models.forEachIndexed { index, model ->
+        val needsDownload = context.modelNeedsDownloading(model)
+        refresh.value
+        SettingItem(
+            title = model.name,
+            subtitle = if (needsDownload) stringResource(R.string.whisper_model_download_required) else null,
+            onClick = {
+                if (modelIndex.value == index && needsDownload) {
+                    context.startModelDownloadActivity(listOf(model))
+                } else {
+                    modelIndex.setValue(index)
+                }
+            },
+            icon = {
+                RadioButton(
+                    selected = modelIndex.value == index,
+                    onClick = {
+                        if (modelIndex.value == index && needsDownload) {
+                            context.startModelDownloadActivity(listOf(model))
+                        } else {
+                            modelIndex.setValue(index)
+                        }
+                    }
+                )
+            }
+        ) { }
+    }
+}
+
+@Composable
+fun WhisperModelOptions() {
+    val (useMultilingual, _) = useDataStore(ENABLE_MULTILINGUAL)
+    val (languages, _) = useDataStore(LANGUAGE_TOGGLES)
+    val (useLanguageSpecificModels, _) = useDataStore(USE_LANGUAGE_SPECIFIC_MODELS)
+
+    if (useMultilingual) {
+        WhisperModelRadio(
+            stringResource(R.string.multilingual_model),
+            MULTILINGUAL_MODELS,
+            MULTILINGUAL_MODEL_INDEX
+        )
+    }
+
+    if((!useMultilingual) || (languages.contains("en") && useLanguageSpecificModels)) {
+        WhisperModelRadio(
+            stringResource(R.string.english_model),
+            ENGLISH_MODELS,
+            ENGLISH_MODEL_INDEX
+        )
+    }
+
+    Tip(stringResource(R.string.parameter_count_tip))
+}
+
+@Composable
 @Preview
 fun ModelsScreen(
     settingsViewModel: SettingsViewModel = viewModel(),
     navController: NavHostController = rememberNavController()
 ) {
     val (languages, _) = useDataStore(LANGUAGE_TOGGLES)
+    val (backend, _) = useDataStore(SPEECH_BACKEND)
 
     val needsUpdate = NeedsMigration()
 
@@ -158,6 +257,21 @@ fun ModelsScreen(
             Spacer(modifier = Modifier.height(32.dp))
         }
 
-        ParakeetModelStatus()
+        SettingRadio(
+            title = stringResource(R.string.speech_backend),
+            options = listOf(SpeechBackendType.Parakeet.id, SpeechBackendType.WhisperGGML.id),
+            optionNames = listOf(
+                stringResource(R.string.backend_parakeet),
+                stringResource(R.string.backend_whisper_ggml)
+            ),
+            setting = SPEECH_BACKEND
+        )
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        when (backend.toSpeechBackendType()) {
+            SpeechBackendType.Parakeet -> ParakeetModelStatus()
+            SpeechBackendType.WhisperGGML -> WhisperModelOptions()
+        }
     }
 }
