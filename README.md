@@ -2,6 +2,8 @@
 
 This is a personal fork of FUTO Voice Input that keeps the FUTO voice keyboard experience and replaces the speech recognizer backend with NVIDIA Parakeet TDT 0.6B V3 running through ONNX Runtime.
 
+This fork's Parakeet integration and repository changes were built with AI assistance using Codex (GPT-5).
+
 The goal is straightforward: keep the FUTO UI, recording flow, dark theme support, VAD silence stopping, microphone animation, and keyboard switch-back behavior, while using Parakeet as the main recognizer because it is fast and accurate for English speech.
 
 ## What Changed
@@ -69,11 +71,17 @@ app/build/outputs/apk/dev/debug/app-dev-debug.apk
 
 This repository includes a GitHub Actions workflow that builds an APK.
 
+The first working Parakeet fork release is tagged as:
+
+```text
+v1.0.0-parakeet
+```
+
 To create a release:
 
 ```bash
-git tag v0.1.0
-git push origin v0.1.0
+git tag v1.0.0-parakeet
+git push origin v1.0.0-parakeet
 ```
 
 GitHub Actions will:

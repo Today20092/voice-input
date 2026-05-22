@@ -61,5 +61,12 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
+          name: First Working Parakeet Version
+          body: |
+            First working version of the FUTO Voice Input Parakeet fork.
+
+            This release builds a sideloadable dev debug APK with the Parakeet backend integrated into the FUTO Voice Input app.
+
+            The Parakeet integration and repository changes in this fork were built with AI assistance using Codex (GPT-5).
           files: release/*.apk
           generate_release_notes: true
