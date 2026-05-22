@@ -111,6 +111,16 @@ pub enum QuantizationType {
     Int8,
 }
 
+/// Architecture family for exported Parakeet ONNX assets.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub enum ParakeetArchitecture {
+    /// Legacy TDT export. Decoder output includes vocabulary and duration logits.
+    Tdt,
+    /// Unified FastConformer RNNT export. Decoder output is vocabulary logits only.
+    #[default]
+    RnntUnified,
+}
+
 /// Parameters for configuring Parakeet model loading.
 ///
 /// Controls model quantization settings for balancing performance vs accuracy.
@@ -118,6 +128,8 @@ pub enum QuantizationType {
 pub struct ParakeetModelParams {
     /// The quantization type to use for the model
     pub quantization: QuantizationType,
+    /// The exported model architecture.
+    pub architecture: ParakeetArchitecture,
 }
 
 impl ParakeetModelParams {
@@ -135,6 +147,7 @@ impl ParakeetModelParams {
     pub fn fp32() -> Self {
         Self {
             quantization: QuantizationType::FP32,
+            architecture: ParakeetArchitecture::RnntUnified,
         }
     }
 
@@ -152,6 +165,7 @@ impl ParakeetModelParams {
     pub fn int8() -> Self {
         Self {
             quantization: QuantizationType::Int8,
+            architecture: ParakeetArchitecture::RnntUnified,
         }
     }
 
@@ -169,7 +183,18 @@ impl ParakeetModelParams {
     /// let params = ParakeetModelParams::quantized(QuantizationType::Int8);
     /// ```
     pub fn quantized(quantization: QuantizationType) -> Self {
-        Self { quantization }
+        Self {
+            quantization,
+            architecture: ParakeetArchitecture::RnntUnified,
+        }
+    }
+
+    /// Create parameters for legacy TDT exports.
+    pub fn legacy_tdt(quantization: QuantizationType) -> Self {
+        Self {
+            quantization,
+            architecture: ParakeetArchitecture::Tdt,
+        }
     }
 }
 
@@ -262,7 +287,7 @@ impl TranscriptionEngine for ParakeetEngine {
             QuantizationType::FP32 => false,
             QuantizationType::Int8 => true,
         };
-        let model = ParakeetModel::new(model_path, quantized)?;
+        let model = ParakeetModel::new(model_path, quantized, params.architecture)?;
 
         self.model = Some(model);
         self.loaded_model_path = Some(model_path.to_path_buf());

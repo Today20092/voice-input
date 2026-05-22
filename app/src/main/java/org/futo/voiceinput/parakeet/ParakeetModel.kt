@@ -21,34 +21,38 @@ data class ParakeetModelFile(
 )
 
 object ParakeetModel {
-    const val directoryName = "parakeet-tdt-0.6b-v3-int8"
+    const val directoryName = "parakeet-unified-en-0.6b-onnx"
     const val completionMarker = ".download_complete"
+    private const val exportedAssetBaseUrl =
+        "https://huggingface.co/futo-org/parakeet-unified-en-0.6b-onnx/resolve/main"
 
+    // Fill these hashes from tools/parakeet_export/checksums.sha256 after the
+    // unified ONNX export is validated and hosted.
     val files = listOf(
         ParakeetModelFile(
             name = "config.json",
-            url = "https://huggingface.co/istupakov/parakeet-tdt-0.6b-v3-onnx/resolve/main/config.json?download=true",
+            url = "$exportedAssetBaseUrl/config.json?download=true",
             sha256 = null
         ),
         ParakeetModelFile(
             name = "vocab.txt",
-            url = "https://huggingface.co/istupakov/parakeet-tdt-0.6b-v3-onnx/resolve/main/vocab.txt?download=true",
+            url = "$exportedAssetBaseUrl/vocab.txt?download=true",
             sha256 = null
         ),
         ParakeetModelFile(
             name = "encoder-model.int8.onnx",
-            url = "https://huggingface.co/istupakov/parakeet-tdt-0.6b-v3-onnx/resolve/main/encoder-model.int8.onnx?download=true",
-            sha256 = "6139d2fa7e1b086097b277c7149725edbab89cc7c7ae64b23c741be4055aff09"
+            url = "$exportedAssetBaseUrl/encoder-model.int8.onnx?download=true",
+            sha256 = null
         ),
         ParakeetModelFile(
             name = "decoder_joint-model.int8.onnx",
-            url = "https://huggingface.co/istupakov/parakeet-tdt-0.6b-v3-onnx/resolve/main/decoder_joint-model.int8.onnx?download=true",
-            sha256 = "eea7483ee3d1a30375daedc8ed83e3960c91b098812127a0d99d1c8977667a70"
+            url = "$exportedAssetBaseUrl/decoder_joint-model.int8.onnx?download=true",
+            sha256 = null
         ),
         ParakeetModelFile(
-            name = "nemo128.onnx",
-            url = "https://huggingface.co/istupakov/parakeet-tdt-0.6b-v3-onnx/resolve/main/nemo128.onnx?download=true",
-            sha256 = "a9fde1486ebfcc08f328d75ad4610c67835fea58c73ba57e3209a6f6cf019e9f"
+            name = "preprocessor.onnx",
+            url = "$exportedAssetBaseUrl/preprocessor.onnx?download=true",
+            sha256 = null
         )
     )
 }
@@ -83,7 +87,7 @@ fun Context.isParakeetModelDownloaded(verifyHashes: Boolean = false): Boolean {
         .filter { it.required }
         .all { model ->
             val file = File(modelDir, model.name)
-            file.exists() && (!verifyHashes || model.sha256 == null || sha256(file) == model.sha256)
+            file.exists() && (!verifyHashes || (model.sha256 != null && sha256(file) == model.sha256))
         }
 
     if (!isValid) {
@@ -94,12 +98,14 @@ fun Context.isParakeetModelDownloaded(verifyHashes: Boolean = false): Boolean {
 }
 
 fun Context.deleteIncompleteParakeetModel() {
+    runCatching { ParakeetNative.close() }
     if (!isParakeetModelDownloaded()) {
         parakeetModelDir().deleteRecursively()
     }
 }
 
 fun Context.parakeetModelDownloadIntent(): Intent {
+    runCatching { ParakeetNative.close() }
     return Intent(this, DownloadActivity::class.java).apply {
         putStringArrayListExtra(
             EXTRA_DOWNLOAD_FILE_NAMES,

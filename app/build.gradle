@@ -336,14 +336,15 @@ class ModelFile {
 }
 
 def parakeetModelFiles = [
+        // Fill hashes from tools/parakeet_export/checksums.sha256 after export validation.
         new ModelFile('config.json', ''),
         new ModelFile('vocab.txt', ''),
-        new ModelFile('encoder-model.int8.onnx', '6139d2fa7e1b086097b277c7149725edbab89cc7c7ae64b23c741be4055aff09'),
-        new ModelFile('decoder_joint-model.int8.onnx', 'eea7483ee3d1a30375daedc8ed83e3960c91b098812127a0d99d1c8977667a70'),
-        new ModelFile('nemo128.onnx', 'a9fde1486ebfcc08f328d75ad4610c67835fea58c73ba57e3209a6f6cf019e9f')
+        new ModelFile('encoder-model.int8.onnx', ''),
+        new ModelFile('decoder_joint-model.int8.onnx', ''),
+        new ModelFile('preprocessor.onnx', '')
 ]
 
-def huggingFaceRepo = 'https://huggingface.co/istupakov/parakeet-tdt-0.6b-v3-onnx/resolve/main'
+def huggingFaceRepo = 'https://huggingface.co/futo-org/parakeet-unified-en-0.6b-onnx/resolve/main'
 String sha256(File file) {
     def digest = MessageDigest.getInstance('SHA-256')
     file.withInputStream { input ->
@@ -360,7 +361,7 @@ tasks.register('downloadParakeetModels') {
     description = 'Download Hugging Face Parakeet model assets'
     group = 'build'
 
-    def assetsDir = project.file('src/main/assets/parakeet-tdt-0.6b-v3-int8')
+        def assetsDir = project.file('src/main/assets/parakeet-unified-en-0.6b-onnx')
     outputs.dir assetsDir
     outputs.upToDateWhen { false }
 

@@ -2,7 +2,7 @@ mod assets;
 mod engine;
 
 use jni::objects::{JClass, JFloatArray, JObject};
-use jni::sys::{jboolean, jfloatArray, jstring, JNI_FALSE, JNI_TRUE};
+use jni::sys::{jboolean, jfloatArray, jlong, jstring, JNI_FALSE, JNI_TRUE};
 use jni::JNIEnv;
 
 #[no_mangle]
@@ -72,4 +72,29 @@ pub extern "system" fn Java_org_futo_voiceinput_parakeet_ParakeetNative_close(
     _class: JClass,
 ) {
     engine::close();
+}
+
+#[no_mangle]
+pub extern "system" fn Java_org_futo_voiceinput_parakeet_ParakeetNative_markIdle(
+    _env: JNIEnv,
+    _class: JClass,
+) {
+    engine::mark_idle();
+}
+
+#[no_mangle]
+pub extern "system" fn Java_org_futo_voiceinput_parakeet_ParakeetNative_unloadIfIdle(
+    _env: JNIEnv,
+    _class: JClass,
+    timeout_ms: jlong,
+) -> jboolean {
+    if timeout_ms < 0 {
+        return JNI_FALSE;
+    }
+
+    if engine::unload_if_idle(timeout_ms as u64) {
+        JNI_TRUE
+    } else {
+        JNI_FALSE
+    }
 }

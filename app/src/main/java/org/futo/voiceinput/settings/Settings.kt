@@ -124,6 +124,11 @@ fun String.toSpeechBackendType(): SpeechBackendType {
 }
 
 val SPEECH_BACKEND = SettingsKey(stringPreferencesKey("speech_backend"), SpeechBackendType.Parakeet.id)
+val PARAKEET_KEEP_WARM = SettingsKey(booleanPreferencesKey("parakeet_keep_warm"), true)
+val PARAKEET_KEEP_WARM_TIMEOUT_MS =
+    SettingsKey(longPreferencesKey("parakeet_keep_warm_timeout_ms"), 5 * 60 * 1000L)
+val PARAKEET_ENGINE_DIAGNOSTICS =
+    SettingsKey(booleanPreferencesKey("parakeet_engine_diagnostics"), false)
 
 val ENGLISH_MODEL_INDEX = SettingsKey(intPreferencesKey("english_model_index"), 0)
 
