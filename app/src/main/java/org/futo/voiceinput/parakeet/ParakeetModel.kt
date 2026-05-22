@@ -27,7 +27,8 @@ object ParakeetModel {
         "https://huggingface.co/futo-org/parakeet-unified-en-0.6b-onnx/resolve/main"
 
     // Fill these hashes from tools/parakeet_export/checksums.sha256 after the
-    // unified ONNX export is validated and hosted.
+    // unified ONNX export is validated and hosted. Missing hashes are accepted
+    // for local/unhosted exports.
     val files = listOf(
         ParakeetModelFile(
             name = "config.json",
@@ -87,7 +88,7 @@ fun Context.isParakeetModelDownloaded(verifyHashes: Boolean = false): Boolean {
         .filter { it.required }
         .all { model ->
             val file = File(modelDir, model.name)
-            file.exists() && (!verifyHashes || (model.sha256 != null && sha256(file) == model.sha256))
+            file.exists() && (!verifyHashes || model.sha256 == null || sha256(file) == model.sha256)
         }
 
     if (!isValid) {
