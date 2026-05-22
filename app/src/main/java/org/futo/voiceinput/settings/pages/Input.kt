@@ -34,6 +34,7 @@ import org.futo.voiceinput.settings.SettingsViewModel
 import org.futo.voiceinput.settings.Tip
 import org.futo.voiceinput.settings.USE_LANGUAGE_SPECIFIC_MODELS
 import org.futo.voiceinput.settings.getSettingBlocking
+import org.futo.voiceinput.settings.isParakeetSelected
 import org.futo.voiceinput.settings.useDataStore
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -44,6 +45,7 @@ fun InputScreen(
     navController: NavHostController = rememberNavController()
 ) {
     val languages = useDataStore(LANGUAGE_TOGGLES)
+    val parakeetSelected = isParakeetSelected()
 
     ScrollableList {
         ScreenTitle(title = stringResource(id = R.string.input_options), showBack = true, navController = navController)
@@ -73,7 +75,7 @@ fun InputScreen(
         SettingToggleDataStore(stringResource(R.string.stop_on_silence), IS_VAD_ENABLED)
 
         // Option only has effect when English is active and at least one other language
-        if(languages.value.size > 1 && languages.value.contains("en")) {
+        if(!parakeetSelected && languages.value.size > 1 && languages.value.contains("en")) {
             Spacer(modifier = Modifier.height(32.dp))
 
             Tip(stringResource(R.string.use_language_specific_models_info))

@@ -1,6 +1,7 @@
 package org.futo.voiceinput.settings
 
 import android.content.Context
+import androidx.compose.runtime.Composable
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
@@ -124,6 +125,12 @@ fun String.toSpeechBackendType(): SpeechBackendType {
 }
 
 val SPEECH_BACKEND = SettingsKey(stringPreferencesKey("speech_backend"), SpeechBackendType.Parakeet.id)
+
+@Composable
+fun isParakeetSelected(): Boolean {
+    val (backend, _) = useDataStore(SPEECH_BACKEND)
+    return backend.toSpeechBackendType() == SpeechBackendType.Parakeet
+}
 
 val ENGLISH_MODEL_INDEX = SettingsKey(intPreferencesKey("english_model_index"), 0)
 

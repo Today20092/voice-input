@@ -39,6 +39,7 @@ import org.futo.voiceinput.settings.ScreenTitle
 import org.futo.voiceinput.settings.ScrollableList
 import org.futo.voiceinput.settings.SettingItem
 import org.futo.voiceinput.settings.SettingsViewModel
+import org.futo.voiceinput.settings.isParakeetSelected
 import org.futo.voiceinput.settings.useDataStore
 
 
@@ -94,7 +95,8 @@ fun HomeScreen(
 ) {
     val isAlreadyPaid = useDataStore(IS_ALREADY_PAID)
     val isMultilingual = useDataStore(ENABLE_MULTILINGUAL)
-    val multilingualSubtitle = if (isMultilingual.value) {
+    val parakeetSelected = isParakeetSelected()
+    val multilingualSubtitle = if (!parakeetSelected && isMultilingual.value) {
         stringResource(R.string.multilingual_enabled_english_will_be_slower)
     } else {
         null
@@ -118,13 +120,15 @@ fun HomeScreen(
         ConditionalModelUpdate()
 
         SettingsSeparator(stringResource(R.string.options))
-        NavigationItem(
-            title = stringResource(R.string.languages),
-            subtitle = multilingualSubtitle,
-            style = NavigationItemStyle.Misc,
-            navigate = { navController.navigate("languages") },
-            icon = painterResource(R.drawable.globe)
-        )
+        if (!parakeetSelected) {
+            NavigationItem(
+                title = stringResource(R.string.languages),
+                subtitle = multilingualSubtitle,
+                style = NavigationItemStyle.Misc,
+                navigate = { navController.navigate("languages") },
+                icon = painterResource(R.drawable.globe)
+            )
+        }
 
         NavigationItem(
             title = stringResource(R.string.model),

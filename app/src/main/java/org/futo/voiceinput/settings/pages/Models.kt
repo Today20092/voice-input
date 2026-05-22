@@ -52,6 +52,7 @@ import org.futo.voiceinput.settings.SpeechBackendType
 import org.futo.voiceinput.settings.Tip
 import org.futo.voiceinput.settings.USE_LANGUAGE_SPECIFIC_MODELS
 import org.futo.voiceinput.settings.getSettingBlocking
+import org.futo.voiceinput.settings.isParakeetSelected
 import org.futo.voiceinput.settings.toSpeechBackendType
 import org.futo.voiceinput.settings.useDataStore
 import org.futo.voiceinput.startModelDownloadActivity
@@ -228,6 +229,7 @@ fun ModelsScreen(
 ) {
     val (languages, _) = useDataStore(LANGUAGE_TOGGLES)
     val (backend, _) = useDataStore(SPEECH_BACKEND)
+    val parakeetSelected = isParakeetSelected()
 
     val needsUpdate = NeedsMigration()
 
@@ -237,24 +239,26 @@ fun ModelsScreen(
     ScrollableList {
         ScreenTitle(stringResource(R.string.model_options), showBack = true, navController = navController)
 
-        ConditionalModelUpdate()
+        if (!parakeetSelected) {
+            ConditionalModelUpdate()
 
-        if(wasMigrated.value && !dismissMigrationTip.value) {
-            Tip(stringResource(R.string.new_model_features_tip), onDismiss = { dismissMigrationTip.setValue(true) })
-        }
+            if(wasMigrated.value && !dismissMigrationTip.value) {
+                Tip(stringResource(R.string.new_model_features_tip), onDismiss = { dismissMigrationTip.setValue(true) })
+            }
 
-        if(languages.size > 1) {
-            SettingToggleDataStore(
-                stringResource(R.string.manually_select_language),
-                MANUALLY_SELECT_LANGUAGE,
-                subtitle = stringResource(R.string.manual_language_selection_toggle_subtitle)
-            )
-        }
+            if(languages.size > 1) {
+                SettingToggleDataStore(
+                    stringResource(R.string.manually_select_language),
+                    MANUALLY_SELECT_LANGUAGE,
+                    subtitle = stringResource(R.string.manual_language_selection_toggle_subtitle)
+                )
+            }
 
-        if(!needsUpdate) {
-            PersonalDictionaryEditor(disabled = false)
+            if(!needsUpdate) {
+                PersonalDictionaryEditor(disabled = false)
 
-            Spacer(modifier = Modifier.height(32.dp))
+                Spacer(modifier = Modifier.height(32.dp))
+            }
         }
 
         SettingRadio(

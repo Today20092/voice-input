@@ -22,6 +22,7 @@ import org.futo.voiceinput.settings.ScrollableList
 import org.futo.voiceinput.settings.SettingToggleDataStore
 import org.futo.voiceinput.settings.SettingsViewModel
 import org.futo.voiceinput.settings.VERBOSE_PROGRESS
+import org.futo.voiceinput.settings.isParakeetSelected
 import org.futo.voiceinput.settings.openImeOptions
 import org.futo.voiceinput.settings.useDataStore
 
@@ -32,6 +33,7 @@ fun AdvancedScreen(
     navController: NavHostController = rememberNavController()
 ) {
     val context = LocalContext.current
+    val parakeetSelected = isParakeetSelected()
     val (_, setMultilingualIdx) = useDataStore(
         key = MULTILINGUAL_MODEL_INDEX.key,
         default = MULTILINGUAL_MODEL_INDEX.default
@@ -40,30 +42,34 @@ fun AdvancedScreen(
     ScrollableList {
         ScreenTitle(title = stringResource(id = R.string.advanced_settings), showBack = true, navController = navController)
 
-        SettingToggleDataStore(
-            stringResource(R.string.suppress_non_speech_annotations),
-            DISALLOW_SYMBOLS,
-            subtitle = stringResource(R.string.suppress_non_speech_annotations_subtitle)
-        )
+        if (!parakeetSelected) {
+            SettingToggleDataStore(
+                stringResource(R.string.suppress_non_speech_annotations),
+                DISALLOW_SYMBOLS,
+                subtitle = stringResource(R.string.suppress_non_speech_annotations_subtitle)
+            )
+        }
 
         SettingToggleDataStore(
             stringResource(R.string.verbose_mode),
             VERBOSE_PROGRESS
         )
 
-        SettingToggleDataStore(stringResource(R.string.use_beam_search), BEAM_SEARCH, subtitle = stringResource(R.string.recommended))
+        if (!parakeetSelected) {
+            SettingToggleDataStore(stringResource(R.string.use_beam_search), BEAM_SEARCH, subtitle = stringResource(R.string.recommended))
 
-        SettingToggleDataStore(
-            stringResource(R.string.allow_undertrained_languages),
-            ALLOW_UNDERTRAINED_LANGUAGES,
-            subtitle = stringResource(R.string.allow_undertrained_languages_subtitle),
-            onChanged = {
-                // Automatically change model to largest one
-                if(it) {
-                    setMultilingualIdx(MULTILINGUAL_MODELS.size - 1)
+            SettingToggleDataStore(
+                stringResource(R.string.allow_undertrained_languages),
+                ALLOW_UNDERTRAINED_LANGUAGES,
+                subtitle = stringResource(R.string.allow_undertrained_languages_subtitle),
+                onChanged = {
+                    // Automatically change model to largest one
+                    if(it) {
+                        setMultilingualIdx(MULTILINGUAL_MODELS.size - 1)
+                    }
                 }
-            }
-        )
+            )
+        }
 
         NavigationItem(
             title = stringResource(R.string.open_input_method_settings),

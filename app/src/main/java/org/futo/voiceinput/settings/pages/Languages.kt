@@ -25,6 +25,7 @@ import org.futo.voiceinput.settings.SettingListLazy
 import org.futo.voiceinput.settings.SettingToggleRaw
 import org.futo.voiceinput.settings.SettingsViewModel
 import org.futo.voiceinput.settings.Tip
+import org.futo.voiceinput.settings.isParakeetSelected
 import org.futo.voiceinput.settings.useDataStore
 import org.futo.voiceinput.startModelDownloadActivity
 
@@ -66,15 +67,18 @@ fun LanguagesScreen(
     val context = LocalContext.current
 
     val (allowUndertrainedLanguages, _) = useDataStore(ALLOW_UNDERTRAINED_LANGUAGES)
+    val parakeetSelected = isParakeetSelected()
 
 
-    LaunchedEffect(listOf(multilingualModelIndex, multilingual)) {
-        if (multilingual) {
+    LaunchedEffect(listOf(multilingualModelIndex, multilingual, parakeetSelected)) {
+        if (!parakeetSelected && multilingual) {
             context.startModelDownloadActivity(listOf(MULTILINGUAL_MODELS[multilingualModelIndex]))
         }
     }
 
-    LaunchedEffect(languages) {
+    LaunchedEffect(languages, parakeetSelected) {
+        if (parakeetSelected) return@LaunchedEffect
+
         val newMultilingual = languages.count { it != "en" } > 0
         if (multilingual != newMultilingual) setMultilingual(newMultilingual)
     }
@@ -82,6 +86,13 @@ fun LanguagesScreen(
     SettingListLazy {
         item {
             ScreenTitle(stringResource(R.string.languages_title), showBack = true, navController = navController)
+        }
+
+        if (parakeetSelected) {
+            item {
+                Tip(stringResource(R.string.parakeet_english_only_tip))
+            }
+            return@SettingListLazy
         }
 
         item {
