@@ -23,13 +23,22 @@ The active backend is:
 Unified Parakeet TDT 0.6B V3
 ```
 
-The build downloads the ONNX model assets from:
+The app downloads the ONNX model assets from:
 
 ```text
 https://huggingface.co/istupakov/parakeet-tdt-0.6b-v3-onnx
 ```
 
-By default, the Parakeet model files are not packaged into the APK. The app downloads them on first use or when you tap the Parakeet model in the Model Options screen.
+By default, the Parakeet model files are not packaged into the APK. This keeps the APK much smaller than the first bundled-model release.
+
+After installing the APK, the model is downloaded by the app:
+
+1. Open FUTO Voice Input Settings.
+2. Tap **Model**.
+3. Tap **Unified Parakeet TDT 0.6B V3** under **Parakeet Model**.
+4. Confirm the download.
+
+If you try to use voice input before downloading the model, the app shows a download prompt before it starts recording. Once the download finishes, the app loads Parakeet from local app storage and transcription runs offline.
 
 Downloaded model files are stored in app-private storage:
 
@@ -81,19 +90,20 @@ app/build/outputs/apk/dev/debug/app-dev-debug.apk
 
 ## GitHub Releases
 
-This repository includes a GitHub Actions workflow that builds an APK.
+This repository includes a GitHub Actions workflow that builds an APK when a `v*` tag is pushed.
 
-The first working Parakeet fork release is tagged as:
+The first bundled-model Parakeet fork release was tagged as:
 
 ```text
 v1.0.0-parakeet
 ```
 
-To create a release:
+To create a new release:
 
 ```bash
-git tag v1.0.0-parakeet
-git push origin v1.0.0-parakeet
+git tag v1.1.0-parakeet-runtime-download
+git push origin master
+git push origin v1.1.0-parakeet-runtime-download
 ```
 
 GitHub Actions will:
@@ -101,7 +111,8 @@ GitHub Actions will:
 - install Android build components
 - install Rust and `cargo-ndk`
 - build `:app:assembleDevDebug`
-- attach the APK to the GitHub Release
+- create a GitHub Release for the pushed tag
+- attach the APK to that GitHub Release
 
 You can also run the workflow manually from the Actions tab. Manual runs upload the APK as a workflow artifact but do not create a GitHub Release unless the run is for a tag.
 
