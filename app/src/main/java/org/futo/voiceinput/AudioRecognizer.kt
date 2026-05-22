@@ -31,6 +31,7 @@ import org.futo.voiceinput.settings.IS_VAD_ENABLED
 import org.futo.voiceinput.settings.getSetting
 import org.futo.voiceinput.parakeet.ParakeetBackend
 import org.futo.voiceinput.parakeet.SpeechBackend
+import org.futo.voiceinput.parakeet.isParakeetModelDownloaded
 import java.nio.FloatBuffer
 import java.nio.ShortBuffer
 import kotlin.math.min
@@ -83,6 +84,7 @@ abstract class AudioRecognizer {
     protected abstract fun decodingStatus(status: RunState)
 
     protected abstract fun loading()
+    protected abstract fun needModelDownload()
     protected abstract fun needPermission()
     protected abstract fun permissionRejected()
 
@@ -210,6 +212,11 @@ abstract class AudioRecognizer {
 
     fun create() {
         loading()
+
+        if (!context.isParakeetModelDownloaded()) {
+            needModelDownload()
+            return
+        }
 
         if (context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
             needPermission()

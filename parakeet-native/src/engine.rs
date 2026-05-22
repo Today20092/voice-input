@@ -20,7 +20,7 @@ pub fn ensure_loaded(env: &mut JNIEnv, context: &JObject) -> Result<(), String> 
         return Ok(());
     }
 
-    let model_dir = assets::extract_assets(env, context).map_err(|e| e.to_string())?;
+    let model_dir = assets::model_dir(env, context).map_err(|e| e.to_string())?;
     let mut engine = ParakeetEngine::new();
     engine
         .load_model_with_params(&model_dir, ParakeetModelParams::int8())

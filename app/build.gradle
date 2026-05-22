@@ -12,6 +12,9 @@ licenseList {
     defaultVariant = "freeRelease"
 }
 
+def bundleParakeetModel = project.hasProperty('bundleParakeetModel') &&
+        project.property('bundleParakeetModel').toString().toBoolean()
+
 android {
     namespace 'org.futo.voiceinput'
     compileSdk 35
@@ -22,6 +25,7 @@ android {
         targetSdk 35
         versionCode 32
         versionName "1.3.7-3"
+        buildConfigField "boolean", "BUNDLE_PARAKEET_MODEL", bundleParakeetModel.toString()
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -339,7 +343,6 @@ def parakeetModelFiles = [
 ]
 
 def huggingFaceRepo = 'https://huggingface.co/istupakov/parakeet-tdt-0.6b-v3-onnx/resolve/main'
-
 String sha256(File file) {
     def digest = MessageDigest.getInstance('SHA-256')
     file.withInputStream { input ->
@@ -395,6 +398,8 @@ tasks.register('downloadParakeetModels') {
 }
 
 tasks.named('preBuild') {
-    dependsOn tasks.named('downloadParakeetModels')
     dependsOn tasks.named('cargoNdkBuildParakeet')
+    if (bundleParakeetModel) {
+        dependsOn tasks.named('downloadParakeetModels')
+    }
 }

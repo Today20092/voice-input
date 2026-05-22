@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.LifecycleCoroutineScope
 import androidx.lifecycle.lifecycleScope
 import org.futo.voiceinput.migration.scheduleModelMigrationJob
+import org.futo.voiceinput.parakeet.parakeetModelDownloadIntent
 import org.futo.voiceinput.settings.pages.ConditionalUnpaidNoticeInVoiceInputWindow
 import org.futo.voiceinput.theme.UixThemeAuto
 import org.futo.voiceinput.updates.scheduleUpdateCheckingJob
@@ -151,6 +152,10 @@ class RecognizeActivity : ComponentActivity() {
             this@RecognizeActivity.requestPermission()
         }
 
+        override fun requestModelDownload() {
+            this@RecognizeActivity.requestModelDownload()
+        }
+
         override fun decodingStarted() {
             
         }
@@ -191,6 +196,18 @@ class RecognizeActivity : ComponentActivity() {
     }
     private fun requestPermission() {
         permission.launch(Manifest.permission.RECORD_AUDIO)
+    }
+
+    private val modelDownload = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+        if(it.resultCode == RESULT_OK) {
+            recognizer.reset()
+            recognizer.init()
+        } else {
+            onCancel()
+        }
+    }
+    private fun requestModelDownload() {
+        modelDownload.launch(parakeetModelDownloadIntent())
     }
 
     private fun sendResult(result: String) {

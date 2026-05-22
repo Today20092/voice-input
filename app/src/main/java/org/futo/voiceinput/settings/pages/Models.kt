@@ -8,15 +8,19 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
@@ -25,6 +29,8 @@ import org.futo.voiceinput.MULTILINGUAL_MODELS
 import org.futo.voiceinput.R
 import org.futo.voiceinput.migration.ConditionalModelUpdate
 import org.futo.voiceinput.migration.NeedsMigration
+import org.futo.voiceinput.parakeet.isParakeetModelDownloaded
+import org.futo.voiceinput.parakeet.startParakeetModelDownloadActivity
 import org.futo.voiceinput.settings.DISMISS_MIGRATION_TIP
 import org.futo.voiceinput.settings.ENABLE_MULTILINGUAL
 import org.futo.voiceinput.settings.ENGLISH_MODEL_INDEX
@@ -81,17 +87,42 @@ fun PersonalDictionaryEditor(disabled: Boolean) {
 
 @Composable
 fun ParakeetModelStatus() {
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val isDownloaded = remember { mutableStateOf(context.isParakeetModelDownloaded()) }
+
+    DisposableEffect(lifecycleOwner, context) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                isDownloaded.value = context.isParakeetModelDownloaded()
+            }
+        }
+
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
     ScreenTitle(stringResource(R.string.parakeet_model))
     SettingItem(
         title = stringResource(R.string.parakeet_unified_model_name),
-        subtitle = stringResource(R.string.parakeet_unified_model_status),
-        onClick = {},
+        subtitle = if (isDownloaded.value) {
+            stringResource(R.string.parakeet_model_downloaded)
+        } else {
+            stringResource(R.string.parakeet_model_download_required)
+        },
+        onClick = {
+            if (!isDownloaded.value) {
+                context.startParakeetModelDownloadActivity()
+            }
+        },
         icon = {
-            RadioButton(selected = true, onClick = null, enabled = false)
+            RadioButton(selected = isDownloaded.value, onClick = null, enabled = false)
         },
         disabled = false
     ) { }
-    Tip(stringResource(R.string.parakeet_packaged_model_tip))
+    Tip(stringResource(R.string.parakeet_download_model_tip))
 }
 
 @Composable

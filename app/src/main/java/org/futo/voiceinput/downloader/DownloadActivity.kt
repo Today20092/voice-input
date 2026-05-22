@@ -37,7 +37,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
 import org.futo.voiceinput.R
-import org.futo.voiceinput.fileNeedsDownloading
+import org.futo.voiceinput.parakeet.sha256
 import org.futo.voiceinput.settings.ScreenTitle
 import org.futo.voiceinput.settings.ScrollableList
 import org.futo.voiceinput.theme.UixThemeAuto
@@ -45,10 +45,18 @@ import org.futo.voiceinput.theme.Typography
 import java.io.File
 import java.io.IOException
 
+const val EXTRA_DOWNLOAD_FILE_NAMES = "download_file_names"
+const val EXTRA_DOWNLOAD_FILE_URLS = "download_file_urls"
+const val EXTRA_DOWNLOAD_FILE_HASHES = "download_file_hashes"
+const val EXTRA_TARGET_SUBDIR = "target_subdir"
+const val EXTRA_COMPLETION_MARKER = "completion_marker"
+
 
 data class ModelInfo(
     val name: String,
     val url: String,
+    val targetFile: File = File(name),
+    val sha256: String? = null,
     var size: Long?,
     var progress: Float = 0.0f,
     var error: Boolean = false,
@@ -193,8 +201,10 @@ fun DownloadScreen(models: List<ModelInfo> = EXAMPLE_MODELS) {
 
 class DownloadActivity : ComponentActivity() {
     private lateinit var modelsToDownload: List<ModelInfo>
+    private lateinit var allRequestedFiles: List<ModelInfo>
     private val httpClient = OkHttpClient()
     private var isDownloading = false
+    private var completionMarker: File? = null
 
     private fun updateContent() {
         setContent {
@@ -222,68 +232,122 @@ class DownloadActivity : ComponentActivity() {
         isDownloading = true
         updateContent()
 
+        if (modelsToDownload.isEmpty()) {
+            downloadsFinished()
+            return
+        }
+
         modelsToDownload.forEach {
+            it.error = false
+            it.progress = 0.0f
             val request = Request.Builder().method("GET", null).url(it.url).build()
 
             httpClient.newCall(request).enqueue(object : Callback {
                 override fun onFailure(call: Call, e: IOException) {
                     it.error = true
-                    updateContent()
+                    updateContentOnMain()
                 }
 
                 override fun onResponse(call: Call, response: Response) {
-                    response.body?.source()?.let { source ->
-
-                        try {
-                            it.size = response.headers["content-length"]!!.toLong()
-                        } catch (e: Exception) {
-                            println("url failed ${it.url}")
-                            println(response.headers)
-                            e.printStackTrace()
+                    response.use { response ->
+                        if (!response.isSuccessful) {
+                            it.error = true
+                            updateContentOnMain()
+                            return
                         }
 
-                        val fileName = it.name + ".download"
-                        val file =
-                            File.createTempFile(fileName, null, this@DownloadActivity.cacheDir)
-                        val os = file.outputStream()
+                        response.body?.source()?.let { source ->
 
-                        val buffer = ByteArray(128 * 1024)
-                        var downloaded = 0
-                        while (true) {
-                            val read = source.read(buffer)
-                            if (read == -1) {
-                                break
-                            }
+                            it.size = response.headers["content-length"]?.toLongOrNull()
 
-                            os.write(buffer.sliceArray(0 until read))
+                            val fileName = it.name + ".download"
+                            val file =
+                                File.createTempFile(fileName, null, this@DownloadActivity.cacheDir)
 
-                            downloaded += read
+                            try {
+                                file.outputStream().use { os ->
+                                    val buffer = ByteArray(128 * 1024)
+                                    var downloaded = 0L
+                                    while (true) {
+                                        val read = source.read(buffer)
+                                        if (read == -1) {
+                                            break
+                                        }
 
-                            if (it.size != null) {
-                                it.progress = downloaded.toFloat() / it.size!!.toFloat()
-                            }
+                                        os.write(buffer, 0, read)
 
-                            lifecycleScope.launch {
-                                withContext(Dispatchers.Main) {
-                                    updateContent()
+                                        downloaded += read
+
+                                        if (it.size != null) {
+                                            it.progress = downloaded.toFloat() / it.size!!.toFloat()
+                                        }
+
+                                        updateContentOnMain()
+                                    }
                                 }
+
+                                if (!isValidDownloadedFile(file, it.sha256)) {
+                                    file.delete()
+                                    it.error = true
+                                    updateContentOnMain()
+                                    return
+                                }
+
+                                it.targetFile.parentFile?.mkdirs()
+                                if (it.targetFile.exists() && !it.targetFile.delete()) {
+                                    throw IOException("Failed to replace ${it.targetFile.absolutePath}")
+                                }
+
+                                if (!file.renameTo(it.targetFile)) {
+                                    file.copyTo(it.targetFile, overwrite = true)
+                                    file.delete()
+                                }
+
+                                it.finished = true
+                                it.progress = 1.0f
+                            } catch (e: Exception) {
+                                e.printStackTrace()
+                                file.delete()
+                                it.error = true
                             }
-                        }
 
-                        it.finished = true
-                        it.progress = 1.0f
-                        os.flush()
-                        os.close()
-
-                        assert(file.renameTo(File(this@DownloadActivity.filesDir, it.name)))
-
-                        if (modelsToDownload.all { a -> a.finished }) {
-                            downloadsFinished()
+                            if (modelsToDownload.all { a -> a.finished }) {
+                                downloadsFinishedOnMain()
+                            } else {
+                                updateContentOnMain()
+                            }
+                        } ?: run {
+                            it.error = true
+                            updateContentOnMain()
                         }
                     }
                 }
             })
         }
+    }
+
+    private fun updateContentOnMain() {
+        lifecycleScope.launch {
+            withContext(Dispatchers.Main) {
+                updateContent()
+            }
+        }
+    }
+
+    private fun downloadsFinishedOnMain() {
+        lifecycleScope.launch {
+            withContext(Dispatchers.Main) {
+                downloadsFinished()
+            }
+        }
+    }
+
+    private fun isValidDownloadedFile(file: File, expectedSha256: String?): Boolean {
+        return file.exists() && (expectedSha256 == null || sha256(file) == expectedSha256)
+    }
+
+    private fun isValidTargetFile(model: ModelInfo): Boolean {
+        return isValidDownloadedFile(model.targetFile, model.sha256)
     }
 
     private fun cancel() {
@@ -293,6 +357,17 @@ class DownloadActivity : ComponentActivity() {
     }
 
     private fun downloadsFinished() {
+        if (!allRequestedFiles.all { isValidTargetFile(it) }) {
+            modelsToDownload.forEach { it.error = true }
+            updateContentOnMain()
+            return
+        }
+
+        completionMarker?.let { marker ->
+            marker.parentFile?.mkdirs()
+            marker.writeText("ok")
+        }
+
         val returnIntent = Intent()
         setResult(RESULT_OK, returnIntent)
         finish()
@@ -307,46 +382,91 @@ class DownloadActivity : ComponentActivity() {
             httpClient.newCall(request).enqueue(object : Callback {
                 override fun onFailure(call: Call, e: IOException) {
                     it.error = true
-                    updateContent()
+                    updateContentOnMain()
                 }
 
                 override fun onResponse(call: Call, response: Response) {
-                    try {
-                        it.size = response.headers["content-length"]!!.toLong()
-                    } catch (e: Exception) {
-                        println("url failed ${it.url}")
-                        println(response.headers)
-                        e.printStackTrace()
-                        it.error = true
-                    }
+                    response.use { response ->
+                        try {
+                            it.size = response.headers["content-length"]?.toLongOrNull()
+                        } catch (e: Exception) {
+                            println("url failed ${it.url}")
+                            println(response.headers)
+                            e.printStackTrace()
+                            it.error = true
+                        }
 
-                    if (response.code != 200) {
-                        println("Bad response code ${response.code}")
-                        it.error = true
+                        if (response.code != 200) {
+                            println("Bad response code ${response.code}")
+                            it.error = true
+                        }
+                        updateContentOnMain()
                     }
-                    updateContent()
                 }
             })
+        }
+    }
+
+    private fun explicitDownloadRequests(): List<ModelInfo>? {
+        val names = intent.getStringArrayListExtra(EXTRA_DOWNLOAD_FILE_NAMES) ?: return null
+        val urls = intent.getStringArrayListExtra(EXTRA_DOWNLOAD_FILE_URLS)
+            ?: throw IllegalStateException("intent extra `$EXTRA_DOWNLOAD_FILE_URLS` must be specified")
+        val hashes = intent.getStringArrayListExtra(EXTRA_DOWNLOAD_FILE_HASHES)
+
+        if (names.size != urls.size || (hashes != null && hashes.size != names.size)) {
+            throw IllegalStateException("download file names, urls, and hashes must have matching sizes")
+        }
+
+        val targetSubdir = intent.getStringExtra(EXTRA_TARGET_SUBDIR)
+        val targetDir = if (targetSubdir != null) {
+            File(filesDir, targetSubdir)
+        } else {
+            filesDir
+        }
+
+        targetDir.mkdirs()
+
+        completionMarker = intent.getStringExtra(EXTRA_COMPLETION_MARKER)?.let {
+            File(targetDir, it)
+        }
+
+        return names.indices.map { index ->
+            val hash = hashes?.get(index)?.ifBlank { null }
+            ModelInfo(
+                name = names[index],
+                url = urls[index],
+                targetFile = File(targetDir, names[index]),
+                sha256 = hash,
+                size = null,
+                progress = 0.0f
+            )
+        }
+    }
+
+    private fun legacyDownloadRequests(): List<ModelInfo> {
+        val models = intent.getStringArrayListExtra("models")
+            ?: throw IllegalStateException("intent extra `models` must be specified for DownloadActivity")
+
+        return models.map {
+            ModelInfo(
+                name = it,
+                url = "https://voiceinput.futo.org/VoiceInput/${it}",
+                targetFile = File(filesDir, it),
+                size = null,
+                progress = 0.0f
+            )
         }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val models = intent.getStringArrayListExtra("models")
-            ?: throw IllegalStateException("intent extra `models` must be specified for DownloadActivity")
-
-        modelsToDownload = models.filter { this.fileNeedsDownloading(it) }.map {
-            ModelInfo(
-                name = it,
-                url = "https://voiceinput.futo.org/VoiceInput/${it}",
-                size = null,
-                progress = 0.0f
-            )
-        }
+        allRequestedFiles = explicitDownloadRequests() ?: legacyDownloadRequests()
+        modelsToDownload = allRequestedFiles.filter { !isValidTargetFile(it) }
 
         if (modelsToDownload.isEmpty()) {
-            cancel()
+            downloadsFinished()
+            return
         }
 
         isDownloading = false

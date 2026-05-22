@@ -96,8 +96,14 @@
     <string name="parakeet_model">Parakeet Model</string>
     <string name="parakeet_model_active_subtitle">Unified Parakeet model active</string>
     <string name="parakeet_unified_model_name">Unified Parakeet TDT 0.6B V3</string>
-    <string name="parakeet_unified_model_status">Active backend. Model files are packaged with this APK.</string>
+    <string name="parakeet_unified_model_status">Active backend. Model files download on first use.</string>
     <string name="parakeet_packaged_model_tip">Parakeet is the active recognizer in this fork. The old English and multilingual model choices below are kept for now but are not used for transcription.</string>
+    <string name="parakeet_model_download_required">Download required</string>
+    <string name="parakeet_model_downloaded">Downloaded and active</string>
+    <string name="parakeet_download_model_tip">Parakeet is the active recognizer in this fork. The model downloads once to private app storage. The old English and multilingual model choices below are kept for now but are not used for transcription.</string>
+    <string name="parakeet_download_required_title">Download Required</string>
+    <string name="parakeet_download_required_body">The Parakeet speech model must be downloaded before voice input can run. This may incur data fees on mobile data.</string>
+    <string name="download_model">Download Model</string>
     <string name="payment_text_1">You\'ve been using FUTO Voice Input for <xliff:g name="days" example="30">%d</xliff:g> days. If you find this app useful, please consider paying to support future development of FUTO software.</string>
     <string name="payment_text_1_alt">Thank you for trying out FUTO Voice Input! If you find this app useful, please consider paying to support future development of FUTO software.</string>
     <string name="payment_dev_notice">NOTE: Development has largely shifted to FUTO Keyboard and this app is not expected to receive any major updates at this time. Nevertheless, we would appreciate your support.</string>

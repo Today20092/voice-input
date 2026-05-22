@@ -2,10 +2,10 @@ use jni::objects::{JObject, JObjectArray};
 use jni::JNIEnv;
 use std::path::PathBuf;
 
-const EXTRACTION_COMPLETE_MARKER: &str = ".extraction_complete";
 const ASSET_DIR: &str = "parakeet-tdt-0.6b-v3-int8";
+const DOWNLOAD_COMPLETE_MARKER: &str = ".download_complete";
 
-pub fn extract_assets(env: &mut JNIEnv, context: &JObject) -> anyhow::Result<PathBuf> {
+pub fn model_dir(env: &mut JNIEnv, context: &JObject) -> anyhow::Result<PathBuf> {
     let files_dir_obj = env
         .call_method(context, "getFilesDir", "()Ljava/io/File;", &[])?
         .l()?;
@@ -19,19 +19,25 @@ pub fn extract_assets(env: &mut JNIEnv, context: &JObject) -> anyhow::Result<Pat
         .l()?;
     let path_string: String = env.get_string(&path_str_obj.into())?.into();
 
-    let base_path = PathBuf::from(path_string);
-    let model_dir = base_path.join(ASSET_DIR);
-    let marker_file = model_dir.join(EXTRACTION_COMPLETE_MARKER);
+    let model_dir = PathBuf::from(path_string).join(ASSET_DIR);
+    let marker_file = model_dir.join(DOWNLOAD_COMPLETE_MARKER);
 
     if marker_file.exists() {
         return Ok(model_dir);
     }
 
-    if model_dir.exists() {
-        let _ = std::fs::remove_dir_all(&model_dir);
+    if try_extract_packaged_assets(env, context, &model_dir).is_ok() && marker_file.exists() {
+        return Ok(model_dir);
     }
-    std::fs::create_dir_all(&model_dir)?;
 
+    anyhow::bail!("Parakeet model is not downloaded")
+}
+
+fn try_extract_packaged_assets(
+    env: &mut JNIEnv,
+    context: &JObject,
+    model_dir: &PathBuf,
+) -> anyhow::Result<()> {
     let asset_manager_obj = env
         .call_method(
             context,
@@ -41,18 +47,32 @@ pub fn extract_assets(env: &mut JNIEnv, context: &JObject) -> anyhow::Result<Pat
         )?
         .l()?;
 
-    copy_assets_recursively(env, &asset_manager_obj, ASSET_DIR, &base_path)?;
-    std::fs::write(&marker_file, "ok")?;
+    let names = list_assets(env, &asset_manager_obj, ASSET_DIR)?;
+    if names.is_empty() {
+        anyhow::bail!("Packaged Parakeet assets are not present");
+    }
 
-    Ok(model_dir)
+    if model_dir.exists() {
+        let _ = std::fs::remove_dir_all(model_dir);
+    }
+    std::fs::create_dir_all(model_dir)?;
+
+    let target_root = model_dir
+        .parent()
+        .ok_or_else(|| anyhow::anyhow!("Parakeet model directory has no parent"))?
+        .to_path_buf();
+
+    copy_assets_recursively(env, &asset_manager_obj, ASSET_DIR, &target_root)?;
+    std::fs::write(model_dir.join(DOWNLOAD_COMPLETE_MARKER), "ok")?;
+
+    Ok(())
 }
 
-fn copy_assets_recursively(
+fn list_assets(
     env: &mut JNIEnv,
     asset_manager: &JObject,
     path: &str,
-    target_root: &PathBuf,
-) -> anyhow::Result<()> {
+) -> anyhow::Result<Vec<String>> {
     let path_jstring = env.new_string(path)?;
     let list_array_obj = env
         .call_method(
@@ -65,16 +85,32 @@ fn copy_assets_recursively(
 
     let list_array: JObjectArray = list_array_obj.into();
     let len = env.get_array_length(&list_array)?;
+    let mut names = Vec::with_capacity(len as usize);
 
-    if len == 0 {
+    for i in 0..len {
+        let file_name_obj = env.get_object_array_element(&list_array, i)?;
+        let file_name: String = env.get_string(&file_name_obj.into())?.into();
+        names.push(file_name);
+    }
+
+    Ok(names)
+}
+
+fn copy_assets_recursively(
+    env: &mut JNIEnv,
+    asset_manager: &JObject,
+    path: &str,
+    target_root: &PathBuf,
+) -> anyhow::Result<()> {
+    let names = list_assets(env, asset_manager, path)?;
+
+    if names.is_empty() {
         return copy_asset_file(env, asset_manager, path, target_root);
     }
 
     std::fs::create_dir_all(target_root.join(path))?;
 
-    for i in 0..len {
-        let file_name_obj = env.get_object_array_element(&list_array, i)?;
-        let file_name: String = env.get_string(&file_name_obj.into())?.into();
+    for file_name in names {
         copy_assets_recursively(
             env,
             asset_manager,

@@ -255,6 +255,29 @@ fun ColumnScope.RecognizeMicError(openSettings: () -> Unit) {
     }
 }
 
+@Composable
+fun ColumnScope.RecognizeModelDownloadRequired(onDownload: () -> Unit) {
+    Text(
+        stringResource(R.string.parakeet_download_required_body),
+        modifier = Modifier
+            .padding(12.dp, 2.dp)
+            .align(Alignment.CenterHorizontally),
+        textAlign = TextAlign.Center,
+        color = MaterialTheme.colorScheme.onSurface
+    )
+
+    Spacer(modifier = Modifier.height(8.dp))
+
+    Button(
+        onClick = onDownload,
+        modifier = Modifier
+            .align(Alignment.CenterHorizontally)
+            .padding(8.dp)
+    ) {
+        Text(stringResource(R.string.download_model))
+    }
+}
+
 abstract class RecognizerView {
     private var shouldPlaySounds = ENABLE_SOUND.default
     private var shouldBeVerbose = VERBOSE_PROGRESS.default
@@ -287,6 +310,7 @@ abstract class RecognizerView {
     abstract fun sendResult(result: String)
     abstract fun sendPartialResult(result: String): Boolean
     abstract fun requestPermission()
+    abstract fun requestModelDownload()
 
     abstract fun decodingStarted()
 
@@ -403,6 +427,19 @@ abstract class RecognizerView {
                     allowClick = false
                 ) {
                     RecognizeLoadingCircle(text = context.getString(R.string.initializing))
+                }
+            }
+        }
+
+        override fun needModelDownload() {
+            setContent {
+                this@RecognizerView.Window(
+                    onClose = { cancelRecognizer() },
+                    onFinish = { requestModelDownload() },
+                    onPauseVAD = { },
+                    allowClick = false
+                ) {
+                    RecognizeModelDownloadRequired(onDownload = { requestModelDownload() })
                 }
             }
         }

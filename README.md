@@ -29,7 +29,13 @@ The build downloads the ONNX model assets from:
 https://huggingface.co/istupakov/parakeet-tdt-0.6b-v3-onnx
 ```
 
-For the current sideload/debug build, the model files are packaged into the APK. There is no separate in-app Parakeet download step.
+By default, the Parakeet model files are not packaged into the APK. The app downloads them on first use or when you tap the Parakeet model in the Model Options screen.
+
+Downloaded model files are stored in app-private storage:
+
+```text
+filesDir/parakeet-tdt-0.6b-v3-int8/
+```
 
 ## Building Locally
 
@@ -61,6 +67,12 @@ Build the debug APK:
 .\gradlew.bat :app:assembleDevDebug
 ```
 
+If you need a development build that packages the Parakeet model into the APK, enable the bundled-model Gradle property:
+
+```powershell
+.\gradlew.bat :app:assembleDevDebug -PbundleParakeetModel=true
+```
+
 The APK is written to:
 
 ```text
@@ -88,7 +100,6 @@ GitHub Actions will:
 
 - install Android build components
 - install Rust and `cargo-ndk`
-- download the Parakeet model assets during Gradle build
 - build `:app:assembleDevDebug`
 - attach the APK to the GitHub Release
 
@@ -98,9 +109,9 @@ You can also run the workflow manually from the Actions tab. Manual runs upload 
 
 - First supported ABI is `arm64-v8a`.
 - This is intended for sideloading and personal testing.
-- The APK is large because it includes the Parakeet ONNX model files.
+- The normal APK does not include the Parakeet ONNX model files. The model downloads at runtime from Hugging Face.
 - Parakeet currently returns a final transcript after recording stops; live partial transcripts are not implemented.
-- The app is offline after installation.
+- The app requires network access to download the model the first time, then transcription runs offline.
 
 ## Attribution And License
 
