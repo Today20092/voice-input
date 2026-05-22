@@ -15,6 +15,19 @@ licenseList {
 def bundleParakeetModel = project.hasProperty('bundleParakeetModel') &&
         project.property('bundleParakeetModel').toString().toBoolean()
 
+def gitShortHash = {
+    try {
+        def output = new ByteArrayOutputStream()
+        exec {
+            commandLine 'git', 'rev-parse', '--short', 'HEAD'
+            standardOutput = output
+        }
+        return output.toString().trim()
+    } catch (Exception ignored) {
+        return 'nogit'
+    }
+}()
+
 android {
     namespace 'org.futo.voiceinput'
     compileSdk 35
@@ -211,6 +224,16 @@ android {
             path file('src/main/cpp/CMakeLists.txt')
             version '3.22.1'
         }
+    }
+}
+
+android.applicationVariants.all { variant ->
+    variant.outputs.all {
+        def appSlug = "futo-voice-input"
+        def flavor = variant.flavorName ?: "unflavored"
+        def version = variant.versionName.replaceAll(/[^A-Za-z0-9._-]/, "-")
+        def buildType = variant.buildType.name
+        outputFileName = "${appSlug}-${flavor}-v${version}-${gitShortHash}-${buildType}.apk"
     }
 }
 

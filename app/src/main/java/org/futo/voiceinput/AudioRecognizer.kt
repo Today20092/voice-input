@@ -44,6 +44,12 @@ import kotlin.math.min
 import kotlin.math.pow
 import kotlin.math.sqrt
 
+private const val AUDIO_SAMPLE_RATE = 16000
+private const val AUDIO_READ_SIZE = 1600
+private const val MANUAL_STOP_DRAIN_MS = 300L
+private const val AUTO_STOP_DRAIN_MS = 100L
+private const val FINAL_SILENCE_PAD_MS = 200
+
 enum class MagnitudeState {
     NOT_TALKED_YET,
     MIC_MAY_BE_BLOCKED,
@@ -52,9 +58,17 @@ enum class MagnitudeState {
     ENDING_SOON_30S
 }
 
+private enum class StopReason {
+    Manual,
+    Vad,
+    DurationLimit,
+    Cancel
+}
+
 abstract class AudioRecognizer {
     private var isRecording = false
     private var recorder: AudioRecord? = null
+    @Volatile private var stopReason: StopReason? = null
 
     fun isCurrentlyRecording(): Boolean {
         return isRecording
@@ -125,7 +139,12 @@ abstract class AudioRecognizer {
 
     fun reset() {
         isVADPaused = false
-        recorder?.stop()
+        stopReason = StopReason.Cancel
+        try {
+            recorder?.stop()
+        } catch(e: Exception) {
+            e.printStackTrace()
+        }
         recorderJob?.cancel()
         modelJob?.cancel()
         isRecording = false
@@ -285,14 +304,15 @@ abstract class AudioRecognizer {
         }
 
         isVADPaused = false
+        stopReason = null
 
         try {
             recorder = AudioRecord(
                 MediaRecorder.AudioSource.VOICE_RECOGNITION,
-                16000,
+                AUDIO_SAMPLE_RATE,
                 AudioFormat.CHANNEL_IN_MONO,
                 AudioFormat.ENCODING_PCM_16BIT,
-                16000 * 2 * 5
+                AUDIO_SAMPLE_RATE * 2 * 5
             )
 
             if(recorder!!.state == AudioRecord.STATE_UNINITIALIZED) {
@@ -352,119 +372,146 @@ abstract class AudioRecognizer {
                     var numConsecutiveNonSpeech = 0
                     var numConsecutiveSpeech = 0
 
-                    val samples = ShortArray(1600)
+                    val samples = ShortArray(AUDIO_READ_SIZE)
 
-                    while(isRecording && recorder!!.recordingState == AudioRecord.RECORDSTATE_RECORDING){
-                        yield()
-                        val nRead = recorder!!.read(samples, 0, 1600, AudioRecord.READ_BLOCKING)
+                    try {
+                        captureLoop@ while(stopReason == null && recorder!!.recordingState == AudioRecord.RECORDSTATE_RECORDING){
+                            yield()
+                            val nRead = recorder!!.read(samples, 0, AUDIO_READ_SIZE, AudioRecord.READ_BLOCKING)
 
-                        if(nRead <= 0) break
-                        yield()
+                            if(nRead <= 0) break
+                            yield()
 
-                        if(!isRecording || recorder!!.recordingState != AudioRecord.RECORDSTATE_RECORDING) break
+                            // Run VAD
+                            if(shouldUseVad && !isVADPaused) {
+                                var remainingSamples = nRead
+                                var offset = 0
+                                while(remainingSamples > 0) {
+                                    if(!vadSampleBuffer.hasRemaining()) {
+                                        val isSpeech = vad.isSpeech(vadSampleBuffer.array())
+                                        vadSampleBuffer.clear()
+                                        vadSampleBuffer.rewind()
 
-                        if(floatSamples.remaining() < 1600 && !expandSpaceIfAllowed()) {
-                            withContext(Dispatchers.Main){ finishRecognizer() }
-                            break
-                        }
+                                        if(!isSpeech) {
+                                            numConsecutiveNonSpeech++
+                                            numConsecutiveSpeech = 0
+                                        } else {
+                                            numConsecutiveNonSpeech = 0
+                                            numConsecutiveSpeech++
+                                        }
+                                    }
 
-                        // Run VAD
-                        if(shouldUseVad && !isVADPaused) {
-                            var remainingSamples = nRead
-                            var offset = 0
-                            while(remainingSamples > 0) {
-                                if(!vadSampleBuffer.hasRemaining()) {
-                                    val isSpeech = vad.isSpeech(vadSampleBuffer.array())
-                                    vadSampleBuffer.clear()
-                                    vadSampleBuffer.rewind()
-
-                                    if(!isSpeech) {
-                                        numConsecutiveNonSpeech++
-                                        numConsecutiveSpeech = 0
-                                    } else {
-                                        numConsecutiveNonSpeech = 0
-                                        numConsecutiveSpeech++
+                                    val samplesToRead = min(min(remainingSamples, 480), vadSampleBuffer.remaining())
+                                    for(i in 0 until samplesToRead) {
+                                        vadSampleBuffer.put(samples[offset])
+                                        offset += 1
+                                        remainingSamples -= 1
                                     }
                                 }
-
-                                val samplesToRead = min(min(remainingSamples, 480), vadSampleBuffer.remaining())
-                                for(i in 0 until samplesToRead) {
-                                    vadSampleBuffer.put(samples[offset])
-                                    offset += 1
-                                    remainingSamples -= 1
-                                }
-                            }
-                        } else {
-                            numConsecutiveNonSpeech = 0
-                        }
-
-                        floatSamples.put(samples.sliceArray(0 until nRead).map { it.toFloat() / Short.MAX_VALUE.toFloat() }.toFloatArray())
-
-                        // Don't set hasTalked if the start sound may still be playing, otherwise on some
-                        // devices the rms just explodes and `hasTalked` is always true
-                        val startSoundPassed = (floatSamples.position() > 16000*0.6)
-                        if(!startSoundPassed){
-                            numConsecutiveSpeech = 0
-                            numConsecutiveNonSpeech = 0
-                        }
-
-                        val rms = sqrt(samples.sumOf { ((it.toFloat() / Short.MAX_VALUE.toFloat()).pow(2)).toDouble() } / samples.size).toFloat()
-
-                        if(startSoundPassed && ((rms > 0.01) || (numConsecutiveSpeech > 8))) hasTalked = true
-
-                        if(rms > 0.0001){
-                            anyNoiseAtAll = true
-                            isMicBlocked = false
-                        }
-
-                        // Check if mic is blocked
-                        if(!anyNoiseAtAll && canMicBeBlocked && (floatSamples.position() > 2*16000)){
-                            isMicBlocked = true
-                        }
-
-                        // End if VAD hasn't detected speech in a while
-                        if(shouldUseVad && hasTalked && (numConsecutiveNonSpeech > 66)) {
-                            withContext(Dispatchers.Main){ finishRecognizer() }
-                            break
-                        }
-
-                        val magnitude = (1.0f - 0.1f.pow(24.0f * rms))
-
-                        val state = if (!canExpandSpace && floatSamples.remaining() < (16000 * 5)) {
-                            MagnitudeState.ENDING_SOON_30S
-                        } else if(hasTalked && shouldUseVad && (numConsecutiveNonSpeech > 33)) {
-                            MagnitudeState.ENDING_SOON_VAD
-                        } else if(hasTalked) {
-                            MagnitudeState.TALKING
-                        } else if(isMicBlocked) {
-                            MagnitudeState.MIC_MAY_BE_BLOCKED
-                        } else {
-                            MagnitudeState.NOT_TALKED_YET
-                        }
-
-                        yield()
-                        withContext(Dispatchers.Main) {
-                            yield()
-                            if(isRecording) {
-                                updateMagnitude(magnitude, state)
-                            }
-                        }
-
-                        // Skip ahead as much as possible, in case we are behind (taking more than
-                        // 100ms to process 100ms)
-                        while(true){
-                            yield()
-                            val nRead2 = recorder!!.read(samples, 0, 1600, AudioRecord.READ_NON_BLOCKING)
-                            if(nRead2 > 0) {
-                                if(floatSamples.remaining() < nRead2 && !expandSpaceIfAllowed()){
-                                    yield()
-                                    withContext(Dispatchers.Main){ finishRecognizer() }
-                                    break
-                                }
-                                floatSamples.put(samples.sliceArray(0 until nRead2).map { it.toFloat() / Short.MAX_VALUE.toFloat() }.toFloatArray())
                             } else {
+                                numConsecutiveNonSpeech = 0
+                            }
+
+                            if(!appendSamples(samples, nRead)) {
+                                stopReason = StopReason.DurationLimit
+                                withContext(Dispatchers.Main){
+                                    if(isRecording) {
+                                        finishRecognizer()
+                                    }
+                                }
+                            }
+
+                            if(stopReason != null) break
+
+                            // Don't set hasTalked if the start sound may still be playing, otherwise on some
+                            // devices the rms just explodes and `hasTalked` is always true
+                            val startSoundPassed = (floatSamples.position() > AUDIO_SAMPLE_RATE*0.6)
+                            if(!startSoundPassed){
+                                numConsecutiveSpeech = 0
+                                numConsecutiveNonSpeech = 0
+                            }
+
+                            val rms = sqrt(samples.sumOf { ((it.toFloat() / Short.MAX_VALUE.toFloat()).pow(2)).toDouble() } / samples.size).toFloat()
+
+                            if(startSoundPassed && ((rms > 0.01) || (numConsecutiveSpeech > 8))) hasTalked = true
+
+                            if(rms > 0.0001){
+                                anyNoiseAtAll = true
+                                isMicBlocked = false
+                            }
+
+                            // Check if mic is blocked
+                            if(!anyNoiseAtAll && canMicBeBlocked && (floatSamples.position() > 2*AUDIO_SAMPLE_RATE)){
+                                isMicBlocked = true
+                            }
+
+                            // End if VAD hasn't detected speech in a while
+                            if(shouldUseVad && hasTalked && (numConsecutiveNonSpeech > 66)) {
+                                stopReason = StopReason.Vad
+                                withContext(Dispatchers.Main){
+                                    if(isRecording) {
+                                        finishRecognizer()
+                                    }
+                                }
                                 break
                             }
+
+                            val magnitude = (1.0f - 0.1f.pow(24.0f * rms))
+
+                            val state = if (!canExpandSpace && floatSamples.remaining() < (AUDIO_SAMPLE_RATE * 5)) {
+                                MagnitudeState.ENDING_SOON_30S
+                            } else if(hasTalked && shouldUseVad && (numConsecutiveNonSpeech > 33)) {
+                                MagnitudeState.ENDING_SOON_VAD
+                            } else if(hasTalked) {
+                                MagnitudeState.TALKING
+                            } else if(isMicBlocked) {
+                                MagnitudeState.MIC_MAY_BE_BLOCKED
+                            } else {
+                                MagnitudeState.NOT_TALKED_YET
+                            }
+
+                            yield()
+                            withContext(Dispatchers.Main) {
+                                yield()
+                                if(isRecording) {
+                                    updateMagnitude(magnitude, state)
+                                }
+                            }
+
+                            // Skip ahead as much as possible, in case we are behind (taking more than
+                            // 100ms to process 100ms)
+                            while(stopReason == null){
+                                yield()
+                                val nRead2 = recorder!!.read(samples, 0, AUDIO_READ_SIZE, AudioRecord.READ_NON_BLOCKING)
+                                if(nRead2 > 0) {
+                                    if(!appendSamples(samples, nRead2)){
+                                        stopReason = StopReason.DurationLimit
+                                        yield()
+                                        withContext(Dispatchers.Main){
+                                            if(isRecording) {
+                                                finishRecognizer()
+                                            }
+                                        }
+                                        break@captureLoop
+                                    }
+                                } else {
+                                    break
+                                }
+                            }
+                        }
+
+                        val reason = stopReason
+                        if(reason != null && reason != StopReason.Cancel && recorder!!.recordingState == AudioRecord.RECORDSTATE_RECORDING) {
+                            drainRecorderTail(recorder!!, reason, samples)
+                            appendFinalSilence()
+                        }
+                    } finally {
+                        try {
+                            if(recorder!!.recordingState == AudioRecord.RECORDSTATE_RECORDING) {
+                                recorder!!.stop()
+                            }
+                        } catch(e: Exception) {
+                            e.printStackTrace()
                         }
                     }
                 }
@@ -479,6 +526,54 @@ abstract class AudioRecognizer {
         } catch(e: SecurityException){
             // It's possible we may have lost permission, so let's just ask for permission again
             needPermission()
+        }
+    }
+
+    private fun appendSamples(samples: ShortArray, nRead: Int): Boolean {
+        if(floatSamples.remaining() < nRead && !expandSpaceIfAllowed()) {
+            return false
+        }
+
+        for(i in 0 until nRead) {
+            floatSamples.put(samples[i].toFloat() / Short.MAX_VALUE.toFloat())
+        }
+
+        return true
+    }
+
+    private suspend fun drainRecorderTail(
+        recorder: AudioRecord,
+        reason: StopReason,
+        scratch: ShortArray
+    ) {
+        val drainMs = when(reason) {
+            StopReason.Manual -> MANUAL_STOP_DRAIN_MS
+            StopReason.Vad, StopReason.DurationLimit -> AUTO_STOP_DRAIN_MS
+            StopReason.Cancel -> 0L
+        }
+
+        val deadline = System.currentTimeMillis() + drainMs
+        while(drainMs > 0L && System.currentTimeMillis() < deadline && recorder.recordingState == AudioRecord.RECORDSTATE_RECORDING) {
+            yield()
+            val nRead = recorder.read(scratch, 0, scratch.size, AudioRecord.READ_NON_BLOCKING)
+            if(nRead > 0) {
+                if(!appendSamples(scratch, nRead)) {
+                    return
+                }
+            } else {
+                delay(10L)
+            }
+        }
+    }
+
+    private fun appendFinalSilence() {
+        val silenceSamples = (AUDIO_SAMPLE_RATE * FINAL_SILENCE_PAD_MS) / 1000
+        if(floatSamples.remaining() < silenceSamples && !expandSpaceIfAllowed()) {
+            return
+        }
+
+        repeat(silenceSamples) {
+            floatSamples.put(0.0f)
         }
     }
 
@@ -545,14 +640,16 @@ abstract class AudioRecognizer {
 
         isRecording = false
 
-        recorderJob?.cancel()
-        recorder?.stop()
         unfocusAudio()
+        if(stopReason == null) {
+            stopReason = StopReason.Manual
+        }
 
         processing()
 
         modelJob = lifecycleScope.launch {
             withContext(Dispatchers.Default) {
+                recorderJob?.join()
                 runModel()
             }
         }
