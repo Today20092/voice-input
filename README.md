@@ -88,7 +88,7 @@ If you need a development build that packages the Parakeet model into the APK, e
 The APK is written to:
 
 ```text
-app/build/outputs/apk/dev/debug/app-dev-debug.apk
+app/build/outputs/apk/standalone/release/app-standalone-release.apk
 ```
 
 ## GitHub Releases
@@ -113,7 +113,7 @@ GitHub Actions will:
 
 - install Android build components
 - install Rust and `cargo-ndk`
-- build `:app:assembleDevDebug`
+- build `:app:assembleStandaloneRelease`
 - create a GitHub Release for the pushed tag
 - attach the APK to that GitHub Release
 

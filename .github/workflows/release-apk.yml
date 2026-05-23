@@ -43,15 +43,15 @@ jobs:
         run: cargo install cargo-ndk
 
       - name: Build APK
-        run: ./gradlew :app:assembleDevDebug
+        run: ./gradlew :app:assembleStandaloneRelease
 
       - name: Rename APK
         run: |
           mkdir -p release
           VERSION="${GITHUB_REF_NAME:-manual}"
-          APK_PATH="$(find app/build/outputs/apk/dev/debug -maxdepth 1 -type f -name '*.apk' | head -n 1)"
+          APK_PATH="$(find app/build/outputs/apk/standalone/release -maxdepth 1 -type f -name '*.apk' | head -n 1)"
           if [ -z "$APK_PATH" ]; then
-            echo "No APK found in app/build/outputs/apk/dev/debug"
+            echo "No APK found in app/build/outputs/apk/standalone/release"
             exit 1
           fi
           cp "$APK_PATH" "release/futo-parakeet-voiceinput-${VERSION}.apk"
