@@ -137,14 +137,36 @@ abstract class AudioRecognizer {
         cancelled()
     }
 
+    @Synchronized
+    private fun stopAndReleaseRecorder(target: AudioRecord? = recorder) {
+        val current = target ?: return
+        if (recorder !== current) {
+            return
+        }
+
+        try {
+            if (current.recordingState == AudioRecord.RECORDSTATE_RECORDING) {
+                current.stop()
+            }
+        } catch(e: Exception) {
+            e.printStackTrace()
+        } finally {
+            try {
+                current.release()
+            } catch(e: Exception) {
+                e.printStackTrace()
+            } finally {
+                if (recorder === current) {
+                    recorder = null
+                }
+            }
+        }
+    }
+
     fun reset() {
         isVADPaused = false
         stopReason = StopReason.Cancel
-        try {
-            recorder?.stop()
-        } catch(e: Exception) {
-            e.printStackTrace()
-        }
+        stopAndReleaseRecorder()
         recorderJob?.cancel()
         modelJob?.cancel()
         isRecording = false
@@ -305,6 +327,8 @@ abstract class AudioRecognizer {
 
         isVADPaused = false
         stopReason = null
+        floatSamples.clear()
+        canExpandSpace = true
 
         try {
             recorder = AudioRecord(
@@ -338,6 +362,7 @@ abstract class AudioRecognizer {
             }
 
             recorder!!.startRecording()
+            val activeRecorder = recorder!!
 
             focusAudio()
             isRecording = true
@@ -375,9 +400,9 @@ abstract class AudioRecognizer {
                     val samples = ShortArray(AUDIO_READ_SIZE)
 
                     try {
-                        captureLoop@ while(stopReason == null && recorder!!.recordingState == AudioRecord.RECORDSTATE_RECORDING){
+                        captureLoop@ while(stopReason == null && activeRecorder.recordingState == AudioRecord.RECORDSTATE_RECORDING){
                             yield()
-                            val nRead = recorder!!.read(samples, 0, AUDIO_READ_SIZE, AudioRecord.READ_BLOCKING)
+                            val nRead = activeRecorder.read(samples, 0, AUDIO_READ_SIZE, AudioRecord.READ_BLOCKING)
 
                             if(nRead <= 0) break
                             yield()
@@ -482,7 +507,7 @@ abstract class AudioRecognizer {
                             // 100ms to process 100ms)
                             while(stopReason == null){
                                 yield()
-                                val nRead2 = recorder!!.read(samples, 0, AUDIO_READ_SIZE, AudioRecord.READ_NON_BLOCKING)
+                                val nRead2 = activeRecorder.read(samples, 0, AUDIO_READ_SIZE, AudioRecord.READ_NON_BLOCKING)
                                 if(nRead2 > 0) {
                                     if(!appendSamples(samples, nRead2)){
                                         stopReason = StopReason.DurationLimit
@@ -501,18 +526,12 @@ abstract class AudioRecognizer {
                         }
 
                         val reason = stopReason
-                        if(reason != null && reason != StopReason.Cancel && recorder!!.recordingState == AudioRecord.RECORDSTATE_RECORDING) {
-                            drainRecorderTail(recorder!!, reason, samples)
+                        if(reason != null && reason != StopReason.Cancel && activeRecorder.recordingState == AudioRecord.RECORDSTATE_RECORDING) {
+                            drainRecorderTail(activeRecorder, reason, samples)
                             appendFinalSilence()
                         }
                     } finally {
-                        try {
-                            if(recorder!!.recordingState == AudioRecord.RECORDSTATE_RECORDING) {
-                                recorder!!.stop()
-                            }
-                        } catch(e: Exception) {
-                            e.printStackTrace()
-                        }
+                        stopAndReleaseRecorder(activeRecorder)
                     }
                 }
             }
@@ -524,8 +543,12 @@ abstract class AudioRecognizer {
 
             recordingStarted()
         } catch(e: SecurityException){
+            stopAndReleaseRecorder()
             // It's possible we may have lost permission, so let's just ask for permission again
             needPermission()
+        } catch(e: Exception) {
+            stopAndReleaseRecorder()
+            throw e
         }
     }
 
