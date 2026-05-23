@@ -36,8 +36,8 @@ android {
         applicationId "org.futo.voiceinput"
         minSdk 24
         targetSdk 35
-        versionCode 34
-        versionName "1.3.7-5-parakeet"
+        versionCode 35
+        versionName "1.3.7-8-parakeet-branding"
         buildConfigField "boolean", "BUNDLE_PARAKEET_MODEL", bundleParakeetModel.toString()
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
@@ -229,7 +229,7 @@ android {
 
 android.applicationVariants.all { variant ->
     variant.outputs.all {
-        def appSlug = "futo-voice-input"
+        def appSlug = "futo-voice-input-parakeet"
         def flavor = variant.flavorName ?: "unflavored"
         def version = variant.versionName.replaceAll(/[^A-Za-z0-9._-]/, "-")
         def buildType = variant.buildType.name

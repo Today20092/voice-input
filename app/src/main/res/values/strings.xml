@@ -1,6 +1,6 @@
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
-    <string name="app_name">FUTO Voice Input</string>
-    <string name="voice_input_method">FUTO Voice Input Method</string>
+    <string name="app_name">FUTO Voice Input Parakeet</string>
+    <string name="voice_input_method">FUTO Voice Input Parakeet Method</string>
     <string name="support_email" translatable="false">voiceinput@futo.org</string>
     <string name="suppress_non_speech_annotations">Suppress non-speech annotations</string>
     <string name="suppress_non_speech_annotations_subtitle">[cough], [music], etc</string>
@@ -17,10 +17,10 @@
     <string name="thanks_for_icon">Thanks for the icons used within the app</string>
     <string name="view_other_dependencies">View Other Dependencies</string>
     <string name="name_legal">The authors, contributors or copyright holders listed above are not affiliated with this product and do not endorse or promote this product. Reference to the authors, contributors or copyright holders is solely for attribution purposes. Mention of their names does not imply approval or endorsement.</string>
-    <string name="just_a_demonstration">This is just a demonstration of how Voice Input looks</string>
-    <string name="help_paragraph_1">You have installed Voice Input and enabled the Voice input method. You should now be able to use Voice Input within supported apps and keyboards.</string>
-    <string name="help_paragraph_2">When you open Voice Input, it will look something like this:</string>
-    <string name="voice_input_will_look_like_this">Voice Input will look like this</string>
+    <string name="just_a_demonstration">This is just a demonstration of how Voice Input Parakeet looks</string>
+    <string name="help_paragraph_1">You have installed Voice Input Parakeet and enabled the Voice input method. You should now be able to use Voice Input Parakeet within supported apps and keyboards.</string>
+    <string name="help_paragraph_2">When you open Voice Input Parakeet, it will look something like this:</string>
+    <string name="voice_input_will_look_like_this">Voice Input Parakeet will look like this</string>
     <string name="look_for_the_big_off_center_futo_logo_in_the_background">Look for the big off-center FUTO logo in the background!</string>
     <string name="stop_recording">Stop Recording</string>
     <string name="once_you_re_done_talking_you_can_hit_the_microphone_button_to_stop">Once you\'re done talking, you can hit the microphone button to stop</string>
@@ -48,7 +48,7 @@
     <string name="using_larger_model_speed_may_be_slower">Using larger model, speed may be slower</string>
     <string name="using_non_default_models">Using non-default models</string>
     <string name="using_non_default_model">Using non-default model</string>
-    <string name="futo_voice_input_settings">FUTO Voice Input Settings</string>
+    <string name="futo_voice_input_settings">FUTO Voice Input Parakeet Settings</string>
     <string name="help">Help</string>
     <string name="languages">Languages</string>
     <string name="model">Model</string>
@@ -58,7 +58,7 @@
     <string name="will_not_play_sounds_when_started_cancelled">Will not play sounds when started / cancelled</string>
     <string name="payment">Payment</string>
     <string name="credits">Credits</string>
-    <string name="thank_you_for_using_the_paid_version_of_futo_voice_input">Thank you for using the paid version of FUTO Voice Input!</string>
+    <string name="thank_you_for_using_the_paid_version_of_futo_voice_input">Thank you for using the paid version of FUTO Voice Input Parakeet!</string>
     <string name="input_test_field">Input test field</string>
     <string name="trigger_voice_input_intent">Trigger voice input</string>
     <string name="try_saying_something">Try saying something</string>
@@ -81,9 +81,9 @@
     <string name="grant_microphone_body">In order to use Voice Input, you need to grant microphone permission.</string>
     <string name="grant_microphone_permission">Grant Microphone</string>
     <string name="incompatible_keyboard">Incompatible keyboard</string>
-    <string name="gboard_incompatible_details">You appear to be using Gboard. This keyboard is incompatible with FUTO Voice Input.\n\nGboard relies on its own voice typing system and does not appear to integrate with standard Android APIs for voice input at this time. You will need to use a different keyboard if you want to use FUTO Voice Input with your keyboard.\n\nPlease visit the Help page in settings for more information.</string>
+    <string name="gboard_incompatible_details">You appear to be using Gboard. This keyboard is incompatible with FUTO Voice Input Parakeet.\n\nGboard relies on its own voice typing system and does not appear to integrate with standard Android APIs for voice input at this time. You will need to use a different keyboard if you want to use FUTO Voice Input Parakeet with your keyboard.\n\nPlease visit the Help page in settings for more information.</string>
     <string name="gboard_incompatible_accept">I understand Gboard is incompatible</string>
-    <string name="typewise_incompatible_details">You appear to be using Typewise. This keyboard does not have a voice input button at this time, so you will need to use a different keyboard if you want to use FUTO Voice Input with your keyboard.</string>
+    <string name="typewise_incompatible_details">You appear to be using Typewise. This keyboard does not have a voice input button at this time, so you will need to use a different keyboard if you want to use FUTO Voice Input Parakeet with your keyboard.</string>
     <string name="typewise_incompatible_accept">I understand Typewise is incompatible</string>
     <string name="intent_result_is_null_or_empty">Intent result is null or empty</string>
     <string name="intent_was_cancelled">Intent was cancelled</string>
@@ -113,8 +113,8 @@
     <string name="whisper_model_download_required">Download required</string>
     <string name="whisper_download_required_body">The selected Whisper model must be downloaded before voice input can run. This may incur data fees on mobile data.</string>
     <string name="whisper_ggml_model_active_subtitle">Whisper/GGML model active</string>
-    <string name="payment_text_1">You\'ve been using FUTO Voice Input for <xliff:g name="days" example="30">%d</xliff:g> days. If you find this app useful, please consider paying to support future development of FUTO software.</string>
-    <string name="payment_text_1_alt">Thank you for trying out FUTO Voice Input! If you find this app useful, please consider paying to support future development of FUTO software.</string>
+    <string name="payment_text_1">You\'ve been using FUTO Voice Input Parakeet for <xliff:g name="days" example="30">%d</xliff:g> days. If you find this app useful, please consider paying to support future development of FUTO software.</string>
+    <string name="payment_text_1_alt">Thank you for trying out FUTO Voice Input Parakeet! If you find this app useful, please consider paying to support future development of FUTO software.</string>
     <string name="payment_dev_notice">NOTE: Development has largely shifted to FUTO Keyboard and this app is not expected to receive any major updates at this time. Nevertheless, we would appreciate your support.</string>
     <string name="payment_text_2">FUTO is dedicated to making good software that doesn\'t abuse you. This app will never serve you ads or collect your personal data.</string>
     <string name="thank_you_for_purchasing_voice_input">Thank you for purchasing Voice Input!</string>
@@ -166,12 +166,12 @@
     <string name="advanced">Advanced</string>
     <string name="about">About</string>
     <string name="having_trouble">Having trouble?</string>
-    <string name="recognize_activity">Voice Input</string>
-    <string name="voice_input">Voice Input</string>
+    <string name="recognize_activity">Voice Input Parakeet</string>
+    <string name="voice_input">Voice Input Parakeet</string>
     <string name="wrong_default_body">It looks like the default voice input app is set to a different app (<xliff:g name="package" example="com.example.example">%s</xliff:g>). You may wish to change this.</string>
     <string name="clear_app_s_defaults">Clear app\'s defaults</string>
     <string name="dismiss">Dismiss</string>
-    <string name="samsung_keyboard_incompatible_details">You appear to be using Samsung Keyboard.\n\nUnfortunately, Samsung Keyboard is currently hardcoded to only allow the choice between Samsung Voice Input and Google Voice Input. You will need to use a different keyboard if you want to trigger FUTO Voice Input from your keyboard.\n\nPlease visit the Help page in settings for more information.</string>
+    <string name="samsung_keyboard_incompatible_details">You appear to be using Samsung Keyboard.\n\nUnfortunately, Samsung Keyboard is currently hardcoded to only allow the choice between Samsung Voice Input and Google Voice Input. You will need to use a different keyboard if you want to trigger FUTO Voice Input Parakeet from your keyboard.\n\nPlease visit the Help page in settings for more information.</string>
     <string name="samsung_keyboard_incompatible_accept">I understand Samsung Keyboard is incompatible</string>
     <string name="payment_complete">Payment Complete</string>
     <string name="model_downloader">Model Downloader</string>
@@ -211,9 +211,9 @@
     <string name="dynamic_dark_theme_name">Dynamic Dark</string>
     <string name="theme">Theme</string>
     <string name="migration_screen">Migration Screen</string>
-    <string name="model_update_notice">Updating your models is required to continue using FUTO Voice Input. The old inference engine has been deprecated in March 2024, and it has now been removed, while the new inference engine brings improvements.</string>
+    <string name="model_update_notice">Updating your models is required to continue using FUTO Voice Input Parakeet. The old inference engine has been deprecated in March 2024, and it has now been removed, while the new inference engine brings improvements.</string>
     <string name="model_update_features_1">Better: Personal Dictionary feature\nFaster: up to ~6x faster depending on speaking length</string>
-    <string name="support_thank_you_notice">Thank you for supporting FUTO Voice Input!</string>
+    <string name="support_thank_you_notice">Thank you for supporting FUTO Voice Input Parakeet!</string>
     <string name="model_update_finish">Update has finished! To use the personal dictionary feature, visit the Model settings. If you have any feedback about the update, feel free to contact us.</string>
     <string name="model_update">Model Update</string>
     <string name="update_requires_your_attention">Update requires your attention</string>
@@ -229,10 +229,10 @@
     <string name="personal_dictionary_placeholder">John Doe, Jane Smith, TensorFlow, bobble, type anything you want voice input to recognize more often here!</string>
     <string name="personal_dictionary">Personal Dictionary</string>
     <string name="manual_language_selection_toggle_subtitle">Avoids model switching delay if you have multiple languages enabled</string>
-    <string name="unpaid_futo_voice_input">Unpaid FUTO Voice Input</string>
-    <string name="pay_for_futo_voice_input">Pay for FUTO Voice Input</string>
+    <string name="unpaid_futo_voice_input">Unpaid FUTO Voice Input Parakeet</string>
+    <string name="pay_for_futo_voice_input">Pay for FUTO Voice Input Parakeet</string>
     <string name="already_paid_title">Already paid?</string>
-    <string name="already_paid_body">If you already paid for FUTO Keyboard or FUTO Voice Input, tap below.</string>
+    <string name="already_paid_body">If you already paid for FUTO Keyboard or FUTO Voice Input Parakeet, tap below.</string>
     <string name="remind_later">Remind later</string>
     <string name="remind_later_body">This will hide the reminder for the period of days entered.</string>
     <string name="sustainable_development_title">Sustainable Development</string>

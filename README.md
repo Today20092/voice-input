@@ -1,6 +1,6 @@
-# FUTO Parakeet Voice Input
+# FUTO Voice Input Parakeet
 
-This is a personal fork of FUTO Voice Input that keeps the FUTO voice keyboard experience and uses NVIDIA Parakeet TDT 0.6B V3 through ONNX Runtime by default. The legacy FUTO Whisper/GGML backend can also be selected from Model Options.
+This is a personal fork of FUTO Voice Input, renamed as FUTO Voice Input Parakeet, that keeps the FUTO voice keyboard experience and uses NVIDIA Parakeet TDT 0.6B V3 through ONNX Runtime by default. The legacy FUTO Whisper/GGML backend can also be selected from Model Options.
 
 This fork's Parakeet integration and repository changes were built with AI assistance using Codex (GPT-5).
 
@@ -8,7 +8,7 @@ The goal is straightforward: keep the FUTO UI, recording flow, dark theme suppor
 
 ## What Changed
 
-- FUTO Voice Input remains the base Android app and UI.
+- FUTO Voice Input Parakeet remains the base Android app and UI.
 - Parakeet is the default speech backend.
 - The legacy Whisper/GGML recognition path can be selected as an optional backend.
 - A Kotlin backend layer calls a Rust JNI library for Parakeet.
@@ -34,7 +34,7 @@ By default, the Parakeet model files are not packaged into the APK. This keeps t
 
 After installing the APK, the model is downloaded by the app:
 
-1. Open FUTO Voice Input Settings.
+1. Open FUTO Voice Input Parakeet Settings.
 2. Tap **Model**.
 3. Tap **Unified Parakeet TDT 0.6B V3** under **Parakeet Model**.
 4. Confirm the download.

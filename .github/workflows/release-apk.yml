@@ -54,21 +54,21 @@ jobs:
             echo "No APK found in app/build/outputs/apk/standalone/release"
             exit 1
           fi
-          cp "$APK_PATH" "release/futo-parakeet-voiceinput-${VERSION}.apk"
+          cp "$APK_PATH" "release/futo-voice-input-parakeet-${VERSION}.apk"
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: futo-parakeet-voiceinput-apk
+          name: futo-voice-input-parakeet-apk
           path: release/*.apk
 
       - name: Create GitHub Release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          name: FUTO Parakeet Voice Input ${{ github.ref_name }}
+          name: FUTO Voice Input Parakeet ${{ github.ref_name }}
           body: |
-            Runtime-download Parakeet release of the FUTO Voice Input fork.
+            Runtime-download Parakeet release of the FUTO Voice Input fork, now branded as FUTO Voice Input Parakeet.
 
             This APK no longer packages the Parakeet ONNX model files directly. The app downloads the Parakeet model on first use or from the Model Options screen, which keeps the APK much smaller while preserving offline transcription after the model is installed.
 
