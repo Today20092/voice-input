@@ -20,7 +20,7 @@ The goal is straightforward: keep the FUTO UI, recording flow, dark theme suppor
 
 ### Model Options
 
-![Model Options screen with Parakeet selected](docs/screenshots/model-options.png)
+<img src="docs/screenshots/model-options.png" alt="Model Options screen with Parakeet selected" width="360">
 
 Parakeet is selected as the default backend, with Whisper/GGML still available as a fallback.
 
