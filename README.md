@@ -16,6 +16,14 @@ The goal is straightforward: keep the FUTO UI, recording flow, dark theme suppor
 - The Model Options screen lets you choose Parakeet or Whisper/GGML.
 - Only the selected backend's model files are required before voice input starts.
 
+## Screenshots
+
+### Model Options
+
+![Model Options screen with Parakeet selected](docs/screenshots/model-options.png)
+
+Parakeet is selected as the default backend, with Whisper/GGML still available as a fallback.
+
 ## Active Model
 
 The default backend is:
