@@ -158,6 +158,8 @@ val EXT_PENDING_PURCHASE_ID = SettingsKey(stringPreferencesKey("purchase_id"), "
 val EXT_PENDING_PURCHASE_LAST_CHECK = SettingsKey(longPreferencesKey("purchase_status_last_check"), 0)
 
 val IS_VAD_ENABLED = SettingsKey(booleanPreferencesKey("enable_vad"), true)
+val PARAKEET_USE_VAD = SettingsKey(booleanPreferencesKey("parakeet_use_vad"), true)
+val MANUAL_STOP_DRAIN_MS = SettingsKey(longPreferencesKey("manual_stop_drain_ms"), 300L)
 val USE_LANGUAGE_SPECIFIC_MODELS = SettingsKey(booleanPreferencesKey("USE_LANGUAGE_SPECIFIC_MODELS"), true)
 
 val ALLOW_UNDERTRAINED_LANGUAGES = SettingsKey(booleanPreferencesKey("allow_undertrained_languages"), false)

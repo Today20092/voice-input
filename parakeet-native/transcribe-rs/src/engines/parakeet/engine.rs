@@ -114,8 +114,10 @@ pub enum QuantizationType {
 /// Architecture family for exported Parakeet ONNX assets.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub enum ParakeetArchitecture {
-    /// Legacy TDT export. Decoder output includes vocabulary and duration logits.
-    Tdt,
+    /// TDT export decoded like AndroidTranscribeApp: slice vocabulary logits and advance one frame.
+    TdtFrameStep,
+    /// TDT export using duration logits for frame advancement.
+    TdtDuration,
     /// Unified FastConformer RNNT export. Decoder output is vocabulary logits only.
     #[default]
     RnntUnified,
@@ -165,7 +167,7 @@ impl ParakeetModelParams {
     pub fn int8() -> Self {
         Self {
             quantization: QuantizationType::Int8,
-            architecture: ParakeetArchitecture::RnntUnified,
+            architecture: ParakeetArchitecture::TdtFrameStep,
         }
     }
 
@@ -193,7 +195,15 @@ impl ParakeetModelParams {
     pub fn legacy_tdt(quantization: QuantizationType) -> Self {
         Self {
             quantization,
-            architecture: ParakeetArchitecture::Tdt,
+            architecture: ParakeetArchitecture::TdtFrameStep,
+        }
+    }
+
+    /// Create parameters for TDT exports that should use duration logits.
+    pub fn tdt_duration(quantization: QuantizationType) -> Self {
+        Self {
+            quantization,
+            architecture: ParakeetArchitecture::TdtDuration,
         }
     }
 }

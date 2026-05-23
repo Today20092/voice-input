@@ -23,12 +23,15 @@ import org.futo.voiceinput.settings.ENABLE_ANIMATIONS
 import org.futo.voiceinput.settings.ENABLE_SOUND
 import org.futo.voiceinput.settings.IS_VAD_ENABLED
 import org.futo.voiceinput.settings.LANGUAGE_TOGGLES
+import org.futo.voiceinput.settings.MANUAL_STOP_DRAIN_MS
 import org.futo.voiceinput.settings.MANUALLY_SELECT_LANGUAGE
 import org.futo.voiceinput.settings.NavigationItem
 import org.futo.voiceinput.settings.NavigationItemStyle
+import org.futo.voiceinput.settings.PARAKEET_USE_VAD
 import org.futo.voiceinput.settings.PERSONAL_DICTIONARY
 import org.futo.voiceinput.settings.ScreenTitle
 import org.futo.voiceinput.settings.ScrollableList
+import org.futo.voiceinput.settings.SettingSliderDataStore
 import org.futo.voiceinput.settings.SettingToggleDataStore
 import org.futo.voiceinput.settings.SettingsViewModel
 import org.futo.voiceinput.settings.Tip
@@ -73,6 +76,24 @@ fun InputScreen(
 
         Tip(stringResource(R.string.stop_on_silence_info))
         SettingToggleDataStore(stringResource(R.string.stop_on_silence), IS_VAD_ENABLED)
+        if(parakeetSelected) {
+            SettingToggleDataStore(
+                stringResource(R.string.parakeet_stop_on_silence),
+                PARAKEET_USE_VAD,
+                subtitle = stringResource(R.string.parakeet_stop_on_silence_info)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        Tip(stringResource(R.string.manual_stop_drain_info))
+        SettingSliderDataStore(
+            title = stringResource(R.string.manual_stop_drain),
+            setting = MANUAL_STOP_DRAIN_MS,
+            valueRange = 0f..1500f,
+            steps = 14,
+            valueLabel = { stringResource(R.string.manual_stop_drain_value, it) }
+        )
 
         // Option only has effect when English is active and at least one other language
         if(!parakeetSelected && languages.value.size > 1 && languages.value.contains("en")) {

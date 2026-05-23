@@ -184,6 +184,11 @@
     <string name="input_options">Input</string>
     <string name="stop_on_silence">Automatically stop on silence</string>
     <string name="stop_on_silence_info">If you speak with pauses, you may wish to disable the option below. You can also pause automatic stopping temporarily by tapping and holding.</string>
+    <string name="parakeet_stop_on_silence">Parakeet auto-stop on silence</string>
+    <string name="parakeet_stop_on_silence_info">Turn this off to match AndroidTranscribeApp-style recording, where transcription starts only after tapping stop.</string>
+    <string name="manual_stop_drain">Stop button extra recording</string>
+    <string name="manual_stop_drain_value">%1$d ms</string>
+    <string name="manual_stop_drain_info">If the last word is sometimes cut off after tapping stop, increase this. Higher values add a small delay before transcription starts.</string>
     <string name="use_language_specific_models">Use language-specific models</string>
     <string name="use_language_specific_models_info">Language-specific models may be more accurate, but take extra time to switch after detecting the language. Currently only has effect with English.</string>
     <string name="ending_soon_30s">Ending soon - 30s limit</string>

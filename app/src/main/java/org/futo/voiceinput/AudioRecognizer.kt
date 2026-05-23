@@ -14,6 +14,7 @@ import android.media.MicrophoneDirection
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
+import android.util.Log
 import androidx.lifecycle.LifecycleCoroutineScope
 import com.konovalov.vad.webrtc.VadWebRTC
 import com.konovalov.vad.webrtc.config.FrameSize
@@ -28,8 +29,10 @@ import kotlinx.coroutines.yield
 import org.futo.voiceinput.ml.RunState
 import org.futo.voiceinput.settings.ENABLE_30S_LIMIT
 import org.futo.voiceinput.settings.IS_VAD_ENABLED
+import org.futo.voiceinput.settings.MANUAL_STOP_DRAIN_MS
 import org.futo.voiceinput.settings.PARAKEET_KEEP_WARM
 import org.futo.voiceinput.settings.PARAKEET_KEEP_WARM_TIMEOUT_MS
+import org.futo.voiceinput.settings.PARAKEET_USE_VAD
 import org.futo.voiceinput.settings.SPEECH_BACKEND
 import org.futo.voiceinput.settings.SpeechBackendType
 import org.futo.voiceinput.settings.getSetting
@@ -46,8 +49,8 @@ import kotlin.math.sqrt
 
 private const val AUDIO_SAMPLE_RATE = 16000
 private const val AUDIO_READ_SIZE = 1600
-private const val MANUAL_STOP_DRAIN_MS = 300L
 private const val AUTO_STOP_DRAIN_MS = 100L
+private const val PARAKEET_AUTO_STOP_DRAIN_MS = 300L
 private const val FINAL_SILENCE_PAD_MS = 200
 
 enum class MagnitudeState {
@@ -69,6 +72,7 @@ abstract class AudioRecognizer {
     private var isRecording = false
     private var recorder: AudioRecord? = null
     @Volatile private var stopReason: StopReason? = null
+    @Volatile private var recognitionCompleted = false
 
     fun isCurrentlyRecording(): Boolean {
         return isRecording
@@ -164,6 +168,8 @@ abstract class AudioRecognizer {
     }
 
     fun reset() {
+        val shouldForceCloseParakeet = !recognitionCompleted
+        recognitionCompleted = false
         isVADPaused = false
         stopReason = StopReason.Cancel
         stopAndReleaseRecorder()
@@ -177,7 +183,9 @@ abstract class AudioRecognizer {
 
         lifecycleScope.launch {
             modelJob?.join()
-            ParakeetEngineManager.forceClose()
+            if (shouldForceCloseParakeet) {
+                ParakeetEngineManager.forceClose()
+            }
             if (backend !is ParakeetBackend) {
                 backend?.close()
             }
@@ -327,6 +335,7 @@ abstract class AudioRecognizer {
 
         isVADPaused = false
         stopReason = null
+        recognitionCompleted = false
         floatSamples.clear()
         canExpandSpace = true
 
@@ -378,6 +387,9 @@ abstract class AudioRecognizer {
             recorderJob = lifecycleScope.launch {
                 withContext(Dispatchers.Default) {
                     canExpandSpace = context.getSetting(ENABLE_30S_LIMIT) == false
+                    val backendType = context.getSetting(SPEECH_BACKEND).toSpeechBackendType()
+                    val shouldUseVad = context.getSetting(IS_VAD_ENABLED) &&
+                        (backendType != SpeechBackendType.Parakeet || context.getSetting(PARAKEET_USE_VAD))
 
                     var hasTalked = false
                     var anyNoiseAtAll = false
@@ -386,12 +398,10 @@ abstract class AudioRecognizer {
                     val vad = VadWebRTC(
                         sampleRate = SampleRate.SAMPLE_RATE_16K,
                         frameSize = FrameSize.FRAME_SIZE_480,
-                        mode = Mode.VERY_AGGRESSIVE,
+                        mode = if (backendType == SpeechBackendType.Parakeet) Mode.AGGRESSIVE else Mode.VERY_AGGRESSIVE,
                         speechDurationMs = 150,
                         silenceDurationMs = 300
                     )
-
-                    val shouldUseVad = context.getSetting(IS_VAD_ENABLED)
                     
                     val vadSampleBuffer = ShortBuffer.allocate(480)
                     var numConsecutiveNonSpeech = 0
@@ -570,8 +580,12 @@ abstract class AudioRecognizer {
         scratch: ShortArray
     ) {
         val drainMs = when(reason) {
-            StopReason.Manual -> MANUAL_STOP_DRAIN_MS
-            StopReason.Vad, StopReason.DurationLimit -> AUTO_STOP_DRAIN_MS
+            StopReason.Manual -> context.getSetting(MANUAL_STOP_DRAIN_MS).coerceIn(0L, 1500L)
+            StopReason.Vad -> {
+                val backendType = context.getSetting(SPEECH_BACKEND).toSpeechBackendType()
+                if (backendType == SpeechBackendType.Parakeet) PARAKEET_AUTO_STOP_DRAIN_MS else AUTO_STOP_DRAIN_MS
+            }
+            StopReason.DurationLimit -> AUTO_STOP_DRAIN_MS
             StopReason.Cancel -> 0L
         }
 
@@ -610,7 +624,25 @@ abstract class AudioRecognizer {
             loadModelJob!!.join()
         }
 
+        val finalStopReason = stopReason
+        val backendType = context.getSetting(SPEECH_BACKEND).toSpeechBackendType()
+        val vadEnabled = context.getSetting(IS_VAD_ENABLED) &&
+            (backendType != SpeechBackendType.Parakeet || context.getSetting(PARAKEET_USE_VAD))
         val floatArray = floatSamples.array().sliceArray(0 until floatSamples.position())
+        if (BuildConfig.DEBUG) {
+            var sumSquares = 0.0
+            var peak = 0.0f
+            for (sample in floatArray) {
+                val abs = kotlin.math.abs(sample)
+                if (abs > peak) peak = abs
+                sumSquares += (sample * sample).toDouble()
+            }
+            val rms = if (floatArray.isNotEmpty()) sqrt(sumSquares / floatArray.size).toFloat() else 0.0f
+            Log.d(
+                "AudioRecognizer",
+                "capture samples=${floatArray.size} durationSec=${"%.2f".format(floatArray.size.toFloat() / AUDIO_SAMPLE_RATE)} rms=${"%.5f".format(rms)} peak=${"%.5f".format(peak)} stopReason=$finalStopReason backend=$backendType vadEnabled=$vadEnabled"
+            )
+        }
 
         yield()
         val text = try {
@@ -637,7 +669,6 @@ abstract class AudioRecognizer {
             return runModel()
         }
 
-        val backendType = context.getSetting(SPEECH_BACKEND).toSpeechBackendType()
         val keepWarmEnabled = context.getSetting(PARAKEET_KEEP_WARM)
         if (backendType == SpeechBackendType.Parakeet && keepWarmEnabled) {
             val timeoutMs = context.getSetting(PARAKEET_KEEP_WARM_TIMEOUT_MS)
@@ -649,6 +680,7 @@ abstract class AudioRecognizer {
         }
         backend = null
 
+        recognitionCompleted = true
         lifecycleScope.launch {
             withContext(Dispatchers.Main) {
                 finished(text)

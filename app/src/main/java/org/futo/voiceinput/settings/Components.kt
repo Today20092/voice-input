@@ -23,6 +23,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -43,6 +44,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import org.futo.voiceinput.R
 import org.futo.voiceinput.theme.Typography
+import kotlin.math.roundToLong
 
 @Composable
 fun ScreenTitle(title: String, showBack: Boolean = false, navController: NavHostController = rememberNavController()) {
@@ -221,6 +223,52 @@ fun SettingToggleDataStore(
 ) {
     SettingToggleDataStoreItem(
         title, useDataStore(setting.key, setting.default), subtitle, disabledSubtitle, disabled, icon, onChanged)
+}
+
+@Composable
+fun SettingSliderDataStore(
+    title: String,
+    setting: SettingsKey<Long>,
+    valueRange: ClosedFloatingPointRange<Float>,
+    steps: Int,
+    valueLabel: @Composable (Long) -> String,
+    subtitle: String? = null
+) {
+    val (value, setValue) = useDataStore(setting)
+    val stepSize = if(steps > 0) {
+        (valueRange.endInclusive - valueRange.start) / (steps + 1)
+    } else {
+        1.0f
+    }
+
+    fun roundedValue(rawValue: Float): Long {
+        val steppedValue = if(steps > 0) {
+            valueRange.start + (((rawValue - valueRange.start) / stepSize).roundToLong() * stepSize)
+        } else {
+            rawValue
+        }
+
+        return steppedValue
+            .coerceIn(valueRange.start, valueRange.endInclusive)
+            .roundToLong()
+    }
+
+    val clampedValue = value.coerceIn(valueRange.start.roundToLong(), valueRange.endInclusive.roundToLong())
+    val subtitleValue = listOfNotNull(subtitle, valueLabel(clampedValue)).joinToString("\n")
+
+    SettingItem(
+        title = title,
+        subtitle = subtitleValue,
+        onClick = {}
+    ) {
+        Slider(
+            value = clampedValue.toFloat(),
+            onValueChange = { setValue(roundedValue(it)) },
+            valueRange = valueRange,
+            steps = steps,
+            modifier = Modifier.width(160.dp)
+        )
+    }
 }
 
 @Composable

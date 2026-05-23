@@ -49,6 +49,14 @@ fn tdt_duration_advance(duration_logits: &[f32]) -> usize {
     argmax_index(duration_logits).map(|idx| idx + 1).unwrap_or(1)
 }
 
+fn tdt_vocab_logits(logits: &[f32], vocab_size: usize) -> &[f32] {
+    if logits.len() > vocab_size {
+        &logits[..vocab_size]
+    } else {
+        logits
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct TimestampedResult {
     pub text: String,
@@ -95,7 +103,7 @@ impl Drop for ParakeetModel {
 
 #[cfg(test)]
 mod tests {
-    use super::{argmax_index, split_tdt_logits, tdt_duration_advance};
+    use super::{argmax_index, split_tdt_logits, tdt_duration_advance, tdt_vocab_logits};
 
     #[test]
     fn tdt_duration_logits_drive_frame_advance() {
@@ -110,6 +118,15 @@ mod tests {
 
         assert_eq!(argmax_index(vocab_logits), Some(1));
         assert_eq!(tdt_duration_advance(duration_logits), 2);
+    }
+
+    #[test]
+    fn tdt_frame_step_uses_vocab_slice_only() {
+        let logits = [0.1, 4.0, 0.3, 0.2, 9.0];
+        let vocab_logits = tdt_vocab_logits(&logits, 3);
+
+        assert_eq!(vocab_logits, &[0.1, 4.0, 0.3]);
+        assert_eq!(argmax_index(vocab_logits), Some(1));
     }
 
     #[test]
@@ -406,8 +423,11 @@ impl ParakeetModel {
                 ParakeetArchitecture::RnntUnified => {
                     self.decode_sequence_rnnt(&encodings.view(), encodings_len as usize)?
                 }
-                ParakeetArchitecture::Tdt => {
-                    self.decode_sequence_tdt(&encodings.view(), encodings_len as usize)?
+                ParakeetArchitecture::TdtFrameStep => {
+                    self.decode_sequence_tdt_frame_step(&encodings.view(), encodings_len as usize)?
+                }
+                ParakeetArchitecture::TdtDuration => {
+                    self.decode_sequence_tdt_duration(&encodings.view(), encodings_len as usize)?
                 }
             };
             let result = self.decode_tokens(tokens, timestamps);
@@ -470,7 +490,51 @@ impl ParakeetModel {
         Ok((tokens, timestamps))
     }
 
-    fn decode_sequence_tdt(
+    fn decode_sequence_tdt_frame_step(
+        &mut self,
+        encodings: &ArrayViewD<f32>, // [time_steps, 1024]
+        encodings_len: usize,
+    ) -> Result<(Vec<i32>, Vec<usize>), ParakeetError> {
+        let mut prev_state = self.create_decoder_state()?;
+        let mut tokens = Vec::new();
+        let mut timestamps = Vec::new();
+
+        let mut t = 0;
+        let mut emitted_tokens = 0;
+
+        while t < encodings_len {
+            let encoder_step = encodings.slice(ndarray::s![t, ..]);
+            let encoder_step_dyn = encoder_step.to_owned().into_dyn();
+            let (probs, new_state) =
+                self.decode_step(&tokens, &prev_state, &encoder_step_dyn.view())?;
+
+            let logits = probs.as_slice().ok_or_else(|| {
+                ParakeetError::Shape(ndarray::ShapeError::from_kind(
+                    ndarray::ErrorKind::IncompatibleShape,
+                ))
+            })?;
+
+            let token = argmax_index(tdt_vocab_logits(logits, self.vocab_size))
+                .map(|idx| idx as i32)
+                .unwrap_or(self.blank_idx);
+
+            if token != self.blank_idx {
+                prev_state = new_state;
+                tokens.push(token);
+                timestamps.push(t);
+                emitted_tokens += 1;
+            }
+
+            if token == self.blank_idx || emitted_tokens == MAX_TOKENS_PER_STEP {
+                t += 1;
+                emitted_tokens = 0;
+            }
+        }
+
+        Ok((tokens, timestamps))
+    }
+
+    fn decode_sequence_tdt_duration(
         &mut self,
         encodings: &ArrayViewD<f32>, // [time_steps, 1024]
         encodings_len: usize,
