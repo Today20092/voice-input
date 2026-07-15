@@ -31,6 +31,7 @@ import org.futo.voiceinput.moonshine.MoonshineBackend
 import org.futo.voiceinput.moonshine.getSelectedMoonshineModelVariant
 import org.futo.voiceinput.moonshine.isMoonshineModelDownloaded
 import org.futo.voiceinput.settings.ENABLE_30S_LIMIT
+import org.futo.voiceinput.settings.END_OF_SPEECH_PROFILE
 import org.futo.voiceinput.settings.IS_VAD_ENABLED
 import org.futo.voiceinput.settings.MANUAL_STOP_DRAIN_MS
 import org.futo.voiceinput.settings.PARAKEET_KEEP_WARM
@@ -46,6 +47,7 @@ import org.futo.voiceinput.backend.SpeechBackend
 import org.futo.voiceinput.backend.StreamingSpeechBackend
 import org.futo.voiceinput.parakeet.isParakeetModelDownloaded
 import org.futo.voiceinput.settings.toSpeechBackendType
+import org.futo.voiceinput.settings.toEndOfSpeechProfile
 import java.nio.FloatBuffer
 import java.nio.ShortBuffer
 import kotlin.math.min
@@ -423,6 +425,7 @@ abstract class AudioRecognizer {
                     val backendType = context.getSetting(SPEECH_BACKEND).toSpeechBackendType()
                     val shouldUseVad = context.getSetting(IS_VAD_ENABLED) &&
                         (backendType != SpeechBackendType.Parakeet || context.getSetting(PARAKEET_USE_VAD))
+                    val endOfSpeechProfile = context.getSetting(END_OF_SPEECH_PROFILE).toEndOfSpeechProfile()
 
                     var hasTalked = false
                     var anyNoiseAtAll = false
@@ -514,7 +517,7 @@ abstract class AudioRecognizer {
                             }
 
                             // End if VAD hasn't detected speech in a while
-                            if(shouldUseVad && hasTalked && (numConsecutiveNonSpeech > 66)) {
+                            if(shouldUseVad && hasTalked && (numConsecutiveNonSpeech > endOfSpeechProfile.silenceFrames)) {
                                 stopReason = StopReason.Vad
                                 withContext(Dispatchers.Main){
                                     if(isRecording) {

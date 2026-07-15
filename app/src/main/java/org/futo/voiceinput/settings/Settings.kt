@@ -163,6 +163,22 @@ val EXT_PENDING_PURCHASE_LAST_CHECK = SettingsKey(longPreferencesKey("purchase_s
 
 val IS_VAD_ENABLED = SettingsKey(booleanPreferencesKey("enable_vad"), true)
 val PARAKEET_USE_VAD = SettingsKey(booleanPreferencesKey("parakeet_use_vad"), true)
+
+enum class EndOfSpeechProfile(
+    val id: String,
+    val silenceFrames: Int
+) {
+    Fast("fast", 33),
+    Balanced("balanced", 66),
+    Patient("patient", 100)
+}
+
+fun String.toEndOfSpeechProfile(): EndOfSpeechProfile {
+    return EndOfSpeechProfile.values().firstOrNull { it.id == this } ?: EndOfSpeechProfile.Balanced
+}
+
+val END_OF_SPEECH_PROFILE =
+    SettingsKey(stringPreferencesKey("end_of_speech_profile"), EndOfSpeechProfile.Balanced.id)
 val MANUAL_STOP_DRAIN_MS = SettingsKey(longPreferencesKey("manual_stop_drain_ms"), 300L)
 val USE_LANGUAGE_SPECIFIC_MODELS = SettingsKey(booleanPreferencesKey("USE_LANGUAGE_SPECIFIC_MODELS"), true)
 

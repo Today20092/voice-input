@@ -21,6 +21,8 @@ import kotlinx.coroutines.withContext
 import org.futo.voiceinput.R
 import org.futo.voiceinput.settings.ENABLE_ANIMATIONS
 import org.futo.voiceinput.settings.ENABLE_SOUND
+import org.futo.voiceinput.settings.END_OF_SPEECH_PROFILE
+import org.futo.voiceinput.settings.EndOfSpeechProfile
 import org.futo.voiceinput.settings.IS_VAD_ENABLED
 import org.futo.voiceinput.settings.LANGUAGE_TOGGLES
 import org.futo.voiceinput.settings.MANUAL_STOP_DRAIN_MS
@@ -32,6 +34,7 @@ import org.futo.voiceinput.settings.PERSONAL_DICTIONARY
 import org.futo.voiceinput.settings.ScreenTitle
 import org.futo.voiceinput.settings.ScrollableList
 import org.futo.voiceinput.settings.SettingSliderDataStore
+import org.futo.voiceinput.settings.SettingRadio
 import org.futo.voiceinput.settings.SettingToggleDataStore
 import org.futo.voiceinput.settings.SettingsViewModel
 import org.futo.voiceinput.settings.Tip
@@ -49,6 +52,7 @@ fun InputScreen(
 ) {
     val languages = useDataStore(LANGUAGE_TOGGLES)
     val parakeetSelected = isParakeetSelected()
+    val vadEnabled = useDataStore(IS_VAD_ENABLED)
 
     ScrollableList {
         ScreenTitle(title = stringResource(id = R.string.input_options), showBack = true, navController = navController)
@@ -76,6 +80,18 @@ fun InputScreen(
 
         Tip(stringResource(R.string.stop_on_silence_info))
         SettingToggleDataStore(stringResource(R.string.stop_on_silence), IS_VAD_ENABLED)
+        if(vadEnabled.value) {
+            SettingRadio(
+                title = stringResource(R.string.end_of_speech_profile),
+                options = EndOfSpeechProfile.values().map { it.id },
+                optionNames = listOf(
+                    stringResource(R.string.end_of_speech_fast),
+                    stringResource(R.string.end_of_speech_balanced),
+                    stringResource(R.string.end_of_speech_patient)
+                ),
+                setting = END_OF_SPEECH_PROFILE
+            )
+        }
         if(parakeetSelected) {
             SettingToggleDataStore(
                 stringResource(R.string.parakeet_stop_on_silence),
