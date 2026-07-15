@@ -16,7 +16,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.futo.voiceinput.backend.StreamingSpeechBackend
 
-class MoonshineBackend : StreamingSpeechBackend {
+class MoonshineBackend(
+    private val variant: MoonshineModelVariant
+) : StreamingSpeechBackend {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var transcriber: Transcriber? = null
@@ -28,8 +30,11 @@ class MoonshineBackend : StreamingSpeechBackend {
     override suspend fun load(context: Context) = withContext(Dispatchers.IO) {
         transcriber = Transcriber().apply {
             loadFromFiles(
-                context.applicationContext.moonshineModelDir().absolutePath,
-                JNI.MOONSHINE_MODEL_ARCH_SMALL_STREAMING
+                context.applicationContext.moonshineModelDir(variant).absolutePath,
+                when (variant) {
+                    MoonshineModelVariant.Small -> JNI.MOONSHINE_MODEL_ARCH_SMALL_STREAMING
+                    MoonshineModelVariant.Medium -> JNI.MOONSHINE_MODEL_ARCH_MEDIUM_STREAMING
+                }
             )
         }
     }
