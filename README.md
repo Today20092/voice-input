@@ -1,6 +1,6 @@
 # FUTO Voice Input Moonshine
 
-This personal fork keeps the FUTO voice keyboard experience and uses Moonshine v2 Small Streaming as its default offline recognizer. NVIDIA Parakeet TDT 0.6B V3 and the legacy FUTO Whisper/GGML backend remain selectable from Model Options.
+This personal fork keeps the FUTO voice keyboard experience and uses Moonshine v2 Streaming as its default offline recognizer. Choose the Small model for balanced speed and accuracy or Medium for higher accuracy. NVIDIA Parakeet TDT 0.6B V3 and the legacy FUTO Whisper/GGML backend remain selectable from Model Options.
 
 This fork's Parakeet integration and repository changes were built with AI assistance using Codex (GPT-5).
 
@@ -8,7 +8,8 @@ The goal is straightforward: keep the FUTO UI and recording flow while adding re
 
 ## What Changed
 
-- Moonshine v2 Small Streaming is the default backend and emits live partial transcripts.
+- Moonshine v2 Small Streaming is the default balanced option and emits live partial transcripts.
+- Moonshine v2 Medium Streaming is available as a higher-accuracy option.
 - Parakeet and legacy Whisper/GGML remain selectable backends.
 - Batch and streaming recognizers share backend-neutral Kotlin contracts.
 - Personal vocabulary entries correct partial and final transcripts; use `heard => preferred` for explicit aliases.
@@ -25,16 +26,17 @@ Moonshine is selected by default, with Parakeet and Whisper/GGML available as fa
 
 ## Active Model
 
-The default backend is:
+The default backend and model are:
 
 ```text
 Moonshine v2 Small Streaming English
 ```
 
-The app downloads the quantized model assets from:
+The app downloads the selected quantized model assets from:
 
 ```text
 https://download.moonshine.ai/model/small-streaming-en/quantized/
+https://download.moonshine.ai/model/medium-streaming-en/quantized/
 ```
 
 Model files are downloaded on first use rather than packaged into the APK.
@@ -43,7 +45,7 @@ After installing the APK, the model is downloaded by the app:
 
 1. Open FUTO Voice Input Moonshine Settings.
 2. Tap **Model**.
-3. Select **Moonshine v2 Small Streaming**.
+3. Select **Balanced** (Small) or **Higher accuracy** (Medium).
 4. Confirm the download.
 
 If you try voice input before downloading the model, the app prompts for the download. Transcription runs offline after installation.
@@ -52,6 +54,7 @@ Downloaded model files are stored in app-private storage:
 
 ```text
 filesDir/moonshine-small-streaming-en/
+filesDir/moonshine-medium-streaming-en/
 ```
 
 Parakeet and Whisper/GGML models are also stored in app-private storage and run offline after download.

@@ -34,13 +34,16 @@ import org.futo.voiceinput.migration.NeedsMigration
 import org.futo.voiceinput.parakeet.isParakeetModelDownloaded
 import org.futo.voiceinput.parakeet.startParakeetModelDownloadActivity
 import org.futo.voiceinput.moonshine.isMoonshineModelDownloaded
+import org.futo.voiceinput.moonshine.MoonshineModelVariant
 import org.futo.voiceinput.moonshine.startMoonshineModelDownloadActivity
+import org.futo.voiceinput.moonshine.toMoonshineModelVariant
 import org.futo.voiceinput.settings.DISMISS_MIGRATION_TIP
 import org.futo.voiceinput.settings.ENABLE_MULTILINGUAL
 import org.futo.voiceinput.settings.ENGLISH_MODEL_INDEX
 import org.futo.voiceinput.settings.LANGUAGE_TOGGLES
 import org.futo.voiceinput.settings.MANUALLY_SELECT_LANGUAGE
 import org.futo.voiceinput.settings.MODELS_MIGRATED
+import org.futo.voiceinput.settings.MOONSHINE_MODEL_VARIANT
 import org.futo.voiceinput.settings.MULTILINGUAL_MODEL_INDEX
 import org.futo.voiceinput.settings.PERSONAL_DICTIONARY
 import org.futo.voiceinput.settings.SPEECH_BACKEND
@@ -63,6 +66,7 @@ import org.futo.voiceinput.startModelDownloadActivity
 fun modelsSubtitle(): String? {
     val context = LocalContext.current
     val (backend, _) = useDataStore(SPEECH_BACKEND)
+    val (moonshineVariantId, _) = useDataStore(MOONSHINE_MODEL_VARIANT)
     return when (backend.toSpeechBackendType()) {
         SpeechBackendType.Parakeet -> {
             if (context.isParakeetModelDownloaded(verifyHashes = true)) {
@@ -72,7 +76,7 @@ fun modelsSubtitle(): String? {
             }
         }
         SpeechBackendType.Moonshine -> {
-            if (context.isMoonshineModelDownloaded()) {
+            if (context.isMoonshineModelDownloaded(moonshineVariantId.toMoonshineModelVariant())) {
                 stringResource(R.string.moonshine_model_active_subtitle)
             } else {
                 stringResource(R.string.moonshine_model_download_required)
@@ -155,12 +159,19 @@ fun ParakeetModelStatus() {
 fun MoonshineModelStatus() {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
-    val isDownloaded = remember { mutableStateOf(context.isMoonshineModelDownloaded()) }
+    val modelVariant = useDataStore(MOONSHINE_MODEL_VARIANT)
+    val downloadedVariants = remember(context) {
+        mutableStateOf(
+            MoonshineModelVariant.entries.filter { context.isMoonshineModelDownloaded(it) }.toSet()
+        )
+    }
 
-    DisposableEffect(lifecycleOwner) {
+    DisposableEffect(lifecycleOwner, context) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
-                isDownloaded.value = context.isMoonshineModelDownloaded()
+                downloadedVariants.value = MoonshineModelVariant.entries
+                    .filter { context.isMoonshineModelDownloaded(it) }
+                    .toSet()
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -168,21 +179,36 @@ fun MoonshineModelStatus() {
     }
 
     ScreenTitle(stringResource(R.string.moonshine_model))
-    SettingItem(
-        title = stringResource(R.string.moonshine_streaming_model_name),
-        subtitle = if (isDownloaded.value) {
-            stringResource(R.string.moonshine_model_downloaded)
-        } else {
-            stringResource(R.string.moonshine_model_download_required)
-        },
-        onClick = {
-            if (!isDownloaded.value) context.startMoonshineModelDownloadActivity()
-        },
-        icon = {
-            RadioButton(selected = isDownloaded.value, onClick = null, enabled = false)
-        },
-        disabled = false
-    ) { }
+    MoonshineModelVariant.entries.forEach { variant ->
+        val selected = modelVariant.value.toMoonshineModelVariant() == variant
+        val downloaded = variant in downloadedVariants.value
+        val (titleResource, descriptionResource) = when (variant) {
+            MoonshineModelVariant.Small ->
+                R.string.moonshine_balanced to R.string.moonshine_small_description
+            MoonshineModelVariant.Medium ->
+                R.string.moonshine_higher_accuracy to R.string.moonshine_medium_description
+        }
+        val title = stringResource(titleResource)
+        val description = stringResource(descriptionResource)
+        val status = stringResource(
+            if (downloaded) R.string.moonshine_model_downloaded
+            else R.string.moonshine_model_download_required
+        )
+        val selectOrDownload = {
+            modelVariant.setValue(variant.id)
+            if (!downloaded) context.startMoonshineModelDownloadActivity(variant)
+        }
+
+        SettingItem(
+            title = title,
+            subtitle = stringResource(R.string.moonshine_model_option_subtitle, description, status),
+            onClick = selectOrDownload,
+            icon = {
+                RadioButton(selected = selected, onClick = selectOrDownload)
+            },
+            disabled = false
+        ) { }
+    }
     Tip(stringResource(R.string.moonshine_download_model_tip))
 }
 

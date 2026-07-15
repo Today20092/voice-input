@@ -8,13 +8,13 @@ import org.futo.voiceinput.downloader.EXTRA_DOWNLOAD_FILE_HASHES
 import org.futo.voiceinput.downloader.EXTRA_DOWNLOAD_FILE_NAMES
 import org.futo.voiceinput.downloader.EXTRA_DOWNLOAD_FILE_URLS
 import org.futo.voiceinput.downloader.EXTRA_TARGET_SUBDIR
+import org.futo.voiceinput.settings.MOONSHINE_MODEL_VARIANT
+import org.futo.voiceinput.settings.getSetting
+import org.futo.voiceinput.settings.getSettingBlocking
 import java.io.File
 
 object MoonshineModel {
-    const val directoryName = "moonshine-small-streaming-en"
     const val completionMarker = ".download_complete"
-    private const val baseUrl =
-        "https://download.moonshine.ai/model/small-streaming-en/quantized"
 
     val files = listOf(
         "adapter.ort",
@@ -27,20 +27,32 @@ object MoonshineModel {
         "tokenizer.bin"
     )
 
-    fun url(file: String) = "$baseUrl/$file"
 }
 
-fun Context.moonshineModelDir(): File = File(filesDir, MoonshineModel.directoryName)
+fun Context.moonshineModelDir(variant: MoonshineModelVariant): File =
+    File(filesDir, variant.directoryName)
 
-fun Context.isMoonshineModelDownloaded(): Boolean {
-    val directory = moonshineModelDir()
+fun Context.isMoonshineModelDownloaded(variant: MoonshineModelVariant): Boolean {
+    val directory = moonshineModelDir(variant)
     return File(directory, MoonshineModel.completionMarker).exists() &&
         MoonshineModel.files.all { File(directory, it).exists() }
 }
 
-fun Context.moonshineModelDownloadIntent(): Intent =
+private fun Context.selectedMoonshineModelVariant() =
+    getSettingBlocking(MOONSHINE_MODEL_VARIANT.key, MOONSHINE_MODEL_VARIANT.default)
+        .toMoonshineModelVariant()
+
+suspend fun Context.getSelectedMoonshineModelVariant() =
+    getSetting(MOONSHINE_MODEL_VARIANT).toMoonshineModelVariant()
+
+fun Context.isMoonshineModelDownloaded(): Boolean =
+    isMoonshineModelDownloaded(selectedMoonshineModelVariant())
+
+fun Context.moonshineModelDownloadIntent(
+    variant: MoonshineModelVariant = selectedMoonshineModelVariant()
+): Intent =
     Intent(this, DownloadActivity::class.java).apply {
-        putExtra(EXTRA_TARGET_SUBDIR, MoonshineModel.directoryName)
+        putExtra(EXTRA_TARGET_SUBDIR, variant.directoryName)
         putExtra(EXTRA_COMPLETION_MARKER, MoonshineModel.completionMarker)
         putStringArrayListExtra(
             EXTRA_DOWNLOAD_FILE_NAMES,
@@ -48,7 +60,7 @@ fun Context.moonshineModelDownloadIntent(): Intent =
         )
         putStringArrayListExtra(
             EXTRA_DOWNLOAD_FILE_URLS,
-            ArrayList(MoonshineModel.files.map(MoonshineModel::url))
+            ArrayList(MoonshineModel.files.map { "${variant.baseUrl}/$it" })
         )
         putStringArrayListExtra(
             EXTRA_DOWNLOAD_FILE_HASHES,
@@ -56,6 +68,8 @@ fun Context.moonshineModelDownloadIntent(): Intent =
         )
     }
 
-fun Context.startMoonshineModelDownloadActivity() {
-    startActivity(moonshineModelDownloadIntent())
+fun Context.startMoonshineModelDownloadActivity(
+    variant: MoonshineModelVariant = selectedMoonshineModelVariant()
+) {
+    startActivity(moonshineModelDownloadIntent(variant))
 }
