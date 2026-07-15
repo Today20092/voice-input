@@ -38,6 +38,7 @@ import androidx.lifecycle.LifecycleCoroutineScope
 import androidx.lifecycle.lifecycleScope
 import org.futo.voiceinput.migration.scheduleModelMigrationJob
 import org.futo.voiceinput.parakeet.parakeetModelDownloadIntent
+import org.futo.voiceinput.moonshine.moonshineModelDownloadIntent
 import org.futo.voiceinput.settings.pages.ConditionalUnpaidNoticeInVoiceInputWindow
 import org.futo.voiceinput.theme.UixThemeAuto
 import org.futo.voiceinput.updates.scheduleUpdateCheckingJob
@@ -156,6 +157,10 @@ class RecognizeActivity : ComponentActivity() {
             this@RecognizeActivity.requestParakeetModelDownload()
         }
 
+        override fun requestMoonshineModelDownload() {
+            this@RecognizeActivity.requestMoonshineModelDownload()
+        }
+
         override fun requestWhisperModelDownload(models: List<ModelData>) {
             this@RecognizeActivity.requestWhisperModelDownload(models)
         }
@@ -212,6 +217,10 @@ class RecognizeActivity : ComponentActivity() {
     }
     private fun requestParakeetModelDownload() {
         modelDownload.launch(parakeetModelDownloadIntent())
+    }
+
+    private fun requestMoonshineModelDownload() {
+        modelDownload.launch(moonshineModelDownloadIntent())
     }
 
     private fun requestWhisperModelDownload(models: List<ModelData>) {

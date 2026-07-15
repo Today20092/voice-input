@@ -27,12 +27,15 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.yield
 import org.futo.voiceinput.ml.RunState
+import org.futo.voiceinput.moonshine.MoonshineBackend
+import org.futo.voiceinput.moonshine.isMoonshineModelDownloaded
 import org.futo.voiceinput.settings.ENABLE_30S_LIMIT
 import org.futo.voiceinput.settings.IS_VAD_ENABLED
 import org.futo.voiceinput.settings.MANUAL_STOP_DRAIN_MS
 import org.futo.voiceinput.settings.PARAKEET_KEEP_WARM
 import org.futo.voiceinput.settings.PARAKEET_KEEP_WARM_TIMEOUT_MS
 import org.futo.voiceinput.settings.PARAKEET_USE_VAD
+import org.futo.voiceinput.settings.PERSONAL_DICTIONARY
 import org.futo.voiceinput.settings.SPEECH_BACKEND
 import org.futo.voiceinput.settings.SpeechBackendType
 import org.futo.voiceinput.settings.getSetting
@@ -84,6 +87,7 @@ abstract class AudioRecognizer {
     private var recorderJob: Job? = null
     private var modelJob: Job? = null
     private var loadModelJob: Job? = null
+    private var personalVocabulary = ""
 
     private var canExpandSpace = true
     private fun expandSpaceIfAllowed(): Boolean {
@@ -109,6 +113,7 @@ abstract class AudioRecognizer {
 
     protected abstract fun loading()
     protected abstract fun needParakeetModelDownload()
+    protected abstract fun needMoonshineModelDownload()
     protected abstract fun needWhisperModelDownload(models: List<ModelData>)
     protected abstract fun needPermission()
     protected abstract fun permissionRejected()
@@ -241,6 +246,10 @@ abstract class AudioRecognizer {
             val backendType = context.getSetting(SPEECH_BACKEND).toSpeechBackendType()
             backend = when (backendType) {
                 SpeechBackendType.Parakeet -> ParakeetEngineManager.acquire(context)
+                SpeechBackendType.Moonshine -> {
+                    ParakeetEngineManager.forceClose()
+                    MoonshineBackend().also { it.load(context) }
+                }
                 SpeechBackendType.WhisperGGML -> {
                     ParakeetEngineManager.forceClose()
                     WhisperGGMLBackend(
@@ -296,12 +305,21 @@ abstract class AudioRecognizer {
 
         lifecycleScope.launch {
             val backendType = context.getSetting(SPEECH_BACKEND).toSpeechBackendType()
+            personalVocabulary = context.getSetting(PERSONAL_DICTIONARY)
             when (backendType) {
                 SpeechBackendType.Parakeet -> {
                     if (!context.isParakeetModelDownloaded(verifyHashes = true)) {
                         needParakeetModelDownload()
                         return@launch
                     }
+                }
+                SpeechBackendType.Moonshine -> {
+                    if (!context.isMoonshineModelDownloaded()) {
+                        needMoonshineModelDownload()
+                        return@launch
+                    }
+                    loadModel()
+                    loadModelJob?.join()
                 }
                 SpeechBackendType.WhisperGGML -> {
                     val requiredModels = context.selectedWhisperModelsForCurrentSettings(forcedLanguage)
@@ -375,6 +393,14 @@ abstract class AudioRecognizer {
 
             focusAudio()
             isRecording = true
+
+            backend?.takeIf { it.streamsAudio }?.startStreaming { result ->
+                lifecycleScope.launch {
+                    withContext(Dispatchers.Main) {
+                        partialResult(PersonalVocabulary.apply(result, personalVocabulary))
+                    }
+                }
+            }
 
             val canMicBeBlocked = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 (context.getSystemService(SensorPrivacyManager::class.java) as SensorPrivacyManager).supportsSensorToggle(
@@ -567,9 +593,13 @@ abstract class AudioRecognizer {
             return false
         }
 
+        val streamingChunk = if (backend?.streamsAudio == true) FloatArray(nRead) else null
         for(i in 0 until nRead) {
-            floatSamples.put(samples[i].toFloat() / Short.MAX_VALUE.toFloat())
+            val sample = samples[i].toFloat() / Short.MAX_VALUE.toFloat()
+            floatSamples.put(sample)
+            streamingChunk?.set(i, sample)
         }
+        streamingChunk?.let { backend?.acceptAudio(it) }
 
         return true
     }
@@ -612,6 +642,9 @@ abstract class AudioRecognizer {
         repeat(silenceSamples) {
             floatSamples.put(0.0f)
         }
+        if (backend?.streamsAudio == true) {
+            backend?.acceptAudio(FloatArray(silenceSamples))
+        }
     }
 
     private suspend fun runModel(){
@@ -646,7 +679,12 @@ abstract class AudioRecognizer {
 
         yield()
         val text = try {
-            backend!!.transcribe(floatArray)
+            val rawText = if (backend!!.streamsAudio) {
+                backend!!.finishStreaming()
+            } else {
+                backend!!.transcribe(floatArray)
+            }
+            PersonalVocabulary.apply(rawText, personalVocabulary)
         } catch(e: OutOfMemoryError) {
             decodingStatus(RunState.OOMError)
             val backendType = context.getSetting(SPEECH_BACKEND).toSpeechBackendType()

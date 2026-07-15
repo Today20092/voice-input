@@ -2,6 +2,8 @@ name: Build Release APK
 
 on:
   push:
+    branches:
+      - "codex/moonshine-vocabulary-beta"
     tags:
       - "v*"
   workflow_dispatch:
@@ -11,7 +13,7 @@ permissions:
 
 jobs:
   build:
-    name: Build dev debug APK
+    name: Build APK
     runs-on: ubuntu-latest
 
     steps:
@@ -43,18 +45,27 @@ jobs:
         run: cargo install cargo-ndk
 
       - name: Build APK
-        run: ./gradlew :app:assembleStandaloneRelease
+        run: |
+          if [[ "$GITHUB_REF" == "refs/heads/codex/moonshine-vocabulary-beta" ]]; then
+            ./gradlew :app:assembleDevRelease
+            echo "APK_DIR=app/build/outputs/apk/dev/release" >> "$GITHUB_ENV"
+            echo "APK_NAME=futo-voice-input-moonshine-beta" >> "$GITHUB_ENV"
+          else
+            ./gradlew :app:assembleStandaloneRelease
+            echo "APK_DIR=app/build/outputs/apk/standalone/release" >> "$GITHUB_ENV"
+            echo "APK_NAME=futo-voice-input-parakeet" >> "$GITHUB_ENV"
+          fi
 
       - name: Rename APK
         run: |
           mkdir -p release
           VERSION="${GITHUB_REF_NAME:-manual}"
-          APK_PATH="$(find app/build/outputs/apk/standalone/release -maxdepth 1 -type f -name '*.apk' | head -n 1)"
+          APK_PATH="$(find "$APK_DIR" -maxdepth 1 -type f -name '*.apk' | head -n 1)"
           if [ -z "$APK_PATH" ]; then
-            echo "No APK found in app/build/outputs/apk/standalone/release"
+            echo "No APK found in $APK_DIR"
             exit 1
           fi
-          cp "$APK_PATH" "release/futo-voice-input-parakeet-${VERSION}.apk"
+          cp "$APK_PATH" "release/${APK_NAME}-${VERSION}.apk"
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4

@@ -117,6 +117,7 @@ val ENABLE_30S_LIMIT = SettingsKey(booleanPreferencesKey("enable_30s_limit"), fa
 
 enum class SpeechBackendType(val id: String) {
     Parakeet("parakeet"),
+    Moonshine("moonshine"),
     WhisperGGML("whisper_ggml")
 }
 

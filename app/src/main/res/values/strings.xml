@@ -107,12 +107,20 @@
     <string name="download_model">Download Model</string>
     <string name="speech_backend">Speech Backend</string>
     <string name="backend_parakeet">Parakeet TDT English</string>
+    <string name="backend_moonshine">Moonshine v2 Streaming</string>
     <string name="backend_whisper_ggml">Whisper/GGML</string>
     <string name="backend_parakeet_subtitle">English-only Parakeet backend using ONNX Runtime</string>
     <string name="backend_whisper_ggml_subtitle">Legacy Whisper backend using GGML models</string>
     <string name="whisper_model_download_required">Download required</string>
     <string name="whisper_download_required_body">The selected Whisper model must be downloaded before voice input can run. This may incur data fees on mobile data.</string>
     <string name="whisper_ggml_model_active_subtitle">Whisper/GGML model active</string>
+    <string name="moonshine_model">Moonshine Model</string>
+    <string name="moonshine_model_active_subtitle">Moonshine v2 Small Streaming active</string>
+    <string name="moonshine_streaming_model_name">Moonshine v2 Small Streaming English</string>
+    <string name="moonshine_model_download_required">Download required</string>
+    <string name="moonshine_model_downloaded">Downloaded and active</string>
+    <string name="moonshine_download_model_tip">Low-latency English transcription that updates while you speak. The model remains offline after download.</string>
+    <string name="moonshine_download_required_body">The Moonshine streaming model must be downloaded before voice input can run. This may incur data fees on mobile data.</string>
     <string name="payment_text_1">You\'ve been using FUTO Voice Input Parakeet for <xliff:g name="days" example="30">%d</xliff:g> days. If you find this app useful, please consider paying to support future development of FUTO software.</string>
     <string name="payment_text_1_alt">Thank you for trying out FUTO Voice Input Parakeet! If you find this app useful, please consider paying to support future development of FUTO software.</string>
     <string name="payment_dev_notice">NOTE: Development has largely shifted to FUTO Keyboard and this app is not expected to receive any major updates at this time. Nevertheless, we would appreciate your support.</string>
@@ -226,7 +234,7 @@
     <string name="use_beam_search">Use beam search</string>
     <string name="recommended">Recommended</string>
     <string name="new_model_features_tip">Models have been updated for better accuracy and faster performance. You can now also add words/phrases in the personal dictionary. If you have any issues or feedback after this change please contact us.</string>
-    <string name="personal_dictionary_placeholder">John Doe, Jane Smith, TensorFlow, bobble, type anything you want voice input to recognize more often here!</string>
+    <string name="personal_dictionary_placeholder">One preferred word or phrase per line. Use heard phrase => preferred phrase for exact corrections, for example: photo => FUTO</string>
     <string name="personal_dictionary">Personal Dictionary</string>
     <string name="manual_language_selection_toggle_subtitle">Avoids model switching delay if you have multiple languages enabled</string>
     <string name="unpaid_futo_voice_input">Unpaid FUTO Voice Input Parakeet</string>
