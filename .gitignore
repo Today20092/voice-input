@@ -10,6 +10,7 @@ captures/
 # Android Studio / IntelliJ local state
 *.iml
 .idea/
+.codex-remote-attachments/
 
 # Local machine configuration
 local.properties
