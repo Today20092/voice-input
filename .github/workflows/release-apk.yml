@@ -60,6 +60,7 @@ jobs:
         run: |
           mkdir -p release
           VERSION="${GITHUB_REF_NAME:-manual}"
+          VERSION="${VERSION//\//-}"
           APK_PATH="$(find "$APK_DIR" -maxdepth 1 -type f -name '*.apk' | head -n 1)"
           if [ -z "$APK_PATH" ]; then
             echo "No APK found in $APK_DIR"
