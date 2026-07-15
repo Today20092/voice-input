@@ -117,6 +117,7 @@ val ENABLE_30S_LIMIT = SettingsKey(booleanPreferencesKey("enable_30s_limit"), fa
 
 enum class SpeechBackendType(val id: String) {
     Parakeet("parakeet"),
+    Moonshine("moonshine"),
     WhisperGGML("whisper_ggml")
 }
 
@@ -124,7 +125,7 @@ fun String.toSpeechBackendType(): SpeechBackendType {
     return SpeechBackendType.values().firstOrNull { it.id == this } ?: SpeechBackendType.Parakeet
 }
 
-val SPEECH_BACKEND = SettingsKey(stringPreferencesKey("speech_backend"), SpeechBackendType.Parakeet.id)
+val SPEECH_BACKEND = SettingsKey(stringPreferencesKey("speech_backend"), SpeechBackendType.Moonshine.id)
 val PARAKEET_KEEP_WARM = SettingsKey(booleanPreferencesKey("parakeet_keep_warm"), true)
 val PARAKEET_KEEP_WARM_TIMEOUT_MS =
     SettingsKey(longPreferencesKey("parakeet_keep_warm_timeout_ms"), 5 * 60 * 1000L)

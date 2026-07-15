@@ -10,7 +10,7 @@ This is a personal fork of FUTO Voice Input. Upstreams:
 - Original GitLab: `https://gitlab.futo.org/keyboard/voiceinput`
 - Public fork: `https://github.com/Today20092/futo_with_parakeet`
 
-The goal is to preserve FUTO Voice Input's Android IME/activity UX while making NVIDIA Parakeet TDT 0.6B V3 via ONNX Runtime the default offline recognizer. Legacy FUTO Whisper/GGML remains selectable from Model Options.
+The goal is to preserve FUTO Voice Input's Android IME/activity UX while making Moonshine v2 Small Streaming the default offline recognizer. NVIDIA Parakeet TDT 0.6B V3 and legacy FUTO Whisper/GGML remain selectable from Model Options.
 
 ## High-Level Architecture
 
@@ -28,7 +28,7 @@ Primary runtime flow:
 2. Both wrap `RecognizerView`, which owns the Compose recognition UI and forwards lifecycle events.
 3. `RecognizerView` delegates recording/model work to `AudioRecognizer`.
 4. `AudioRecognizer` records 16 kHz mono PCM with `AudioRecord`, applies WebRTC VAD, buffers float samples, then selects a `SpeechBackend`.
-5. Default backend is `ParakeetBackend`; optional backend is `WhisperGGMLBackend`.
+5. Default backend is `MoonshineBackend`; optional backends are `ParakeetBackend` and `WhisperGGMLBackend`.
 6. `ParakeetBackend` calls `ParakeetNative`, which loads `c++_shared`, `onnxruntime`, and `parakeet_voiceinput`.
 7. Rust JNI functions in `parakeet-native/src/lib.rs` call `parakeet-native/src/engine.rs`, which uses `transcribe-rs` and ONNX Runtime.
 
@@ -40,8 +40,8 @@ Primary runtime flow:
 - `app/src/main/java/org/futo/voiceinput/RecognizerView.kt`: recognition UI state machine, sounds, permission/model prompts, result dispatch hooks.
 - `app/src/main/java/org/futo/voiceinput/RecognizeActivity.kt`: speech recognizer activity entry point.
 - `app/src/main/java/org/futo/voiceinput/VoiceInputMethodService.kt`: IME entry point, commits final/partial text to the active input connection, switches back on cancel.
-- `app/src/main/java/org/futo/voiceinput/settings/Settings.kt`: DataStore keys. `SPEECH_BACKEND` defaults to `parakeet`.
-- `app/src/main/java/org/futo/voiceinput/settings/pages/Models.kt`: Model Options UI for Parakeet vs Whisper/GGML.
+- `app/src/main/java/org/futo/voiceinput/settings/Settings.kt`: DataStore keys. `SPEECH_BACKEND` defaults to `moonshine`.
+- `app/src/main/java/org/futo/voiceinput/settings/pages/Models.kt`: Model Options UI for Moonshine, Parakeet, and Whisper/GGML.
 - `app/src/main/java/org/futo/voiceinput/downloader/DownloadActivity.kt`: shared model downloader. Supports explicit file URLs/hashes for Parakeet and legacy FUTO model names for Whisper.
 - `app/src/main/java/org/futo/voiceinput/parakeet/ParakeetModel.kt`: Parakeet file list, Hugging Face URLs, download marker, hash verification, model download intent.
 - `app/src/main/java/org/futo/voiceinput/parakeet/ParakeetEngineManager.kt`: shared/warm Parakeet backend, idle unload timeout.
@@ -116,3 +116,17 @@ Generated APK names are customized in `app/build.gradle`, but the GitHub workflo
 - Do not remove legacy Whisper/GGML paths unless explicitly requested; this fork intentionally keeps them as selectable fallback.
 - Be careful with generated/native outputs under `app/src/main/jniLibs/`; they are produced by Gradle/Rust build tasks.
 - This repo may have local uncommitted changes. Check `git status --short` before editing and avoid reverting user changes.
+
+## Agent skills
+
+### Issue tracker
+
+Issues are tracked in GitHub Issues; external PRs are not a triage surface. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Use the canonical labels `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, and `wontfix`. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+This is a single-context repository. See `docs/agents/domain.md`.

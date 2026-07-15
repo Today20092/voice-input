@@ -33,6 +33,8 @@ import org.futo.voiceinput.migration.ConditionalModelUpdate
 import org.futo.voiceinput.migration.NeedsMigration
 import org.futo.voiceinput.parakeet.isParakeetModelDownloaded
 import org.futo.voiceinput.parakeet.startParakeetModelDownloadActivity
+import org.futo.voiceinput.moonshine.isMoonshineModelDownloaded
+import org.futo.voiceinput.moonshine.startMoonshineModelDownloadActivity
 import org.futo.voiceinput.settings.DISMISS_MIGRATION_TIP
 import org.futo.voiceinput.settings.ENABLE_MULTILINGUAL
 import org.futo.voiceinput.settings.ENGLISH_MODEL_INDEX
@@ -67,6 +69,13 @@ fun modelsSubtitle(): String? {
                 stringResource(R.string.parakeet_model_active_subtitle)
             } else {
                 stringResource(R.string.parakeet_model_download_required)
+            }
+        }
+        SpeechBackendType.Moonshine -> {
+            if (context.isMoonshineModelDownloaded()) {
+                stringResource(R.string.moonshine_model_active_subtitle)
+            } else {
+                stringResource(R.string.moonshine_model_download_required)
             }
         }
         SpeechBackendType.WhisperGGML -> stringResource(R.string.whisper_ggml_model_active_subtitle)
@@ -140,6 +149,41 @@ fun ParakeetModelStatus() {
         disabled = false
     ) { }
     Tip(stringResource(R.string.parakeet_download_model_tip))
+}
+
+@Composable
+fun MoonshineModelStatus() {
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val isDownloaded = remember { mutableStateOf(context.isMoonshineModelDownloaded()) }
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                isDownloaded.value = context.isMoonshineModelDownloaded()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
+    ScreenTitle(stringResource(R.string.moonshine_model))
+    SettingItem(
+        title = stringResource(R.string.moonshine_streaming_model_name),
+        subtitle = if (isDownloaded.value) {
+            stringResource(R.string.moonshine_model_downloaded)
+        } else {
+            stringResource(R.string.moonshine_model_download_required)
+        },
+        onClick = {
+            if (!isDownloaded.value) context.startMoonshineModelDownloadActivity()
+        },
+        icon = {
+            RadioButton(selected = isDownloaded.value, onClick = null, enabled = false)
+        },
+        disabled = false
+    ) { }
+    Tip(stringResource(R.string.moonshine_download_model_tip))
 }
 
 @Composable
@@ -229,7 +273,7 @@ fun ModelsScreen(
 ) {
     val (languages, _) = useDataStore(LANGUAGE_TOGGLES)
     val (backend, _) = useDataStore(SPEECH_BACKEND)
-    val parakeetSelected = isParakeetSelected()
+    val whisperSelected = backend.toSpeechBackendType() == SpeechBackendType.WhisperGGML
 
     val needsUpdate = NeedsMigration()
 
@@ -239,7 +283,7 @@ fun ModelsScreen(
     ScrollableList {
         ScreenTitle(stringResource(R.string.model_options), showBack = true, navController = navController)
 
-        if (!parakeetSelected) {
+        if (whisperSelected) {
             ConditionalModelUpdate()
 
             if(wasMigrated.value && !dismissMigrationTip.value) {
@@ -254,18 +298,21 @@ fun ModelsScreen(
                 )
             }
 
-            if(!needsUpdate) {
-                PersonalDictionaryEditor(disabled = false)
-
-                Spacer(modifier = Modifier.height(32.dp))
-            }
         }
+
+        PersonalDictionaryEditor(disabled = false)
+        Spacer(modifier = Modifier.height(32.dp))
 
         SettingRadio(
             title = stringResource(R.string.speech_backend),
-            options = listOf(SpeechBackendType.Parakeet.id, SpeechBackendType.WhisperGGML.id),
+            options = listOf(
+                SpeechBackendType.Parakeet.id,
+                SpeechBackendType.Moonshine.id,
+                SpeechBackendType.WhisperGGML.id
+            ),
             optionNames = listOf(
                 stringResource(R.string.backend_parakeet),
+                stringResource(R.string.backend_moonshine),
                 stringResource(R.string.backend_whisper_ggml)
             ),
             setting = SPEECH_BACKEND
@@ -275,6 +322,7 @@ fun ModelsScreen(
 
         when (backend.toSpeechBackendType()) {
             SpeechBackendType.Parakeet -> ParakeetModelStatus()
+            SpeechBackendType.Moonshine -> MoonshineModelStatus()
             SpeechBackendType.WhisperGGML -> WhisperModelOptions()
         }
     }

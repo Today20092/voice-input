@@ -1,10 +1,10 @@
 package org.futo.voiceinput
 
 import android.content.Context
+import org.futo.voiceinput.backend.SpeechBackend
 import org.futo.voiceinput.ggml.DecodingMode
 import org.futo.voiceinput.ml.RunState
 import org.futo.voiceinput.ml.WhisperModelWrapper
-import org.futo.voiceinput.parakeet.SpeechBackend
 import org.futo.voiceinput.settings.BEAM_SEARCH
 import org.futo.voiceinput.settings.DISALLOW_SYMBOLS
 import org.futo.voiceinput.settings.ENGLISH_MODEL_INDEX
