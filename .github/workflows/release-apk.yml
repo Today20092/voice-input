@@ -22,6 +22,18 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Configure release signing
+        env:
+          RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+          RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+          RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+          RELEASE_STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
+        run: |
+          test -n "$RELEASE_KEYSTORE_BASE64"
+          printf '%s' "$RELEASE_KEYSTORE_BASE64" | base64 --decode > release-signing.jks
+          printf 'storeFile=release-signing.jks\nkeyAlias=%s\nkeyPassword=%s\nstorePassword=%s\n' \
+            "$RELEASE_KEY_ALIAS" "$RELEASE_KEY_PASSWORD" "$RELEASE_STORE_PASSWORD" > keystore.properties
+
       - name: Set up JDK
         uses: actions/setup-java@v4
         with:
@@ -46,15 +58,9 @@ jobs:
 
       - name: Build APK
         run: |
-          if [[ "$GITHUB_REF" == "refs/heads/codex/moonshine-vocabulary-beta" ]]; then
-            ./gradlew :app:assembleDevRelease
-            echo "APK_DIR=app/build/outputs/apk/dev/release" >> "$GITHUB_ENV"
-            echo "APK_NAME=futo-voice-input-moonshine-beta" >> "$GITHUB_ENV"
-          else
-            ./gradlew :app:assembleStandaloneRelease
-            echo "APK_DIR=app/build/outputs/apk/standalone/release" >> "$GITHUB_ENV"
-            echo "APK_NAME=futo-voice-input-parakeet" >> "$GITHUB_ENV"
-          fi
+          ./gradlew :app:assembleStandaloneRelease
+          echo "APK_DIR=app/build/outputs/apk/standalone/release" >> "$GITHUB_ENV"
+          echo "APK_NAME=futo-voice-input-moonshine" >> "$GITHUB_ENV"
 
       - name: Rename APK
         run: |
@@ -71,18 +77,18 @@ jobs:
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: futo-voice-input-parakeet-apk
+          name: futo-voice-input-moonshine-apk
           path: release/*.apk
 
       - name: Create GitHub Release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          name: FUTO Voice Input Parakeet ${{ github.ref_name }}
+          name: FUTO Voice Input Moonshine ${{ github.ref_name }}
           body: |
-            Runtime-download Parakeet release of the FUTO Voice Input fork, now branded as FUTO Voice Input Parakeet.
+            Offline Moonshine streaming release of the FUTO Voice Input fork, with Parakeet and Whisper retained as selectable backends.
 
-            This APK no longer packages the Parakeet ONNX model files directly. The app downloads the Parakeet model on first use or from the Model Options screen, which keeps the APK much smaller while preserving offline transcription after the model is installed.
+            Models download on first use or from Model Options, keeping the APK smaller while preserving offline transcription after installation.
 
             The Parakeet integration and repository changes in this fork were built with AI assistance using Codex (GPT-5).
           files: release/*.apk

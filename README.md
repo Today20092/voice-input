@@ -1,61 +1,60 @@
-# FUTO Voice Input Parakeet
+# FUTO Voice Input Moonshine
 
-This is a personal fork of FUTO Voice Input, renamed as FUTO Voice Input Parakeet, that keeps the FUTO voice keyboard experience and uses NVIDIA Parakeet TDT 0.6B V3 through ONNX Runtime by default. The legacy FUTO Whisper/GGML backend can also be selected from Model Options.
+This personal fork keeps the FUTO voice keyboard experience and uses Moonshine v2 Small Streaming as its default offline recognizer. NVIDIA Parakeet TDT 0.6B V3 and the legacy FUTO Whisper/GGML backend remain selectable from Model Options.
 
 This fork's Parakeet integration and repository changes were built with AI assistance using Codex (GPT-5).
 
-The goal is straightforward: keep the FUTO UI, recording flow, dark theme support, VAD silence stopping, microphone animation, and keyboard switch-back behavior, while using Parakeet as the main recognizer because it is fast and accurate for English speech.
+The goal is straightforward: keep the FUTO UI and recording flow while adding responsive streaming transcription and personal vocabulary corrections.
 
 ## What Changed
 
-- FUTO Voice Input Parakeet remains the base Android app and UI.
-- Parakeet is the default speech backend.
-- The legacy Whisper/GGML recognition path can be selected as an optional backend.
-- A Kotlin backend layer calls a Rust JNI library for Parakeet.
-- The Rust library loads Parakeet ONNX models through `transcribe-rs` and ONNX Runtime.
-- The Model Options screen lets you choose Parakeet or Whisper/GGML.
+- Moonshine v2 Small Streaming is the default backend and emits live partial transcripts.
+- Parakeet and legacy Whisper/GGML remain selectable backends.
+- Batch and streaming recognizers share backend-neutral Kotlin contracts.
+- Personal vocabulary entries correct partial and final transcripts; use `heard => preferred` for explicit aliases.
+- The stable app uses the distinct `org.futo.voiceinput.moonshine` package ID.
 - Only the selected backend's model files are required before voice input starts.
 
 ## Screenshots
 
 ### Model Options
 
-<img src="docs/screenshots/model-options.png" alt="Model Options screen with Parakeet selected" width="360">
+<img src="docs/screenshots/model-options.png" alt="Model Options screen" width="360">
 
-Parakeet is selected as the default backend, with Whisper/GGML still available as a fallback.
+Moonshine is selected by default, with Parakeet and Whisper/GGML available as fallbacks.
 
 ## Active Model
 
 The default backend is:
 
 ```text
-Unified Parakeet TDT 0.6B V3
+Moonshine v2 Small Streaming English
 ```
 
-The app downloads the ONNX model assets from:
+The app downloads the quantized model assets from:
 
 ```text
-https://huggingface.co/istupakov/parakeet-tdt-0.6b-v3-onnx
+https://download.moonshine.ai/model/small-streaming-en/quantized/
 ```
 
-By default, the Parakeet model files are not packaged into the APK. This keeps the APK much smaller than the first bundled-model release.
+Model files are downloaded on first use rather than packaged into the APK.
 
 After installing the APK, the model is downloaded by the app:
 
-1. Open FUTO Voice Input Parakeet Settings.
+1. Open FUTO Voice Input Moonshine Settings.
 2. Tap **Model**.
-3. Tap **Unified Parakeet TDT 0.6B V3** under **Parakeet Model**.
+3. Select **Moonshine v2 Small Streaming**.
 4. Confirm the download.
 
-If you try to use voice input before downloading the model, the app shows a download prompt before it starts recording. Once the download finishes, the app loads Parakeet from local app storage and transcription runs offline.
+If you try voice input before downloading the model, the app prompts for the download. Transcription runs offline after installation.
 
 Downloaded model files are stored in app-private storage:
 
 ```text
-filesDir/parakeet-tdt-0.6b-v3-int8/
+filesDir/moonshine-small-streaming-en/
 ```
 
-If you select **Whisper/GGML** in Model Options, the app uses the legacy FUTO English and multilingual GGML model settings and downloader. Those GGML files are also stored in app-private storage and run offline after download. Parakeet downloads from Hugging Face, while Whisper/GGML models download through the existing FUTO model downloader.
+Parakeet and Whisper/GGML models are also stored in app-private storage and run offline after download.
 
 ## Building Locally
 
@@ -131,8 +130,8 @@ You can also run the workflow manually from the Actions tab. Manual runs upload 
 
 - First supported ABI is `arm64-v8a`.
 - This is intended for sideloading and personal testing.
-- The normal APK does not include the Parakeet ONNX model files. The model downloads at runtime from Hugging Face.
-- Parakeet currently returns a final transcript after recording stops; live partial transcripts are not implemented.
+- The normal APK does not include speech model files.
+- Moonshine emits live partial transcripts; Parakeet currently returns only a final transcript.
 - The app requires network access to download the selected backend's model the first time, then transcription runs offline.
 
 ## Attribution And License
