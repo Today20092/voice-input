@@ -234,35 +234,35 @@ class VoiceInputMethodService : InputMethodService(), LifecycleOwner, ViewModelS
             }
         }
 
-        override fun sendResult(result: String) {
-            this@VoiceInputMethodService.currentInputConnection.also {
-                var modifiedResult = result
+        override fun sendResult(result: String): Boolean {
+            val inputConnection = this@VoiceInputMethodService.currentInputConnection ?: return false
+            var modifiedResult = result
 
-                // Insert space automatically if ended at punctuation
-                // TODO: Could send text before cursor as whisper prompt
+            // Insert space automatically if ended at punctuation
+            // TODO: Could send text before cursor as whisper prompt
 
-                if(!prevText.isNullOrBlank()) {
-                    val lastChar = prevText?.last()
+            if(!prevText.isNullOrBlank()) {
+                val lastChar = prevText?.last()
 
-                    if (punctuationChars.contains(lastChar)) {
-                        modifiedResult = " $result"
-                    }
+                if (punctuationChars.contains(lastChar)) {
+                    modifiedResult = " $result"
                 }
-
-                /*
-                if(!nextText.isNullOrBlank()) {
-                    val oldPunctuation = nextText?.first()
-                    val newPunctuation = result.last()
-
-                    if (punctuationChars.contains(oldPunctuation) && punctuationChars.contains(newPunctuation)) {
-                        it.deleteSurroundingText(0, 1)
-                    }
-                }
-                */
-
-                it.commitText(modifiedResult, 1)
             }
+
+            /*
+            if(!nextText.isNullOrBlank()) {
+                val oldPunctuation = nextText?.first()
+                val newPunctuation = result.last()
+
+                if (punctuationChars.contains(oldPunctuation) && punctuationChars.contains(newPunctuation)) {
+                    inputConnection.deleteSurroundingText(0, 1)
+                }
+            }
+            */
+
+            if (!inputConnection.commitText(modifiedResult, 1)) return false
             onCancel()
+            return true
         }
 
         override fun sendPartialResult(result: String): Boolean {

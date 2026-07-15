@@ -214,6 +214,8 @@
     <string name="language_unsupported_warning_1000">Languages below are likely to not work well. You have enabled the option to see them anyway. Use at your own risk.</string>
     <string name="language_unsupported_warning_100">Languages below are certain to not work well. You have enabled the option to see them anyway. Use at your own risk.</string>
     <string name="out_of_memory_error">Out of Memory error, will retry…</string>
+    <string name="no_speech_recognized">No speech was recognized. Please try again.</string>
+    <string name="recognition_failed">Voice recognition failed. Please try again.</string>
     <string name="manually_select_language">Enable manual language selection</string>
 
     <string name="amoled_dark_theme_name">AMOLED Dark Purple</string>

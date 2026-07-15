@@ -20,8 +20,10 @@ import com.konovalov.vad.webrtc.VadWebRTC
 import com.konovalov.vad.webrtc.config.FrameSize
 import com.konovalov.vad.webrtc.config.Mode
 import com.konovalov.vad.webrtc.config.SampleRate
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -41,7 +43,7 @@ import org.futo.voiceinput.settings.PERSONAL_DICTIONARY
 import org.futo.voiceinput.settings.SPEECH_BACKEND
 import org.futo.voiceinput.settings.SpeechBackendType
 import org.futo.voiceinput.settings.getSetting
-import org.futo.voiceinput.parakeet.ParakeetBackend
+import org.futo.voiceinput.parakeet.ParakeetEngineLease
 import org.futo.voiceinput.parakeet.ParakeetEngineManager
 import org.futo.voiceinput.backend.SpeechBackend
 import org.futo.voiceinput.backend.StreamingSpeechBackend
@@ -60,6 +62,8 @@ private const val AUTO_STOP_DRAIN_MS = 100L
 private const val PARAKEET_AUTO_STOP_DRAIN_MS = 300L
 private const val FINAL_SILENCE_PAD_MS = 200
 
+internal class NoSpeechRecognizedException : Exception("The recognizer returned no text")
+
 enum class MagnitudeState {
     NOT_TALKED_YET,
     MIC_MAY_BE_BLOCKED,
@@ -76,16 +80,24 @@ private enum class StopReason {
 }
 
 abstract class AudioRecognizer {
+    private data class OwnedParakeetLease(
+        val generation: Long,
+        val lease: ParakeetEngineLease
+    )
+
     private var isRecording = false
     private var recorder: AudioRecord? = null
     @Volatile private var stopReason: StopReason? = null
-    @Volatile private var recognitionCompleted = false
 
     fun isCurrentlyRecording(): Boolean {
         return isRecording
     }
 
     private var backend: SpeechBackend? = null
+    private var backendGeneration = -1L
+    private var parakeetLease: OwnedParakeetLease? = null
+    @Volatile
+    private var recognitionGeneration = 0L
 
     private var floatSamples: FloatBuffer = FloatBuffer.allocate(16000 * 30)
     private var recorderJob: Job? = null
@@ -111,6 +123,7 @@ abstract class AudioRecognizer {
 
     protected abstract fun cancelled()
     protected abstract fun finished(result: String)
+    protected abstract fun failed(error: Throwable)
     protected abstract fun languageDetected(result: String)
     protected abstract fun partialResult(result: String)
     protected abstract fun decodingStatus(status: RunState)
@@ -177,31 +190,51 @@ abstract class AudioRecognizer {
     }
 
     fun reset() {
-        val shouldForceCloseParakeet = !recognitionCompleted
-        recognitionCompleted = false
         isVADPaused = false
         stopReason = StopReason.Cancel
         stopAndReleaseRecorder()
-        recorderJob?.cancel()
-        modelJob?.cancel()
-        loadModelJob?.cancel()
+        val recorderJobToJoin: Job?
+        val modelJobToJoin: Job?
+        val loadModelJobToJoin: Job?
+        val backendToClose: SpeechBackend?
+        val parakeetLeaseToRelease: OwnedParakeetLease?
+        synchronized(this) {
+            recognitionGeneration += 1
+            recorderJobToJoin = recorderJob
+            modelJobToJoin = modelJob
+            loadModelJobToJoin = loadModelJob
+            backendToClose = backend
+            parakeetLeaseToRelease = parakeetLease
+            recorderJob = null
+            modelJob = null
+            loadModelJob = null
+            backend = null
+            backendGeneration = -1L
+            parakeetLease = null
+        }
+        recorderJobToJoin?.cancel()
+        modelJobToJoin?.cancel()
+        loadModelJobToJoin?.cancel()
         isRecording = false
 
         floatSamples.clear()
 
         unfocusAudio()
 
-        lifecycleScope.launch {
-            modelJob?.join()
-            loadModelJob?.join()
-            loadModelJob = null
-            if (shouldForceCloseParakeet) {
-                ParakeetEngineManager.forceClose()
+        lifecycleScope.launch(NonCancellable) {
+            recorderJobToJoin?.join()
+            modelJobToJoin?.join()
+            loadModelJobToJoin?.join()
+            if (parakeetLeaseToRelease != null) {
+                ParakeetEngineManager.release(
+                    parakeetLeaseToRelease.lease,
+                    lifecycleScope,
+                    keepWarm = false
+                )
             }
-            if (backend !is ParakeetBackend) {
-                backend?.close()
+            if (backendToClose !is ParakeetEngineLease) {
+                backendToClose?.close()
             }
-            backend = null
         }
     }
 
@@ -249,9 +282,10 @@ abstract class AudioRecognizer {
     }
 
     private suspend fun loadModelInner() {
+        val loadGeneration = recognitionGeneration
         try {
             val backendType = context.getSetting(SPEECH_BACKEND).toSpeechBackendType()
-            backend = when (backendType) {
+            val loadedBackend = when (backendType) {
                 SpeechBackendType.Parakeet -> ParakeetEngineManager.acquire(context)
                 SpeechBackendType.Moonshine -> {
                     ParakeetEngineManager.forceClose()
@@ -275,13 +309,42 @@ abstract class AudioRecognizer {
                     }
                 }
             }
-        } catch(e: OutOfMemoryError) {
-            decodingStatus(RunState.OOMError)
-            ParakeetEngineManager.forceClose()
-            if (backend !is ParakeetBackend) {
-                backend?.close()
+            val published = synchronized(this) {
+                if (loadGeneration != recognitionGeneration) {
+                    false
+                } else {
+                    backend = loadedBackend
+                    backendGeneration = loadGeneration
+                    if (loadedBackend is ParakeetEngineLease) {
+                        parakeetLease = OwnedParakeetLease(loadGeneration, loadedBackend)
+                    }
+                    true
+                }
             }
-            backend = null
+            if (!published) {
+                withContext(NonCancellable) {
+                    if (loadedBackend is ParakeetEngineLease) {
+                        ParakeetEngineManager.release(
+                            loadedBackend,
+                            lifecycleScope,
+                            keepWarm = false
+                        )
+                    } else {
+                        loadedBackend.close()
+                    }
+                }
+                throw CancellationException("Recognition was reset while the model loaded")
+            }
+        } catch(e: OutOfMemoryError) {
+            if (loadGeneration != recognitionGeneration) {
+                throw CancellationException("Recognition was reset while loading the model")
+            }
+            decodingStatus(RunState.OOMError)
+            val failedBackend = backendForGeneration(loadGeneration)
+            if (failedBackend !is ParakeetEngineLease) {
+                failedBackend?.close()
+            }
+            clearBackend(loadGeneration, failedBackend)
 
             for(i in 0 until 2) {
                 System.gc()
@@ -289,6 +352,9 @@ abstract class AudioRecognizer {
                 delay(500L)
             }
 
+            if (loadGeneration != recognitionGeneration) {
+                throw CancellationException("Recognition was reset while recovering from OOM")
+            }
             return loadModelInner()
         }
     }
@@ -362,7 +428,6 @@ abstract class AudioRecognizer {
 
         isVADPaused = false
         stopReason = null
-        recognitionCompleted = false
         floatSamples.clear()
         canExpandSpace = true
 
@@ -656,15 +721,53 @@ abstract class AudioRecognizer {
         (backend as? StreamingSpeechBackend)?.acceptAudio(FloatArray(silenceSamples))
     }
 
-    private suspend fun runModel(){
-        if(loadModelJob != null && loadModelJob!!.isActive) {
+    private suspend fun runModel() {
+        val runGeneration = recognitionGeneration
+        val runLoadModelJob = synchronized(this) {
+            if (runGeneration == recognitionGeneration) loadModelJob else null
+        }
+        try {
+            runModelInner(runGeneration, runLoadModelJob)
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Exception) {
+            if (runGeneration != recognitionGeneration) {
+                return
+            }
+            Log.e("AudioRecognizer", "Speech recognition failed", error)
+            try {
+                closeFailedBackend(runGeneration)
+            } catch (closeError: Exception) {
+                error.addSuppressed(closeError)
+            }
+            withContext(Dispatchers.Main) {
+                failed(error)
+            }
+        } finally {
+            withContext(NonCancellable) {
+                releaseParakeetLease(runGeneration, keepWarm = false)
+            }
+        }
+    }
+
+    private suspend fun runModelInner(runGeneration: Long, runLoadModelJob: Job?) {
+        if(runLoadModelJob != null && runLoadModelJob.isActive) {
             println("Model was not finished loading...")
-            loadModelJob!!.join()
-        }else if(backend == null) {
+            runLoadModelJob.join()
+        }
+
+        var runBackend = backendForGeneration(runGeneration)
+        if(runBackend == null) {
+            if (runGeneration != recognitionGeneration) {
+                throw CancellationException("Recognition was reset before the model became ready")
+            }
             println("Model was null by the time runModel was called...")
             loadModel()
-            loadModelJob!!.join()
+            val retryLoadJob = synchronized(this) { loadModelJob }
+            retryLoadJob?.join()
+            runBackend = backendForGeneration(runGeneration)
         }
+        runBackend ?: throw IllegalStateException("Model did not load for this recognition")
 
         val finalStopReason = stopReason
         val backendType = context.getSetting(SPEECH_BACKEND).toSpeechBackendType()
@@ -688,19 +791,12 @@ abstract class AudioRecognizer {
 
         yield()
         val text = try {
-            val rawText = (backend as? StreamingSpeechBackend)?.finishStreaming()
-                ?: backend!!.transcribe(floatArray)
+            val rawText = (runBackend as? StreamingSpeechBackend)?.finishStreaming()
+                ?: runBackend.transcribe(floatArray)
             PersonalVocabulary.apply(rawText, personalVocabulary)
         } catch(e: OutOfMemoryError) {
             decodingStatus(RunState.OOMError)
-            val backendType = context.getSetting(SPEECH_BACKEND).toSpeechBackendType()
-            if (backendType == SpeechBackendType.Parakeet) {
-                ParakeetEngineManager.forceClose()
-            } else {
-                backend!!.close()
-            }
-            backend = null
-            loadModelJob = null
+            closeFailedBackend(runGeneration)
 
             for(i in 0 until 2) {
                 System.gc()
@@ -709,25 +805,62 @@ abstract class AudioRecognizer {
             }
 
             loadModel()
-
             return runModel()
         }
 
-        val keepWarmEnabled = context.getSetting(PARAKEET_KEEP_WARM)
-        if (backendType == SpeechBackendType.Parakeet && keepWarmEnabled) {
-            val timeoutMs = context.getSetting(PARAKEET_KEEP_WARM_TIMEOUT_MS)
-            ParakeetEngineManager.markIdle(lifecycleScope, timeoutMs)
-        } else if (backendType == SpeechBackendType.Parakeet) {
-            ParakeetEngineManager.forceClose()
-        } else {
-            backend!!.close()
+        if (runGeneration != recognitionGeneration) {
+            throw CancellationException("Recognition was reset while decoding")
         }
-        backend = null
 
-        recognitionCompleted = true
-        lifecycleScope.launch {
-            withContext(Dispatchers.Main) {
+        val keepWarmEnabled = context.getSetting(PARAKEET_KEEP_WARM)
+        if (backendType == SpeechBackendType.Parakeet) {
+            val timeoutMs = context.getSetting(PARAKEET_KEEP_WARM_TIMEOUT_MS)
+            releaseParakeetLease(runGeneration, keepWarmEnabled, timeoutMs)
+        } else {
+            runBackend.close()
+        }
+        clearBackend(runGeneration, runBackend)
+
+        withContext(Dispatchers.Main) {
+            if (text.isBlank()) {
+                failed(NoSpeechRecognizedException())
+            } else {
                 finished(text)
+            }
+        }
+    }
+
+    private suspend fun closeFailedBackend(generation: Long) {
+        val backendToClose = backendForGeneration(generation)
+        if (!releaseParakeetLease(generation, keepWarm = false)) {
+            backendToClose?.close()
+        }
+        clearBackend(generation, backendToClose)
+    }
+
+    private suspend fun releaseParakeetLease(
+        generation: Long,
+        keepWarm: Boolean,
+        timeoutMs: Long = 0L
+    ): Boolean {
+        val ownedLease = synchronized(this) {
+            parakeetLease?.takeIf { it.generation == generation }?.also {
+                parakeetLease = null
+            }
+        } ?: return false
+        ParakeetEngineManager.release(ownedLease.lease, lifecycleScope, keepWarm, timeoutMs)
+        return true
+    }
+
+    private fun backendForGeneration(generation: Long): SpeechBackend? = synchronized(this) {
+        backend.takeIf { backendGeneration == generation }
+    }
+
+    private fun clearBackend(generation: Long, expectedBackend: SpeechBackend?) {
+        synchronized(this) {
+            if (backendGeneration == generation && backend === expectedBackend) {
+                backend = null
+                backendGeneration = -1L
             }
         }
     }

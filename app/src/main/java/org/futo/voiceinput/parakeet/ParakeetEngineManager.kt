@@ -1,41 +1,84 @@
 package org.futo.voiceinput.parakeet
 
 import android.content.Context
+import android.os.SystemClock
 import androidx.lifecycle.LifecycleCoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import org.futo.voiceinput.backend.SpeechBackend
+
+internal class ParakeetEngineLease(
+    internal val id: Long,
+    private val backend: ParakeetBackend
+) : SpeechBackend {
+    override suspend fun load(context: Context) = Unit
+    override suspend fun transcribe(samples: FloatArray): String = backend.transcribe(samples)
+    override suspend fun close() = Unit
+}
 
 object ParakeetEngineManager {
     private val mutex = Mutex()
     private var backend: ParakeetBackend? = null
     private var unloadJob: Job? = null
+    private val activeLeaseIds = mutableSetOf<Long>()
+    private var nextLeaseId = 0L
 
-    suspend fun acquire(context: Context): ParakeetBackend = mutex.withLock {
+    internal suspend fun acquire(context: Context): ParakeetEngineLease = mutex.withLock {
+        val startedAt = SystemClock.elapsedRealtime()
         unloadJob?.cancel()
         unloadJob = null
 
         val current = backend
         if (current != null && ParakeetNative.isLoaded()) {
-            return@withLock current
+            current.configureDiagnostics(context)
+            current.logEngineAcquired(warm = true, elapsedMs = SystemClock.elapsedRealtime() - startedAt)
+            return@withLock newLease(current)
         }
 
         backend = null
-        ParakeetBackend().also {
+        val loadedBackend = ParakeetBackend().also {
             it.load(context.applicationContext)
+            it.logEngineAcquired(warm = false, elapsedMs = SystemClock.elapsedRealtime() - startedAt)
             backend = it
         }
+        newLease(loadedBackend)
     }
 
-    fun markIdle(scope: LifecycleCoroutineScope, timeoutMs: Long) {
+    private fun newLease(backend: ParakeetBackend): ParakeetEngineLease {
+        val id = ++nextLeaseId
+        activeLeaseIds += id
+        return ParakeetEngineLease(id, backend)
+    }
+
+    internal suspend fun release(
+        lease: ParakeetEngineLease,
+        scope: LifecycleCoroutineScope,
+        keepWarm: Boolean,
+        timeoutMs: Long = 0L
+    ) = mutex.withLock {
+        if (!activeLeaseIds.remove(lease.id)) {
+            return@withLock
+        }
+        if (activeLeaseIds.isNotEmpty()) {
+            return@withLock
+        }
+
         unloadJob?.cancel()
+        unloadJob = null
+        if (!keepWarm) {
+            backend?.close()
+            backend = null
+            return@withLock
+        }
+
         ParakeetNative.markIdle()
         unloadJob = scope.launch {
             delay(timeoutMs)
-            ParakeetNative.unloadIfIdle(timeoutMs)
             mutex.withLock {
+                ParakeetNative.unloadIfIdle(timeoutMs)
                 if (!ParakeetNative.isLoaded()) {
                     backend = null
                 }
@@ -46,6 +89,7 @@ object ParakeetEngineManager {
     suspend fun forceClose() = mutex.withLock {
         unloadJob?.cancel()
         unloadJob = null
+        activeLeaseIds.clear()
         backend?.close()
         backend = null
     }

@@ -6,6 +6,7 @@ import android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION
 import android.media.AudioAttributes.USAGE_ASSISTANCE_SONIFICATION
 import android.media.SoundPool
 import android.os.SystemClock
+import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityManager
 import androidx.compose.foundation.Canvas
@@ -256,6 +257,18 @@ fun ColumnScope.RecognizeMicError(openSettings: () -> Unit) {
 }
 
 @Composable
+fun ColumnScope.RecognizeFailure(message: String) {
+    Text(
+        message,
+        modifier = Modifier
+            .padding(12.dp, 8.dp)
+            .align(Alignment.CenterHorizontally),
+        textAlign = TextAlign.Center,
+        color = MaterialTheme.colorScheme.onSurface
+    )
+}
+
+@Composable
 fun ColumnScope.RecognizeModelDownloadRequired(body: String, onDownload: () -> Unit) {
     Text(
         body,
@@ -307,7 +320,7 @@ abstract class RecognizerView {
     abstract fun setContent(content: @Composable () -> Unit)
 
     abstract fun onCancel()
-    abstract fun sendResult(result: String)
+    abstract fun sendResult(result: String): Boolean
     abstract fun sendPartialResult(result: String): Boolean
     abstract fun requestPermission()
     abstract fun requestParakeetModelDownload()
@@ -361,7 +374,28 @@ abstract class RecognizerView {
                 manager.sendAccessibilityEvent(event)
 
             }
-            sendResult(result)
+            if (!sendResult(result)) {
+                failed(IllegalStateException("The active input connection is unavailable"))
+            }
+        }
+
+        override fun failed(error: Throwable) {
+            Log.e("RecognizerView", "Recognition did not produce a result", error)
+            val message = if (error is NoSpeechRecognizedException) {
+                context.getString(R.string.no_speech_recognized)
+            } else {
+                context.getString(R.string.recognition_failed)
+            }
+            setContent {
+                this@RecognizerView.Window(
+                    onClose = { cancelRecognizer() },
+                    onFinish = { cancelRecognizer() },
+                    onPauseVAD = { },
+                    allowClick = true
+                ) {
+                    RecognizeFailure(message)
+                }
+            }
         }
 
         override fun languageDetected(result: String) {

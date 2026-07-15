@@ -141,8 +141,8 @@ class RecognizeActivity : ComponentActivity() {
             this@RecognizeActivity.onCancel()
         }
 
-        override fun sendResult(result: String) {
-            this@RecognizeActivity.sendResult(result)
+        override fun sendResult(result: String): Boolean {
+            return this@RecognizeActivity.sendResult(result)
         }
 
         override fun sendPartialResult(result: String): Boolean {
@@ -227,7 +227,7 @@ class RecognizeActivity : ComponentActivity() {
         modelDownload.launch(modelDownloadIntent(models))
     }
 
-    private fun sendResult(result: String) {
+    private fun sendResult(result: String): Boolean {
         val returnIntent = Intent()
 
         val results = listOf(result)
@@ -235,5 +235,6 @@ class RecognizeActivity : ComponentActivity() {
         returnIntent.putExtra(RecognizerIntent.EXTRA_CONFIDENCE_SCORES, floatArrayOf(1.0f))
         setResult(RESULT_OK, returnIntent)
         finish()
+        return true
     }
 }
