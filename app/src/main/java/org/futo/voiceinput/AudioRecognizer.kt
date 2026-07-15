@@ -28,12 +28,11 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.yield
 import org.futo.voiceinput.ml.RunState
 import org.futo.voiceinput.moonshine.MoonshineBackend
-import org.futo.voiceinput.moonshine.toMoonshineModelVariant
+import org.futo.voiceinput.moonshine.getSelectedMoonshineModelVariant
 import org.futo.voiceinput.moonshine.isMoonshineModelDownloaded
 import org.futo.voiceinput.settings.ENABLE_30S_LIMIT
 import org.futo.voiceinput.settings.IS_VAD_ENABLED
 import org.futo.voiceinput.settings.MANUAL_STOP_DRAIN_MS
-import org.futo.voiceinput.settings.MOONSHINE_MODEL_VARIANT
 import org.futo.voiceinput.settings.PARAKEET_KEEP_WARM
 import org.futo.voiceinput.settings.PARAKEET_KEEP_WARM_TIMEOUT_MS
 import org.futo.voiceinput.settings.PARAKEET_USE_VAD
@@ -254,7 +253,7 @@ abstract class AudioRecognizer {
                 SpeechBackendType.Parakeet -> ParakeetEngineManager.acquire(context)
                 SpeechBackendType.Moonshine -> {
                     ParakeetEngineManager.forceClose()
-                    val variant = context.getSetting(MOONSHINE_MODEL_VARIANT).toMoonshineModelVariant()
+                    val variant = context.getSelectedMoonshineModelVariant()
                     MoonshineBackend(variant).also { it.load(context) }
                 }
                 SpeechBackendType.WhisperGGML -> {
@@ -321,7 +320,7 @@ abstract class AudioRecognizer {
                     }
                 }
                 SpeechBackendType.Moonshine -> {
-                    val variant = context.getSetting(MOONSHINE_MODEL_VARIANT).toMoonshineModelVariant()
+                    val variant = context.getSelectedMoonshineModelVariant()
                     if (!context.isMoonshineModelDownloaded(variant)) {
                         needMoonshineModelDownload()
                         return@launch

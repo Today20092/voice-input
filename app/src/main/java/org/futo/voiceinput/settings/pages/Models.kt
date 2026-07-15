@@ -160,12 +160,18 @@ fun MoonshineModelStatus() {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val modelVariant = useDataStore(MOONSHINE_MODEL_VARIANT)
-    val refresh = remember { mutableStateOf(0) }
+    val downloadedVariants = remember(context) {
+        mutableStateOf(
+            MoonshineModelVariant.entries.filter { context.isMoonshineModelDownloaded(it) }.toSet()
+        )
+    }
 
     DisposableEffect(lifecycleOwner, context) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
-                refresh.value += 1
+                downloadedVariants.value = MoonshineModelVariant.entries
+                    .filter { context.isMoonshineModelDownloaded(it) }
+                    .toSet()
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -174,17 +180,16 @@ fun MoonshineModelStatus() {
 
     ScreenTitle(stringResource(R.string.moonshine_model))
     MoonshineModelVariant.entries.forEach { variant ->
-        refresh.value
         val selected = modelVariant.value.toMoonshineModelVariant() == variant
-        val downloaded = context.isMoonshineModelDownloaded(variant)
-        val title = when (variant) {
-            MoonshineModelVariant.Small -> stringResource(R.string.moonshine_balanced)
-            MoonshineModelVariant.Medium -> stringResource(R.string.moonshine_higher_accuracy)
+        val downloaded = variant in downloadedVariants.value
+        val (titleResource, descriptionResource) = when (variant) {
+            MoonshineModelVariant.Small ->
+                R.string.moonshine_balanced to R.string.moonshine_small_description
+            MoonshineModelVariant.Medium ->
+                R.string.moonshine_higher_accuracy to R.string.moonshine_medium_description
         }
-        val description = when (variant) {
-            MoonshineModelVariant.Small -> stringResource(R.string.moonshine_small_description)
-            MoonshineModelVariant.Medium -> stringResource(R.string.moonshine_medium_description)
-        }
+        val title = stringResource(titleResource)
+        val description = stringResource(descriptionResource)
         val status = stringResource(
             if (downloaded) R.string.moonshine_model_downloaded
             else R.string.moonshine_model_download_required

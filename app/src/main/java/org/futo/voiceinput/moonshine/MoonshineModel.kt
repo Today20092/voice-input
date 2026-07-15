@@ -9,6 +9,7 @@ import org.futo.voiceinput.downloader.EXTRA_DOWNLOAD_FILE_NAMES
 import org.futo.voiceinput.downloader.EXTRA_DOWNLOAD_FILE_URLS
 import org.futo.voiceinput.downloader.EXTRA_TARGET_SUBDIR
 import org.futo.voiceinput.settings.MOONSHINE_MODEL_VARIANT
+import org.futo.voiceinput.settings.getSetting
 import org.futo.voiceinput.settings.getSettingBlocking
 import java.io.File
 
@@ -40,6 +41,9 @@ fun Context.isMoonshineModelDownloaded(variant: MoonshineModelVariant): Boolean 
 private fun Context.selectedMoonshineModelVariant() =
     getSettingBlocking(MOONSHINE_MODEL_VARIANT.key, MOONSHINE_MODEL_VARIANT.default)
         .toMoonshineModelVariant()
+
+suspend fun Context.getSelectedMoonshineModelVariant() =
+    getSetting(MOONSHINE_MODEL_VARIANT).toMoonshineModelVariant()
 
 fun Context.isMoonshineModelDownloaded(): Boolean =
     isMoonshineModelDownloaded(selectedMoonshineModelVariant())
