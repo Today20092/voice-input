@@ -41,7 +41,8 @@ import org.futo.voiceinput.settings.SpeechBackendType
 import org.futo.voiceinput.settings.getSetting
 import org.futo.voiceinput.parakeet.ParakeetBackend
 import org.futo.voiceinput.parakeet.ParakeetEngineManager
-import org.futo.voiceinput.parakeet.SpeechBackend
+import org.futo.voiceinput.backend.SpeechBackend
+import org.futo.voiceinput.backend.StreamingSpeechBackend
 import org.futo.voiceinput.parakeet.isParakeetModelDownloaded
 import org.futo.voiceinput.settings.toSpeechBackendType
 import java.nio.FloatBuffer
@@ -180,6 +181,7 @@ abstract class AudioRecognizer {
         stopAndReleaseRecorder()
         recorderJob?.cancel()
         modelJob?.cancel()
+        loadModelJob?.cancel()
         isRecording = false
 
         floatSamples.clear()
@@ -188,6 +190,8 @@ abstract class AudioRecognizer {
 
         lifecycleScope.launch {
             modelJob?.join()
+            loadModelJob?.join()
+            loadModelJob = null
             if (shouldForceCloseParakeet) {
                 ParakeetEngineManager.forceClose()
             }
@@ -394,7 +398,7 @@ abstract class AudioRecognizer {
             focusAudio()
             isRecording = true
 
-            backend?.takeIf { it.streamsAudio }?.startStreaming { result ->
+            (backend as? StreamingSpeechBackend)?.startStreaming { result ->
                 lifecycleScope.launch {
                     withContext(Dispatchers.Main) {
                         partialResult(PersonalVocabulary.apply(result, personalVocabulary))
@@ -593,13 +597,14 @@ abstract class AudioRecognizer {
             return false
         }
 
-        val streamingChunk = if (backend?.streamsAudio == true) FloatArray(nRead) else null
+        val streamingBackend = backend as? StreamingSpeechBackend
+        val streamingChunk = if (streamingBackend != null) FloatArray(nRead) else null
         for(i in 0 until nRead) {
             val sample = samples[i].toFloat() / Short.MAX_VALUE.toFloat()
             floatSamples.put(sample)
             streamingChunk?.set(i, sample)
         }
-        streamingChunk?.let { backend?.acceptAudio(it) }
+        streamingChunk?.let { streamingBackend?.acceptAudio(it) }
 
         return true
     }
@@ -642,9 +647,7 @@ abstract class AudioRecognizer {
         repeat(silenceSamples) {
             floatSamples.put(0.0f)
         }
-        if (backend?.streamsAudio == true) {
-            backend?.acceptAudio(FloatArray(silenceSamples))
-        }
+        (backend as? StreamingSpeechBackend)?.acceptAudio(FloatArray(silenceSamples))
     }
 
     private suspend fun runModel(){
@@ -679,11 +682,8 @@ abstract class AudioRecognizer {
 
         yield()
         val text = try {
-            val rawText = if (backend!!.streamsAudio) {
-                backend!!.finishStreaming()
-            } else {
-                backend!!.transcribe(floatArray)
-            }
+            val rawText = (backend as? StreamingSpeechBackend)?.finishStreaming()
+                ?: backend!!.transcribe(floatArray)
             PersonalVocabulary.apply(rawText, personalVocabulary)
         } catch(e: OutOfMemoryError) {
             decodingStatus(RunState.OOMError)

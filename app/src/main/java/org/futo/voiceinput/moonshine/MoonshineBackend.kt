@@ -14,10 +14,9 @@ import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import org.futo.voiceinput.parakeet.SpeechBackend
+import org.futo.voiceinput.backend.StreamingSpeechBackend
 
-class MoonshineBackend : SpeechBackend {
-    override val streamsAudio = true
+class MoonshineBackend : StreamingSpeechBackend {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var transcriber: Transcriber? = null

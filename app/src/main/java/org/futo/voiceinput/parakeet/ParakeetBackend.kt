@@ -1,6 +1,7 @@
 package org.futo.voiceinput.parakeet
 
 import android.content.Context
+import org.futo.voiceinput.backend.SpeechBackend
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
