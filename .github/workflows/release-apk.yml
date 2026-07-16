@@ -3,6 +3,7 @@ name: Build Release APK
 on:
   push:
     branches:
+      - "master"
       - "codex/moonshine-vocabulary-beta"
     tags:
       - "v*"
