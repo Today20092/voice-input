@@ -37,7 +37,7 @@ class RecognitionModelCatalogTest {
 
         val nemotron = RecognitionModelCatalog.nemotronEnglishBalanced
         assertEquals("nemotron", nemotron.runtimeId)
-        assertEquals(null, nemotron.variantId)
+        assertEquals("balanced", nemotron.variantId)
         assertEquals(TranscriptionBehavior.LIVE, nemotron.transcription)
         assertEquals(PerformanceClass.BALANCED, nemotron.performanceClass)
         assertEquals(4, nemotron.artifacts.size)

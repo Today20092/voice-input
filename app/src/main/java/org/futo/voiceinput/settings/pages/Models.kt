@@ -43,7 +43,9 @@ import org.futo.voiceinput.moonshine.MoonshineModelVariant
 import org.futo.voiceinput.moonshine.startMoonshineModelDownloadActivity
 import org.futo.voiceinput.moonshine.toMoonshineModelVariant
 import org.futo.voiceinput.nemotron.isNemotronModelDownloaded
+import org.futo.voiceinput.nemotron.recognitionModel
 import org.futo.voiceinput.nemotron.startNemotronModelDownloadActivity
+import org.futo.voiceinput.nemotron.toNemotronProfile
 import org.futo.voiceinput.settings.DISMISS_MIGRATION_TIP
 import org.futo.voiceinput.settings.ENABLE_MULTILINGUAL
 import org.futo.voiceinput.settings.ENGLISH_MODEL_INDEX
@@ -51,6 +53,7 @@ import org.futo.voiceinput.settings.LANGUAGE_TOGGLES
 import org.futo.voiceinput.settings.MANUALLY_SELECT_LANGUAGE
 import org.futo.voiceinput.settings.MODELS_MIGRATED
 import org.futo.voiceinput.settings.MOONSHINE_MODEL_VARIANT
+import org.futo.voiceinput.settings.NEMOTRON_PROFILE
 import org.futo.voiceinput.settings.MULTILINGUAL_MODEL_INDEX
 import org.futo.voiceinput.settings.PERSONAL_DICTIONARY
 import org.futo.voiceinput.settings.SPEECH_BACKEND
@@ -75,6 +78,7 @@ fun modelsSubtitle(): String? {
     val context = LocalContext.current
     val (backend, _) = useDataStore(SPEECH_BACKEND)
     val (moonshineVariantId, _) = useDataStore(MOONSHINE_MODEL_VARIANT)
+    val (nemotronProfileId, _) = useDataStore(NEMOTRON_PROFILE)
     return when (backend.toSpeechBackendType()) {
         SpeechBackendType.Parakeet -> {
             if (context.isParakeetModelDownloaded(verifyHashes = true)) {
@@ -84,10 +88,11 @@ fun modelsSubtitle(): String? {
             }
         }
         SpeechBackendType.Nemotron -> {
-            if (context.isNemotronModelDownloaded()) {
-                stringResource(R.string.nemotron_model_active_subtitle)
+            val profile = nemotronProfileId.toNemotronProfile()
+            if (context.isNemotronModelDownloaded(profile)) {
+                stringResource(R.string.nemotron_model_active_subtitle, profile.recognitionModel().displayName)
             } else {
-                stringResource(R.string.nemotron_model_download_required)
+                stringResource(R.string.nemotron_model_download_required, profile.recognitionModel().displayName)
             }
         }
         SpeechBackendType.Moonshine -> {
@@ -135,12 +140,17 @@ fun ManagedRecognitionModelCatalog() {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val backend = useDataStore(SPEECH_BACKEND)
-    val modelVariant = useDataStore(MOONSHINE_MODEL_VARIANT)
+    val moonshineVariant = useDataStore(MOONSHINE_MODEL_VARIANT)
+    val nemotronProfile = useDataStore(NEMOTRON_PROFILE)
     val refresh = remember { mutableStateOf(0) }
     val store = remember(context) { RecognitionModelStore(context.filesDir) }
     val selectedModelId = RecognitionModelCatalog.modelFor(
         runtimeId = backend.value,
-        variantId = if (backend.value == SpeechBackendType.Moonshine.id) modelVariant.value else null
+        variantId = when (backend.value) {
+            SpeechBackendType.Moonshine.id -> moonshineVariant.value
+            SpeechBackendType.Nemotron.id -> nemotronProfile.value
+            else -> null
+        }
     )?.id
 
     DisposableEffect(lifecycleOwner, context) {
@@ -174,7 +184,12 @@ fun ManagedRecognitionModelCatalog() {
                     selectedModelId = selectedModelId,
                     store = store,
                     onSelect = {
-                        model.variantId?.let { modelVariant.setValue(it) }
+                        model.variantId?.let {
+                            when (model.runtimeId) {
+                                SpeechBackendType.Moonshine.id -> moonshineVariant.setValue(it)
+                                SpeechBackendType.Nemotron.id -> nemotronProfile.setValue(it)
+                            }
+                        }
                         backend.setValue(model.runtimeId)
                     },
                     onDeleted = { refresh.value += 1 }
@@ -218,7 +233,9 @@ private fun ManagedRecognitionModelItem(
                 SpeechBackendType.Moonshine.id -> context.startMoonshineModelDownloadActivity(
                     model.variantId.orEmpty().toMoonshineModelVariant()
                 )
-                SpeechBackendType.Nemotron.id -> context.startNemotronModelDownloadActivity()
+                SpeechBackendType.Nemotron.id -> context.startNemotronModelDownloadActivity(
+                    model.variantId.orEmpty().toNemotronProfile()
+                )
                 else -> context.startParakeetModelDownloadActivity()
             }
         }

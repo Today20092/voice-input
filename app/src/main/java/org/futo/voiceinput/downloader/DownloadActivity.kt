@@ -45,7 +45,9 @@ import org.futo.voiceinput.R
 import org.futo.voiceinput.parakeet.sha256
 import org.futo.voiceinput.recognition.RecognitionModel
 import org.futo.voiceinput.settings.MOONSHINE_MODEL_VARIANT
+import org.futo.voiceinput.settings.NEMOTRON_PROFILE
 import org.futo.voiceinput.settings.SPEECH_BACKEND
+import org.futo.voiceinput.settings.SpeechBackendType
 import org.futo.voiceinput.settings.ScreenTitle
 import org.futo.voiceinput.settings.ScrollableList
 import org.futo.voiceinput.settings.setSettingBlocking
@@ -574,11 +576,15 @@ class DownloadActivity : ComponentActivity() {
             marker.writeText("$modelId@$modelVersion")
         }
 
-        intent.getStringExtra(EXTRA_SELECT_BACKEND)?.let {
-            setSettingBlocking(SPEECH_BACKEND.key, it)
+        val backend = intent.getStringExtra(EXTRA_SELECT_BACKEND)
+        intent.getStringExtra(EXTRA_SELECT_VARIANT)?.let { variant ->
+            when (backend) {
+                SpeechBackendType.Moonshine.id -> setSettingBlocking(MOONSHINE_MODEL_VARIANT.key, variant)
+                SpeechBackendType.Nemotron.id -> setSettingBlocking(NEMOTRON_PROFILE.key, variant)
+            }
         }
-        intent.getStringExtra(EXTRA_SELECT_VARIANT)?.let {
-            setSettingBlocking(MOONSHINE_MODEL_VARIANT.key, it)
+        backend?.let {
+            setSettingBlocking(SPEECH_BACKEND.key, it)
         }
 
         val returnIntent = Intent()

@@ -105,8 +105,8 @@
     <string name="parakeet_download_required_title">Download Required</string>
     <string name="parakeet_download_required_body">The Parakeet speech model must be downloaded before voice input can run. This may incur data fees on mobile data.</string>
     <string name="nemotron_download_required_body">The Nemotron streaming model must be downloaded before voice input can run. This may incur data fees on mobile data.</string>
-    <string name="nemotron_model_active_subtitle">Nemotron English Balanced active</string>
-    <string name="nemotron_model_download_required">Nemotron English Balanced download required</string>
+    <string name="nemotron_model_active_subtitle">Nemotron English %1$s active</string>
+    <string name="nemotron_model_download_required">Nemotron English %1$s download required</string>
     <string name="parakeet_english_only_tip">The selected Parakeet model supports English only.</string>
     <string name="download_model">Download Model</string>
     <string name="speech_backend">Speech Backend</string>

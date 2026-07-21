@@ -109,38 +109,48 @@ object RecognitionModelCatalog {
         )
     )
 
-    private const val NEMOTRON_ARCHIVE_URL =
-        "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/" +
-            "sherpa-onnx-nemotron-speech-streaming-en-0.6b-160ms-int8-2026-04-25.tar.bz2"
-    private const val NEMOTRON_DIRECTORY =
-        "sherpa-onnx-nemotron-speech-streaming-en-0.6b-160ms-int8-2026-04-25"
+    private const val NEMOTRON_VERSION = "2026-04-25"
 
-    val nemotronEnglishBalanced = RecognitionModel(
-        id = "nemotron-speech-streaming-en-0.6b-160ms",
-        version = "2026-04-25",
-        runtimeId = "nemotron",
-        variantId = null,
-        directoryName = NEMOTRON_DIRECTORY,
-        source = "NVIDIA Nemotron via k2-fsa/sherpa-onnx",
-        sourceUrl = "https://github.com/k2-fsa/sherpa-onnx/releases/tag/asr-models",
-        displayName = "Nemotron English Balanced",
-        description = "Live English transcription with balanced latency and accuracy.",
-        transcription = TranscriptionBehavior.LIVE,
-        recognitionLanguages = "English",
+    val nemotronEnglishLowLatency = nemotronPackage(
+        latencyMs = 80,
+        variantId = "low_latency",
+        displayName = "Low latency",
+        description = "80 ms live English partials with the lowest latency and a lower-accuracy trade-off.",
+        performanceClass = PerformanceClass.LIGHT,
+        encoderSizeBytes = 652_916_847,
+        encoderSha256 = "29a6aaf9155f25562a08a1aeea1f1a1a5d24b2f44a1d68211faf8a92073d1df6",
+        archiveSizeBytes = 463_945_379,
+        archiveSha256 = "caaf92069dbd1ca054f8e17cab179813bc28b4585f5c392540357ece4722333d"
+    )
+
+    val nemotronEnglishBalanced = nemotronPackage(
+        latencyMs = 160,
+        variantId = "balanced",
+        displayName = "Balanced",
+        description = "Recommended 160 ms live English profile balancing latency and accuracy.",
         performanceClass = PerformanceClass.BALANCED,
-        artifacts = listOf(
-            nemotronArtifact("encoder.int8.onnx", 652_916_849, "71111f61b18e1e65e01e369434a5c0434868d2f44892742ae54240600c681209"),
-            nemotronArtifact("decoder.int8.onnx", 7_257_753, "0be9702c2f427a2b6bb241d298e0d3836a558de1f5b9fd3018f1cce6e2b3fa98"),
-            nemotronArtifact("joiner.int8.onnx", 1_735_862, "a35eac38a22ebceb04d230ed7afe0d68f446ba6914a036b97f14fece95967e23"),
-            nemotronArtifact("tokens.txt", 8_952, "dc0b4584ab2e4ddbf888425c076c61b736e7356a015250db7d307e6f1a8188ff")
-        ),
-        archive = RecognitionModelArtifact(
-            name = "$NEMOTRON_DIRECTORY.tar.bz2",
-            url = NEMOTRON_ARCHIVE_URL,
-            sizeBytes = 463_945_198,
-            sha256 = "0ae73a41cd51599dc7cac9ac083d9d35de53d762ca45923505fde47a3751814b"
-        ),
-        archiveRoot = NEMOTRON_DIRECTORY
+        encoderSizeBytes = 652_916_849,
+        encoderSha256 = "71111f61b18e1e65e01e369434a5c0434868d2f44892742ae54240600c681209",
+        archiveSizeBytes = 463_945_198,
+        archiveSha256 = "0ae73a41cd51599dc7cac9ac083d9d35de53d762ca45923505fde47a3751814b"
+    )
+
+    val nemotronEnglishAccuracy = nemotronPackage(
+        latencyMs = 560,
+        variantId = "accuracy",
+        displayName = "Accuracy",
+        description = "Highest English accuracy with slower 560 ms live partials.",
+        performanceClass = PerformanceClass.DEMANDING,
+        encoderSizeBytes = 652_916_849,
+        encoderSha256 = "7d932213491ad355c6e5576705dc3494731a52af87d7a1b954559340147909d8",
+        archiveSizeBytes = 463_945_051,
+        archiveSha256 = "78e2b79fcf7271553a74402a76b771b09ea40117a39566a79f52235b23db6358"
+    )
+
+    val nemotronEnglishProfiles = listOf(
+        nemotronEnglishLowLatency,
+        nemotronEnglishBalanced,
+        nemotronEnglishAccuracy
     )
 
     val cards = listOf(
@@ -161,8 +171,8 @@ object RecognitionModelCatalog {
             description = "NVIDIA live recognition through Sherpa-ONNX.",
             transcription = TranscriptionBehavior.LIVE,
             recognitionLanguages = "English",
-            performanceClasses = setOf(PerformanceClass.BALANCED),
-            models = listOf(nemotronEnglishBalanced)
+            performanceClasses = PerformanceClass.entries.toSet(),
+            models = nemotronEnglishProfiles
         ),
         RecognitionModelCard(
             id = "parakeet",
@@ -222,8 +232,52 @@ object RecognitionModelCatalog {
     private fun artifact(name: String, sizeBytes: Long, generation: String, sha256: String) =
         RecognitionModelArtifact(name, "https://placeholder.invalid/$name?generation=$generation", sizeBytes, sha256)
 
-    private fun nemotronArtifact(name: String, sizeBytes: Long, sha256: String) =
-        RecognitionModelArtifact(name, NEMOTRON_ARCHIVE_URL, sizeBytes, sha256)
+    private fun nemotronPackage(
+        latencyMs: Int,
+        variantId: String,
+        displayName: String,
+        description: String,
+        performanceClass: PerformanceClass,
+        encoderSizeBytes: Long,
+        encoderSha256: String,
+        archiveSizeBytes: Long,
+        archiveSha256: String
+    ): RecognitionModel {
+        val directory =
+            "sherpa-onnx-nemotron-speech-streaming-en-0.6b-${latencyMs}ms-int8-$NEMOTRON_VERSION"
+        val archiveUrl =
+            "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/$directory.tar.bz2"
+        fun artifact(name: String, sizeBytes: Long, sha256: String) =
+            RecognitionModelArtifact(name, archiveUrl, sizeBytes, sha256)
+
+        return RecognitionModel(
+            id = "nemotron-speech-streaming-en-0.6b-${latencyMs}ms",
+            version = NEMOTRON_VERSION,
+            runtimeId = "nemotron",
+            variantId = variantId,
+            directoryName = directory,
+            source = "NVIDIA Nemotron via k2-fsa/sherpa-onnx",
+            sourceUrl = "https://github.com/k2-fsa/sherpa-onnx/releases/tag/asr-models",
+            displayName = displayName,
+            description = description,
+            transcription = TranscriptionBehavior.LIVE,
+            recognitionLanguages = "English",
+            performanceClass = performanceClass,
+            artifacts = listOf(
+                artifact("encoder.int8.onnx", encoderSizeBytes, encoderSha256),
+                artifact("decoder.int8.onnx", 7_257_753, "0be9702c2f427a2b6bb241d298e0d3836a558de1f5b9fd3018f1cce6e2b3fa98"),
+                artifact("joiner.int8.onnx", 1_735_862, "a35eac38a22ebceb04d230ed7afe0d68f446ba6914a036b97f14fece95967e23"),
+                artifact("tokens.txt", 8_952, "dc0b4584ab2e4ddbf888425c076c61b736e7356a015250db7d307e6f1a8188ff")
+            ),
+            archive = RecognitionModelArtifact(
+                name = "$directory.tar.bz2",
+                url = archiveUrl,
+                sizeBytes = archiveSizeBytes,
+                sha256 = archiveSha256
+            ),
+            archiveRoot = directory
+        )
+    }
 
 }
 
