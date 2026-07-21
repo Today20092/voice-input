@@ -37,6 +37,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import okhttp3.Call
 import okhttp3.Callback
@@ -59,6 +62,8 @@ import java.io.File
 import java.io.FilterInputStream
 import java.io.InputStream
 import java.io.IOException
+import java.io.RandomAccessFile
+import java.util.concurrent.atomic.AtomicLong
 import kotlin.math.max
 
 const val EXTRA_DOWNLOAD_FILE_NAMES = "download_file_names"
@@ -78,6 +83,9 @@ const val EXTRA_ARCHIVE_URL = "recognition_model_archive_url"
 const val EXTRA_ARCHIVE_HASH = "recognition_model_archive_hash"
 const val EXTRA_ARCHIVE_SIZE = "recognition_model_archive_size"
 const val EXTRA_ARCHIVE_ROOT = "recognition_model_archive_root"
+
+private const val PARALLEL_DOWNLOAD_MIN_SIZE = 32L * 1024L * 1024L
+private const val PROGRESS_SAVE_INTERVAL = 1024L * 1024L
 
 fun Intent.putRecognitionModel(model: RecognitionModel) {
     putStringArrayListExtra(EXTRA_DOWNLOAD_FILE_NAMES, ArrayList(model.artifacts.map { it.name }))
@@ -403,95 +411,145 @@ class DownloadActivity : ComponentActivity() {
             return
         }
 
-        modelsToDownload.forEach {
-            it.started = true
-            it.error = false
-            it.progress = 0.0f
-            val request = Request.Builder().method("GET", null).url(it.url).build()
+        modelsToDownload.forEach { model ->
+            model.started = true
+            model.error = false
+            model.progress = 0.0f
+            if ((model.expectedSize ?: 0L) >= PARALLEL_DOWNLOAD_MIN_SIZE) {
+                lifecycleScope.launch(Dispatchers.IO) { downloadRanged(model) }
+            } else {
+                downloadSingle(model)
+            }
+        }
+    }
 
-            httpClient.newCall(request).enqueue(object : Callback {
-                override fun onFailure(call: Call, e: IOException) {
-                    markError(it)
-                }
+    private suspend fun downloadRanged(model: ModelInfo) {
+        val totalSize = requireNotNull(model.expectedSize)
+        val ranges = downloadRanges(totalSize)
+        val file = File(model.targetFile.absolutePath + ".download")
+        val progressFiles = ranges.indices.map { File(file.absolutePath + ".range$it") }
+        file.parentFile?.mkdirs()
+        if (!file.exists()) progressFiles.forEach { it.delete() }
 
-                override fun onResponse(call: Call, response: Response) {
-                    response.use { response ->
-                        if (!response.isSuccessful) {
-                            markError(it)
-                            return
-                        }
+        fun savedBytes(progressFile: File) = runCatching {
+            if (progressFile.isFile) progressFile.readText().toLongOrNull() ?: 0L else 0L
+        }.getOrDefault(0L)
 
-                        response.body?.source()?.let { source ->
+        val completed = AtomicLong(progressFiles.zip(ranges).sumOf { (progressFile, range) ->
+            savedBytes(progressFile).coerceIn(0L, range.size)
+        })
+        val lastUiUpdate = AtomicLong(0L)
+        updateModelOnMain { model.progress = completed.get().toFloat() / totalSize }
 
-                            val contentLength = response.headers["content-length"]?.toLongOrNull()
-                            updateModelOnMain {
-                                it.size = contentLength
+        try {
+            coroutineScope {
+                ranges.mapIndexed { index, range ->
+                    async(Dispatchers.IO) {
+                        val progressFile = progressFiles[index]
+                        var rangeDownloaded = savedBytes(progressFile).coerceIn(0L, range.size)
+                        if (rangeDownloaded == range.size) return@async
+
+                        val start = range.resumeAt(rangeDownloaded)
+                        val request = Request.Builder()
+                            .url(model.url)
+                            .header("Range", "bytes=$start-${range.endInclusive}")
+                            .build()
+                        httpClient.newCall(request).execute().use { response ->
+                            val body = response.body
+                            if (response.code != 206 || body == null) {
+                                throw IOException("Server did not honor range request: HTTP ${response.code}")
                             }
 
-                            val fileName = it.name + ".download"
-                            val file =
-                                File.createTempFile(fileName, null, this@DownloadActivity.cacheDir)
-
-                            try {
-                                file.outputStream().use { os ->
+                            RandomAccessFile(file, "rw").use { output ->
+                                output.seek(start)
+                                body.byteStream().use { input ->
                                     val buffer = ByteArray(128 * 1024)
-                                    var downloaded = 0L
-                                    var lastProgress = 0.0f
-                                    var lastUpdateTime = 0L
-                                    while (true) {
-                                        val read = source.read(buffer)
-                                        if (read == -1) {
-                                            break
+                                    var lastSaved = rangeDownloaded
+                                    while (rangeDownloaded < range.size) {
+                                        val read = input.read(
+                                            buffer,
+                                            0,
+                                            minOf(buffer.size.toLong(), range.size - rangeDownloaded).toInt()
+                                        )
+                                        if (read == -1) throw IOException("Range download ended early")
+                                        output.write(buffer, 0, read)
+                                        rangeDownloaded += read
+                                        val totalDownloaded = completed.addAndGet(read.toLong())
+                                        if (rangeDownloaded - lastSaved >= PROGRESS_SAVE_INTERVAL) {
+                                            progressFile.writeText(rangeDownloaded.toString())
+                                            lastSaved = rangeDownloaded
                                         }
-
-                                        os.write(buffer, 0, read)
-
-                                        downloaded += read
-
-                                        if (contentLength != null && contentLength > 0L) {
-                                            val progress = (downloaded.toFloat() / contentLength.toFloat())
-                                                .coerceIn(0.0f, 1.0f)
-                                            val now = SystemClock.elapsedRealtime()
-                                            if (progress - lastProgress >= 0.01f || now - lastUpdateTime >= 250L) {
-                                                lastProgress = progress
-                                                lastUpdateTime = now
-                                                updateModelOnMain {
-                                                    it.progress = progress
-                                                }
+                                        val now = SystemClock.elapsedRealtime()
+                                        val previousUpdate = lastUiUpdate.get()
+                                        if (totalDownloaded == totalSize ||
+                                            now - previousUpdate >= 250L &&
+                                            lastUiUpdate.compareAndSet(previousUpdate, now)
+                                        ) {
+                                            updateModelOnMain {
+                                                model.progress = totalDownloaded.toFloat() / totalSize
                                             }
                                         }
                                     }
                                 }
-
-                                if (!isValidDownloadedFile(file, it.sha256)) {
-                                    file.delete()
-                                    markError(it)
-                                    return
-                                }
-
-                                it.targetFile.parentFile?.mkdirs()
-                                if (it.targetFile.exists() && !it.targetFile.delete()) {
-                                    throw IOException("Failed to replace ${it.targetFile.absolutePath}")
-                                }
-
-                                if (!file.renameTo(it.targetFile)) {
-                                    file.copyTo(it.targetFile, overwrite = true)
-                                    file.delete()
-                                }
-
-                                markFinished(it)
-                            } catch (e: Exception) {
-                                e.printStackTrace()
-                                file.delete()
-                                markError(it)
                             }
-                        } ?: run {
-                            markError(it)
+                            progressFile.writeText(rangeDownloaded.toString())
                         }
                     }
-                }
-            })
+                }.awaitAll()
+            }
+
+            if (file.length() != totalSize || !isValidDownloadedFile(file, model.sha256)) {
+                file.delete()
+                progressFiles.forEach { it.delete() }
+                throw IOException("Downloaded file failed size or checksum validation")
+            }
+            if (model.targetFile.exists() && !model.targetFile.delete()) {
+                throw IOException("Failed to replace ${model.targetFile.absolutePath}")
+            }
+            if (!file.renameTo(model.targetFile)) throw IOException("Failed to install ${model.name}")
+            progressFiles.forEach { it.delete() }
+            markFinished(model)
+        } catch (error: Exception) {
+            error.printStackTrace()
+            markError(model)
         }
+    }
+
+    private fun downloadSingle(model: ModelInfo) {
+        val request = Request.Builder().get().url(model.url).build()
+        httpClient.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) = markError(model)
+
+            override fun onResponse(call: Call, response: Response) {
+                response.use {
+                    val body = response.body
+                    if (!response.isSuccessful || body == null) {
+                        markError(model)
+                        return
+                    }
+                    val file = File.createTempFile(model.name + ".download", null, cacheDir)
+                    try {
+                        body.byteStream().use { input ->
+                            file.outputStream().use { output -> input.copyTo(output, 128 * 1024) }
+                        }
+                        if (!isValidDownloadedFile(file, model.sha256)) throw IOException("Checksum failed")
+                        model.targetFile.parentFile?.mkdirs()
+                        if (model.targetFile.exists() && !model.targetFile.delete()) {
+                            throw IOException("Failed to replace ${model.targetFile.absolutePath}")
+                        }
+                        if (!file.renameTo(model.targetFile)) {
+                            file.copyTo(model.targetFile, overwrite = true)
+                            file.delete()
+                        }
+                        markFinished(model)
+                    } catch (error: Exception) {
+                        error.printStackTrace()
+                        file.delete()
+                        markError(model)
+                    }
+                }
+            }
+        })
     }
 
     private fun downloadArchive(model: ModelInfo) {
