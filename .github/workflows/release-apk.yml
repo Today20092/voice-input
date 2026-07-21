@@ -86,3 +86,4 @@ jobs:
             The Parakeet integration and repository changes in this fork were built with AI assistance using Codex (GPT-5).
           files: release/*.apk
           generate_release_notes: true
+          prerelease: ${{ contains(github.ref_name, '-beta') }}
