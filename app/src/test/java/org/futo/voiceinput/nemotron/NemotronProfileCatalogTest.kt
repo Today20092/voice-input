@@ -81,6 +81,8 @@ class NemotronProfileCatalogTest {
         directoryName = directoryName,
         source = "Test source",
         sourceUrl = "https://example.com/source",
+        license = "Test license",
+        licenseUrl = "https://example.com/license",
         displayName = id,
         description = "Test package",
         transcription = TranscriptionBehavior.LIVE,

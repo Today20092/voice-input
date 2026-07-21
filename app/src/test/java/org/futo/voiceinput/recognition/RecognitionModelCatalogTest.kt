@@ -76,6 +76,16 @@ class RecognitionModelCatalogTest {
     }
 
     @Test
+    fun downloadableModelsExposeSourceAndLicenseNotices() {
+        RecognitionModelCatalog.models.forEach { model ->
+            assertTrue(model.source.isNotBlank())
+            assertTrue(model.sourceUrl.startsWith("https://"))
+            assertTrue(model.license.isNotBlank())
+            assertTrue(model.licenseUrl.startsWith("https://"))
+        }
+    }
+
+    @Test
     fun installIsMarkedOnlyAfterEveryArtifactValidates() {
         val modelPackage = testPackage()
         val store = RecognitionModelStore(temporaryFolder.root)
@@ -232,6 +242,8 @@ class RecognitionModelCatalogTest {
         directoryName = "test-package-1",
         source = "Test source",
         sourceUrl = "https://example.com/source",
+        license = "Test license",
+        licenseUrl = "https://example.com/license",
         displayName = "Test",
         description = "Test package",
         transcription = TranscriptionBehavior.FINAL_ONLY,

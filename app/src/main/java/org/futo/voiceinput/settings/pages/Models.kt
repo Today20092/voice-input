@@ -245,7 +245,7 @@ private fun ManagedRecognitionModelItem(
     }
     val subtitle = "${model.description}\n${model.transcription.label} • " +
         "${model.recognitionLanguages} • ${model.performanceClass.label}\n" +
-        "${model.source} • ${"%.1f".format(model.transferBytes / 1_000_000.0)} MB • $status"
+        "${model.source} • ${model.license} • ${"%.1f".format(model.transferBytes / 1_000_000.0)} MB • $status"
     val selectOrDownload = {
         if (installed) {
             if (bundled) onSelect() else store.select(requireNotNull(installedModel), onSelect)

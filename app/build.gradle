@@ -390,3 +390,57 @@ tasks.named('preBuild') {
         dependsOn tasks.named('downloadParakeetModels')
     }
 }
+
+tasks.register('verifyDevDebugApk') {
+    description = 'Build and verify the dev debug APK native packaging'
+    group = 'verification'
+    dependsOn tasks.named('assembleDevDebug')
+
+    doLast {
+        def apkDirectory = layout.buildDirectory.dir('outputs/apk/dev/debug').get().asFile
+        def apks = apkDirectory.listFiles()?.findAll { it.name.endsWith('.apk') } ?: []
+        if (apks.size() != 1) {
+            throw new GradleException("Expected one dev debug APK in ${apkDirectory}, found ${apks.size()}")
+        }
+
+        def apk = apks[0]
+        def nativeLibraryNames = { File archive ->
+            def opened = new java.util.zip.ZipFile(archive)
+            try {
+                return opened.entries().findAll {
+                    !it.directory && it.name.startsWith('lib/')
+                }*.name.sort()
+            } finally {
+                opened.close()
+            }
+        }
+        def nativeLibraries = nativeLibraryNames(apk)
+        def unexpectedAbis = nativeLibraries.findAll { !it.startsWith('lib/arm64-v8a/') }
+        if (unexpectedAbis) {
+            throw new GradleException("Unexpected native ABIs: ${unexpectedAbis.join(', ')}")
+        }
+        if (nativeLibraries.count { it.endsWith('/libonnxruntime.so') } != 1) {
+            throw new GradleException('Expected exactly one ONNX Runtime native library')
+        }
+        if (nativeLibraries.count { it.endsWith('/libsherpa-onnx-jni.so') } != 1) {
+            throw new GradleException('Expected exactly one Sherpa-ONNX JNI library')
+        }
+
+        println "APK: ${apk.name}"
+        println "Size: ${apk.length()} bytes"
+        println "ABI: arm64-v8a"
+        println "Native libraries (${nativeLibraries.size()}): ${nativeLibraries.collect { it.tokenize('/').last() }.join(', ')}"
+
+        if (project.hasProperty('baselineApk')) {
+            def baseline = file(project.property('baselineApk'))
+            if (!baseline.isFile()) {
+                throw new GradleException("Baseline APK not found: ${baseline}")
+            }
+            def baselineLibraries = nativeLibraryNames(baseline)
+            println "Baseline size: ${baseline.length()} bytes"
+            println "Size change: ${apk.length() - baseline.length()} bytes"
+            println "Native libraries added: ${(nativeLibraries - baselineLibraries).join(', ') ?: 'none'}"
+            println "Native libraries removed: ${(baselineLibraries - nativeLibraries).join(', ') ?: 'none'}"
+        }
+    }
+}
