@@ -202,3 +202,35 @@ Commit `d12ee49` removes the Rust/JNI runtime, Cargo/NDK wiring, duplicate-libra
 - [x] Forward navigation retains clear transition feedback.
 - [ ] An instrumentation check covers settings back-stack behavior at the shared navigation-host seam, and a real-device or emulator check verifies the interactive animation.
 - [ ] Relevant unit, instrumentation, build, and lint checks pass after the dependency upgrade.
+
+## Return truthful recognition activity results
+
+**What to build:** Make one-shot Android speech-recognition callers receive the recognized transcript without invented metadata. Successful recognition returns one final result, while cancellation returns no transcript. See [the Android voice-input protocol alignment spec](docs/specs/android-voice-input-protocol-alignment.md).
+
+**Blocked by:** None — can start immediately.
+
+- [x] A successful recognition activity result contains one non-empty transcript.
+- [x] Results omit confidence scores when the selected backend does not supply a real calibrated confidence value.
+- [x] Cancellation returns a canceled result with no transcript.
+- [x] A focused contract test covers successful and canceled result construction.
+- [x] Relevant unit tests and lint pass.
+
+### Resolution
+
+Implemented by `14b268c` (`fix: return truthful recognition activity results`).
+
+## Remove the nonfunctional recognition service
+
+**What to build:** Make the installed app advertise only voice-input protocols it actually supports by removing the empty recognition-service implementation and its disabled production declaration, while preserving the IME, recognition activity, and existing keyboard compatibility workaround. See [the Android voice-input protocol alignment spec](docs/specs/android-voice-input-protocol-alignment.md).
+
+**Blocked by:** None — can start immediately.
+
+- [x] The empty recognition-service implementation and misleading disabled declaration are removed.
+- [x] The merged manifest still exposes the input method and one-shot recognition activity.
+- [x] The existing test-category keyboard compatibility workaround remains unchanged.
+- [x] No production `RecognitionService` provider is advertised.
+- [x] Relevant unit tests, manifest processing, assembly, and lint pass.
+
+### Resolution
+
+Implemented by `650bebb` (`Remove nonfunctional recognition service`).
