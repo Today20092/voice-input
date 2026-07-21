@@ -63,7 +63,14 @@ fun sha256(file: File): String {
     return digest.digest().joinToString("") { "%02x".format(it) }
 }
 
-fun Context.parakeetModelDir(): File = File(filesDir, ParakeetModel.directoryName)
+fun Context.parakeetModelDir(): File =
+    RecognitionModelStore(filesDir).modelDirectory(ParakeetModel.recognitionModel)
+
+suspend fun RecognitionModel.releaseRuntime() {
+    if (runtimeId == ParakeetModel.recognitionModel.runtimeId) {
+        ParakeetEngineManager.forceClose()
+    }
+}
 
 fun Context.parakeetModelMarker(): File =
     File(parakeetModelDir(), ParakeetModel.recognitionModel.completionMarker)

@@ -29,7 +29,7 @@ private fun Context.selectedNemotronProfile() =
 
 fun Context.nemotronModelDirectory(
     profile: NemotronProfile = selectedNemotronProfile()
-): File = File(filesDir, profile.recognitionModel().directoryName)
+): File = RecognitionModelStore(filesDir).modelDirectory(profile.recognitionModel())
 
 fun Context.isNemotronModelDownloaded(
     profile: NemotronProfile = selectedNemotronProfile(),

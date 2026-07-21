@@ -111,12 +111,70 @@ class RecognitionModelCatalogTest {
         File(packageDir, modelPackage.completionMarker).writeText("test-package@older")
 
         assertFalse(store.isInstalled(modelPackage))
-        assertFalse(File(packageDir, modelPackage.completionMarker).exists())
+        assertTrue(File(packageDir, modelPackage.completionMarker).exists())
     }
 
-    private fun testPackage() = RecognitionModel(
+    @Test
+    fun updateIsOfferedOnlyForADifferentPinnedVersion() {
+        val installed = testPackage(version = "1")
+        val available = testPackage(version = "2")
+        val store = RecognitionModelStore(temporaryFolder.root)
+        install(store, installed)
+
+        assertEquals(
+            RecognitionModelUpdate(installed, available),
+            store.findUpdate(available, listOf(installed, available))
+        )
+        assertEquals(null, store.findUpdate(installed, listOf(installed, available)))
+        assertEquals(null, store.findUpdate(available, listOf(available)))
+    }
+
+    @Test
+    fun failedUpdateValidationLeavesInstalledVersionUntouched() {
+        val installed = testPackage(version = "1")
+        val available = testPackage(version = "2")
+        val store = RecognitionModelStore(temporaryFolder.root)
+        install(store, installed)
+        File(store.updateDirectory(available).apply { mkdirs() }, "model.bin").writeText("wrong")
+
+        assertFalse(store.completeUpdate(available))
+        assertTrue(store.isInstalled(installed, verifyHashes = true))
+        assertEquals("1", store.installedModel(listOf(installed, available))?.version)
+    }
+
+    @Test
+    fun validatedUpdateActivatesThenCleansUpPreviousVersion() {
+        val installed = testPackage(version = "1")
+        val available = testPackage(version = "2")
+        lateinit var store: RecognitionModelStore
+        var releasedBeforeActivation = false
+        store = RecognitionModelStore(temporaryFolder.root) {
+            releasedBeforeActivation = store.isInstalled(installed, verifyHashes = true)
+        }
+        val installedDirectory = store.modelDirectory(installed)
+        install(store, installed)
+        File(store.updateDirectory(available).apply { mkdirs() }, "model.bin").writeText("valid")
+
+        assertTrue(store.completeUpdate(available))
+        assertTrue(store.isInstalled(installed, verifyHashes = true))
+        assertTrue(store.isUpdatePrepared(available))
+
+        store.activateUpdate(available)
+
+        assertTrue(releasedBeforeActivation)
+        assertTrue(store.isInstalled(available, verifyHashes = true))
+        assertEquals(store.updateDirectory(available), store.modelDirectory(available))
+        assertFalse(installedDirectory.exists())
+    }
+
+    private fun install(store: RecognitionModelStore, model: RecognitionModel) {
+        File(store.modelDirectory(model).apply { mkdirs() }, "model.bin").writeText("valid")
+        assertTrue(store.completeInstall(model))
+    }
+
+    private fun testPackage(version: String = "1") = RecognitionModel(
         id = "test-package",
-        version = "1",
+        version = version,
         runtimeId = "test",
         variantId = null,
         directoryName = "test-package-1",

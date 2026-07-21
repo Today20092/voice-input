@@ -16,7 +16,7 @@ fun MoonshineModelVariant.recognitionModel(): RecognitionModel =
     requireNotNull(RecognitionModelCatalog.modelFor("moonshine", id))
 
 fun Context.moonshineModelDir(variant: MoonshineModelVariant): File =
-    File(filesDir, variant.recognitionModel().directoryName)
+    RecognitionModelStore(filesDir).modelDirectory(variant.recognitionModel())
 
 fun Context.isMoonshineModelDownloaded(variant: MoonshineModelVariant): Boolean {
     return RecognitionModelStore(filesDir).isInstalled(variant.recognitionModel())

@@ -3,6 +3,8 @@ package org.futo.voiceinput.recognition
 import org.futo.voiceinput.parakeet.ParakeetModel
 import java.io.File
 import java.security.MessageDigest
+import java.nio.file.StandardCopyOption.ATOMIC_MOVE
+import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 
 enum class TranscriptionBehavior(val label: String) {
     LIVE("Live transcription"),
@@ -64,6 +66,13 @@ data class RecognitionModelCard(
     val performanceClasses: Set<PerformanceClass>,
     val models: List<RecognitionModel>
 )
+
+data class RecognitionModelUpdate(
+    val installed: RecognitionModel,
+    val available: RecognitionModel
+)
+
+fun RecognitionModel.updateDirectoryName() = "$directoryName.version-$version"
 
 object RecognitionModelCatalog {
     private const val MOONSHINE_REVISION = "2026-03-16-sha256"
@@ -198,6 +207,11 @@ object RecognitionModelCatalog {
 
     val defaultModel = moonshineSmall
     val models = cards.flatMap { it.models }
+    private val historicalVersions = emptyList<RecognitionModel>()
+    val pinnedVersions = historicalVersions + models
+
+    fun versionsFor(modelId: String): List<RecognitionModel> =
+        pinnedVersions.filter { it.id == modelId }
 
     fun modelFor(runtimeId: String, variantId: String? = null): RecognitionModel? =
         models.firstOrNull {
@@ -289,7 +303,12 @@ class RecognitionModelStore(
     private val rootDirectory: File,
     private val releaseRuntime: (RecognitionModel) -> Unit = {}
 ) {
-    fun modelDirectory(model: RecognitionModel) = File(rootDirectory, model.directoryName)
+    fun modelDirectory(model: RecognitionModel): File {
+        val activeName = runCatching { activeDirectoryPointer(model).readText() }.getOrNull()
+        return File(rootDirectory, activeName ?: model.directoryName)
+    }
+
+    fun updateDirectory(model: RecognitionModel) = File(rootDirectory, model.updateDirectoryName())
 
     fun isInstalled(model: RecognitionModel, verifyHashes: Boolean = false): Boolean {
         val directory = modelDirectory(model)
@@ -302,11 +321,34 @@ class RecognitionModelStore(
             marker.writeText(expectedMarker)
             return true
         }
-        if (markerValue != expectedMarker || !artifactsValid(model, verifyHashes)) {
+        if (markerValue != expectedMarker) return false
+        if (!artifactsValid(model, verifyHashes)) {
             marker.delete()
             return false
         }
         return true
+    }
+
+    fun installedModel(pinnedVersions: List<RecognitionModel>): RecognitionModel? {
+        val groupedByDirectory = pinnedVersions.groupBy { it.directoryName }
+        return groupedByDirectory.values.firstNotNullOfOrNull { versions ->
+            val markerName = versions.first().completionMarker
+            val marker = File(modelDirectory(versions.first()), markerName)
+            val markerValue = runCatching { marker.readText() }.getOrNull()
+            versions.firstOrNull { model ->
+                markerValue == "${model.id}@${model.version}" && isInstalled(model)
+            }
+        }
+    }
+
+    fun findUpdate(
+        available: RecognitionModel,
+        pinnedVersions: List<RecognitionModel>
+    ): RecognitionModelUpdate? {
+        if (available !in pinnedVersions) return null
+        val installed = installedModel(pinnedVersions.filter { it.id == available.id }) ?: return null
+        if (installed.directoryName != available.directoryName) return null
+        return if (installed.version == available.version) null else RecognitionModelUpdate(installed, available)
     }
 
     fun completeInstall(model: RecognitionModel): Boolean {
@@ -315,6 +357,35 @@ class RecognitionModelStore(
         if (!artifactsValid(model, verifyHashes = true)) return false
         marker.writeText("${model.id}@${model.version}")
         return true
+    }
+
+    fun completeUpdate(model: RecognitionModel): Boolean {
+        val marker = File(updateDirectory(model), model.completionMarker)
+        marker.delete()
+        if (!artifactsValid(model, verifyHashes = true, directory = updateDirectory(model))) return false
+        marker.writeText("${model.id}@${model.version}")
+        return true
+    }
+
+    fun isUpdatePrepared(model: RecognitionModel): Boolean {
+        val marker = File(updateDirectory(model), model.completionMarker)
+        return marker.isFile && marker.readText() == "${model.id}@${model.version}" &&
+            artifactsValid(model, verifyHashes = true, directory = updateDirectory(model))
+    }
+
+    fun activateUpdate(model: RecognitionModel) {
+        check(isUpdatePrepared(model)) { "${model.displayName} update is not complete" }
+        val current = modelDirectory(model)
+        val update = updateDirectory(model)
+        releaseRuntime(model)
+        activateDirectory(model, update)
+        if (!isInstalled(model, verifyHashes = true)) {
+            activateDirectory(model, current)
+            error("Activated ${model.displayName} failed validation")
+        }
+        if (current != update) {
+            check(current.deleteRecursively()) { "Failed to clean previous model" }
+        }
     }
 
     fun select(model: RecognitionModel, updateSelection: () -> Unit) {
@@ -328,13 +399,24 @@ class RecognitionModelStore(
         check(modelDirectory(model).deleteRecursively()) {
             "Failed to delete ${model.displayName}"
         }
+        activeDirectoryPointer(model).delete()
+    }
+
+    private fun activeDirectoryPointer(model: RecognitionModel) =
+        File(rootDirectory, ".${model.id}.active")
+
+    private fun activateDirectory(model: RecognitionModel, directory: File) {
+        val pointer = activeDirectoryPointer(model)
+        val temporary = File(rootDirectory, "${pointer.name}.tmp")
+        temporary.writeText(directory.name)
+        java.nio.file.Files.move(temporary.toPath(), pointer.toPath(), ATOMIC_MOVE, REPLACE_EXISTING)
     }
 
     private fun artifactsValid(
         model: RecognitionModel,
-        verifyHashes: Boolean
+        verifyHashes: Boolean,
+        directory: File = modelDirectory(model)
     ): Boolean {
-        val directory = modelDirectory(model)
         return model.artifacts.all { artifact ->
             val file = File(directory, artifact.name)
             file.isFile && file.length() == artifact.sizeBytes &&

@@ -1,5 +1,6 @@
 package org.futo.voiceinput.settings.pages
 
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -33,10 +34,11 @@ import org.futo.voiceinput.MULTILINGUAL_MODELS
 import org.futo.voiceinput.ModelData
 import org.futo.voiceinput.R
 import org.futo.voiceinput.modelNeedsDownloading
+import org.futo.voiceinput.downloader.startRecognitionModelDownloadActivity
 import org.futo.voiceinput.migration.ConditionalModelUpdate
 import org.futo.voiceinput.migration.NeedsMigration
 import org.futo.voiceinput.parakeet.isParakeetModelDownloaded
-import org.futo.voiceinput.parakeet.ParakeetEngineManager
+import org.futo.voiceinput.parakeet.releaseRuntime
 import org.futo.voiceinput.parakeet.startParakeetModelDownloadActivity
 import org.futo.voiceinput.moonshine.isMoonshineModelDownloaded
 import org.futo.voiceinput.moonshine.MoonshineModelVariant
@@ -211,13 +213,14 @@ private fun ManagedRecognitionModelItem(
     val lifecycleOwner = LocalLifecycleOwner.current
     val bundled = model.runtimeId == SpeechBackendType.Parakeet.id &&
         BuildConfig.BUNDLE_PARAKEET_MODEL
-    val installed = if (bundled) {
-        true
-    } else {
-        store.isInstalled(model)
-    }
+    val pinnedVersions = RecognitionModelCatalog.versionsFor(model.id)
+    val installedModel = if (bundled) model else store.installedModel(pinnedVersions)
+    val installed = installedModel != null
+    val update = if (bundled) null else store.findUpdate(model, pinnedVersions)
     val selected = selectedModelId == model.id
     val status = when {
+        update != null && selected -> "Selected ${update.installed.version} • Update ${update.available.version} available"
+        update != null -> "Installed ${update.installed.version} • Update ${update.available.version} available"
         selected -> "Selected — choose another installed model before deleting"
         installed -> "Installed"
         else -> "Download required"
@@ -227,7 +230,7 @@ private fun ManagedRecognitionModelItem(
         "${model.source} • ${"%.1f".format(model.transferBytes / 1_000_000.0)} MB • $status"
     val selectOrDownload = {
         if (installed) {
-            if (bundled) onSelect() else store.select(model, onSelect)
+            if (bundled) onSelect() else store.select(requireNotNull(installedModel), onSelect)
         } else {
             when (model.runtimeId) {
                 SpeechBackendType.Moonshine.id -> context.startMoonshineModelDownloadActivity(
@@ -248,18 +251,23 @@ private fun ManagedRecognitionModelItem(
         icon = { RadioButton(selected = selected, onClick = selectOrDownload) }
     ) {
         if (installed && !bundled) {
-            TextButton(
-                enabled = !selected,
-                onClick = {
-                    lifecycleOwner.lifecycleScope.launch {
-                        if (model.runtimeId == SpeechBackendType.Parakeet.id) {
-                            ParakeetEngineManager.forceClose()
-                        }
-                        store.delete(model, selectedModelId = selectedModelId)
-                        onDeleted()
-                    }
+            Column {
+                if (update != null) {
+                    TextButton(onClick = {
+                        context.startRecognitionModelDownloadActivity(update.available, isUpdate = true)
+                    }) { Text("Update") }
                 }
-            ) { Text(if (selected) "Selected" else "Delete") }
+                TextButton(
+                    enabled = !selected,
+                    onClick = {
+                        lifecycleOwner.lifecycleScope.launch {
+                            requireNotNull(installedModel).releaseRuntime()
+                            store.delete(requireNotNull(installedModel), selectedModelId = selectedModelId)
+                            onDeleted()
+                        }
+                    }
+                ) { Text(if (selected) "Selected" else "Delete") }
+            }
         }
     }
 }
