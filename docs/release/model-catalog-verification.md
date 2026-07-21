@@ -16,7 +16,7 @@ Compare it with a pre-Sherpa APK when that baseline is available:
 
 The comparison reports the byte-size delta and added or removed native libraries. No pre-Sherpa baseline is stored in this repository, so that release result remains pending until one is supplied.
 
-Last local dev-debug check (2026-07-21): 140,903,084 bytes; arm64-v8a; six native libraries (`libmoonshine-jni.so`, `libmoonshine.so`, `libonnxruntime.so`, `libsherpa-onnx-jni.so`, `libvad_jni.so`, and `libvoiceinput.so`). Re-run for the release candidate rather than treating this development build as final evidence.
+Last local dev-debug check (2026-07-21): 143,696,058 bytes; arm64-v8a; seven native libraries (`libandroidx.graphics.path.so`, `libmoonshine-jni.so`, `libmoonshine.so`, `libonnxruntime.so`, `libsherpa-onnx-jni.so`, `libvad_jni.so`, and `libvoiceinput.so`). Unit tests, APK verification, and lint passed. Re-run for the signed release candidate rather than treating this development build as final evidence.
 
 ## Physical-device results
 
