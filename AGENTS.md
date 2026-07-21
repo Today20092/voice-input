@@ -107,7 +107,7 @@ Generated APK names are customized in `app/build.gradle`, but the GitHub workflo
 
 ### Issue tracker
 
-Issues are tracked in GitHub Issues; external PRs are not a triage surface. See `docs/agents/issue-tracker.md`.
+Tickets are tracked locally in `tickets.md`; external PRs are not a triage surface. See `docs/agents/issue-tracker.md`.
 
 ### Triage labels
 
