@@ -8,6 +8,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -21,10 +22,13 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
+import kotlinx.coroutines.launch
 import org.futo.voiceinput.ENGLISH_MODELS
+import org.futo.voiceinput.BuildConfig
 import org.futo.voiceinput.MULTILINGUAL_MODELS
 import org.futo.voiceinput.ModelData
 import org.futo.voiceinput.R
@@ -32,6 +36,7 @@ import org.futo.voiceinput.modelNeedsDownloading
 import org.futo.voiceinput.migration.ConditionalModelUpdate
 import org.futo.voiceinput.migration.NeedsMigration
 import org.futo.voiceinput.parakeet.isParakeetModelDownloaded
+import org.futo.voiceinput.parakeet.ParakeetEngineManager
 import org.futo.voiceinput.parakeet.startParakeetModelDownloadActivity
 import org.futo.voiceinput.moonshine.isMoonshineModelDownloaded
 import org.futo.voiceinput.moonshine.MoonshineModelVariant
@@ -50,17 +55,18 @@ import org.futo.voiceinput.settings.SPEECH_BACKEND
 import org.futo.voiceinput.settings.ScreenTitle
 import org.futo.voiceinput.settings.ScrollableList
 import org.futo.voiceinput.settings.SettingItem
-import org.futo.voiceinput.settings.SettingRadio
 import org.futo.voiceinput.settings.SettingToggleDataStore
 import org.futo.voiceinput.settings.SettingsViewModel
 import org.futo.voiceinput.settings.SpeechBackendType
 import org.futo.voiceinput.settings.Tip
 import org.futo.voiceinput.settings.USE_LANGUAGE_SPECIFIC_MODELS
 import org.futo.voiceinput.settings.getSettingBlocking
-import org.futo.voiceinput.settings.isParakeetSelected
 import org.futo.voiceinput.settings.toSpeechBackendType
 import org.futo.voiceinput.settings.useDataStore
 import org.futo.voiceinput.startModelDownloadActivity
+import org.futo.voiceinput.recognition.RecognitionModelCatalog
+import org.futo.voiceinput.recognition.RecognitionModel
+import org.futo.voiceinput.recognition.RecognitionModelStore
 
 @Composable
 fun modelsSubtitle(): String? {
@@ -116,100 +122,118 @@ fun PersonalDictionaryEditor(disabled: Boolean) {
 }
 
 @Composable
-fun ParakeetModelStatus() {
+fun ManagedRecognitionModelCatalog() {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
-    val isDownloaded = remember { mutableStateOf(context.isParakeetModelDownloaded(verifyHashes = true)) }
-
-    DisposableEffect(lifecycleOwner, context) {
-        val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) {
-                isDownloaded.value = context.isParakeetModelDownloaded(verifyHashes = true)
-            }
-        }
-
-        lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose {
-            lifecycleOwner.lifecycle.removeObserver(observer)
-        }
-    }
-
-    ScreenTitle(stringResource(R.string.parakeet_model))
-    SettingItem(
-        title = stringResource(R.string.parakeet_unified_model_name),
-        subtitle = if (isDownloaded.value) {
-            stringResource(R.string.parakeet_model_downloaded)
-        } else {
-            stringResource(R.string.parakeet_model_download_required)
-        },
-        onClick = {
-            if (!isDownloaded.value) {
-                context.startParakeetModelDownloadActivity()
-            }
-        },
-        icon = {
-            RadioButton(selected = isDownloaded.value, onClick = null, enabled = false)
-        },
-        disabled = false
-    ) { }
-    Tip(stringResource(R.string.parakeet_download_model_tip))
-}
-
-@Composable
-fun MoonshineModelStatus() {
-    val context = LocalContext.current
-    val lifecycleOwner = LocalLifecycleOwner.current
+    val backend = useDataStore(SPEECH_BACKEND)
     val modelVariant = useDataStore(MOONSHINE_MODEL_VARIANT)
-    val downloadedVariants = remember(context) {
-        mutableStateOf(
-            MoonshineModelVariant.entries.filter { context.isMoonshineModelDownloaded(it) }.toSet()
-        )
-    }
+    val refresh = remember { mutableStateOf(0) }
+    val store = remember(context) { RecognitionModelStore(context.filesDir) }
+    val selectedModelId = RecognitionModelCatalog.modelFor(
+        runtimeId = backend.value,
+        variantId = if (backend.value == SpeechBackendType.Moonshine.id) modelVariant.value else null
+    )?.id
 
     DisposableEffect(lifecycleOwner, context) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
-                downloadedVariants.value = MoonshineModelVariant.entries
-                    .filter { context.isMoonshineModelDownloaded(it) }
-                    .toSet()
+                refresh.value += 1
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    ScreenTitle(stringResource(R.string.moonshine_model))
-    MoonshineModelVariant.entries.forEach { variant ->
-        val selected = modelVariant.value.toMoonshineModelVariant() == variant
-        val downloaded = variant in downloadedVariants.value
-        val (titleResource, descriptionResource) = when (variant) {
-            MoonshineModelVariant.Small ->
-                R.string.moonshine_balanced to R.string.moonshine_small_description
-            MoonshineModelVariant.Medium ->
-                R.string.moonshine_higher_accuracy to R.string.moonshine_medium_description
-        }
-        val title = stringResource(titleResource)
-        val description = stringResource(descriptionResource)
-        val status = stringResource(
-            if (downloaded) R.string.moonshine_model_downloaded
-            else R.string.moonshine_model_download_required
-        )
-        val selectOrDownload = {
-            modelVariant.setValue(variant.id)
-            if (!downloaded) context.startMoonshineModelDownloadActivity(variant)
-        }
+    refresh.value
+    RecognitionModelCatalog.cards.forEach { card ->
+        ScreenTitle(card.displayName)
+        Tip(card.description)
 
-        SettingItem(
-            title = title,
-            subtitle = stringResource(R.string.moonshine_model_option_subtitle, description, status),
-            onClick = selectOrDownload,
-            icon = {
-                RadioButton(selected = selected, onClick = selectOrDownload)
-            },
-            disabled = false
-        ) { }
+        if (card.models.isEmpty()) {
+            val selected = backend.value == card.runtimeId
+            SettingItem(
+                title = card.displayName,
+                subtitle = "${card.transcription.label} • ${card.recognitionLanguages} • " +
+                    card.performanceClasses.joinToString(" to ") { it.label },
+                onClick = { backend.setValue(card.runtimeId) },
+                icon = { RadioButton(selected = selected, onClick = null) }
+            ) { }
+        } else {
+            card.models.forEach { model ->
+                ManagedRecognitionModelItem(
+                    model = model,
+                    selectedModelId = selectedModelId,
+                    store = store,
+                    onSelect = {
+                        model.variantId?.let { modelVariant.setValue(it) }
+                        backend.setValue(model.runtimeId)
+                    },
+                    onDeleted = { refresh.value += 1 }
+                )
+            }
+        }
     }
-    Tip(stringResource(R.string.moonshine_download_model_tip))
+}
+
+@Composable
+private fun ManagedRecognitionModelItem(
+    model: RecognitionModel,
+    selectedModelId: String?,
+    store: RecognitionModelStore,
+    onSelect: () -> Unit,
+    onDeleted: () -> Unit
+) {
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val bundled = model.runtimeId == SpeechBackendType.Parakeet.id &&
+        BuildConfig.BUNDLE_PARAKEET_MODEL
+    val installed = if (bundled) {
+        true
+    } else {
+        store.isInstalled(model)
+    }
+    val selected = selectedModelId == model.id
+    val status = when {
+        selected -> "Selected — choose another installed model before deleting"
+        installed -> "Installed"
+        else -> "Download required"
+    }
+    val subtitle = "${model.description}\n${model.transcription.label} • " +
+        "${model.recognitionLanguages} • ${model.performanceClass.label}\n" +
+        "${model.source} • ${"%.1f".format(model.transferBytes / 1_000_000.0)} MB • $status"
+    val selectOrDownload = {
+        if (installed) {
+            if (bundled) onSelect() else store.select(model, onSelect)
+        } else if (model.runtimeId == SpeechBackendType.Moonshine.id) {
+            context.startMoonshineModelDownloadActivity(
+                model.variantId.orEmpty().toMoonshineModelVariant()
+            )
+        } else {
+            context.startParakeetModelDownloadActivity()
+        }
+    }
+
+    SettingItem(
+        title = model.displayName,
+        subtitle = subtitle,
+        onClick = selectOrDownload,
+        icon = { RadioButton(selected = selected, onClick = selectOrDownload) }
+    ) {
+        if (installed && !bundled) {
+            TextButton(
+                enabled = !selected,
+                onClick = {
+                    lifecycleOwner.lifecycleScope.launch {
+                        if (model.runtimeId == SpeechBackendType.Parakeet.id) {
+                            ParakeetEngineManager.forceClose()
+                        }
+                        store.delete(model, selectedModelId = selectedModelId)
+                        onDeleted()
+                    }
+                }
+            ) { Text(if (selected) "Selected" else "Delete") }
+        }
+    }
 }
 
 @Composable
@@ -329,27 +353,8 @@ fun ModelsScreen(
         PersonalDictionaryEditor(disabled = false)
         Spacer(modifier = Modifier.height(32.dp))
 
-        SettingRadio(
-            title = stringResource(R.string.speech_backend),
-            options = listOf(
-                SpeechBackendType.Parakeet.id,
-                SpeechBackendType.Moonshine.id,
-                SpeechBackendType.WhisperGGML.id
-            ),
-            optionNames = listOf(
-                stringResource(R.string.backend_parakeet),
-                stringResource(R.string.backend_moonshine),
-                stringResource(R.string.backend_whisper_ggml)
-            ),
-            setting = SPEECH_BACKEND
-        )
+        ManagedRecognitionModelCatalog()
 
-        Spacer(modifier = Modifier.height(32.dp))
-
-        when (backend.toSpeechBackendType()) {
-            SpeechBackendType.Parakeet -> ParakeetModelStatus()
-            SpeechBackendType.Moonshine -> MoonshineModelStatus()
-            SpeechBackendType.WhisperGGML -> WhisperModelOptions()
-        }
+        if (whisperSelected) WhisperModelOptions()
     }
 }

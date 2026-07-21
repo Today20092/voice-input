@@ -19,12 +19,12 @@ class MoonshineModelVariantTest {
     @Test
     fun variantsUseSeparateDownloads() {
         assertNotEquals(
-            MoonshineModelVariant.Small.directoryName,
-            MoonshineModelVariant.Medium.directoryName
+            MoonshineModelVariant.Small.recognitionModel().directoryName,
+            MoonshineModelVariant.Medium.recognitionModel().directoryName
         )
         assertNotEquals(
-            MoonshineModelVariant.Small.baseUrl,
-            MoonshineModelVariant.Medium.baseUrl
+            MoonshineModelVariant.Small.recognitionModel().artifacts.first().url,
+            MoonshineModelVariant.Medium.recognitionModel().artifacts.first().url
         )
     }
 }

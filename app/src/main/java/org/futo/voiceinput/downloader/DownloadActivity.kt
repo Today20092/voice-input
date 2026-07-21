@@ -1,6 +1,8 @@
 package org.futo.voiceinput.downloader
 
 import android.content.Intent
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.os.Bundle
 import android.os.SystemClock
 import androidx.activity.ComponentActivity
@@ -41,8 +43,12 @@ import okhttp3.Request
 import okhttp3.Response
 import org.futo.voiceinput.R
 import org.futo.voiceinput.parakeet.sha256
+import org.futo.voiceinput.recognition.RecognitionModel
+import org.futo.voiceinput.settings.MOONSHINE_MODEL_VARIANT
+import org.futo.voiceinput.settings.SPEECH_BACKEND
 import org.futo.voiceinput.settings.ScreenTitle
 import org.futo.voiceinput.settings.ScrollableList
+import org.futo.voiceinput.settings.setSettingBlocking
 import org.futo.voiceinput.theme.UixThemeAuto
 import org.futo.voiceinput.theme.Typography
 import java.io.File
@@ -52,8 +58,30 @@ import kotlin.math.max
 const val EXTRA_DOWNLOAD_FILE_NAMES = "download_file_names"
 const val EXTRA_DOWNLOAD_FILE_URLS = "download_file_urls"
 const val EXTRA_DOWNLOAD_FILE_HASHES = "download_file_hashes"
+const val EXTRA_DOWNLOAD_FILE_SIZES = "download_file_sizes"
 const val EXTRA_TARGET_SUBDIR = "target_subdir"
 const val EXTRA_COMPLETION_MARKER = "completion_marker"
+const val EXTRA_DOWNLOAD_SOURCE = "download_source"
+const val EXTRA_REQUIRED_FREE_SPACE = "required_free_space"
+const val EXTRA_SELECT_BACKEND = "select_backend"
+const val EXTRA_SELECT_VARIANT = "select_variant"
+const val EXTRA_MODEL_ID = "recognition_model_id"
+const val EXTRA_MODEL_VERSION = "recognition_model_version"
+
+fun Intent.putRecognitionModel(model: RecognitionModel) {
+    putStringArrayListExtra(EXTRA_DOWNLOAD_FILE_NAMES, ArrayList(model.artifacts.map { it.name }))
+    putStringArrayListExtra(EXTRA_DOWNLOAD_FILE_URLS, ArrayList(model.artifacts.map { it.url }))
+    putStringArrayListExtra(EXTRA_DOWNLOAD_FILE_HASHES, ArrayList(model.artifacts.map { it.sha256 }))
+    putExtra(EXTRA_DOWNLOAD_FILE_SIZES, model.artifacts.map { it.sizeBytes }.toLongArray())
+    putExtra(EXTRA_TARGET_SUBDIR, model.directoryName)
+    putExtra(EXTRA_COMPLETION_MARKER, model.completionMarker)
+    putExtra(EXTRA_DOWNLOAD_SOURCE, model.source)
+    putExtra(EXTRA_REQUIRED_FREE_SPACE, model.requiredFreeSpaceBytes)
+    putExtra(EXTRA_SELECT_BACKEND, model.runtimeId)
+    model.variantId?.let { putExtra(EXTRA_SELECT_VARIANT, it) }
+    putExtra(EXTRA_MODEL_ID, model.id)
+    putExtra(EXTRA_MODEL_VERSION, model.version)
+}
 
 
 class ModelInfo(
@@ -61,6 +89,7 @@ class ModelInfo(
     val url: String,
     val targetFile: File = File(name),
     val sha256: String? = null,
+    val expectedSize: Long? = null,
     size: Long?,
     progress: Float = 0.0f,
     error: Boolean = false,
@@ -89,6 +118,18 @@ val EXAMPLE_MODELS = listOf(
         error = false
     ),
 )
+
+data class DownloadConfirmation(
+    val source: String,
+    val transferBytes: Long,
+    val requiredFreeSpaceBytes: Long,
+    val availableBytes: Long,
+    val cellular: Boolean
+) {
+    val hasEnoughSpace = availableBytes >= requiredFreeSpaceBytes
+}
+
+private fun Long.megabytes() = "%.1f MB".format(this / 1_000_000.0)
 
 @Composable
 fun ModelItem(model: ModelInfo, showProgress: Boolean) {
@@ -161,7 +202,8 @@ fun ModelItem(model: ModelInfo, showProgress: Boolean) {
 fun DownloadPrompt(
     onContinue: () -> Unit = {},
     onCancel: () -> Unit = {},
-    models: List<ModelInfo> = EXAMPLE_MODELS
+    models: List<ModelInfo> = EXAMPLE_MODELS,
+    confirmation: DownloadConfirmation? = null
 ) {
     ScrollableList {
         ScreenTitle(stringResource(R.string.download_required))
@@ -171,6 +213,23 @@ fun DownloadPrompt(
             modifier = Modifier.padding(16.dp, 0.dp),
             style = Typography.bodyMedium
         )
+
+        confirmation?.let {
+            Text(stringResource(R.string.download_source, it.source), modifier = Modifier.padding(16.dp, 4.dp))
+            Text(stringResource(R.string.download_transfer_size, it.transferBytes.megabytes()), modifier = Modifier.padding(16.dp, 4.dp))
+            Text(stringResource(R.string.download_required_space, it.requiredFreeSpaceBytes.megabytes()), modifier = Modifier.padding(16.dp, 4.dp))
+            Text(
+                stringResource(if (it.cellular) R.string.download_network_cellular else R.string.download_network_not_cellular),
+                modifier = Modifier.padding(16.dp, 4.dp)
+            )
+            if (!it.hasEnoughSpace) {
+                Text(
+                    stringResource(R.string.download_insufficient_space, it.availableBytes.megabytes()),
+                    modifier = Modifier.padding(16.dp, 4.dp),
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+        }
 
         Spacer(modifier = Modifier.height(8.dp))
 
@@ -190,7 +249,9 @@ fun DownloadPrompt(
                 Text(stringResource(R.string.cancel))
             }
             Button(
-                onClick = onContinue, modifier = Modifier
+                onClick = onContinue,
+                enabled = confirmation?.hasEnoughSpace != false,
+                modifier = Modifier
                     .padding(8.dp)
                     .weight(1.5f)
             ) {
@@ -269,6 +330,7 @@ class DownloadActivity : ComponentActivity() {
     private val httpClient = OkHttpClient()
     private var isDownloading by mutableStateOf(false)
     private var completionMarker: File? = null
+    private var confirmation: DownloadConfirmation? = null
 
     private fun updateContent() {
         setContent {
@@ -284,7 +346,8 @@ class DownloadActivity : ComponentActivity() {
                         DownloadPrompt(
                             onContinue = { startDownload() },
                             onCancel = { cancel() },
-                            models = modelsToDownload
+                            models = modelsToDownload,
+                            confirmation = confirmation
                         )
                     }
                 }
@@ -293,6 +356,8 @@ class DownloadActivity : ComponentActivity() {
     }
 
     private fun startDownload() {
+        if (confirmation?.hasEnoughSpace == false) return
+        completionMarker?.delete()
         isDownloading = true
 
         if (modelsToDownload.isEmpty()) {
@@ -419,7 +484,8 @@ class DownloadActivity : ComponentActivity() {
     }
 
     private fun isValidTargetFile(model: ModelInfo): Boolean {
-        return isValidDownloadedFile(model.targetFile, model.sha256)
+        return isValidDownloadedFile(model.targetFile, model.sha256) &&
+            (model.expectedSize == null || model.targetFile.length() == model.expectedSize)
     }
 
     private fun cancel() {
@@ -436,7 +502,16 @@ class DownloadActivity : ComponentActivity() {
 
         completionMarker?.let { marker ->
             marker.parentFile?.mkdirs()
-            marker.writeText("ok")
+            val modelId = requireNotNull(intent.getStringExtra(EXTRA_MODEL_ID))
+            val modelVersion = requireNotNull(intent.getStringExtra(EXTRA_MODEL_VERSION))
+            marker.writeText("$modelId@$modelVersion")
+        }
+
+        intent.getStringExtra(EXTRA_SELECT_BACKEND)?.let {
+            setSettingBlocking(SPEECH_BACKEND.key, it)
+        }
+        intent.getStringExtra(EXTRA_SELECT_VARIANT)?.let {
+            setSettingBlocking(MOONSHINE_MODEL_VARIANT.key, it)
         }
 
         val returnIntent = Intent()
@@ -486,9 +561,12 @@ class DownloadActivity : ComponentActivity() {
         val urls = intent.getStringArrayListExtra(EXTRA_DOWNLOAD_FILE_URLS)
             ?: throw IllegalStateException("intent extra `$EXTRA_DOWNLOAD_FILE_URLS` must be specified")
         val hashes = intent.getStringArrayListExtra(EXTRA_DOWNLOAD_FILE_HASHES)
+            ?: throw IllegalStateException("intent extra `$EXTRA_DOWNLOAD_FILE_HASHES` must be specified")
+        val sizes = intent.getLongArrayExtra(EXTRA_DOWNLOAD_FILE_SIZES)
+            ?: throw IllegalStateException("intent extra `$EXTRA_DOWNLOAD_FILE_SIZES` must be specified")
 
-        if (names.size != urls.size || (hashes != null && hashes.size != names.size)) {
-            throw IllegalStateException("download file names, urls, and hashes must have matching sizes")
+        if (names.size != urls.size || hashes.size != names.size || sizes.size != names.size || hashes.any { it.isBlank() }) {
+            throw IllegalStateException("download file names, urls, hashes, and sizes must be complete and matching")
         }
 
         val targetSubdir = intent.getStringExtra(EXTRA_TARGET_SUBDIR)
@@ -505,13 +583,13 @@ class DownloadActivity : ComponentActivity() {
         }
 
         return names.indices.map { index ->
-            val hash = hashes?.get(index)?.ifBlank { null }
             ModelInfo(
                 name = names[index],
                 url = urls[index],
                 targetFile = File(targetDir, names[index]),
-                sha256 = hash,
-                size = null,
+                sha256 = hashes[index],
+                expectedSize = sizes[index],
+                size = sizes[index],
                 progress = 0.0f
             )
         }
@@ -536,7 +614,21 @@ class DownloadActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         allRequestedFiles = explicitDownloadRequests() ?: legacyDownloadRequests()
-        modelsToDownload = allRequestedFiles.filter { !isValidTargetFile(it) }
+        intent.getStringExtra(EXTRA_DOWNLOAD_SOURCE)?.let { source ->
+            val transferBytes = allRequestedFiles.sumOf { it.expectedSize ?: 0L }
+            confirmation = DownloadConfirmation(
+                source = source,
+                transferBytes = transferBytes,
+                requiredFreeSpaceBytes = intent.getLongExtra(EXTRA_REQUIRED_FREE_SPACE, transferBytes),
+                availableBytes = filesDir.usableSpace,
+                cellular = isCellularNetwork()
+            )
+        }
+        modelsToDownload = if (completionMarker != null && completionMarker?.isFile != true) {
+            allRequestedFiles
+        } else {
+            allRequestedFiles.filter { !isValidTargetFile(it) }
+        }
 
         if (modelsToDownload.isEmpty()) {
             downloadsFinished()
@@ -546,6 +638,13 @@ class DownloadActivity : ComponentActivity() {
         isDownloading = false
         updateContent()
 
-        obtainModelSizes()
+        if (modelsToDownload.any { it.size == null }) obtainModelSizes()
+    }
+
+    private fun isCellularNetwork(): Boolean {
+        val manager = getSystemService(ConnectivityManager::class.java)
+        val network = manager.activeNetwork ?: return false
+        return manager.getNetworkCapabilities(network)
+            ?.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) == true
     }
 }

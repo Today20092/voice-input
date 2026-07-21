@@ -369,15 +369,14 @@ class ModelFile {
 }
 
 def parakeetModelFiles = [
-        // Fill hashes from tools/parakeet_export/checksums.sha256 after export validation.
-        new ModelFile('config.json', ''),
-        new ModelFile('vocab.txt', ''),
-        new ModelFile('encoder-model.int8.onnx', ''),
-        new ModelFile('decoder_joint-model.int8.onnx', ''),
-        new ModelFile('preprocessor.onnx', 'nemo128.onnx', '')
+        new ModelFile('config.json', '5ee4d84eeb13e7a90bf76a2af8b8eb0a536f8e985a28816beae69c1dce2d4cf9'),
+        new ModelFile('vocab.txt', '15811f575ed0c421c68e46af904d8c435d9bededfd4203e22333efe39a77dca5'),
+        new ModelFile('encoder-model.int8.onnx', '6139d2fa7e1b086097b277c7149725edbab89cc7c7ae64b23c741be4055aff09'),
+        new ModelFile('decoder_joint-model.int8.onnx', 'eea7483ee3d1a30375daedc8ed83e3960c91b098812127a0d99d1c8977667a70'),
+        new ModelFile('preprocessor.onnx', 'nemo128.onnx', 'a9fde1486ebfcc08f328d75ad4610c67835fea58c73ba57e3209a6f6cf019e9f')
 ]
 
-def huggingFaceRepo = 'https://huggingface.co/istupakov/parakeet-tdt-0.6b-v3-onnx/resolve/main'
+def huggingFaceRepo = 'https://huggingface.co/istupakov/parakeet-tdt-0.6b-v3-onnx/resolve/8f23f0c03c8761650bdb5b40aaf3e40d2c15f1ce'
 String sha256(File file) {
     def digest = MessageDigest.getInstance('SHA-256')
     file.withInputStream { input ->
