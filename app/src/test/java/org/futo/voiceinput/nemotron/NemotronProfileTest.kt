@@ -11,6 +11,7 @@ class NemotronProfileTest {
         assertEquals(NemotronProfile.LowLatency, "low_latency".toNemotronProfile())
         assertEquals(NemotronProfile.Balanced, "balanced".toNemotronProfile())
         assertEquals(NemotronProfile.Accuracy, "accuracy".toNemotronProfile())
+        assertEquals(NemotronProfile.Multilingual, "multilingual".toNemotronProfile())
     }
 
     @Test

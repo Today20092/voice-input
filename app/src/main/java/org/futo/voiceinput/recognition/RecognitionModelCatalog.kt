@@ -119,6 +119,8 @@ object RecognitionModelCatalog {
     )
 
     private const val NEMOTRON_VERSION = "2026-04-25"
+    private const val NEMOTRON_MULTILINGUAL_VERSION = "2026-06-11"
+    private const val NEMOTRON_MULTILINGUAL_REVISION = "ab43d895f5985b1bbab8b6eac8607fcdc05343f3"
 
     private const val PARAKEET_UNIFIED_VERSION = "7551fd26fc810cc1e4e043e608db4d13b59be31e"
     private const val PARAKEET_UNIFIED_DIRECTORY =
@@ -189,6 +191,8 @@ object RecognitionModelCatalog {
         nemotronEnglishAccuracy
     )
 
+    val nemotronMultilingual = nemotronMultilingualPackage()
+
     val cards = listOf(
         RecognitionModelCard(
             id = "moonshine",
@@ -209,6 +213,16 @@ object RecognitionModelCatalog {
             recognitionLanguages = "English",
             performanceClasses = PerformanceClass.entries.toSet(),
             models = nemotronEnglishProfiles
+        ),
+        RecognitionModelCard(
+            id = "nemotron-multilingual",
+            runtimeId = "nemotron",
+            displayName = "Nemotron 3.5",
+            description = "Live multilingual dictation with Auto-detect and 28 selectable languages.",
+            transcription = TranscriptionBehavior.LIVE,
+            recognitionLanguages = "28 languages and Auto-detect",
+            performanceClasses = setOf(PerformanceClass.DEMANDING),
+            models = listOf(nemotronMultilingual)
         ),
         RecognitionModelCard(
             id = "parakeet",
@@ -337,6 +351,38 @@ object RecognitionModelCatalog {
             sizeBytes = sizeBytes,
             sha256 = sha256
         )
+
+    private fun nemotronMultilingualPackage(): RecognitionModel {
+        val directory =
+            "sherpa-onnx-nemotron-3.5-asr-streaming-0.6b-560ms-int8-$NEMOTRON_MULTILINGUAL_VERSION"
+        val baseUrl =
+            "https://huggingface.co/csukuangfj2/$directory/resolve/$NEMOTRON_MULTILINGUAL_REVISION"
+        fun artifact(name: String, sizeBytes: Long, sha256: String) =
+            RecognitionModelArtifact(name, "$baseUrl/$name?download=true", sizeBytes, sha256)
+
+        return RecognitionModel(
+            id = "nemotron-3.5-asr-streaming-0.6b-560ms",
+            version = NEMOTRON_MULTILINGUAL_VERSION,
+            runtimeId = "nemotron",
+            variantId = "multilingual",
+            directoryName = directory,
+            source = "NVIDIA Nemotron 3.5 (OpenMDW 1.1), Sherpa-ONNX export by k2-fsa",
+            sourceUrl = "https://huggingface.co/csukuangfj2/$directory/tree/$NEMOTRON_MULTILINGUAL_REVISION",
+            displayName = "Nemotron 3.5 Multilingual",
+            description = "560 ms live transcription with explicit language selection or Auto-detect.",
+            transcription = TranscriptionBehavior.LIVE,
+            recognitionLanguages = "28 languages and Auto-detect",
+            performanceClass = PerformanceClass.DEMANDING,
+            artifacts = listOf(
+                artifact("encoder.int8.onnx", 657_601_403, "012e9321373af99021415e0b0eb3ec827b4be3153be6f30d9b448fe65e896e68"),
+                artifact("decoder.int8.onnx", 14_978_075, "19f9c98fc6d0a2c33a65a43b36fdb2e914c26c0aa9764be3aebc502a1e982fb0"),
+                artifact("joiner.int8.onnx", 9_504_438, "4101c7c679a0bc30483794b27a059e34e79232aa2068d78d51231a22c8b0d7ce"),
+                artifact("tokens.txt", 131_440, "729cc103155bafa785f9cd45746cd41cabe97eab7182fc04d594129587958f8a"),
+                artifact("test_wavs/en.wav", 228_908, "eb1eb008904465b74c304aad8342e8c7d3c6e61ffe9f66adcaca9cf0f76a93f4"),
+                artifact("test_wavs/ja.wav", 719_916, "780f95a86ba6cc33a4431fcafeacd213417dfa0a6613f93e4400c18f4dd467b0")
+            )
+        )
+    }
 
 }
 

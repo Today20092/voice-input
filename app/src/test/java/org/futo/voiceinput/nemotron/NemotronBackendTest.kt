@@ -11,8 +11,20 @@ import org.junit.Test
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.Collections
+import java.io.File
 
 class NemotronBackendTest {
+    @Test
+    fun appliesSelectedLanguageWhenLoading() = runBlocking {
+        val decoder = FakeNemotronDecoder()
+        val backend = SherpaStreamingBackend(decoderFactory = { decoder })
+
+        backend.load(File("unused"), "auto")
+
+        assertEquals("auto", decoder.configuredLanguage)
+        backend.close()
+    }
+
     @Test
     fun streamsEveryChunkPublishesPartialsAndFinalizes() = runBlocking {
         val decoder = FakeNemotronDecoder()
@@ -80,6 +92,11 @@ private class FakeNemotronDecoder : SherpaStreamingDecoder {
     val started = CountDownLatch(1)
     val allowDecode = CountDownLatch(1)
     var closed = false
+    var configuredLanguage: String? = null
+
+    override fun setLanguage(language: String) {
+        configuredLanguage = language
+    }
 
     override fun acceptAudio(samples: FloatArray): String {
         started.countDown()

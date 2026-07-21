@@ -15,7 +15,7 @@ licenseList {
 def bundleParakeetModel = project.hasProperty('bundleParakeetModel') &&
         project.property('bundleParakeetModel').toString().toBoolean()
 
-def sherpaOnnxVersion = '1.13.2'
+def sherpaOnnxVersion = '1.13.4'
 def sherpaOnnxAar = layout.buildDirectory.file("downloads/sherpa-onnx-static-link-onnxruntime-${sherpaOnnxVersion}.aar")
 def downloadSherpaOnnx = tasks.register('downloadSherpaOnnx') {
     outputs.file sherpaOnnxAar
@@ -26,7 +26,7 @@ def downloadSherpaOnnx = tasks.register('downloadSherpaOnnx') {
             new URL("https://github.com/k2-fsa/sherpa-onnx/releases/download/v${sherpaOnnxVersion}/${target.name}")
                 .withInputStream { input -> target.withOutputStream { it << input } }
         }
-        def expected = '9b2a290b8c7f31bd0aba35abb4628e87fe8d0eb71796a98aa12f3acd089ceaed'
+        def expected = 'dc5ac19a28dee3bffc5e5a5d50cb6afa977703fc4a7ee535a308506990fdd295'
         def actual = sha256(target)
         if (actual != expected) {
             target.delete()

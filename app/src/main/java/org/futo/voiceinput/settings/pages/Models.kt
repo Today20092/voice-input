@@ -44,6 +44,7 @@ import org.futo.voiceinput.moonshine.isMoonshineModelDownloaded
 import org.futo.voiceinput.moonshine.MoonshineModelVariant
 import org.futo.voiceinput.moonshine.toMoonshineModelVariant
 import org.futo.voiceinput.nemotron.isNemotronModelDownloaded
+import org.futo.voiceinput.nemotron.NEMOTRON_MULTILINGUAL_LANGUAGES
 import org.futo.voiceinput.nemotron.recognitionModel
 import org.futo.voiceinput.nemotron.toNemotronProfile
 import org.futo.voiceinput.settings.DISMISS_MIGRATION_TIP
@@ -54,12 +55,14 @@ import org.futo.voiceinput.settings.MANUALLY_SELECT_LANGUAGE
 import org.futo.voiceinput.settings.MODELS_MIGRATED
 import org.futo.voiceinput.settings.MOONSHINE_MODEL_VARIANT
 import org.futo.voiceinput.settings.NEMOTRON_PROFILE
+import org.futo.voiceinput.settings.NEMOTRON_MULTILINGUAL_LANGUAGE
 import org.futo.voiceinput.settings.MULTILINGUAL_MODEL_INDEX
 import org.futo.voiceinput.settings.PERSONAL_DICTIONARY
 import org.futo.voiceinput.settings.SPEECH_BACKEND
 import org.futo.voiceinput.settings.ScreenTitle
 import org.futo.voiceinput.settings.ScrollableList
 import org.futo.voiceinput.settings.SettingItem
+import org.futo.voiceinput.settings.SettingRadio
 import org.futo.voiceinput.settings.SettingToggleDataStore
 import org.futo.voiceinput.settings.SettingsViewModel
 import org.futo.voiceinput.settings.SpeechBackendType
@@ -200,6 +203,16 @@ fun ManagedRecognitionModelCatalog() {
                         backend.setValue(model.runtimeId)
                     },
                     onDeleted = { refresh.value += 1 }
+                )
+            }
+            if (card.id == "nemotron-multilingual" &&
+                selectedModelId == RecognitionModelCatalog.nemotronMultilingual.id
+            ) {
+                SettingRadio(
+                    title = "Recognition language",
+                    options = NEMOTRON_MULTILINGUAL_LANGUAGES.map { it.id },
+                    optionNames = NEMOTRON_MULTILINGUAL_LANGUAGES.map { it.displayName },
+                    setting = NEMOTRON_MULTILINGUAL_LANGUAGE
                 )
             }
         }

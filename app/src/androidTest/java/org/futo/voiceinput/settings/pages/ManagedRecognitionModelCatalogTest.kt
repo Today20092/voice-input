@@ -40,4 +40,15 @@ class ManagedRecognitionModelCatalogTest {
         compose.onNodeWithText("560 ms buffered live English", substring = true).assertIsDisplayed()
         compose.onNodeWithText("Nemotron is preferred", substring = true).assertIsDisplayed()
     }
+
+    @Test
+    fun nemotronMultilingualHasItsOwnCard() {
+        compose.setContent {
+            UixThemeAuto { ManagedRecognitionModelCatalog() }
+        }
+
+        compose.onNodeWithText("Nemotron 3.5 Multilingual").assertIsDisplayed()
+        compose.onNodeWithText("Auto-detect and 28 selectable languages", substring = true).assertIsDisplayed()
+        compose.onNodeWithText("OpenMDW 1.1", substring = true).assertIsDisplayed()
+    }
 }

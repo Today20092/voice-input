@@ -25,6 +25,7 @@ import java.util.concurrent.atomic.AtomicLong
 private const val SAMPLE_RATE = 16_000
 
 internal interface SherpaStreamingDecoder {
+    fun setLanguage(language: String) {}
     fun acceptAudio(samples: FloatArray): String
     fun finish(): String
     fun close()
@@ -47,7 +48,15 @@ class SherpaStreamingBackend internal constructor(
     private var lastText = ""
 
     override suspend fun load(context: Context) = withContext(Dispatchers.IO) {
-        if (decoder == null) decoder = decoderFactory(modelDirectory(context))
+        load(modelDirectory(context), context.selectedNemotronLanguageCode())
+    }
+
+    internal fun load(modelDirectory: File, languageCode: String?) {
+        if (decoder == null) {
+            decoder = decoderFactory(modelDirectory).also { decoder ->
+                languageCode?.let(decoder::setLanguage)
+            }
+        }
     }
 
     override fun startStreaming(
@@ -148,6 +157,10 @@ internal class SherpaOnlineDecoder(modelDirectory: File, featureDim: Int = 80) :
         )
         recognizer = OnlineRecognizer(assetManager = null, config = config)
         stream = recognizer.createStream()
+    }
+
+    override fun setLanguage(language: String) {
+        stream.setOption("language", language)
     }
 
     override fun acceptAudio(samples: FloatArray): String {

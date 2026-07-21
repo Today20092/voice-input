@@ -18,7 +18,7 @@ class RecognitionModelCatalogTest {
     fun catalogHasCompleteImmutableManifests() {
         val models = RecognitionModelCatalog.models
 
-        assertEquals(5, RecognitionModelCatalog.cards.size)
+        assertEquals(6, RecognitionModelCatalog.cards.size)
         assertEquals("moonshine-small", RecognitionModelCatalog.defaultModel.id)
         assertTrue(models.isNotEmpty())
         models.forEach { model ->
@@ -61,6 +61,18 @@ class RecognitionModelCatalogTest {
         assertTrue(unifiedCard.description.contains("buffered", ignoreCase = true))
         assertFalse(unifiedCard.description.contains("cache-aware", ignoreCase = true))
         assertFalse(unifiedCard.description.contains("80 ms", ignoreCase = true))
+
+        val multilingual = RecognitionModelCatalog.nemotronMultilingual
+        val multilingualCard = RecognitionModelCatalog.cards.single { it.id == "nemotron-multilingual" }
+        assertEquals("nemotron", multilingual.runtimeId)
+        assertEquals("multilingual", multilingual.variantId)
+        assertEquals("2026-06-11", multilingual.version)
+        assertEquals(6, multilingual.artifacts.size)
+        assertEquals(683_164_180, multilingual.transferBytes)
+        assertEquals(null, multilingual.archive)
+        assertTrue(multilingual.artifacts.all { it.url.contains("ab43d895f5985b1bbab8b6eac8607fcdc05343f3") })
+        assertTrue(multilingual.source.contains("OpenMDW 1.1"))
+        assertEquals(listOf(multilingual), multilingualCard.models)
     }
 
     @Test
