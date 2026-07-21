@@ -3,47 +3,47 @@ package org.futo.voiceinput.parakeet
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
+import kotlinx.coroutines.runBlocking
 import org.futo.voiceinput.BuildConfig
 import org.futo.voiceinput.downloader.DownloadActivity
 import org.futo.voiceinput.downloader.putRecognitionModel
 import org.futo.voiceinput.recognition.PerformanceClass
-import org.futo.voiceinput.recognition.RecognitionModelArtifact
 import org.futo.voiceinput.recognition.RecognitionModel
+import org.futo.voiceinput.recognition.RecognitionModelArtifact
 import org.futo.voiceinput.recognition.RecognitionModelStore
 import org.futo.voiceinput.recognition.TranscriptionBehavior
 import java.io.File
 import java.security.MessageDigest
 
 object ParakeetModel {
-    private const val revision = "8f23f0c03c8761650bdb5b40aaf3e40d2c15f1ce"
-    private const val source = "istupakov/parakeet-tdt-0.6b-v3-onnx"
+    private const val revision = "1247204e1cc87d84abf1c9a5e45c1caee15b314a"
+    private const val repository = "twmht/sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8"
     val recognitionModel = RecognitionModel(
         id = "parakeet-tdt-0.6b-v3",
         version = revision,
         runtimeId = "parakeet",
         variantId = null,
-        directoryName = "parakeet-unified-en-0.6b-onnx",
-        source = source,
-        sourceUrl = "https://huggingface.co/$source/tree/$revision",
+        directoryName = "sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8",
+        source = "NVIDIA Parakeet TDT 0.6B V3 (CC BY 4.0), Sherpa-ONNX export by twmht",
+        sourceUrl = "https://huggingface.co/$repository/tree/$revision",
         displayName = "Parakeet TDT 0.6B V3",
         description = "High-accuracy NVIDIA recognition that returns text after recording stops.",
         transcription = TranscriptionBehavior.FINAL_ONLY,
-        recognitionLanguages = "English",
+        recognitionLanguages = "25 European languages",
         performanceClass = PerformanceClass.DEMANDING,
         artifacts = listOf(
-            artifact("config.json", "config.json", 97, "5ee4d84eeb13e7a90bf76a2af8b8eb0a536f8e985a28816beae69c1dce2d4cf9"),
-            artifact("vocab.txt", "vocab.txt", 93_939, "15811f575ed0c421c68e46af904d8c435d9bededfd4203e22333efe39a77dca5"),
-            artifact("encoder-model.int8.onnx", "encoder-model.int8.onnx", 652_183_999, "6139d2fa7e1b086097b277c7149725edbab89cc7c7ae64b23c741be4055aff09"),
-            artifact("decoder_joint-model.int8.onnx", "decoder_joint-model.int8.onnx", 18_202_004, "eea7483ee3d1a30375daedc8ed83e3960c91b098812127a0d99d1c8977667a70"),
-            artifact("preprocessor.onnx", "nemo128.onnx", 139_764, "a9fde1486ebfcc08f328d75ad4610c67835fea58c73ba57e3209a6f6cf019e9f")
+            artifact("encoder.int8.onnx", 652_184_281, "acfc2b4456377e15d04f0243af540b7fe7c992f8d898d751cf134c3a55fd2247"),
+            artifact("decoder.int8.onnx", 11_845_275, "179e50c43d1a9de79c8a24149a2f9bac6eb5981823f2a2ed88d655b24248db4e"),
+            artifact("joiner.int8.onnx", 6_355_277, "3164c13fc2821009440d20fcb5fdc78bff28b4db2f8d0f0b329101719c0948b3"),
+            artifact("tokens.txt", 93_939, "d58544679ea4bc6ac563d1f545eb7d474bd6cfa467f0a6e2c1dc1c7d37e3c35d")
         )
     )
     val directoryName = recognitionModel.directoryName
 
-    private fun artifact(localName: String, remoteName: String, size: Long, hash: String) =
+    private fun artifact(name: String, size: Long, hash: String) =
         RecognitionModelArtifact(
-            name = localName,
-            url = "https://huggingface.co/$source/resolve/$revision/$remoteName?download=true",
+            name = name,
+            url = "https://huggingface.co/$repository/resolve/$revision/$name?download=true",
             sizeBytes = size,
             sha256 = hash
         )
@@ -81,14 +81,14 @@ fun Context.isParakeetModelDownloaded(verifyHashes: Boolean = false): Boolean {
 }
 
 fun Context.deleteIncompleteParakeetModel() {
-    runCatching { ParakeetNative.close() }
+    runBlocking { ParakeetEngineManager.forceClose() }
     if (!isParakeetModelDownloaded()) {
         parakeetModelDir().deleteRecursively()
     }
 }
 
 fun Context.parakeetModelDownloadIntent(): Intent {
-    runCatching { ParakeetNative.close() }
+    runBlocking { ParakeetEngineManager.forceClose() }
     return Intent(this, DownloadActivity::class.java).apply {
         putRecognitionModel(ParakeetModel.recognitionModel)
     }

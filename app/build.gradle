@@ -180,6 +180,10 @@ android {
             jniLibs.srcDirs 'src/main/jniLibs'
         }
 
+        androidTest {
+            assets.srcDir rootProject.file('parakeet-native/transcribe-rs/samples')
+        }
+
         dev {
             // Include update checking for testing
             java.srcDir 'src/withUpdateChecking/java'
@@ -377,29 +381,22 @@ tasks.register('cargoNdkBuildParakeet', Exec) {
 
 class ModelFile {
     String name
-    String remoteName
     String sha256
 
     ModelFile(String name, String sha256) {
-        this(name, name, sha256)
-    }
-
-    ModelFile(String name, String remoteName, String sha256) {
         this.name = name
-        this.remoteName = remoteName
         this.sha256 = sha256
     }
 }
 
 def parakeetModelFiles = [
-        new ModelFile('config.json', '5ee4d84eeb13e7a90bf76a2af8b8eb0a536f8e985a28816beae69c1dce2d4cf9'),
-        new ModelFile('vocab.txt', '15811f575ed0c421c68e46af904d8c435d9bededfd4203e22333efe39a77dca5'),
-        new ModelFile('encoder-model.int8.onnx', '6139d2fa7e1b086097b277c7149725edbab89cc7c7ae64b23c741be4055aff09'),
-        new ModelFile('decoder_joint-model.int8.onnx', 'eea7483ee3d1a30375daedc8ed83e3960c91b098812127a0d99d1c8977667a70'),
-        new ModelFile('preprocessor.onnx', 'nemo128.onnx', 'a9fde1486ebfcc08f328d75ad4610c67835fea58c73ba57e3209a6f6cf019e9f')
+        new ModelFile('encoder.int8.onnx', 'acfc2b4456377e15d04f0243af540b7fe7c992f8d898d751cf134c3a55fd2247'),
+        new ModelFile('decoder.int8.onnx', '179e50c43d1a9de79c8a24149a2f9bac6eb5981823f2a2ed88d655b24248db4e'),
+        new ModelFile('joiner.int8.onnx', '3164c13fc2821009440d20fcb5fdc78bff28b4db2f8d0f0b329101719c0948b3'),
+        new ModelFile('tokens.txt', 'd58544679ea4bc6ac563d1f545eb7d474bd6cfa467f0a6e2c1dc1c7d37e3c35d')
 ]
 
-def huggingFaceRepo = 'https://huggingface.co/istupakov/parakeet-tdt-0.6b-v3-onnx/resolve/8f23f0c03c8761650bdb5b40aaf3e40d2c15f1ce'
+def huggingFaceRepo = 'https://huggingface.co/twmht/sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8/resolve/1247204e1cc87d84abf1c9a5e45c1caee15b314a'
 String sha256(File file) {
     def digest = MessageDigest.getInstance('SHA-256')
     file.withInputStream { input ->
@@ -416,7 +413,7 @@ tasks.register('downloadParakeetModels') {
     description = 'Download Hugging Face Parakeet model assets'
     group = 'build'
 
-        def assetsDir = project.file('src/main/assets/parakeet-unified-en-0.6b-onnx')
+        def assetsDir = project.file('src/main/assets/sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8')
     outputs.dir assetsDir
     outputs.upToDateWhen { false }
 
@@ -436,7 +433,7 @@ tasks.register('downloadParakeetModels') {
 
             if (!destFile.exists()) {
                 println "  Downloading ${model.name}"
-                def downloadUrl = "${huggingFaceRepo}/${model.remoteName}?download=true"
+                def downloadUrl = "${huggingFaceRepo}/${model.name}?download=true"
                 def curlCommand = org.gradle.internal.os.OperatingSystem.current().isWindows() ? 'curl.exe' : 'curl'
                 exec {
                     commandLine curlCommand, '-L', '-f', '-o', destFile.absolutePath, downloadUrl

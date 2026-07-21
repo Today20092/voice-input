@@ -1,7 +1,6 @@
 package org.futo.voiceinput.parakeet
 
 import android.content.Context
-import android.os.SystemClock
 import androidx.lifecycle.LifecycleCoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -27,21 +26,21 @@ object ParakeetEngineManager {
     private var nextLeaseId = 0L
 
     internal suspend fun acquire(context: Context): ParakeetEngineLease = mutex.withLock {
-        val startedAt = SystemClock.elapsedRealtime()
+        val startedAt = System.nanoTime()
         unloadJob?.cancel()
         unloadJob = null
 
         val current = backend
-        if (current != null && ParakeetNative.isLoaded()) {
+        if (current != null) {
             current.configureDiagnostics(context)
-            current.logEngineAcquired(warm = true, elapsedMs = SystemClock.elapsedRealtime() - startedAt)
+            current.logEngineAcquired(warm = true, elapsedMs = (System.nanoTime() - startedAt) / 1_000_000)
             return@withLock newLease(current)
         }
 
         backend = null
         val loadedBackend = ParakeetBackend().also {
             it.load(context.applicationContext)
-            it.logEngineAcquired(warm = false, elapsedMs = SystemClock.elapsedRealtime() - startedAt)
+            it.logEngineAcquired(warm = false, elapsedMs = (System.nanoTime() - startedAt) / 1_000_000)
             backend = it
         }
         newLease(loadedBackend)
@@ -74,14 +73,11 @@ object ParakeetEngineManager {
             return@withLock
         }
 
-        ParakeetNative.markIdle()
         unloadJob = scope.launch {
             delay(timeoutMs)
             mutex.withLock {
-                ParakeetNative.unloadIfIdle(timeoutMs)
-                if (!ParakeetNative.isLoaded()) {
-                    backend = null
-                }
+                backend?.close()
+                backend = null
             }
         }
     }
@@ -94,5 +90,5 @@ object ParakeetEngineManager {
         backend = null
     }
 
-    fun isWarm(): Boolean = backend != null && ParakeetNative.isLoaded()
+    fun isWarm(): Boolean = backend != null
 }
