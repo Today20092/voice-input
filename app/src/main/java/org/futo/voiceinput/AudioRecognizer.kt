@@ -32,6 +32,8 @@ import org.futo.voiceinput.ml.RunState
 import org.futo.voiceinput.moonshine.MoonshineBackend
 import org.futo.voiceinput.moonshine.getSelectedMoonshineModelVariant
 import org.futo.voiceinput.moonshine.isMoonshineModelDownloaded
+import org.futo.voiceinput.nemotron.NemotronBackend
+import org.futo.voiceinput.nemotron.isNemotronModelDownloaded
 import org.futo.voiceinput.settings.ENABLE_30S_LIMIT
 import org.futo.voiceinput.settings.END_OF_SPEECH_PROFILE
 import org.futo.voiceinput.settings.IS_VAD_ENABLED
@@ -130,6 +132,7 @@ abstract class AudioRecognizer {
 
     protected abstract fun loading()
     protected abstract fun needParakeetModelDownload()
+    protected abstract fun needNemotronModelDownload()
     protected abstract fun needMoonshineModelDownload()
     protected abstract fun needWhisperModelDownload(models: List<ModelData>)
     protected abstract fun needPermission()
@@ -281,12 +284,16 @@ abstract class AudioRecognizer {
         }
     }
 
-    private suspend fun loadModelInner() {
+    private suspend fun loadModelInner(retryAfterOom: Boolean = true) {
         val loadGeneration = recognitionGeneration
         try {
             val backendType = context.getSetting(SPEECH_BACKEND).toSpeechBackendType()
             val loadedBackend = when (backendType) {
                 SpeechBackendType.Parakeet -> ParakeetEngineManager.acquire(context)
+                SpeechBackendType.Nemotron -> {
+                    ParakeetEngineManager.forceClose()
+                    NemotronBackend().also { it.load(context) }
+                }
                 SpeechBackendType.Moonshine -> {
                     ParakeetEngineManager.forceClose()
                     val variant = context.getSelectedMoonshineModelVariant()
@@ -335,6 +342,8 @@ abstract class AudioRecognizer {
                 }
                 throw CancellationException("Recognition was reset while the model loaded")
             }
+        } catch (error: CancellationException) {
+            throw error
         } catch(e: OutOfMemoryError) {
             if (loadGeneration != recognitionGeneration) {
                 throw CancellationException("Recognition was reset while loading the model")
@@ -355,7 +364,14 @@ abstract class AudioRecognizer {
             if (loadGeneration != recognitionGeneration) {
                 throw CancellationException("Recognition was reset while recovering from OOM")
             }
-            return loadModelInner()
+            if (retryAfterOom) {
+                return loadModelInner(retryAfterOom = false)
+            }
+            withContext(Dispatchers.Main) { failed(e) }
+        } catch (error: Exception) {
+            if (loadGeneration == recognitionGeneration) {
+                withContext(Dispatchers.Main) { failed(error) }
+            }
         }
     }
 
@@ -387,6 +403,15 @@ abstract class AudioRecognizer {
                         return@launch
                     }
                 }
+                SpeechBackendType.Nemotron -> {
+                    if (!context.isNemotronModelDownloaded(verifyHashes = true)) {
+                        needNemotronModelDownload()
+                        return@launch
+                    }
+                    loadModel()
+                    loadModelJob?.join()
+                    if (backend == null) return@launch
+                }
                 SpeechBackendType.Moonshine -> {
                     val variant = context.getSelectedMoonshineModelVariant()
                     if (!context.isMoonshineModelDownloaded(variant)) {
@@ -395,6 +420,7 @@ abstract class AudioRecognizer {
                     }
                     loadModel()
                     loadModelJob?.join()
+                    if (backend == null) return@launch
                 }
                 SpeechBackendType.WhisperGGML -> {
                     val requiredModels = context.selectedWhisperModelsForCurrentSettings(forcedLanguage)
@@ -468,13 +494,20 @@ abstract class AudioRecognizer {
             focusAudio()
             isRecording = true
 
-            (backend as? StreamingSpeechBackend)?.startStreaming { result ->
-                lifecycleScope.launch {
-                    withContext(Dispatchers.Main) {
-                        partialResult(PersonalVocabulary.apply(result, personalVocabulary))
+            (backend as? StreamingSpeechBackend)?.startStreaming(
+                onPartial = { result ->
+                    lifecycleScope.launch {
+                        withContext(Dispatchers.Main) {
+                            partialResult(PersonalVocabulary.apply(result, personalVocabulary))
+                        }
+                    }
+                },
+                onCatchingUp = { catchingUp ->
+                    lifecycleScope.launch(Dispatchers.Main) {
+                        decodingStatus(if (catchingUp) RunState.CatchingUp else RunState.Streaming)
                     }
                 }
-            }
+            )
 
             val canMicBeBlocked = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 (context.getSystemService(SensorPrivacyManager::class.java) as SensorPrivacyManager).supportsSensorToggle(

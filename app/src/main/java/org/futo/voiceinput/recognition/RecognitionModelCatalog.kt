@@ -42,10 +42,16 @@ data class RecognitionModel(
     val recognitionLanguages: String,
     val performanceClass: PerformanceClass,
     val artifacts: List<RecognitionModelArtifact>,
+    val archive: RecognitionModelArtifact? = null,
+    val archiveRoot: String? = null,
     val completionMarker: String = ".download_complete"
 ) {
-    val transferBytes = artifacts.sumOf { it.sizeBytes }
-    val requiredFreeSpaceBytes = transferBytes
+    init {
+        require((archive == null) == (archiveRoot == null))
+    }
+
+    val transferBytes = archive?.sizeBytes ?: artifacts.sumOf { it.sizeBytes }
+    val requiredFreeSpaceBytes = maxOf(transferBytes, artifacts.sumOf { it.sizeBytes })
 }
 
 data class RecognitionModelCard(
@@ -103,6 +109,40 @@ object RecognitionModelCatalog {
         )
     )
 
+    private const val NEMOTRON_ARCHIVE_URL =
+        "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/" +
+            "sherpa-onnx-nemotron-speech-streaming-en-0.6b-160ms-int8-2026-04-25.tar.bz2"
+    private const val NEMOTRON_DIRECTORY =
+        "sherpa-onnx-nemotron-speech-streaming-en-0.6b-160ms-int8-2026-04-25"
+
+    val nemotronEnglishBalanced = RecognitionModel(
+        id = "nemotron-speech-streaming-en-0.6b-160ms",
+        version = "2026-04-25",
+        runtimeId = "nemotron",
+        variantId = null,
+        directoryName = NEMOTRON_DIRECTORY,
+        source = "NVIDIA Nemotron via k2-fsa/sherpa-onnx",
+        sourceUrl = "https://github.com/k2-fsa/sherpa-onnx/releases/tag/asr-models",
+        displayName = "Nemotron English Balanced",
+        description = "Live English transcription with balanced latency and accuracy.",
+        transcription = TranscriptionBehavior.LIVE,
+        recognitionLanguages = "English",
+        performanceClass = PerformanceClass.BALANCED,
+        artifacts = listOf(
+            nemotronArtifact("encoder.int8.onnx", 652_916_849, "71111f61b18e1e65e01e369434a5c0434868d2f44892742ae54240600c681209"),
+            nemotronArtifact("decoder.int8.onnx", 7_257_753, "0be9702c2f427a2b6bb241d298e0d3836a558de1f5b9fd3018f1cce6e2b3fa98"),
+            nemotronArtifact("joiner.int8.onnx", 1_735_862, "a35eac38a22ebceb04d230ed7afe0d68f446ba6914a036b97f14fece95967e23"),
+            nemotronArtifact("tokens.txt", 8_952, "dc0b4584ab2e4ddbf888425c076c61b736e7356a015250db7d307e6f1a8188ff")
+        ),
+        archive = RecognitionModelArtifact(
+            name = "$NEMOTRON_DIRECTORY.tar.bz2",
+            url = NEMOTRON_ARCHIVE_URL,
+            sizeBytes = 463_945_198,
+            sha256 = "0ae73a41cd51599dc7cac9ac083d9d35de53d762ca45923505fde47a3751814b"
+        ),
+        archiveRoot = NEMOTRON_DIRECTORY
+    )
+
     val cards = listOf(
         RecognitionModelCard(
             id = "moonshine",
@@ -113,6 +153,16 @@ object RecognitionModelCatalog {
             recognitionLanguages = "English",
             performanceClasses = setOf(PerformanceClass.LIGHT, PerformanceClass.BALANCED),
             models = listOf(moonshineSmall, moonshineMedium)
+        ),
+        RecognitionModelCard(
+            id = "nemotron",
+            runtimeId = "nemotron",
+            displayName = "Nemotron",
+            description = "NVIDIA live recognition through Sherpa-ONNX.",
+            transcription = TranscriptionBehavior.LIVE,
+            recognitionLanguages = "English",
+            performanceClasses = setOf(PerformanceClass.BALANCED),
+            models = listOf(nemotronEnglishBalanced)
         ),
         RecognitionModelCard(
             id = "parakeet",
@@ -140,7 +190,9 @@ object RecognitionModelCatalog {
     val models = cards.flatMap { it.models }
 
     fun modelFor(runtimeId: String, variantId: String? = null): RecognitionModel? =
-        models.firstOrNull { it.runtimeId == runtimeId && it.variantId == variantId }
+        models.firstOrNull {
+            it.runtimeId == runtimeId && (variantId == null || it.variantId == variantId)
+        }
 
     private fun moonshinePackage(
         id: String,
@@ -169,6 +221,9 @@ object RecognitionModelCatalog {
 
     private fun artifact(name: String, sizeBytes: Long, generation: String, sha256: String) =
         RecognitionModelArtifact(name, "https://placeholder.invalid/$name?generation=$generation", sizeBytes, sha256)
+
+    private fun nemotronArtifact(name: String, sizeBytes: Long, sha256: String) =
+        RecognitionModelArtifact(name, NEMOTRON_ARCHIVE_URL, sizeBytes, sha256)
 
 }
 

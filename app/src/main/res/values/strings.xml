@@ -71,6 +71,7 @@
     <string name="decoding_started">Decoding started…</string>
     <string name="switching_to_english_model">Switching to English model…</string>
     <string name="processing">Processing…</string>
+    <string name="catching_up">Catching up…</string>
     <string name="initializing">Initializing…</string>
     <string name="cancel">Cancel</string>
     <string name="futo_logo">FUTO Logo</string>
@@ -103,6 +104,9 @@
     <string name="parakeet_download_model_tip">English-only model with punctuation and capitalization. Optimized for offline and streaming ASR.</string>
     <string name="parakeet_download_required_title">Download Required</string>
     <string name="parakeet_download_required_body">The Parakeet speech model must be downloaded before voice input can run. This may incur data fees on mobile data.</string>
+    <string name="nemotron_download_required_body">The Nemotron streaming model must be downloaded before voice input can run. This may incur data fees on mobile data.</string>
+    <string name="nemotron_model_active_subtitle">Nemotron English Balanced active</string>
+    <string name="nemotron_model_download_required">Nemotron English Balanced download required</string>
     <string name="parakeet_english_only_tip">The selected Parakeet model supports English only.</string>
     <string name="download_model">Download Model</string>
     <string name="speech_backend">Speech Backend</string>

@@ -1,6 +1,7 @@
 package org.futo.voiceinput
 
 import android.content.Context
+import android.content.Intent
 import android.media.AudioAttributes
 import android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION
 import android.media.AudioAttributes.USAGE_ASSISTANCE_SONIFICATION
@@ -63,6 +64,8 @@ import org.futo.voiceinput.settings.ENABLE_ANIMATIONS
 import org.futo.voiceinput.settings.ENABLE_SOUND
 import org.futo.voiceinput.settings.LANGUAGE_TOGGLES
 import org.futo.voiceinput.settings.MANUALLY_SELECT_LANGUAGE
+import org.futo.voiceinput.settings.SETTINGS_DESTINATION_EXTRA
+import org.futo.voiceinput.settings.SettingsActivity
 import org.futo.voiceinput.settings.VERBOSE_PROGRESS
 import org.futo.voiceinput.settings.getSetting
 import org.futo.voiceinput.settings.useDataStoreValueNullable
@@ -257,7 +260,7 @@ fun ColumnScope.RecognizeMicError(openSettings: () -> Unit) {
 }
 
 @Composable
-fun ColumnScope.RecognizeFailure(message: String) {
+fun ColumnScope.RecognizeFailure(message: String, onModelOptions: (() -> Unit)?) {
     Text(
         message,
         modifier = Modifier
@@ -266,6 +269,15 @@ fun ColumnScope.RecognizeFailure(message: String) {
         textAlign = TextAlign.Center,
         color = MaterialTheme.colorScheme.onSurface
     )
+
+    onModelOptions?.let {
+        Button(
+            onClick = it,
+            modifier = Modifier.align(Alignment.CenterHorizontally).padding(8.dp)
+        ) {
+            Text(stringResource(R.string.model_options))
+        }
+    }
 }
 
 @Composable
@@ -324,6 +336,7 @@ abstract class RecognizerView {
     abstract fun sendPartialResult(result: String): Boolean
     abstract fun requestPermission()
     abstract fun requestParakeetModelDownload()
+    abstract fun requestNemotronModelDownload()
     abstract fun requestMoonshineModelDownload()
     abstract fun requestWhisperModelDownload(models: List<ModelData>)
 
@@ -393,7 +406,19 @@ abstract class RecognizerView {
                     onPauseVAD = { },
                     allowClick = true
                 ) {
-                    RecognizeFailure(message)
+                    RecognizeFailure(
+                        message,
+                        if (error is NoSpeechRecognizedException) null else {
+                            {
+                                context.startActivity(
+                                    Intent(context, SettingsActivity::class.java).apply {
+                                        putExtra(SETTINGS_DESTINATION_EXTRA, "models")
+                                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                    }
+                                )
+                            }
+                        }
+                    )
                 }
             }
         }
@@ -425,6 +450,8 @@ abstract class RecognizerView {
                     RunState.ExtractingFeatures -> context.getString(R.string.extracting_features)
                     RunState.ProcessingEncoder -> context.getString(R.string.running_encoder)
                     RunState.StartedDecoding -> context.getString(R.string.decoding_started)
+                    RunState.Streaming -> context.getString(R.string.listening)
+                    RunState.CatchingUp -> context.getString(R.string.catching_up)
                     RunState.SwitchingModel -> context.getString(R.string.switching_to_english_model)
                     RunState.OOMError -> context.getString(R.string.out_of_memory_error)
                 }
@@ -433,6 +460,8 @@ abstract class RecognizerView {
                     RunState.ExtractingFeatures -> context.getString(R.string.processing)
                     RunState.ProcessingEncoder -> context.getString(R.string.processing)
                     RunState.StartedDecoding -> context.getString(R.string.processing)
+                    RunState.Streaming -> context.getString(R.string.listening)
+                    RunState.CatchingUp -> context.getString(R.string.catching_up)
                     RunState.SwitchingModel -> context.getString(R.string.switching_to_english_model)
                     RunState.OOMError -> context.getString(R.string.out_of_memory_error)
                 }
@@ -478,6 +507,22 @@ abstract class RecognizerView {
                     RecognizeModelDownloadRequired(
                         body = context.getString(R.string.parakeet_download_required_body),
                         onDownload = { requestParakeetModelDownload() }
+                    )
+                }
+            }
+        }
+
+        override fun needNemotronModelDownload() {
+            setContent {
+                this@RecognizerView.Window(
+                    onClose = { cancelRecognizer() },
+                    onFinish = { requestNemotronModelDownload() },
+                    onPauseVAD = { },
+                    allowClick = false
+                ) {
+                    RecognizeModelDownloadRequired(
+                        body = context.getString(R.string.nemotron_download_required_body),
+                        onDownload = { requestNemotronModelDownload() }
                     )
                 }
             }

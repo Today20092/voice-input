@@ -42,6 +42,8 @@ import org.futo.voiceinput.moonshine.isMoonshineModelDownloaded
 import org.futo.voiceinput.moonshine.MoonshineModelVariant
 import org.futo.voiceinput.moonshine.startMoonshineModelDownloadActivity
 import org.futo.voiceinput.moonshine.toMoonshineModelVariant
+import org.futo.voiceinput.nemotron.isNemotronModelDownloaded
+import org.futo.voiceinput.nemotron.startNemotronModelDownloadActivity
 import org.futo.voiceinput.settings.DISMISS_MIGRATION_TIP
 import org.futo.voiceinput.settings.ENABLE_MULTILINGUAL
 import org.futo.voiceinput.settings.ENGLISH_MODEL_INDEX
@@ -79,6 +81,13 @@ fun modelsSubtitle(): String? {
                 stringResource(R.string.parakeet_model_active_subtitle)
             } else {
                 stringResource(R.string.parakeet_model_download_required)
+            }
+        }
+        SpeechBackendType.Nemotron -> {
+            if (context.isNemotronModelDownloaded()) {
+                stringResource(R.string.nemotron_model_active_subtitle)
+            } else {
+                stringResource(R.string.nemotron_model_download_required)
             }
         }
         SpeechBackendType.Moonshine -> {
@@ -204,12 +213,14 @@ private fun ManagedRecognitionModelItem(
     val selectOrDownload = {
         if (installed) {
             if (bundled) onSelect() else store.select(model, onSelect)
-        } else if (model.runtimeId == SpeechBackendType.Moonshine.id) {
-            context.startMoonshineModelDownloadActivity(
-                model.variantId.orEmpty().toMoonshineModelVariant()
-            )
         } else {
-            context.startParakeetModelDownloadActivity()
+            when (model.runtimeId) {
+                SpeechBackendType.Moonshine.id -> context.startMoonshineModelDownloadActivity(
+                    model.variantId.orEmpty().toMoonshineModelVariant()
+                )
+                SpeechBackendType.Nemotron.id -> context.startNemotronModelDownloadActivity()
+                else -> context.startParakeetModelDownloadActivity()
+            }
         }
     }
 

@@ -46,6 +46,8 @@ enum class RunState {
     ExtractingFeatures,
     ProcessingEncoder,
     StartedDecoding,
+    Streaming,
+    CatchingUp,
     SwitchingModel,
     OOMError
 }

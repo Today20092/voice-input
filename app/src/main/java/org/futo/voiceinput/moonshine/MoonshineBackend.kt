@@ -46,7 +46,10 @@ class MoonshineBackend(
             .trim()
     }
 
-    override fun startStreaming(onPartial: (String) -> Unit) {
+    override fun startStreaming(
+        onPartial: (String) -> Unit,
+        onCatchingUp: (Boolean) -> Unit
+    ) {
         completedText = ""
         currentText = ""
         val transcriber = transcriberOrThrow()

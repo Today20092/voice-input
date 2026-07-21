@@ -17,13 +17,13 @@ class RecognitionModelCatalogTest {
     fun catalogHasCompleteImmutableManifests() {
         val models = RecognitionModelCatalog.models
 
-        assertEquals(3, RecognitionModelCatalog.cards.size)
+        assertEquals(4, RecognitionModelCatalog.cards.size)
         assertEquals("moonshine-small", RecognitionModelCatalog.defaultModel.id)
         assertTrue(models.isNotEmpty())
         models.forEach { model ->
             assertTrue(model.version.isNotBlank())
             assertTrue(model.artifacts.isNotEmpty())
-            assertEquals(model.artifacts.sumOf { it.sizeBytes }, model.transferBytes)
+            assertEquals(model.archive?.sizeBytes ?: model.artifacts.sumOf { it.sizeBytes }, model.transferBytes)
             model.artifacts.forEach { artifact ->
                 assertTrue(artifact.url.startsWith("https://"))
                 assertFalse(artifact.url.contains("/main/"))
@@ -34,6 +34,17 @@ class RecognitionModelCatalogTest {
                 assertTrue(artifact.sizeBytes > 0L)
             }
         }
+
+        val nemotron = RecognitionModelCatalog.nemotronEnglishBalanced
+        assertEquals("nemotron", nemotron.runtimeId)
+        assertEquals(null, nemotron.variantId)
+        assertEquals(TranscriptionBehavior.LIVE, nemotron.transcription)
+        assertEquals(PerformanceClass.BALANCED, nemotron.performanceClass)
+        assertEquals(4, nemotron.artifacts.size)
+        assertEquals(
+            "0ae73a41cd51599dc7cac9ac083d9d35de53d762ca45923505fde47a3751814b",
+            nemotron.archive?.sha256
+        )
     }
 
     @Test

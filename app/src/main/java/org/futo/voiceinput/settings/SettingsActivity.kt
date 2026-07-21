@@ -21,6 +21,8 @@ import org.futo.voiceinput.payments.BillingManager
 import org.futo.voiceinput.theme.UixThemeAuto
 import org.futo.voiceinput.updates.scheduleUpdateCheckingJob
 
+const val SETTINGS_DESTINATION_EXTRA = "org.futo.voiceinput.settings.DESTINATION"
+
 class SettingsActivity : ComponentActivity() {
     internal lateinit var billing: BillingManager
     private fun updateContent() {
@@ -31,7 +33,10 @@ class SettingsActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    SetupOrMain(billing = billing)
+                    SetupOrMain(
+                        billing = billing,
+                        initialDestination = intent.getStringExtra(SETTINGS_DESTINATION_EXTRA) ?: "home"
+                    )
                 }
             }
         }

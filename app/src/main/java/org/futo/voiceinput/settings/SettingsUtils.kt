@@ -112,7 +112,8 @@ fun Context.openSystemDefaultsSettings(component: ComponentName) {
 fun SettingsMain(
     settingsViewModel: SettingsViewModel = viewModel(),
     navController: NavHostController = rememberNavController(),
-    billing: BillingManager? = null
+    billing: BillingManager? = null,
+    initialDestination: String = "home"
 ) {
     val settingsUiState by settingsViewModel.uiState.collectAsState()
 
@@ -138,7 +139,7 @@ fun SettingsMain(
 
     NavHost(
         navController = navController,
-        startDestination = "home"
+        startDestination = initialDestination
     ) {
         composable("home") { HomeScreen(settingsViewModel, navController) }
         composable("advanced") { AdvancedScreen(settingsViewModel, navController) }
@@ -179,7 +180,11 @@ data class BlacklistedInputMethod(val packageName: String, val details: String, 
 
 
 @Composable
-fun SetupOrMain(settingsViewModel: SettingsViewModel = viewModel(), billing: BillingManager) {
+fun SetupOrMain(
+    settingsViewModel: SettingsViewModel = viewModel(),
+    billing: BillingManager,
+    initialDestination: String = "home"
+) {
     val blacklistedMethods =
         listOf(
             BlacklistedInputMethod(
@@ -252,6 +257,6 @@ fun SetupOrMain(settingsViewModel: SettingsViewModel = viewModel(), billing: Bil
             }
         }
     } else {
-        SettingsMain(settingsViewModel, billing = billing)
+        SettingsMain(settingsViewModel, billing = billing, initialDestination = initialDestination)
     }
 }

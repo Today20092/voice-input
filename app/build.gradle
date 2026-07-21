@@ -15,6 +15,27 @@ licenseList {
 def bundleParakeetModel = project.hasProperty('bundleParakeetModel') &&
         project.property('bundleParakeetModel').toString().toBoolean()
 
+def sherpaOnnxVersion = '1.13.2'
+def sherpaOnnxAar = layout.buildDirectory.file("downloads/sherpa-onnx-static-link-onnxruntime-${sherpaOnnxVersion}.aar")
+def downloadSherpaOnnx = tasks.register('downloadSherpaOnnx') {
+    outputs.file sherpaOnnxAar
+    doLast {
+        def target = sherpaOnnxAar.get().asFile
+        target.parentFile.mkdirs()
+        if (!target.exists()) {
+            new URL("https://github.com/k2-fsa/sherpa-onnx/releases/download/v${sherpaOnnxVersion}/${target.name}")
+                .withInputStream { input -> target.withOutputStream { it << input } }
+        }
+        def expected = '9b2a290b8c7f31bd0aba35abb4628e87fe8d0eb71796a98aa12f3acd089ceaed'
+        def actual = sha256(target)
+        if (actual != expected) {
+            target.delete()
+            throw new GradleException("Checksum verification failed for ${target.name}: expected ${expected}, got ${actual}")
+        }
+    }
+}
+def sherpaOnnxFiles = files(sherpaOnnxAar).builtBy(downloadSherpaOnnx)
+
 def gitShortHash = {
     try {
         def output = new ByteArrayOutputStream()
@@ -272,9 +293,11 @@ dependencies {
     debugImplementation 'androidx.compose.ui:ui-test-manifest'
 
     implementation 'com.squareup.okhttp3:okhttp:4.11.0'
+    implementation 'org.apache.commons:commons-compress:1.28.0'
 
     implementation 'com.microsoft.onnxruntime:onnxruntime-android:1.22.0'
     implementation 'ai.moonshine:moonshine-voice:0.0.68'
+    implementation sherpaOnnxFiles
 
     implementation 'ch.acra:acra-http:5.11.1'
     implementation 'ch.acra:acra-dialog:5.11.1'

@@ -9,7 +9,10 @@ interface SpeechBackend {
 }
 
 interface StreamingSpeechBackend : SpeechBackend {
-    fun startStreaming(onPartial: (String) -> Unit)
+    fun startStreaming(
+        onPartial: (String) -> Unit,
+        onCatchingUp: (Boolean) -> Unit = {}
+    )
     fun acceptAudio(samples: FloatArray)
     suspend fun finishStreaming(): String
 }

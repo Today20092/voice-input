@@ -52,6 +52,8 @@ import org.futo.voiceinput.settings.setSettingBlocking
 import org.futo.voiceinput.theme.UixThemeAuto
 import org.futo.voiceinput.theme.Typography
 import java.io.File
+import java.io.FilterInputStream
+import java.io.InputStream
 import java.io.IOException
 import kotlin.math.max
 
@@ -67,6 +69,11 @@ const val EXTRA_SELECT_BACKEND = "select_backend"
 const val EXTRA_SELECT_VARIANT = "select_variant"
 const val EXTRA_MODEL_ID = "recognition_model_id"
 const val EXTRA_MODEL_VERSION = "recognition_model_version"
+const val EXTRA_ARCHIVE_NAME = "recognition_model_archive_name"
+const val EXTRA_ARCHIVE_URL = "recognition_model_archive_url"
+const val EXTRA_ARCHIVE_HASH = "recognition_model_archive_hash"
+const val EXTRA_ARCHIVE_SIZE = "recognition_model_archive_size"
+const val EXTRA_ARCHIVE_ROOT = "recognition_model_archive_root"
 
 fun Intent.putRecognitionModel(model: RecognitionModel) {
     putStringArrayListExtra(EXTRA_DOWNLOAD_FILE_NAMES, ArrayList(model.artifacts.map { it.name }))
@@ -81,6 +88,13 @@ fun Intent.putRecognitionModel(model: RecognitionModel) {
     model.variantId?.let { putExtra(EXTRA_SELECT_VARIANT, it) }
     putExtra(EXTRA_MODEL_ID, model.id)
     putExtra(EXTRA_MODEL_VERSION, model.version)
+    model.archive?.let { archive ->
+        putExtra(EXTRA_ARCHIVE_NAME, archive.name)
+        putExtra(EXTRA_ARCHIVE_URL, archive.url)
+        putExtra(EXTRA_ARCHIVE_HASH, archive.sha256)
+        putExtra(EXTRA_ARCHIVE_SIZE, archive.sizeBytes)
+        putExtra(EXTRA_ARCHIVE_ROOT, model.archiveRoot)
+    }
 }
 
 
@@ -331,6 +345,8 @@ class DownloadActivity : ComponentActivity() {
     private var isDownloading by mutableStateOf(false)
     private var completionMarker: File? = null
     private var confirmation: DownloadConfirmation? = null
+    private var archiveToDownload: ModelInfo? = null
+    private var archiveRoot: String? = null
 
     private fun updateContent() {
         setContent {
@@ -359,6 +375,11 @@ class DownloadActivity : ComponentActivity() {
         if (confirmation?.hasEnoughSpace == false) return
         completionMarker?.delete()
         isDownloading = true
+
+        archiveToDownload?.let {
+            downloadArchive(it)
+            return
+        }
 
         if (modelsToDownload.isEmpty()) {
             downloadsFinished()
@@ -454,6 +475,52 @@ class DownloadActivity : ComponentActivity() {
                 }
             })
         }
+    }
+
+    private fun downloadArchive(model: ModelInfo) {
+        model.started = true
+        model.error = false
+        val request = Request.Builder().get().url(model.url).build()
+        httpClient.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) = markError(model)
+
+            override fun onResponse(call: Call, response: Response) {
+                response.use {
+                    val body = response.body
+                    if (!response.isSuccessful || body == null) {
+                        markError(model)
+                        return
+                    }
+                    try {
+                        val progressInput = ProgressInputStream(body.byteStream(), model.expectedSize) {
+                            updateModelOnMain { model.progress = it }
+                        }
+                        val artifacts = allRequestedFiles.map {
+                            org.futo.voiceinput.recognition.RecognitionModelArtifact(
+                                it.name,
+                                it.url,
+                                requireNotNull(it.expectedSize),
+                                requireNotNull(it.sha256)
+                            )
+                        }
+                        extractModelArchive(
+                            input = progressInput,
+                            targetDirectory = requireNotNull(allRequestedFiles.firstOrNull()?.targetFile?.parentFile),
+                            archiveRoot = requireNotNull(archiveRoot),
+                            artifacts = artifacts,
+                            expectedArchiveSha256 = requireNotNull(model.sha256)
+                        )
+                        require(model.expectedSize == null || progressInput.bytesRead == model.expectedSize) {
+                            "Downloaded archive size mismatch"
+                        }
+                        markFinished(model)
+                    } catch (error: Exception) {
+                        error.printStackTrace()
+                        markError(model)
+                    }
+                }
+            }
+        })
     }
 
     private fun updateModelOnMain(update: () -> Unit) {
@@ -582,6 +649,17 @@ class DownloadActivity : ComponentActivity() {
             File(targetDir, it)
         }
 
+        intent.getStringExtra(EXTRA_ARCHIVE_URL)?.let { url ->
+            archiveRoot = requireNotNull(intent.getStringExtra(EXTRA_ARCHIVE_ROOT))
+            archiveToDownload = ModelInfo(
+                name = requireNotNull(intent.getStringExtra(EXTRA_ARCHIVE_NAME)),
+                url = url,
+                sha256 = requireNotNull(intent.getStringExtra(EXTRA_ARCHIVE_HASH)),
+                expectedSize = intent.getLongExtra(EXTRA_ARCHIVE_SIZE, -1L).also { require(it > 0L) },
+                size = intent.getLongExtra(EXTRA_ARCHIVE_SIZE, -1L)
+            )
+        }
+
         return names.indices.map { index ->
             ModelInfo(
                 name = names[index],
@@ -615,7 +693,8 @@ class DownloadActivity : ComponentActivity() {
 
         allRequestedFiles = explicitDownloadRequests() ?: legacyDownloadRequests()
         intent.getStringExtra(EXTRA_DOWNLOAD_SOURCE)?.let { source ->
-            val transferBytes = allRequestedFiles.sumOf { it.expectedSize ?: 0L }
+            val transferBytes = archiveToDownload?.expectedSize
+                ?: allRequestedFiles.sumOf { it.expectedSize ?: 0L }
             confirmation = DownloadConfirmation(
                 source = source,
                 transferBytes = transferBytes,
@@ -624,7 +703,10 @@ class DownloadActivity : ComponentActivity() {
                 cellular = isCellularNetwork()
             )
         }
-        modelsToDownload = if (completionMarker != null && completionMarker?.isFile != true) {
+        modelsToDownload = if (archiveToDownload != null &&
+            (completionMarker?.isFile != true || allRequestedFiles.any { !isValidTargetFile(it) })) {
+            listOf(requireNotNull(archiveToDownload))
+        } else if (completionMarker != null && completionMarker?.isFile != true) {
             allRequestedFiles
         } else {
             allRequestedFiles.filter { !isValidTargetFile(it) }
@@ -646,5 +728,33 @@ class DownloadActivity : ComponentActivity() {
         val network = manager.activeNetwork ?: return false
         return manager.getNetworkCapabilities(network)
             ?.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) == true
+    }
+}
+
+private class ProgressInputStream(
+    input: InputStream,
+    private val totalBytes: Long?,
+    private val onProgress: (Float) -> Unit
+) : FilterInputStream(input) {
+    var bytesRead = 0L
+        private set
+    private var lastProgress = 0.0f
+    private var lastUpdateTime = 0L
+
+    override fun read(): Int = super.read().also { if (it >= 0) advanced(1) }
+
+    override fun read(buffer: ByteArray, offset: Int, length: Int): Int =
+        super.read(buffer, offset, length).also { if (it > 0) advanced(it) }
+
+    private fun advanced(count: Int) {
+        bytesRead += count
+        val total = totalBytes ?: return
+        val progress = (bytesRead.toFloat() / total.toFloat()).coerceIn(0.0f, 1.0f)
+        val now = SystemClock.elapsedRealtime()
+        if (progress - lastProgress >= 0.01f || now - lastUpdateTime >= 250L) {
+            lastProgress = progress
+            lastUpdateTime = now
+            onProgress(progress)
+        }
     }
 }
