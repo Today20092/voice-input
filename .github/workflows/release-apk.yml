@@ -49,14 +49,6 @@ jobs:
           sdkmanager "platforms;android-35" "build-tools;35.0.0" "ndk;28.2.13676358" "cmake;3.22.1"
           yes | sdkmanager --licenses >/dev/null
 
-      - name: Set up Rust
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: aarch64-linux-android
-
-      - name: Install cargo-ndk
-        run: cargo install cargo-ndk
-
       - name: Build APK
         run: |
           ./gradlew :app:assembleStandaloneRelease

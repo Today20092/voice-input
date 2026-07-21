@@ -29,7 +29,6 @@ app/release/
 
 # Native build outputs
 app/src/main/jniLibs/
-parakeet-native/target/
 
 # Downloaded model assets are fetched by Gradle during builds.
 app/src/main/assets/parakeet-tdt-0.6b-v3-int8/

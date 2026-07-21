@@ -143,7 +143,6 @@ android {
         jniLibs {
             useLegacyPackaging false
             keepDebugSymbols += '**/*.so'
-            pickFirsts += '**/libonnxruntime.so'
         }
     }
 
@@ -178,10 +177,6 @@ android {
     sourceSets {
         main {
             jniLibs.srcDirs 'src/main/jniLibs'
-        }
-
-        androidTest {
-            assets.srcDir rootProject.file('parakeet-native/transcribe-rs/samples')
         }
 
         dev {
@@ -299,7 +294,6 @@ dependencies {
     implementation 'com.squareup.okhttp3:okhttp:4.11.0'
     implementation 'org.apache.commons:commons-compress:1.28.0'
 
-    implementation 'com.microsoft.onnxruntime:onnxruntime-android:1.22.0'
     implementation 'ai.moonshine:moonshine-voice:0.0.68'
     implementation sherpaOnnxFiles
 
@@ -313,70 +307,6 @@ dependencies {
     devImplementation "com.android.billingclient:billing-ktx:$billing_version"
     devSameIdImplementation "com.android.billingclient:billing:$billing_version"
     devSameIdImplementation "com.android.billingclient:billing-ktx:$billing_version"
-}
-
-configurations {
-    ortNative
-}
-
-dependencies {
-    ortNative 'com.microsoft.onnxruntime:onnxruntime-android:1.22.0'
-}
-
-tasks.register('extractOrt', Copy) {
-    description = 'Extract ONNX Runtime AAR for Rust build'
-    group = 'build'
-
-    from {
-        configurations.ortNative.collect { zipTree(it) }
-    }
-    into layout.buildDirectory.dir('ort-extracted')
-}
-
-tasks.register('cargoNdkBuildParakeet', Exec) {
-    description = 'Build Parakeet Rust native library via cargo-ndk'
-    group = 'build'
-
-    dependsOn tasks.named('extractOrt')
-
-    workingDir rootProject.file('parakeet-native')
-
-    def ndkDir = project.findProperty('ndk.dir')?.toString()
-            ?: System.getenv('ANDROID_NDK_HOME')
-            ?: System.getenv('ANDROID_NDK')
-            ?: android.ndkDirectory.absolutePath
-
-    environment 'ANDROID_NDK_HOME', ndkDir
-    environment 'PATH', "${System.getProperty('user.home')}\\.cargo\\bin;${System.getenv('PATH')}"
-
-    def extractDir = layout.buildDirectory.dir('ort-extracted').get().asFile
-    environment 'ORT_LIB_LOCATION', new File(extractDir, 'jni/arm64-v8a').absolutePath
-    environment 'ORT_INCLUDE_DIR', new File(extractDir, 'headers').absolutePath
-
-    def jniLibsDir = project.file('src/main/jniLibs')
-
-    commandLine 'cargo', 'ndk',
-            '-t', 'arm64-v8a',
-            '-o', jniLibsDir.absolutePath,
-            'build', '--release'
-
-    doLast {
-        def hostTag = org.gradle.internal.os.OperatingSystem.current().isWindows() ? 'windows-x86_64' :
-                (org.gradle.internal.os.OperatingSystem.current().isMacOsX() ? 'darwin-x86_64' : 'linux-x86_64')
-        def libcpp = file("${ndkDir}/toolchains/llvm/prebuilt/${hostTag}/sysroot/usr/lib/aarch64-linux-android/libc++_shared.so")
-        if (!libcpp.exists()) {
-            throw new GradleException("libc++_shared.so not found in NDK at: ${libcpp.absolutePath}")
-        }
-
-        def destDir = new File(jniLibsDir, 'arm64-v8a')
-        destDir.mkdirs()
-        copy {
-            from libcpp
-            into destDir
-        }
-    }
-
-    outputs.dir jniLibsDir
 }
 
 class ModelFile {
@@ -452,7 +382,6 @@ tasks.register('downloadParakeetModels') {
 }
 
 tasks.named('preBuild') {
-    dependsOn tasks.named('cargoNdkBuildParakeet')
     if (bundleParakeetModel) {
         dependsOn tasks.named('downloadParakeetModels')
     }

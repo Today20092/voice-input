@@ -16,8 +16,7 @@ The goal is to preserve FUTO Voice Input's Android IME/activity UX while making 
 
 - Android app module: `app/`
 - Kotlin/Compose UI, settings, recording flow: `app/src/main/java/org/futo/voiceinput/`
-- Parakeet Kotlin backend/JNI bridge: `app/src/main/java/org/futo/voiceinput/parakeet/`
-- Rust Parakeet native library: `parakeet-native/`
+- Sherpa-ONNX Parakeet backend: `app/src/main/java/org/futo/voiceinput/parakeet/`
 - Legacy Whisper/GGML native code: `app/src/main/cpp/`
 - Parakeet ONNX export tooling: `tools/parakeet_export/`
 - Build flavors and native build wiring: `app/build.gradle`
@@ -29,8 +28,7 @@ Primary runtime flow:
 3. `RecognizerView` delegates recording/model work to `AudioRecognizer`.
 4. `AudioRecognizer` records 16 kHz mono PCM with `AudioRecord`, applies WebRTC VAD, buffers float samples, then selects a `SpeechBackend`.
 5. Default backend is `MoonshineBackend`; optional backends are `ParakeetBackend` and `WhisperGGMLBackend`.
-6. `ParakeetBackend` calls `ParakeetNative`, which loads `c++_shared`, `onnxruntime`, and `parakeet_voiceinput`.
-7. Rust JNI functions in `parakeet-native/src/lib.rs` call `parakeet-native/src/engine.rs`, which uses `transcribe-rs` and ONNX Runtime.
+6. `ParakeetBackend` uses the maintained Sherpa-ONNX Kotlin runtime.
 
 ## Key Files
 
@@ -44,11 +42,7 @@ Primary runtime flow:
 - `app/src/main/java/org/futo/voiceinput/settings/pages/Models.kt`: Model Options UI for Moonshine, Parakeet, and Whisper/GGML.
 - `app/src/main/java/org/futo/voiceinput/downloader/DownloadActivity.kt`: shared model downloader. Supports explicit file URLs/hashes for Parakeet and legacy FUTO model names for Whisper.
 - `app/src/main/java/org/futo/voiceinput/parakeet/ParakeetModel.kt`: Parakeet file list, Hugging Face URLs, download marker, hash verification, model download intent.
-- `app/src/main/java/org/futo/voiceinput/parakeet/ParakeetEngineManager.kt`: shared/warm Parakeet backend, idle unload timeout.
-- `app/src/main/java/org/futo/voiceinput/parakeet/ParakeetNative.kt`: JNI declarations and native library load order.
-- `parakeet-native/src/assets.rs`: finds downloaded model under app `filesDir`, or extracts packaged assets if `bundleParakeetModel=true`.
-- `parakeet-native/src/engine.rs`: global Parakeet engine load/transcribe/close/idle handling.
-- `parakeet-native/transcribe-rs/`: local Rust transcription engine dependency with Parakeet implementation.
+- `app/src/main/java/org/futo/voiceinput/parakeet/ParakeetEngineManager.kt`: shared/warm Sherpa-ONNX Parakeet backend and idle unload timeout.
 - `app/src/main/cpp/`: legacy `voiceinput` C++/GGML/Whisper library built by CMake.
 
 ## Model Storage And Downloads
@@ -68,13 +62,13 @@ Required files are listed in `ParakeetModel.files`:
 - `preprocessor.onnx` downloaded from remote `nemo128.onnx`
 - `.download_complete` marker after all requested files validate
 
-`BuildConfig.BUNDLE_PARAKEET_MODEL` is controlled by Gradle property `-PbundleParakeetModel=true`. In that mode, `downloadParakeetModels` places assets under `app/src/main/assets/parakeet-unified-en-0.6b-onnx`, and Rust extracts them to `filesDir` on first load.
+`BuildConfig.BUNDLE_PARAKEET_MODEL` is controlled by Gradle property `-PbundleParakeetModel=true`. In that mode, `downloadParakeetModels` places assets under `app/src/main/assets/parakeet-unified-en-0.6b-onnx`, and Sherpa-ONNX loads them from the APK.
 
 Hashes in `ParakeetModel.kt` and `app/build.gradle` are currently nullable/blank placeholders. If validated hashes become available, update both places consistently.
 
 ## Build And Test Commands
 
-Prereqs: JDK 17+, Android SDK platform 35, NDK `28.2.13676358`, Rust target `aarch64-linux-android`, `cargo-ndk`.
+Prereqs: JDK 17+, Android SDK platform 35, NDK `28.2.13676358`.
 
 Common commands:
 
@@ -84,13 +78,6 @@ Common commands:
 .\gradlew.bat :app:testDevDebugUnitTest
 .\gradlew.bat :app:lintDevDebug
 ```
-
-Gradle `preBuild` depends on `cargoNdkBuildParakeet`, which:
-
-- extracts ONNX Runtime Android AAR headers/libs from Maven
-- builds `parakeet-native` with `cargo ndk -t arm64-v8a`
-- copies native outputs to `app/src/main/jniLibs/arm64-v8a`
-- copies `libc++_shared.so` from the configured NDK
 
 First supported ABI is `arm64-v8a`.
 
@@ -114,7 +101,6 @@ Generated APK names are customized in `app/build.gradle`, but the GitHub workflo
 - `ParakeetEngineManager` keeps Parakeet warm by default via `PARAKEET_KEEP_WARM`; force-close it before deleting/replacing model files.
 - The IME cannot request microphone permission directly; `VoiceInputMethodService.requestPermission()` rejects and shows settings/error UI.
 - Do not remove legacy Whisper/GGML paths unless explicitly requested; this fork intentionally keeps them as selectable fallback.
-- Be careful with generated/native outputs under `app/src/main/jniLibs/`; they are produced by Gradle/Rust build tasks.
 - This repo may have local uncommitted changes. Check `git status --short` before editing and avoid reverting user changes.
 
 ## Agent skills

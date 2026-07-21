@@ -67,15 +67,6 @@ Required tools:
 - JDK 17 or newer
 - Android SDK platform 35
 - Android NDK `28.2.13676358`
-- Rust with `aarch64-linux-android` target
-- `cargo-ndk`
-
-Install the Rust target and cargo helper:
-
-```powershell
-rustup target add aarch64-linux-android
-cargo install cargo-ndk
-```
 
 Create `local.properties` if Android Studio has not already created it:
 
@@ -122,7 +113,6 @@ git push origin v1.1.0-parakeet-runtime-download
 GitHub Actions will:
 
 - install Android build components
-- install Rust and `cargo-ndk`
 - build `:app:assembleStandaloneRelease`
 - create a GitHub Release for the pushed tag
 - attach the APK to that GitHub Release
