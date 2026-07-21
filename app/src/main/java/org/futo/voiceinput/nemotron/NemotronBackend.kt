@@ -23,6 +23,7 @@ import java.io.File
 import java.util.concurrent.atomic.AtomicLong
 
 private const val SAMPLE_RATE = 16_000
+private val LANGUAGE_TAG = Regex("\\s*<([A-Za-z]{2,3}(?:-[A-Za-z]{2,4})?)>\\s*$")
 
 internal interface SherpaStreamingDecoder {
     fun setLanguage(language: String) {}
@@ -46,12 +47,17 @@ class SherpaStreamingBackend internal constructor(
     private var onCatchingUp: (Boolean) -> Unit = {}
     private var catchingUp = false
     private var lastText = ""
+    private var autoDetectLanguage = false
+    override var detectedLanguage: String? = null
+        private set
 
     override suspend fun load(context: Context) = withContext(Dispatchers.IO) {
         load(modelDirectory(context), context.selectedNemotronLanguageCode())
     }
 
     internal fun load(modelDirectory: File, languageCode: String?) {
+        autoDetectLanguage = languageCode == "auto"
+        detectedLanguage = null
         if (decoder == null) {
             decoder = decoderFactory(modelDirectory).also { decoder ->
                 languageCode?.let(decoder::setLanguage)
@@ -100,7 +106,11 @@ class SherpaStreamingBackend internal constructor(
         audio = null
         worker = null
         updateCatchingUp(false)
-        return decoderOrThrow().finish().trim()
+        val result = decoderOrThrow().finish().trim()
+        if (!autoDetectLanguage) return result
+        val tag = LANGUAGE_TAG.find(result) ?: return result
+        detectedLanguage = tag.groupValues[1]
+        return result.removeRange(tag.range).trim()
     }
 
     override suspend fun transcribe(samples: FloatArray): String {

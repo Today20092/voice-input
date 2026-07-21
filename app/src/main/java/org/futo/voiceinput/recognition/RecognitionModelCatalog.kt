@@ -400,10 +400,7 @@ class SelectedModelDeletionException : IllegalStateException(
     "Select another installed recognition model before deleting this model."
 )
 
-class RecognitionModelStore(
-    private val rootDirectory: File,
-    private val releaseRuntime: (RecognitionModel) -> Unit = {}
-) {
+class RecognitionModelStore(private val rootDirectory: File) {
     fun modelDirectory(model: RecognitionModel): File {
         val activeName = runCatching { activeDirectoryPointer(model).readText() }.getOrNull()
         return File(rootDirectory, activeName ?: model.directoryName)
@@ -474,7 +471,10 @@ class RecognitionModelStore(
             artifactsValid(model, verifyHashes = true, directory = updateDirectory(model))
     }
 
-    fun activateUpdate(model: RecognitionModel) {
+    suspend fun activateUpdate(
+        model: RecognitionModel,
+        releaseRuntime: suspend (RecognitionModel) -> Unit
+    ) {
         check(isUpdatePrepared(model)) { "${model.displayName} update is not complete" }
         val current = modelDirectory(model)
         val update = updateDirectory(model)
@@ -494,7 +494,11 @@ class RecognitionModelStore(
         updateSelection()
     }
 
-    fun delete(model: RecognitionModel, selectedModelId: String?) {
+    suspend fun delete(
+        model: RecognitionModel,
+        selectedModelId: String?,
+        releaseRuntime: suspend (RecognitionModel) -> Unit
+    ) {
         if (model.id == selectedModelId) throw SelectedModelDeletionException()
         releaseRuntime(model)
         check(modelDirectory(model).deleteRecursively()) {

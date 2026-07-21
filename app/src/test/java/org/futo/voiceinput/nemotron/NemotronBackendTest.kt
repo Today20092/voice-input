@@ -26,6 +26,19 @@ class NemotronBackendTest {
     }
 
     @Test
+    fun autoDetectReturnsCleanTextAndDetectedLanguage() = runBlocking {
+        val decoder = TaggedNemotronDecoder()
+        val backend = SherpaStreamingBackend(decoderFactory = { decoder })
+
+        backend.load(File("unused"), "auto")
+        backend.startStreaming({}, {})
+
+        assertEquals("Hello.", backend.finishStreaming())
+        assertEquals("en-US", backend.detectedLanguage)
+        backend.close()
+    }
+
+    @Test
     fun streamsEveryChunkPublishesPartialsAndFinalizes() = runBlocking {
         val decoder = FakeNemotronDecoder()
         val backend: StreamingSpeechBackend = SherpaStreamingBackend(
@@ -118,6 +131,12 @@ private class ErrorNemotronDecoder : SherpaStreamingDecoder {
     override fun acceptAudio(samples: FloatArray): String = error("decode failed")
     override fun finish(): String = error("finish should not run")
     override fun close() { closed = true }
+}
+
+private class TaggedNemotronDecoder : SherpaStreamingDecoder {
+    override fun acceptAudio(samples: FloatArray): String = ""
+    override fun finish(): String = "Hello. <en-US>"
+    override fun close() = Unit
 }
 
 private class BlockingNemotronDecoder : SherpaStreamingDecoder {

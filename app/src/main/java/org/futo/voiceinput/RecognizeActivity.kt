@@ -38,13 +38,14 @@ import androidx.lifecycle.LifecycleCoroutineScope
 import androidx.lifecycle.lifecycleScope
 import org.futo.voiceinput.migration.scheduleModelMigrationJob
 import org.futo.voiceinput.parakeet.parakeetModelDownloadIntent
-import org.futo.voiceinput.parakeet.parakeetUnifiedModelDownloadIntent
 import org.futo.voiceinput.moonshine.moonshineModelDownloadIntent
-import org.futo.voiceinput.nemotron.nemotronModelDownloadIntent
+import org.futo.voiceinput.downloader.recognitionModelDownloadIntent
+import org.futo.voiceinput.recognition.RecognitionModel
 import org.futo.voiceinput.settings.pages.ConditionalUnpaidNoticeInVoiceInputWindow
 import org.futo.voiceinput.theme.UixThemeAuto
 import org.futo.voiceinput.updates.scheduleUpdateCheckingJob
 
+const val EXTRA_DETECTED_LANGUAGE = "org.futo.voiceinput.extra.DETECTED_LANGUAGE"
 
 @Composable
 fun RecognizeWindow(forceNoUnpaidNotice: Boolean = false, allowClick: Boolean = false, onClose: (() -> Unit)?, onPauseVAD: (Boolean) -> Unit = { }, onFinish: () -> Unit = { }, content: @Composable ColumnScope.() -> Unit) {
@@ -143,8 +144,8 @@ class RecognizeActivity : ComponentActivity() {
             this@RecognizeActivity.onCancel()
         }
 
-        override fun sendResult(result: String): Boolean {
-            return this@RecognizeActivity.sendResult(result)
+        override fun sendResult(result: String, detectedLanguage: String?): Boolean {
+            return this@RecognizeActivity.sendResult(result, detectedLanguage)
         }
 
         override fun sendPartialResult(result: String): Boolean {
@@ -159,12 +160,8 @@ class RecognizeActivity : ComponentActivity() {
             this@RecognizeActivity.requestParakeetModelDownload()
         }
 
-        override fun requestParakeetUnifiedModelDownload() {
-            this@RecognizeActivity.requestParakeetUnifiedModelDownload()
-        }
-
-        override fun requestNemotronModelDownload() {
-            this@RecognizeActivity.requestNemotronModelDownload()
+        override fun requestRecognitionModelDownload(model: RecognitionModel) {
+            this@RecognizeActivity.requestRecognitionModelDownload(model)
         }
 
         override fun requestMoonshineModelDownload() {
@@ -229,12 +226,8 @@ class RecognizeActivity : ComponentActivity() {
         modelDownload.launch(parakeetModelDownloadIntent())
     }
 
-    private fun requestParakeetUnifiedModelDownload() {
-        modelDownload.launch(parakeetUnifiedModelDownloadIntent())
-    }
-
-    private fun requestNemotronModelDownload() {
-        modelDownload.launch(nemotronModelDownloadIntent())
+    private fun requestRecognitionModelDownload(model: RecognitionModel) {
+        modelDownload.launch(recognitionModelDownloadIntent(model))
     }
 
     private fun requestMoonshineModelDownload() {
@@ -245,12 +238,13 @@ class RecognizeActivity : ComponentActivity() {
         modelDownload.launch(modelDownloadIntent(models))
     }
 
-    private fun sendResult(result: String): Boolean {
+    private fun sendResult(result: String, detectedLanguage: String?): Boolean {
         val returnIntent = Intent()
 
         val results = listOf(result)
         returnIntent.putStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS, ArrayList(results))
         returnIntent.putExtra(RecognizerIntent.EXTRA_CONFIDENCE_SCORES, floatArrayOf(1.0f))
+        detectedLanguage?.let { returnIntent.putExtra(EXTRA_DETECTED_LANGUAGE, it) }
         setResult(RESULT_OK, returnIntent)
         finish()
         return true

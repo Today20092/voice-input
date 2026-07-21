@@ -6,20 +6,23 @@ import android.content.Intent
 import org.futo.voiceinput.downloader.DownloadActivity
 import org.futo.voiceinput.downloader.putRecognitionModel
 import org.futo.voiceinput.recognition.RecognitionModelCatalog
+import org.futo.voiceinput.recognition.RecognitionModel
 import org.futo.voiceinput.recognition.RecognitionModelStore
 import java.io.File
 
+fun parakeetUnifiedRecognitionModel(): RecognitionModel = RecognitionModelCatalog.parakeetUnified
+
 fun Context.parakeetUnifiedModelDirectory(): File =
-    RecognitionModelStore(filesDir).modelDirectory(RecognitionModelCatalog.parakeetUnified)
+    RecognitionModelStore(filesDir).modelDirectory(parakeetUnifiedRecognitionModel())
 
 fun Context.isParakeetUnifiedModelDownloaded(verifyHashes: Boolean = false): Boolean =
     RecognitionModelStore(filesDir).isInstalled(
-        RecognitionModelCatalog.parakeetUnified,
+        parakeetUnifiedRecognitionModel(),
         verifyHashes
     )
 
 fun Context.parakeetUnifiedModelDownloadIntent() = Intent(this, DownloadActivity::class.java).apply {
-    putRecognitionModel(RecognitionModelCatalog.parakeetUnified)
+    putRecognitionModel(parakeetUnifiedRecognitionModel())
 }
 
 fun Context.startParakeetUnifiedModelDownloadActivity() {

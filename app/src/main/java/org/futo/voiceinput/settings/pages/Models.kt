@@ -271,8 +271,10 @@ private fun ManagedRecognitionModelItem(
                     enabled = !selected,
                     onClick = {
                         lifecycleOwner.lifecycleScope.launch {
-                            requireNotNull(installedModel).releaseRuntime()
-                            store.delete(requireNotNull(installedModel), selectedModelId = selectedModelId)
+                            store.delete(
+                                requireNotNull(installedModel),
+                                selectedModelId = selectedModelId
+                            ) { it.releaseRuntime() }
                             onDeleted()
                         }
                     }

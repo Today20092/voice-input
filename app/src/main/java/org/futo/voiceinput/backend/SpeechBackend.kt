@@ -3,6 +3,7 @@ package org.futo.voiceinput.backend
 import android.content.Context
 
 interface SpeechBackend {
+    val detectedLanguage: String? get() = null
     suspend fun load(context: Context)
     suspend fun transcribe(samples: FloatArray): String
     suspend fun close()

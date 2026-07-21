@@ -104,20 +104,21 @@ class RecognitionModelCatalogTest {
     }
 
     @Test
-    fun selectedPackageCannotBeDeletedButInactivePackageCan() {
+    fun selectedPackageCannotBeDeletedButInactivePackageCan() = kotlinx.coroutines.runBlocking {
         val modelPackage = testPackage()
         var released = false
-        val store = RecognitionModelStore(temporaryFolder.root) { released = true }
+        val store = RecognitionModelStore(temporaryFolder.root)
         val packageDir = store.modelDirectory(modelPackage).apply { mkdirs() }
         File(packageDir, "model.bin").writeText("valid")
         assertTrue(store.completeInstall(modelPackage))
 
-        assertThrows(SelectedModelDeletionException::class.java) {
-            store.delete(modelPackage, selectedModelId = modelPackage.id)
-        }
+        val selectedDeletion = runCatching {
+            store.delete(modelPackage, selectedModelId = modelPackage.id) { released = true }
+        }.exceptionOrNull()
+        assertTrue(selectedDeletion is SelectedModelDeletionException)
         assertTrue(store.isInstalled(modelPackage))
 
-        store.delete(modelPackage, selectedModelId = "another-model")
+        store.delete(modelPackage, selectedModelId = "another-model") { released = true }
         assertTrue(released)
         assertFalse(packageDir.exists())
     }
@@ -141,7 +142,7 @@ class RecognitionModelCatalogTest {
     }
 
     @Test
-    fun unifiedPackageUsesTheSharedInstallSelectionAndDeletionFlow() {
+    fun unifiedPackageUsesTheSharedInstallSelectionAndDeletionFlow() = kotlinx.coroutines.runBlocking {
         val model = RecognitionModelCatalog.parakeetUnified
         val store = RecognitionModelStore(temporaryFolder.root)
         val directory = store.modelDirectory(model).apply { mkdirs() }
@@ -156,11 +157,12 @@ class RecognitionModelCatalogTest {
         var selected = false
         store.select(model) { selected = true }
         assertTrue(selected)
-        assertThrows(SelectedModelDeletionException::class.java) {
-            store.delete(model, selectedModelId = model.id)
-        }
+        val selectedDeletion = runCatching {
+            store.delete(model, selectedModelId = model.id) {}
+        }.exceptionOrNull()
+        assertTrue(selectedDeletion is SelectedModelDeletionException)
 
-        store.delete(model, selectedModelId = "moonshine-small")
+        store.delete(model, selectedModelId = "moonshine-small") {}
         assertFalse(directory.exists())
     }
 
@@ -205,12 +207,12 @@ class RecognitionModelCatalogTest {
     }
 
     @Test
-    fun validatedUpdateActivatesThenCleansUpPreviousVersion() {
+    fun validatedUpdateActivatesThenCleansUpPreviousVersion() = kotlinx.coroutines.runBlocking {
         val installed = testPackage(version = "1")
         val available = testPackage(version = "2")
-        lateinit var store: RecognitionModelStore
         var releasedBeforeActivation = false
-        store = RecognitionModelStore(temporaryFolder.root) {
+        val store = RecognitionModelStore(temporaryFolder.root)
+        val releaseRuntime: suspend (RecognitionModel) -> Unit = {
             releasedBeforeActivation = store.isInstalled(installed, verifyHashes = true)
         }
         val installedDirectory = store.modelDirectory(installed)
@@ -221,7 +223,7 @@ class RecognitionModelCatalogTest {
         assertTrue(store.isInstalled(installed, verifyHashes = true))
         assertTrue(store.isUpdatePrepared(available))
 
-        store.activateUpdate(available)
+        store.activateUpdate(available, releaseRuntime)
 
         assertTrue(releasedBeforeActivation)
         assertTrue(store.isInstalled(available, verifyHashes = true))

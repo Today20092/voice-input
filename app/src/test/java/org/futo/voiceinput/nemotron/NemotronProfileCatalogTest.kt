@@ -40,7 +40,7 @@ class NemotronProfileCatalogTest {
     }
 
     @Test
-    fun profilesKeepIndependentInstallAndDeletionState() {
+    fun profilesKeepIndependentInstallAndDeletionState() = kotlinx.coroutines.runBlocking {
         val lowLatency = testPackage("low-latency", "low-latency-1")
         val accuracy = testPackage("accuracy", "accuracy-1")
         val store = RecognitionModelStore(temporaryFolder.root)
@@ -49,7 +49,7 @@ class NemotronProfileCatalogTest {
             assertTrue(store.completeInstall(model))
         }
 
-        store.delete(accuracy, selectedModelId = lowLatency.id)
+        store.delete(accuracy, selectedModelId = lowLatency.id) {}
 
         assertTrue(store.isInstalled(lowLatency))
         assertFalse(store.isInstalled(accuracy))

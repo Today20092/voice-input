@@ -34,6 +34,7 @@ import org.futo.voiceinput.moonshine.getSelectedMoonshineModelVariant
 import org.futo.voiceinput.moonshine.isMoonshineModelDownloaded
 import org.futo.voiceinput.nemotron.SherpaStreamingBackend
 import org.futo.voiceinput.nemotron.isNemotronModelDownloaded
+import org.futo.voiceinput.nemotron.selectedNemotronRecognitionModel
 import org.futo.voiceinput.settings.ENABLE_30S_LIMIT
 import org.futo.voiceinput.settings.END_OF_SPEECH_PROFILE
 import org.futo.voiceinput.settings.IS_VAD_ENABLED
@@ -48,8 +49,10 @@ import org.futo.voiceinput.settings.getSetting
 import org.futo.voiceinput.parakeet.ParakeetEngineLease
 import org.futo.voiceinput.parakeet.ParakeetEngineManager
 import org.futo.voiceinput.parakeet.parakeetUnifiedBackend
+import org.futo.voiceinput.parakeet.parakeetUnifiedRecognitionModel
 import org.futo.voiceinput.backend.SpeechBackend
 import org.futo.voiceinput.backend.StreamingSpeechBackend
+import org.futo.voiceinput.recognition.RecognitionModel
 import org.futo.voiceinput.parakeet.isParakeetModelDownloaded
 import org.futo.voiceinput.parakeet.isParakeetUnifiedModelDownloaded
 import org.futo.voiceinput.settings.toSpeechBackendType
@@ -134,8 +137,7 @@ abstract class AudioRecognizer {
 
     protected abstract fun loading()
     protected abstract fun needParakeetModelDownload()
-    protected abstract fun needParakeetUnifiedModelDownload()
-    protected abstract fun needNemotronModelDownload()
+    protected abstract fun needRecognitionModelDownload(model: RecognitionModel)
     protected abstract fun needMoonshineModelDownload()
     protected abstract fun needWhisperModelDownload(models: List<ModelData>)
     protected abstract fun needPermission()
@@ -412,7 +414,7 @@ abstract class AudioRecognizer {
                 }
                 SpeechBackendType.ParakeetUnified -> {
                     if (!context.isParakeetUnifiedModelDownloaded(verifyHashes = true)) {
-                        needParakeetUnifiedModelDownload()
+                        needRecognitionModelDownload(parakeetUnifiedRecognitionModel())
                         return@launch
                     }
                     loadModel()
@@ -421,7 +423,7 @@ abstract class AudioRecognizer {
                 }
                 SpeechBackendType.Nemotron -> {
                     if (!context.isNemotronModelDownloaded(verifyHashes = true)) {
-                        needNemotronModelDownload()
+                        needRecognitionModelDownload(context.selectedNemotronRecognitionModel())
                         return@launch
                     }
                     loadModel()
@@ -871,6 +873,7 @@ abstract class AudioRecognizer {
         clearBackend(runGeneration, runBackend)
 
         withContext(Dispatchers.Main) {
+            runBackend.detectedLanguage?.let(::languageDetected)
             if (text.isBlank()) {
                 failed(NoSpeechRecognizedException())
             } else {

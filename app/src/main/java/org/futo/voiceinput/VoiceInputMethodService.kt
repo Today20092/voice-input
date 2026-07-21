@@ -63,9 +63,9 @@ import androidx.savedstate.findViewTreeSavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import org.futo.voiceinput.migration.scheduleModelMigrationJob
 import org.futo.voiceinput.parakeet.startParakeetModelDownloadActivity
-import org.futo.voiceinput.parakeet.startParakeetUnifiedModelDownloadActivity
 import org.futo.voiceinput.moonshine.startMoonshineModelDownloadActivity
-import org.futo.voiceinput.nemotron.startNemotronModelDownloadActivity
+import org.futo.voiceinput.downloader.startRecognitionModelDownloadActivity
+import org.futo.voiceinput.recognition.RecognitionModel
 import org.futo.voiceinput.settings.pages.ConditionalUnpaidNoticeInVoiceInputWindow
 import org.futo.voiceinput.theme.UixThemeAuto
 import org.futo.voiceinput.updates.scheduleUpdateCheckingJob
@@ -236,7 +236,7 @@ class VoiceInputMethodService : InputMethodService(), LifecycleOwner, ViewModelS
             }
         }
 
-        override fun sendResult(result: String): Boolean {
+        override fun sendResult(result: String, detectedLanguage: String?): Boolean {
             val inputConnection = this@VoiceInputMethodService.currentInputConnection ?: return false
             var modifiedResult = result
 
@@ -288,13 +288,8 @@ class VoiceInputMethodService : InputMethodService(), LifecycleOwner, ViewModelS
             onCancel()
         }
 
-        override fun requestParakeetUnifiedModelDownload() {
-            this@VoiceInputMethodService.startParakeetUnifiedModelDownloadActivity()
-            onCancel()
-        }
-
-        override fun requestNemotronModelDownload() {
-            this@VoiceInputMethodService.startNemotronModelDownloadActivity()
+        override fun requestRecognitionModelDownload(model: RecognitionModel) {
+            this@VoiceInputMethodService.startRecognitionModelDownloadActivity(model)
             onCancel()
         }
 

@@ -1,5 +1,6 @@
 package org.futo.voiceinput.downloader
 
+import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.net.ConnectivityManager
@@ -111,9 +112,16 @@ fun Intent.putRecognitionModel(model: RecognitionModel, isUpdate: Boolean = fals
     }
 }
 
-fun Context.startRecognitionModelDownloadActivity(model: RecognitionModel, isUpdate: Boolean = false) {
-    startActivity(Intent(this, DownloadActivity::class.java).apply {
+fun Context.recognitionModelDownloadIntent(model: RecognitionModel, isUpdate: Boolean = false) =
+    Intent(this, DownloadActivity::class.java).apply {
         putRecognitionModel(model, isUpdate)
+    }
+
+fun Context.startRecognitionModelDownloadActivity(model: RecognitionModel, isUpdate: Boolean = false) {
+    startActivity(recognitionModelDownloadIntent(model, isUpdate).apply {
+        if (this@startRecognitionModelDownloadActivity !is Activity) {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
     })
 }
 
@@ -610,8 +618,7 @@ class DownloadActivity : ComponentActivity() {
             }
             lifecycleScope.launch {
                 try {
-                    model.releaseRuntime()
-                    store.activateUpdate(model)
+                    store.activateUpdate(model) { it.releaseRuntime() }
                     finishSuccessfulDownload()
                 } catch (error: Exception) {
                     error.printStackTrace()

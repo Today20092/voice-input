@@ -66,6 +66,9 @@ fun NemotronProfile.recognitionModel(): RecognitionModel =
 private fun Context.selectedNemotronProfile() =
     getSettingBlocking(NEMOTRON_PROFILE.key, NEMOTRON_PROFILE.default).toNemotronProfile()
 
+fun Context.selectedNemotronRecognitionModel(): RecognitionModel =
+    selectedNemotronProfile().recognitionModel()
+
 internal fun Context.selectedNemotronLanguageCode(): String? =
     if (selectedNemotronProfile().supportsLanguageSelection) {
         getSettingBlocking(

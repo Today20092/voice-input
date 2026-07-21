@@ -60,6 +60,7 @@ import androidx.lifecycle.LifecycleCoroutineScope
 import com.google.android.material.math.MathUtils
 import kotlinx.coroutines.launch
 import org.futo.voiceinput.ml.RunState
+import org.futo.voiceinput.recognition.RecognitionModel
 import org.futo.voiceinput.settings.ENABLE_ANIMATIONS
 import org.futo.voiceinput.settings.ENABLE_SOUND
 import org.futo.voiceinput.settings.LANGUAGE_TOGGLES
@@ -332,12 +333,11 @@ abstract class RecognizerView {
     abstract fun setContent(content: @Composable () -> Unit)
 
     abstract fun onCancel()
-    abstract fun sendResult(result: String): Boolean
+    abstract fun sendResult(result: String, detectedLanguage: String?): Boolean
     abstract fun sendPartialResult(result: String): Boolean
     abstract fun requestPermission()
     abstract fun requestParakeetModelDownload()
-    abstract fun requestParakeetUnifiedModelDownload()
-    abstract fun requestNemotronModelDownload()
+    abstract fun requestRecognitionModelDownload(model: RecognitionModel)
     abstract fun requestMoonshineModelDownload()
     abstract fun requestWhisperModelDownload(models: List<ModelData>)
 
@@ -345,6 +345,8 @@ abstract class RecognizerView {
 
     @Composable
     abstract fun Window(onClose: () -> Unit, allowClick: Boolean, onPauseVAD: (Boolean) -> Unit, onFinish: () -> Unit, content: @Composable ColumnScope.() -> Unit)
+
+    private var detectedLanguage: String? = null
 
     private val recognizer = object : AudioRecognizer() {
         override val context: Context
@@ -388,7 +390,7 @@ abstract class RecognizerView {
                 manager.sendAccessibilityEvent(event)
 
             }
-            if (!sendResult(result)) {
+            if (!sendResult(result, detectedLanguage)) {
                 failed(IllegalStateException("The active input connection is unavailable"))
             }
         }
@@ -425,7 +427,8 @@ abstract class RecognizerView {
         }
 
         override fun languageDetected(result: String) {
-
+            detectedLanguage = result
+            Log.i("RecognizerView", "Detected recognition language: $result")
         }
 
         override fun partialResult(result: String) {
@@ -513,33 +516,17 @@ abstract class RecognizerView {
             }
         }
 
-        override fun needParakeetUnifiedModelDownload() {
+        override fun needRecognitionModelDownload(model: RecognitionModel) {
             setContent {
                 this@RecognizerView.Window(
                     onClose = { cancelRecognizer() },
-                    onFinish = { requestParakeetUnifiedModelDownload() },
+                    onFinish = { requestRecognitionModelDownload(model) },
                     onPauseVAD = { },
                     allowClick = false
                 ) {
                     RecognizeModelDownloadRequired(
-                        body = context.getString(R.string.parakeet_unified_download_required_body),
-                        onDownload = { requestParakeetUnifiedModelDownload() }
-                    )
-                }
-            }
-        }
-
-        override fun needNemotronModelDownload() {
-            setContent {
-                this@RecognizerView.Window(
-                    onClose = { cancelRecognizer() },
-                    onFinish = { requestNemotronModelDownload() },
-                    onPauseVAD = { },
-                    allowClick = false
-                ) {
-                    RecognizeModelDownloadRequired(
-                        body = context.getString(R.string.nemotron_download_required_body),
-                        onDownload = { requestNemotronModelDownload() }
+                        body = context.getString(R.string.download_required_body),
+                        onDownload = { requestRecognitionModelDownload(model) }
                     )
                 }
             }
@@ -639,6 +626,7 @@ abstract class RecognizerView {
     }
 
     fun reset() {
+        detectedLanguage = null
         recognizer.reset()
     }
 
