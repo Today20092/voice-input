@@ -79,11 +79,22 @@ enum class MagnitudeState {
     ENDING_SOON_30S
 }
 
-private enum class StopReason {
+internal enum class StopReason {
     Manual,
     Vad,
     DurationLimit,
     Cancel
+}
+
+internal object RecordingSessionPolicy {
+    fun shouldRetryRecorderInitialization(failedAttempt: Int) = failedAttempt <= 32
+
+    fun tailDrainMs(reason: StopReason, backendType: SpeechBackendType, manualDrainMs: Long) = when(reason) {
+        StopReason.Manual -> manualDrainMs.coerceIn(0L, 1500L)
+        StopReason.Vad -> if (backendType == SpeechBackendType.Parakeet) PARAKEET_AUTO_STOP_DRAIN_MS else AUTO_STOP_DRAIN_MS
+        StopReason.DurationLimit -> AUTO_STOP_DRAIN_MS
+        StopReason.Cancel -> 0L
+    }
 }
 
 abstract class AudioRecognizer {
@@ -490,7 +501,7 @@ abstract class AudioRecognizer {
 
                 println("Failed to initialize AudioRecord, retrying")
 
-                if(numTries > 32) {
+                if(!RecordingSessionPolicy.shouldRetryRecorderInitialization(numTries)) {
                     throw IllegalStateException("AudioRecord could not be initialized in 32 tries")
                 }
 
@@ -736,15 +747,11 @@ abstract class AudioRecognizer {
         reason: StopReason,
         scratch: ShortArray
     ) {
-        val drainMs = when(reason) {
-            StopReason.Manual -> context.getSetting(MANUAL_STOP_DRAIN_MS).coerceIn(0L, 1500L)
-            StopReason.Vad -> {
-                val backendType = context.getSetting(SPEECH_BACKEND).toSpeechBackendType()
-                if (backendType == SpeechBackendType.Parakeet) PARAKEET_AUTO_STOP_DRAIN_MS else AUTO_STOP_DRAIN_MS
-            }
-            StopReason.DurationLimit -> AUTO_STOP_DRAIN_MS
-            StopReason.Cancel -> 0L
-        }
+        val drainMs = RecordingSessionPolicy.tailDrainMs(
+            reason,
+            context.getSetting(SPEECH_BACKEND).toSpeechBackendType(),
+            context.getSetting(MANUAL_STOP_DRAIN_MS)
+        )
 
         val deadline = System.currentTimeMillis() + drainMs
         while(drainMs > 0L && System.currentTimeMillis() < deadline && recorder.recordingState == AudioRecord.RECORDSTATE_RECORDING) {
