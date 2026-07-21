@@ -1,6 +1,8 @@
 package org.futo.voiceinput
 
 import android.Manifest
+import android.app.Activity.RESULT_CANCELED
+import android.app.Activity.RESULT_OK
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
@@ -44,6 +46,26 @@ import org.futo.voiceinput.recognition.RecognitionModel
 import org.futo.voiceinput.settings.pages.ConditionalUnpaidNoticeInVoiceInputWindow
 import org.futo.voiceinput.theme.UixThemeAuto
 import org.futo.voiceinput.updates.scheduleUpdateCheckingJob
+
+internal data class RecognitionActivityResult(
+    val resultCode: Int,
+    val transcripts: List<String> = emptyList(),
+    val detectedLanguage: String? = null
+)
+
+internal fun successfulRecognitionActivityResult(
+    transcript: String,
+    detectedLanguage: String?
+): RecognitionActivityResult {
+    require(transcript.isNotBlank())
+    return RecognitionActivityResult(
+        resultCode = RESULT_OK,
+        transcripts = listOf(transcript),
+        detectedLanguage = detectedLanguage
+    )
+}
+
+internal fun canceledRecognitionActivityResult() = RecognitionActivityResult(RESULT_CANCELED)
 
 const val EXTRA_DETECTED_LANGUAGE = "org.futo.voiceinput.extra.DETECTED_LANGUAGE"
 
@@ -184,8 +206,7 @@ class RecognizeActivity : ComponentActivity() {
         }
     }
     private fun onCancel() {
-        setResult(RESULT_CANCELED, null)
-        finish()
+        finishWith(canceledRecognitionActivityResult())
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -239,14 +260,18 @@ class RecognizeActivity : ComponentActivity() {
     }
 
     private fun sendResult(result: String, detectedLanguage: String?): Boolean {
-        val returnIntent = Intent()
-
-        val results = listOf(result)
-        returnIntent.putStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS, ArrayList(results))
-        returnIntent.putExtra(RecognizerIntent.EXTRA_CONFIDENCE_SCORES, floatArrayOf(1.0f))
-        detectedLanguage?.let { returnIntent.putExtra(EXTRA_DETECTED_LANGUAGE, it) }
-        setResult(RESULT_OK, returnIntent)
-        finish()
+        finishWith(successfulRecognitionActivityResult(result, detectedLanguage))
         return true
+    }
+
+    private fun finishWith(result: RecognitionActivityResult) {
+        val returnIntent = result.transcripts.takeIf { it.isNotEmpty() }?.let { transcripts ->
+            Intent().apply {
+                putStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS, ArrayList(transcripts))
+                result.detectedLanguage?.let { putExtra(EXTRA_DETECTED_LANGUAGE, it) }
+            }
+        }
+        setResult(result.resultCode, returnIntent)
+        finish()
     }
 }
