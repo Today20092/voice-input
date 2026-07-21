@@ -8,6 +8,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import java.io.File
+import java.io.RandomAccessFile
 
 class RecognitionModelCatalogTest {
     @get:Rule
@@ -17,7 +18,7 @@ class RecognitionModelCatalogTest {
     fun catalogHasCompleteImmutableManifests() {
         val models = RecognitionModelCatalog.models
 
-        assertEquals(4, RecognitionModelCatalog.cards.size)
+        assertEquals(5, RecognitionModelCatalog.cards.size)
         assertEquals("moonshine-small", RecognitionModelCatalog.defaultModel.id)
         assertTrue(models.isNotEmpty())
         models.forEach { model ->
@@ -45,6 +46,21 @@ class RecognitionModelCatalogTest {
             "0ae73a41cd51599dc7cac9ac083d9d35de53d762ca45923505fde47a3751814b",
             nemotron.archive?.sha256
         )
+
+        val unified = RecognitionModelCatalog.parakeetUnified
+        val unifiedCard = RecognitionModelCatalog.cards.single { it.id == "parakeet-unified" }
+        assertEquals("parakeet_unified", unified.runtimeId)
+        assertEquals("sherpa-onnx-nemo-parakeet-unified-en-0.6b-int8-streaming-560ms", unified.directoryName)
+        assertEquals(TranscriptionBehavior.LIVE, unified.transcription)
+        assertEquals("English", unified.recognitionLanguages)
+        assertEquals(4, unified.artifacts.size)
+        assertEquals(663_048_978, unified.transferBytes)
+        assertEquals(null, unified.archive)
+        assertTrue(unified.artifacts.all { it.url.contains(unified.version) })
+        assertEquals(listOf(unified), unifiedCard.models)
+        assertTrue(unifiedCard.description.contains("buffered", ignoreCase = true))
+        assertFalse(unifiedCard.description.contains("cache-aware", ignoreCase = true))
+        assertFalse(unifiedCard.description.contains("80 ms", ignoreCase = true))
     }
 
     @Test
@@ -100,6 +116,30 @@ class RecognitionModelCatalogTest {
         assertTrue(store.completeInstall(modelPackage))
         store.select(modelPackage) { selected = true }
         assertTrue(selected)
+    }
+
+    @Test
+    fun unifiedPackageUsesTheSharedInstallSelectionAndDeletionFlow() {
+        val model = RecognitionModelCatalog.parakeetUnified
+        val store = RecognitionModelStore(temporaryFolder.root)
+        val directory = store.modelDirectory(model).apply { mkdirs() }
+        model.artifacts.forEach { artifact ->
+            RandomAccessFile(File(directory, artifact.name), "rw").use {
+                it.setLength(artifact.sizeBytes)
+            }
+        }
+        File(directory, model.completionMarker).writeText("${model.id}@${model.version}")
+
+        assertTrue(store.isInstalled(model))
+        var selected = false
+        store.select(model) { selected = true }
+        assertTrue(selected)
+        assertThrows(SelectedModelDeletionException::class.java) {
+            store.delete(model, selectedModelId = model.id)
+        }
+
+        store.delete(model, selectedModelId = "moonshine-small")
+        assertFalse(directory.exists())
     }
 
     @Test

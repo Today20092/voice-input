@@ -38,6 +38,7 @@ import androidx.lifecycle.LifecycleCoroutineScope
 import androidx.lifecycle.lifecycleScope
 import org.futo.voiceinput.migration.scheduleModelMigrationJob
 import org.futo.voiceinput.parakeet.parakeetModelDownloadIntent
+import org.futo.voiceinput.parakeet.parakeetUnifiedModelDownloadIntent
 import org.futo.voiceinput.moonshine.moonshineModelDownloadIntent
 import org.futo.voiceinput.nemotron.nemotronModelDownloadIntent
 import org.futo.voiceinput.settings.pages.ConditionalUnpaidNoticeInVoiceInputWindow
@@ -158,6 +159,10 @@ class RecognizeActivity : ComponentActivity() {
             this@RecognizeActivity.requestParakeetModelDownload()
         }
 
+        override fun requestParakeetUnifiedModelDownload() {
+            this@RecognizeActivity.requestParakeetUnifiedModelDownload()
+        }
+
         override fun requestNemotronModelDownload() {
             this@RecognizeActivity.requestNemotronModelDownload()
         }
@@ -222,6 +227,10 @@ class RecognizeActivity : ComponentActivity() {
     }
     private fun requestParakeetModelDownload() {
         modelDownload.launch(parakeetModelDownloadIntent())
+    }
+
+    private fun requestParakeetUnifiedModelDownload() {
+        modelDownload.launch(parakeetUnifiedModelDownloadIntent())
     }
 
     private fun requestNemotronModelDownload() {

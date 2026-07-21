@@ -24,16 +24,18 @@ import java.util.concurrent.atomic.AtomicLong
 
 private const val SAMPLE_RATE = 16_000
 
-internal interface NemotronDecoder {
+internal interface SherpaStreamingDecoder {
     fun acceptAudio(samples: FloatArray): String
     fun finish(): String
     fun close()
 }
 
-class NemotronBackend internal constructor(
-    private val decoderFactory: (File) -> NemotronDecoder = ::SherpaNemotronDecoder,
+class SherpaStreamingBackend internal constructor(
+    private val modelDirectory: (Context) -> File = { it.nemotronModelDirectory() },
+    private val backendName: String = "Nemotron",
+    private val decoderFactory: (File) -> SherpaStreamingDecoder = { SherpaOnlineDecoder(it) },
     private val catchingUpSamples: Int = SAMPLE_RATE,
-    private var decoder: NemotronDecoder? = null
+    private var decoder: SherpaStreamingDecoder? = null
 ) : StreamingSpeechBackend {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val queuedSamples = AtomicLong()
@@ -45,14 +47,14 @@ class NemotronBackend internal constructor(
     private var lastText = ""
 
     override suspend fun load(context: Context) = withContext(Dispatchers.IO) {
-        if (decoder == null) decoder = decoderFactory(context.nemotronModelDirectory())
+        if (decoder == null) decoder = decoderFactory(modelDirectory(context))
     }
 
     override fun startStreaming(
         onPartial: (String) -> Unit,
         onCatchingUp: (Boolean) -> Unit
     ) {
-        check(worker == null) { "Nemotron streaming has already started" }
+        check(worker == null) { "$backendName streaming has already started" }
         val decoder = decoderOrThrow()
         this.onPartial = onPartial
         this.onCatchingUp = onCatchingUp
@@ -69,7 +71,7 @@ class NemotronBackend internal constructor(
                 updateCatchingUp(queuedSamples.get() > catchingUpSamples)
                 if (!catchingUp && text.isNotBlank() && text != lastText) {
                     lastText = text
-                    this@NemotronBackend.onPartial(text)
+                    this@SherpaStreamingBackend.onPartial(text)
                 }
             }
         }
@@ -78,7 +80,7 @@ class NemotronBackend internal constructor(
     override fun acceptAudio(samples: FloatArray) {
         queuedSamples.addAndGet(samples.size.toLong())
         updateCatchingUp(queuedSamples.get() > catchingUpSamples)
-        requireNotNull(audio) { "Nemotron streaming has not started" }
+        requireNotNull(audio) { "$backendName streaming has not started" }
             .trySend(samples)
             .getOrThrow()
     }
@@ -119,17 +121,17 @@ class NemotronBackend internal constructor(
     }
 
     private fun decoderOrThrow() =
-        decoder ?: throw IllegalStateException("Nemotron backend is not loaded")
+        decoder ?: throw IllegalStateException("$backendName backend is not loaded")
 }
 
-private class SherpaNemotronDecoder(modelDirectory: File) : NemotronDecoder {
+internal class SherpaOnlineDecoder(modelDirectory: File, featureDim: Int = 80) : SherpaStreamingDecoder {
     private val recognizer: OnlineRecognizer
     private val stream: OnlineStream
 
     init {
         fun model(name: String) = File(modelDirectory, name).absolutePath
         val config = OnlineRecognizerConfig(
-            featConfig = FeatureConfig(sampleRate = SAMPLE_RATE, featureDim = 80, dither = 0.0f),
+            featConfig = FeatureConfig(sampleRate = SAMPLE_RATE, featureDim = featureDim, dither = 0.0f),
             modelConfig = OnlineModelConfig(
                 transducer = OnlineTransducerModelConfig(
                     encoder = model("encoder.int8.onnx"),

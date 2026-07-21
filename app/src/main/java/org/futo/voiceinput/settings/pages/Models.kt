@@ -38,15 +38,13 @@ import org.futo.voiceinput.downloader.startRecognitionModelDownloadActivity
 import org.futo.voiceinput.migration.ConditionalModelUpdate
 import org.futo.voiceinput.migration.NeedsMigration
 import org.futo.voiceinput.parakeet.isParakeetModelDownloaded
+import org.futo.voiceinput.parakeet.isParakeetUnifiedModelDownloaded
 import org.futo.voiceinput.parakeet.releaseRuntime
-import org.futo.voiceinput.parakeet.startParakeetModelDownloadActivity
 import org.futo.voiceinput.moonshine.isMoonshineModelDownloaded
 import org.futo.voiceinput.moonshine.MoonshineModelVariant
-import org.futo.voiceinput.moonshine.startMoonshineModelDownloadActivity
 import org.futo.voiceinput.moonshine.toMoonshineModelVariant
 import org.futo.voiceinput.nemotron.isNemotronModelDownloaded
 import org.futo.voiceinput.nemotron.recognitionModel
-import org.futo.voiceinput.nemotron.startNemotronModelDownloadActivity
 import org.futo.voiceinput.nemotron.toNemotronProfile
 import org.futo.voiceinput.settings.DISMISS_MIGRATION_TIP
 import org.futo.voiceinput.settings.ENABLE_MULTILINGUAL
@@ -87,6 +85,13 @@ fun modelsSubtitle(): String? {
                 stringResource(R.string.parakeet_model_active_subtitle)
             } else {
                 stringResource(R.string.parakeet_model_download_required)
+            }
+        }
+        SpeechBackendType.ParakeetUnified -> {
+            if (context.isParakeetUnifiedModelDownloaded(verifyHashes = true)) {
+                stringResource(R.string.parakeet_unified_model_active_subtitle)
+            } else {
+                stringResource(R.string.parakeet_unified_model_download_required)
             }
         }
         SpeechBackendType.Nemotron -> {
@@ -232,15 +237,7 @@ private fun ManagedRecognitionModelItem(
         if (installed) {
             if (bundled) onSelect() else store.select(requireNotNull(installedModel), onSelect)
         } else {
-            when (model.runtimeId) {
-                SpeechBackendType.Moonshine.id -> context.startMoonshineModelDownloadActivity(
-                    model.variantId.orEmpty().toMoonshineModelVariant()
-                )
-                SpeechBackendType.Nemotron.id -> context.startNemotronModelDownloadActivity(
-                    model.variantId.orEmpty().toNemotronProfile()
-                )
-                else -> context.startParakeetModelDownloadActivity()
-            }
+            context.startRecognitionModelDownloadActivity(model)
         }
     }
 

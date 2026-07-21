@@ -120,6 +120,33 @@ object RecognitionModelCatalog {
 
     private const val NEMOTRON_VERSION = "2026-04-25"
 
+    private const val PARAKEET_UNIFIED_VERSION = "7551fd26fc810cc1e4e043e608db4d13b59be31e"
+    private const val PARAKEET_UNIFIED_DIRECTORY =
+        "sherpa-onnx-nemo-parakeet-unified-en-0.6b-int8-streaming-560ms"
+    private const val PARAKEET_UNIFIED_REPOSITORY =
+        "csukuangfj2/sherpa-onnx-nemo-parakeet-unified-en-0.6b-int8-streaming-560ms"
+
+    val parakeetUnified = RecognitionModel(
+        id = "parakeet-unified-en-0.6b",
+        version = PARAKEET_UNIFIED_VERSION,
+        runtimeId = "parakeet_unified",
+        variantId = null,
+        directoryName = PARAKEET_UNIFIED_DIRECTORY,
+        source = "NVIDIA Parakeet Unified (NVIDIA Open Model License), Sherpa-ONNX export by k2-fsa",
+        sourceUrl = "https://huggingface.co/$PARAKEET_UNIFIED_REPOSITORY/tree/$PARAKEET_UNIFIED_VERSION",
+        displayName = "Parakeet Unified EN 0.6B",
+        description = "560 ms buffered live English transcription that recomputes left context; Nemotron is preferred for the fastest updates.",
+        transcription = TranscriptionBehavior.LIVE,
+        recognitionLanguages = "English",
+        performanceClass = PerformanceClass.DEMANDING,
+        artifacts = listOf(
+            parakeetUnifiedArtifact("encoder.int8.onnx", 654_046_389, "e566c3f014598a41724f2df028779a2d4cf7943cbefa324964f6a72e8ee255fb"),
+            parakeetUnifiedArtifact("decoder.int8.onnx", 7_257_777, "34fea72425d2506600772ba191a6d3f99c0710abdb68d9a3dc89fa8cb2aa473a"),
+            parakeetUnifiedArtifact("joiner.int8.onnx", 1_735_860, "869f43f7d24595c55581ad3bf249a935fb8a71389fbdaa7504b9f46f93140f8a"),
+            parakeetUnifiedArtifact("tokens.txt", 8_952, "dc0b4584ab2e4ddbf888425c076c61b736e7356a015250db7d307e6f1a8188ff")
+        )
+    )
+
     val nemotronEnglishLowLatency = nemotronPackage(
         latencyMs = 80,
         variantId = "low_latency",
@@ -192,6 +219,16 @@ object RecognitionModelCatalog {
             recognitionLanguages = "English",
             performanceClasses = setOf(PerformanceClass.DEMANDING),
             models = listOf(ParakeetModel.recognitionModel)
+        ),
+        RecognitionModelCard(
+            id = "parakeet-unified",
+            runtimeId = "parakeet_unified",
+            displayName = "Parakeet Unified",
+            description = "Buffered live English recognition that recomputes left context; choose Nemotron for lower-latency streaming.",
+            transcription = TranscriptionBehavior.LIVE,
+            recognitionLanguages = "English",
+            performanceClasses = setOf(PerformanceClass.DEMANDING),
+            models = listOf(parakeetUnified)
         ),
         RecognitionModelCard(
             id = "whisper",
@@ -292,6 +329,14 @@ object RecognitionModelCatalog {
             archiveRoot = directory
         )
     }
+
+    private fun parakeetUnifiedArtifact(name: String, sizeBytes: Long, sha256: String) =
+        RecognitionModelArtifact(
+            name = name,
+            url = "https://huggingface.co/$PARAKEET_UNIFIED_REPOSITORY/resolve/$PARAKEET_UNIFIED_VERSION/$name?download=true",
+            sizeBytes = sizeBytes,
+            sha256 = sha256
+        )
 
 }
 

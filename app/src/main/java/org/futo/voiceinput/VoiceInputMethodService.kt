@@ -63,6 +63,7 @@ import androidx.savedstate.findViewTreeSavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import org.futo.voiceinput.migration.scheduleModelMigrationJob
 import org.futo.voiceinput.parakeet.startParakeetModelDownloadActivity
+import org.futo.voiceinput.parakeet.startParakeetUnifiedModelDownloadActivity
 import org.futo.voiceinput.moonshine.startMoonshineModelDownloadActivity
 import org.futo.voiceinput.nemotron.startNemotronModelDownloadActivity
 import org.futo.voiceinput.settings.pages.ConditionalUnpaidNoticeInVoiceInputWindow
@@ -284,6 +285,11 @@ class VoiceInputMethodService : InputMethodService(), LifecycleOwner, ViewModelS
 
         override fun requestParakeetModelDownload() {
             this@VoiceInputMethodService.startParakeetModelDownloadActivity()
+            onCancel()
+        }
+
+        override fun requestParakeetUnifiedModelDownload() {
+            this@VoiceInputMethodService.startParakeetUnifiedModelDownloadActivity()
             onCancel()
         }
 

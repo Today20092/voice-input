@@ -336,6 +336,7 @@ abstract class RecognizerView {
     abstract fun sendPartialResult(result: String): Boolean
     abstract fun requestPermission()
     abstract fun requestParakeetModelDownload()
+    abstract fun requestParakeetUnifiedModelDownload()
     abstract fun requestNemotronModelDownload()
     abstract fun requestMoonshineModelDownload()
     abstract fun requestWhisperModelDownload(models: List<ModelData>)
@@ -507,6 +508,22 @@ abstract class RecognizerView {
                     RecognizeModelDownloadRequired(
                         body = context.getString(R.string.parakeet_download_required_body),
                         onDownload = { requestParakeetModelDownload() }
+                    )
+                }
+            }
+        }
+
+        override fun needParakeetUnifiedModelDownload() {
+            setContent {
+                this@RecognizerView.Window(
+                    onClose = { cancelRecognizer() },
+                    onFinish = { requestParakeetUnifiedModelDownload() },
+                    onPauseVAD = { },
+                    allowClick = false
+                ) {
+                    RecognizeModelDownloadRequired(
+                        body = context.getString(R.string.parakeet_unified_download_required_body),
+                        onDownload = { requestParakeetUnifiedModelDownload() }
                     )
                 }
             }

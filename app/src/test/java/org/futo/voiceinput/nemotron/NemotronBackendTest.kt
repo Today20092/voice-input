@@ -16,7 +16,7 @@ class NemotronBackendTest {
     @Test
     fun streamsEveryChunkPublishesPartialsAndFinalizes() = runBlocking {
         val decoder = FakeNemotronDecoder()
-        val backend: StreamingSpeechBackend = NemotronBackend(
+        val backend: StreamingSpeechBackend = SherpaStreamingBackend(
             decoderFactory = { decoder },
             catchingUpSamples = 2,
             decoder = decoder
@@ -44,7 +44,7 @@ class NemotronBackendTest {
     @Test
     fun surfacesDecoderErrors() = runBlocking {
         val decoder = ErrorNemotronDecoder()
-        val backend: StreamingSpeechBackend = NemotronBackend(decoderFactory = { decoder }, decoder = decoder)
+        val backend: StreamingSpeechBackend = SherpaStreamingBackend(decoderFactory = { decoder }, decoder = decoder)
 
         backend.startStreaming({}, {})
         backend.acceptAudio(floatArrayOf(0.1f))
@@ -59,7 +59,7 @@ class NemotronBackendTest {
     @Test
     fun closeCancelsQueuedAudioAndReleasesDecoder() = runBlocking {
         val decoder = BlockingNemotronDecoder()
-        val backend: StreamingSpeechBackend = NemotronBackend(decoderFactory = { decoder }, decoder = decoder)
+        val backend: StreamingSpeechBackend = SherpaStreamingBackend(decoderFactory = { decoder }, decoder = decoder)
 
         backend.startStreaming({}, {})
         backend.acceptAudio(floatArrayOf(0.1f))
@@ -75,7 +75,7 @@ class NemotronBackendTest {
     }
 }
 
-private class FakeNemotronDecoder : NemotronDecoder {
+private class FakeNemotronDecoder : SherpaStreamingDecoder {
     val samples = mutableListOf<Float>()
     val started = CountDownLatch(1)
     val allowDecode = CountDownLatch(1)
@@ -95,7 +95,7 @@ private class FakeNemotronDecoder : NemotronDecoder {
     }
 }
 
-private class ErrorNemotronDecoder : NemotronDecoder {
+private class ErrorNemotronDecoder : SherpaStreamingDecoder {
     var closed = false
 
     override fun acceptAudio(samples: FloatArray): String = error("decode failed")
@@ -103,7 +103,7 @@ private class ErrorNemotronDecoder : NemotronDecoder {
     override fun close() { closed = true }
 }
 
-private class BlockingNemotronDecoder : NemotronDecoder {
+private class BlockingNemotronDecoder : SherpaStreamingDecoder {
     val started = CountDownLatch(1)
     val allowDecode = CountDownLatch(1)
     var calls = 0

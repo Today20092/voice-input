@@ -96,6 +96,8 @@
     <string name="multilingual_model">Multilingual Model</string>
     <string name="parakeet_model">Parakeet Model</string>
     <string name="parakeet_model_active_subtitle">Parakeet TDT English active</string>
+    <string name="parakeet_unified_model_active_subtitle">Parakeet Unified English installed</string>
+    <string name="parakeet_unified_model_download_required">Parakeet Unified English download required</string>
     <string name="parakeet_unified_model_name">Parakeet TDT English</string>
     <string name="parakeet_unified_model_status">Active backend. Model files download on first use.</string>
     <string name="parakeet_packaged_model_tip">Parakeet is the active recognizer in this fork. The old English and multilingual model choices below are kept for now but are not used for transcription.</string>
@@ -104,6 +106,7 @@
     <string name="parakeet_download_model_tip">English-only model with punctuation and capitalization. Optimized for offline and streaming ASR.</string>
     <string name="parakeet_download_required_title">Download Required</string>
     <string name="parakeet_download_required_body">The Parakeet speech model must be downloaded before voice input can run. This may incur data fees on mobile data.</string>
+    <string name="parakeet_unified_download_required_body">The Parakeet Unified streaming model must be downloaded before voice input can run. This may incur data fees on mobile data.</string>
     <string name="nemotron_download_required_body">The Nemotron streaming model must be downloaded before voice input can run. This may incur data fees on mobile data.</string>
     <string name="nemotron_model_active_subtitle">Nemotron English %1$s active</string>
     <string name="nemotron_model_download_required">Nemotron English %1$s download required</string>

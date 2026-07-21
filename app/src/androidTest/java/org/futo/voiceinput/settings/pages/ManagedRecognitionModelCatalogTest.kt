@@ -27,4 +27,17 @@ class ManagedRecognitionModelCatalogTest {
         compose.onNodeWithText("160 ms", substring = true).assertIsDisplayed()
         compose.onNodeWithText("560 ms", substring = true).assertIsDisplayed()
     }
+
+    @Test
+    fun parakeetUnifiedIsADistinctBufferedModel() {
+        compose.setContent {
+            UixThemeAuto { ManagedRecognitionModelCatalog() }
+        }
+
+        compose.onNodeWithText("Parakeet TDT").assertIsDisplayed()
+        compose.onNodeWithText("Parakeet Unified").assertIsDisplayed()
+        compose.onNodeWithText("Parakeet Unified EN 0.6B").assertIsDisplayed()
+        compose.onNodeWithText("560 ms buffered live English", substring = true).assertIsDisplayed()
+        compose.onNodeWithText("Nemotron is preferred", substring = true).assertIsDisplayed()
+    }
 }

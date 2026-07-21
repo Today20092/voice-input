@@ -27,7 +27,7 @@ class NemotronNativeSmokeTest {
         try {
             NemotronProfile.entries.forEach { profile ->
                 context.setSetting(NEMOTRON_PROFILE, profile.id)
-                val backend = NemotronBackend()
+                val backend = SherpaStreamingBackend()
                 backend.load(context)
                 val result = backend.transcribe(samples)
                 backend.close()

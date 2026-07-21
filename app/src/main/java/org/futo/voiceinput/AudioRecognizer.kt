@@ -32,7 +32,7 @@ import org.futo.voiceinput.ml.RunState
 import org.futo.voiceinput.moonshine.MoonshineBackend
 import org.futo.voiceinput.moonshine.getSelectedMoonshineModelVariant
 import org.futo.voiceinput.moonshine.isMoonshineModelDownloaded
-import org.futo.voiceinput.nemotron.NemotronBackend
+import org.futo.voiceinput.nemotron.SherpaStreamingBackend
 import org.futo.voiceinput.nemotron.isNemotronModelDownloaded
 import org.futo.voiceinput.settings.ENABLE_30S_LIMIT
 import org.futo.voiceinput.settings.END_OF_SPEECH_PROFILE
@@ -47,9 +47,11 @@ import org.futo.voiceinput.settings.SpeechBackendType
 import org.futo.voiceinput.settings.getSetting
 import org.futo.voiceinput.parakeet.ParakeetEngineLease
 import org.futo.voiceinput.parakeet.ParakeetEngineManager
+import org.futo.voiceinput.parakeet.parakeetUnifiedBackend
 import org.futo.voiceinput.backend.SpeechBackend
 import org.futo.voiceinput.backend.StreamingSpeechBackend
 import org.futo.voiceinput.parakeet.isParakeetModelDownloaded
+import org.futo.voiceinput.parakeet.isParakeetUnifiedModelDownloaded
 import org.futo.voiceinput.settings.toSpeechBackendType
 import org.futo.voiceinput.settings.toEndOfSpeechProfile
 import java.nio.FloatBuffer
@@ -132,6 +134,7 @@ abstract class AudioRecognizer {
 
     protected abstract fun loading()
     protected abstract fun needParakeetModelDownload()
+    protected abstract fun needParakeetUnifiedModelDownload()
     protected abstract fun needNemotronModelDownload()
     protected abstract fun needMoonshineModelDownload()
     protected abstract fun needWhisperModelDownload(models: List<ModelData>)
@@ -290,9 +293,13 @@ abstract class AudioRecognizer {
             val backendType = context.getSetting(SPEECH_BACKEND).toSpeechBackendType()
             val loadedBackend = when (backendType) {
                 SpeechBackendType.Parakeet -> ParakeetEngineManager.acquire(context)
+                SpeechBackendType.ParakeetUnified -> {
+                    ParakeetEngineManager.forceClose()
+                    parakeetUnifiedBackend().also { it.load(context) }
+                }
                 SpeechBackendType.Nemotron -> {
                     ParakeetEngineManager.forceClose()
-                    NemotronBackend().also { it.load(context) }
+                    SherpaStreamingBackend().also { it.load(context) }
                 }
                 SpeechBackendType.Moonshine -> {
                     ParakeetEngineManager.forceClose()
@@ -402,6 +409,15 @@ abstract class AudioRecognizer {
                         needParakeetModelDownload()
                         return@launch
                     }
+                }
+                SpeechBackendType.ParakeetUnified -> {
+                    if (!context.isParakeetUnifiedModelDownloaded(verifyHashes = true)) {
+                        needParakeetUnifiedModelDownload()
+                        return@launch
+                    }
+                    loadModel()
+                    loadModelJob?.join()
+                    if (backend == null) return@launch
                 }
                 SpeechBackendType.Nemotron -> {
                     if (!context.isNemotronModelDownloaded(verifyHashes = true)) {
