@@ -127,6 +127,10 @@ android {
     kotlinOptions {
         jvmTarget = '1.8'
     }
+    lint {
+        // Compose's detector crashes under this project's Kotlin/UAST versions.
+        disable 'MutableCollectionMutableState'
+    }
     buildFeatures {
         buildConfig true
         compose true

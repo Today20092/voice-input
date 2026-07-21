@@ -7,6 +7,7 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <!--
@@ -80,14 +81,6 @@
             android:clearTaskOnLaunch="false"
             android:launchMode="singleInstance"
             android:theme="@style/Theme.WhisperVoiceInput" />
-
-        <activity
-            android:name=".payments.BillingActivity"
-            android:exported="false"
-            android:label="External Billing"
-            android:clearTaskOnLaunch="false"
-            android:launchMode="singleInstance"
-            android:theme="@style/Theme.BillingDialog" />
 
         <activity
             android:name=".settings.PaymentCompleteActivity"

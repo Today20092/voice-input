@@ -93,6 +93,16 @@ private fun openMigrationIfModelIsLegacy(context: Context, model: ModelData) {
     }
 }
 
+internal interface WhisperEngine {
+    suspend fun run(
+        samples: FloatArray,
+        glossary: String,
+        forceLanguage: String?,
+        decodingMode: DecodingMode
+    ): String
+    suspend fun close()
+}
+
 class WhisperModelWrapper(
     val context: Context,
     primaryModel: ModelData,
@@ -102,7 +112,7 @@ class WhisperModelWrapper(
 
     private val onStatusUpdate: (RunState) -> Unit,
     private val onPartialDecode: (String) -> Unit,
-) {
+) : WhisperEngine {
     private var primaryModelGGML: WhisperGGML? = null
     private var fallbackModelGGML: WhisperGGML? = null
 
@@ -139,7 +149,7 @@ class WhisperModelWrapper(
     }
 
     private var modelJob: Job? = null
-    suspend fun run(
+    override suspend fun run(
         samples: FloatArray,
         glossary: String,
         forceLanguage: String?,
@@ -189,8 +199,9 @@ class WhisperModelWrapper(
         }
     }
 
-    suspend fun close() = withContext(inferenceContext) {
+    override suspend fun close() = withContext(inferenceContext) {
         primaryModelGGML?.close()
         fallbackModelGGML?.close()
+        Unit
     }
 }

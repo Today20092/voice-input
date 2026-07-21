@@ -16,34 +16,29 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.futo.voiceinput.backend.StreamingSpeechBackend
 
-class MoonshineBackend(
-    private val variant: MoonshineModelVariant
+class MoonshineBackend internal constructor(
+    private val variant: MoonshineModelVariant,
+    private var engine: MoonshineEngine? = null
 ) : StreamingSpeechBackend {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-    private var transcriber: Transcriber? = null
     private var audio: Channel<FloatArray>? = null
     private var worker: Job? = null
     private var completedText = ""
     private var currentText = ""
 
     override suspend fun load(context: Context) = withContext(Dispatchers.IO) {
-        transcriber = Transcriber().apply {
-            loadFromFiles(
-                context.applicationContext.moonshineModelDir(variant).absolutePath,
-                when (variant) {
-                    MoonshineModelVariant.Small -> JNI.MOONSHINE_MODEL_ARCH_SMALL_STREAMING
-                    MoonshineModelVariant.Medium -> JNI.MOONSHINE_MODEL_ARCH_MEDIUM_STREAMING
-                }
-            )
-        }
+        engine = MoonshineTranscriberEngine(
+            context.applicationContext.moonshineModelDir(variant).absolutePath,
+            when (variant) {
+                MoonshineModelVariant.Small -> JNI.MOONSHINE_MODEL_ARCH_SMALL_STREAMING
+                MoonshineModelVariant.Medium -> JNI.MOONSHINE_MODEL_ARCH_MEDIUM_STREAMING
+            }
+        )
     }
 
     override suspend fun transcribe(samples: FloatArray): String = withContext(Dispatchers.Default) {
-        transcriberOrThrow().transcribeWithoutStreaming(samples, 16_000).lines
-            .mapNotNull { it.text }
-            .joinToString(" ")
-            .trim()
+        engineOrThrow().transcribe(samples)
     }
 
     override fun startStreaming(
@@ -52,28 +47,21 @@ class MoonshineBackend(
     ) {
         completedText = ""
         currentText = ""
-        val transcriber = transcriberOrThrow()
-        transcriber.removeAllListeners()
-        transcriber.addListener { event ->
-            event.accept(object : TranscriptEventListener() {
-                override fun onLineTextChanged(event: TranscriptEvent.LineTextChanged) {
-                    currentText = event.line.text.orEmpty()
-                    onPartial(currentTranscript())
-                }
-
-                override fun onLineCompleted(event: TranscriptEvent.LineCompleted) {
-                    completedText = listOf(completedText, event.line.text.orEmpty())
-                        .filter(String::isNotBlank)
-                        .joinToString(" ")
-                    currentText = ""
-                    onPartial(currentTranscript())
-                }
-            })
+        val engine = engineOrThrow()
+        engine.start { text, completed ->
+            if (completed) {
+                completedText = listOf(completedText, text)
+                    .filter(String::isNotBlank)
+                    .joinToString(" ")
+                currentText = ""
+            } else {
+                currentText = text
+            }
+            onPartial(currentTranscript())
         }
-        transcriber.start()
         audio = Channel(Channel.UNLIMITED)
         worker = scope.launch {
-            for (chunk in audio!!) transcriber.addAudio(chunk, 16_000)
+            for (chunk in audio!!) engine.addAudio(chunk)
         }
     }
 
@@ -84,7 +72,7 @@ class MoonshineBackend(
     override suspend fun finishStreaming(): String {
         audio?.close()
         worker?.join()
-        withContext(Dispatchers.Default) { transcriberOrThrow().stop() }
+        withContext(Dispatchers.Default) { engineOrThrow().stop() }
         audio = null
         worker = null
         return currentTranscript()
@@ -95,12 +83,12 @@ class MoonshineBackend(
         audio?.close()
         worker?.cancelAndJoin()
         if (wasStreaming) {
-            runCatching { withContext(Dispatchers.Default) { transcriber?.stop() } }
+            runCatching { withContext(Dispatchers.Default) { engine?.stop() } }
         }
         audio = null
         worker = null
-        transcriber?.removeAllListeners()
-        transcriber = null
+        engine?.close()
+        engine = null
         scope.cancel()
     }
 
@@ -109,6 +97,42 @@ class MoonshineBackend(
         .joinToString(" ")
         .trim()
 
-    private fun transcriberOrThrow() =
-        transcriber ?: throw IllegalStateException("Moonshine backend is not loaded")
+    private fun engineOrThrow() =
+        engine ?: throw IllegalStateException("Moonshine backend is not loaded")
+}
+
+internal interface MoonshineEngine {
+    fun transcribe(samples: FloatArray): String
+    fun start(onTranscript: (text: String, completed: Boolean) -> Unit)
+    fun addAudio(samples: FloatArray)
+    fun stop()
+    fun close()
+}
+
+private class MoonshineTranscriberEngine(modelPath: String, architecture: Int) : MoonshineEngine {
+    private val transcriber = Transcriber().apply { loadFromFiles(modelPath, architecture) }
+
+    override fun transcribe(samples: FloatArray) =
+        transcriber.transcribeWithoutStreaming(samples, 16_000).lines
+            .mapNotNull { it.text }
+            .joinToString(" ")
+            .trim()
+
+    override fun start(onTranscript: (String, Boolean) -> Unit) {
+        transcriber.removeAllListeners()
+        transcriber.addListener { event ->
+            event.accept(object : TranscriptEventListener() {
+                override fun onLineTextChanged(event: TranscriptEvent.LineTextChanged) =
+                    onTranscript(event.line.text.orEmpty(), false)
+
+                override fun onLineCompleted(event: TranscriptEvent.LineCompleted) =
+                    onTranscript(event.line.text.orEmpty(), true)
+            })
+        }
+        transcriber.start()
+    }
+
+    override fun addAudio(samples: FloatArray) = transcriber.addAudio(samples, 16_000)
+    override fun stop() = transcriber.stop()
+    override fun close() = transcriber.removeAllListeners()
 }

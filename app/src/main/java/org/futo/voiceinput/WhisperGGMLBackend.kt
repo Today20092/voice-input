@@ -4,6 +4,7 @@ import android.content.Context
 import org.futo.voiceinput.backend.SpeechBackend
 import org.futo.voiceinput.ggml.DecodingMode
 import org.futo.voiceinput.ml.RunState
+import org.futo.voiceinput.ml.WhisperEngine
 import org.futo.voiceinput.ml.WhisperModelWrapper
 import org.futo.voiceinput.settings.BEAM_SEARCH
 import org.futo.voiceinput.settings.DISALLOW_SYMBOLS
@@ -14,12 +15,12 @@ import org.futo.voiceinput.settings.PERSONAL_DICTIONARY
 import org.futo.voiceinput.settings.USE_LANGUAGE_SPECIFIC_MODELS
 import org.futo.voiceinput.settings.getSetting
 
-class WhisperGGMLBackend(
+class WhisperGGMLBackend internal constructor(
     private val onStatusUpdate: (RunState) -> Unit,
     private val onPartialDecode: (String) -> Unit,
-    private val forceLanguageProvider: () -> String?
+    private val forceLanguageProvider: () -> String?,
+    private var engine: WhisperEngine? = null
 ) : SpeechBackend {
-    private var whisperModelWrapper: WhisperModelWrapper? = null
     private var personalDictionary: String = ""
     private var beamSearch: Boolean = true
 
@@ -59,7 +60,7 @@ class WhisperGGMLBackend(
             null
         }
 
-        whisperModelWrapper = WhisperModelWrapper(
+        engine = WhisperModelWrapper(
             context = context,
             primaryModel = primaryModel,
             fallbackEnglishModel = fallbackEnglishModel,
@@ -71,7 +72,7 @@ class WhisperGGMLBackend(
     }
 
     override suspend fun transcribe(samples: FloatArray): String {
-        return whisperModelWrapper?.run(
+        return engine?.run(
             samples = samples,
             glossary = personalDictionary,
             forceLanguage = forceLanguageProvider(),
@@ -80,7 +81,7 @@ class WhisperGGMLBackend(
     }
 
     override suspend fun close() {
-        whisperModelWrapper?.close()
-        whisperModelWrapper = null
+        engine?.close()
+        engine = null
     }
 }
