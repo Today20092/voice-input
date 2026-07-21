@@ -185,3 +185,20 @@ Commit `d12ee49` removes the Rust/JNI runtime, Cargo/NDK wiring, duplicate-libra
 - [ ] Moonshine, Whisper, IME, recognition activity, VAD, cancellation, personal vocabulary, and error behavior pass regression checks.
 - [ ] Release APK contents, ABI, native-library count, and size are reviewed and documented.
 - [ ] The user-facing catalog remains advisory and does not block installation based on guessed device capability.
+
+## Add predictive-back transitions to settings navigation
+
+**What to build:** Make Android edge-back gestures interactively cross-fade from any settings destination to the previous destination, eliminating the frozen pause before the settings home screen appears. Preserve forward navigation, cancelled gestures, system back, and the in-app back arrow. See [the predictive-back settings specification](docs/specs/predictive-back-settings-navigation.md).
+
+**Blocked by:** None — can start immediately.
+
+**Triage:** ready-for-human
+
+- [x] The compatible Compose navigation stack uses Navigation Compose 2.8.0 or newer without raising the minimum supported Android version.
+- [ ] Swiping back from Model Options on Android 15 or newer previews the settings home screen with an interactive cross-fade instead of freezing until commit.
+- [x] Committing the gesture returns to the correct previous destination, while cancelling it retains the current destination.
+- [x] Another settings destination exhibits the same predictive-back behavior through the shared navigation host.
+- [x] System back and the in-app back arrow continue to return to the correct previous destination.
+- [x] Forward navigation retains clear transition feedback.
+- [ ] An instrumentation check covers settings back-stack behavior at the shared navigation-host seam, and a real-device or emulator check verifies the interactive animation.
+- [ ] Relevant unit, instrumentation, build, and lint checks pass after the dependency upgrade.

@@ -2,6 +2,7 @@ package org.futo.voiceinput.settings
 
 import android.Manifest
 import android.content.ComponentName
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.provider.Settings
@@ -35,7 +36,7 @@ fun useIsInputMethodEnabled(i: Int): MutableState<Status> {
     LaunchedEffect(i) {
         val packageName = context.packageName
         val imm =
-            context.getSystemService(ComponentActivity.INPUT_METHOD_SERVICE) as InputMethodManager
+            context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
 
         var found = false
         for (imi in imm.enabledInputMethodList) {
