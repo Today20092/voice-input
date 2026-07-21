@@ -76,12 +76,9 @@ class RecognitionModelCatalogTest {
     }
 
     @Test
-    fun downloadableModelsExposeSourceAndLicenseNotices() {
+    fun downloadableModelsExposeSourceNotices() {
         RecognitionModelCatalog.models.forEach { model ->
             assertTrue(model.source.isNotBlank())
-            assertTrue(model.sourceUrl.startsWith("https://"))
-            assertTrue(model.license.isNotBlank())
-            assertTrue(model.licenseUrl.startsWith("https://"))
         }
     }
 
@@ -178,74 +175,13 @@ class RecognitionModelCatalogTest {
         assertTrue(File(packageDir, modelPackage.completionMarker).exists())
     }
 
-    @Test
-    fun updateIsOfferedOnlyForADifferentPinnedVersion() {
-        val installed = testPackage(version = "1")
-        val available = testPackage(version = "2")
-        val store = RecognitionModelStore(temporaryFolder.root)
-        install(store, installed)
-
-        assertEquals(
-            RecognitionModelUpdate(installed, available),
-            store.findUpdate(available, listOf(installed, available))
-        )
-        assertEquals(null, store.findUpdate(installed, listOf(installed, available)))
-        assertEquals(null, store.findUpdate(available, listOf(available)))
-    }
-
-    @Test
-    fun failedUpdateValidationLeavesInstalledVersionUntouched() {
-        val installed = testPackage(version = "1")
-        val available = testPackage(version = "2")
-        val store = RecognitionModelStore(temporaryFolder.root)
-        install(store, installed)
-        File(store.updateDirectory(available).apply { mkdirs() }, "model.bin").writeText("wrong")
-
-        assertFalse(store.completeUpdate(available))
-        assertTrue(store.isInstalled(installed, verifyHashes = true))
-        assertEquals("1", store.installedModel(listOf(installed, available))?.version)
-    }
-
-    @Test
-    fun validatedUpdateActivatesThenCleansUpPreviousVersion() = kotlinx.coroutines.runBlocking {
-        val installed = testPackage(version = "1")
-        val available = testPackage(version = "2")
-        var releasedBeforeActivation = false
-        val store = RecognitionModelStore(temporaryFolder.root)
-        val releaseRuntime: suspend (RecognitionModel) -> Unit = {
-            releasedBeforeActivation = store.isInstalled(installed, verifyHashes = true)
-        }
-        val installedDirectory = store.modelDirectory(installed)
-        install(store, installed)
-        File(store.updateDirectory(available).apply { mkdirs() }, "model.bin").writeText("valid")
-
-        assertTrue(store.completeUpdate(available))
-        assertTrue(store.isInstalled(installed, verifyHashes = true))
-        assertTrue(store.isUpdatePrepared(available))
-
-        store.activateUpdate(available, releaseRuntime)
-
-        assertTrue(releasedBeforeActivation)
-        assertTrue(store.isInstalled(available, verifyHashes = true))
-        assertEquals(store.updateDirectory(available), store.modelDirectory(available))
-        assertFalse(installedDirectory.exists())
-    }
-
-    private fun install(store: RecognitionModelStore, model: RecognitionModel) {
-        File(store.modelDirectory(model).apply { mkdirs() }, "model.bin").writeText("valid")
-        assertTrue(store.completeInstall(model))
-    }
-
-    private fun testPackage(version: String = "1") = RecognitionModel(
+    private fun testPackage() = RecognitionModel(
         id = "test-package",
-        version = version,
+        version = "1",
         runtimeId = "test",
         variantId = null,
         directoryName = "test-package-1",
         source = "Test source",
-        sourceUrl = "https://example.com/source",
-        license = "Test license",
-        licenseUrl = "https://example.com/license",
         displayName = "Test",
         description = "Test package",
         transcription = TranscriptionBehavior.FINAL_ONLY,

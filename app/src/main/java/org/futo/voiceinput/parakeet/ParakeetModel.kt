@@ -13,7 +13,6 @@ import org.futo.voiceinput.recognition.RecognitionModelArtifact
 import org.futo.voiceinput.recognition.RecognitionModelStore
 import org.futo.voiceinput.recognition.TranscriptionBehavior
 import java.io.File
-import java.security.MessageDigest
 
 object ParakeetModel {
     private const val revision = "1247204e1cc87d84abf1c9a5e45c1caee15b314a"
@@ -25,9 +24,6 @@ object ParakeetModel {
         variantId = null,
         directoryName = "sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8",
         source = "NVIDIA Parakeet TDT 0.6B V3 (CC BY 4.0), Sherpa-ONNX export by twmht",
-        sourceUrl = "https://huggingface.co/$repository/tree/$revision",
-        license = "Creative Commons Attribution 4.0",
-        licenseUrl = "https://creativecommons.org/licenses/by/4.0/",
         displayName = "Parakeet TDT 0.6B V3",
         description = "High-accuracy NVIDIA recognition that returns text after recording stops.",
         transcription = TranscriptionBehavior.FINAL_ONLY,
@@ -49,20 +45,6 @@ object ParakeetModel {
             sizeBytes = size,
             sha256 = hash
         )
-}
-
-fun sha256(file: File): String {
-    val digest = MessageDigest.getInstance("SHA-256")
-    file.inputStream().use { input ->
-        val buffer = ByteArray(8192)
-        while (true) {
-            val read = input.read(buffer)
-            if (read == -1) break
-            digest.update(buffer, 0, read)
-        }
-    }
-
-    return digest.digest().joinToString("") { "%02x".format(it) }
 }
 
 fun Context.parakeetModelDir(): File =

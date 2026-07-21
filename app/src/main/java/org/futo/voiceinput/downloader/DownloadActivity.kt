@@ -44,12 +44,8 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
 import org.futo.voiceinput.R
-import org.futo.voiceinput.parakeet.releaseRuntime
-import org.futo.voiceinput.parakeet.sha256
+import org.futo.voiceinput.sha256
 import org.futo.voiceinput.recognition.RecognitionModel
-import org.futo.voiceinput.recognition.RecognitionModelCatalog
-import org.futo.voiceinput.recognition.RecognitionModelStore
-import org.futo.voiceinput.recognition.updateDirectoryName
 import org.futo.voiceinput.settings.MOONSHINE_MODEL_VARIANT
 import org.futo.voiceinput.settings.NEMOTRON_PROFILE
 import org.futo.voiceinput.settings.SPEECH_BACKEND
@@ -82,27 +78,20 @@ const val EXTRA_ARCHIVE_URL = "recognition_model_archive_url"
 const val EXTRA_ARCHIVE_HASH = "recognition_model_archive_hash"
 const val EXTRA_ARCHIVE_SIZE = "recognition_model_archive_size"
 const val EXTRA_ARCHIVE_ROOT = "recognition_model_archive_root"
-const val EXTRA_IS_MODEL_UPDATE = "recognition_model_update"
 
-fun Intent.putRecognitionModel(model: RecognitionModel, isUpdate: Boolean = false) {
+fun Intent.putRecognitionModel(model: RecognitionModel) {
     putStringArrayListExtra(EXTRA_DOWNLOAD_FILE_NAMES, ArrayList(model.artifacts.map { it.name }))
     putStringArrayListExtra(EXTRA_DOWNLOAD_FILE_URLS, ArrayList(model.artifacts.map { it.url }))
     putStringArrayListExtra(EXTRA_DOWNLOAD_FILE_HASHES, ArrayList(model.artifacts.map { it.sha256 }))
     putExtra(EXTRA_DOWNLOAD_FILE_SIZES, model.artifacts.map { it.sizeBytes }.toLongArray())
-    putExtra(
-        EXTRA_TARGET_SUBDIR,
-        if (isUpdate) model.updateDirectoryName() else model.directoryName
-    )
+    putExtra(EXTRA_TARGET_SUBDIR, model.directoryName)
     putExtra(EXTRA_COMPLETION_MARKER, model.completionMarker)
     putExtra(EXTRA_DOWNLOAD_SOURCE, model.source)
     putExtra(EXTRA_REQUIRED_FREE_SPACE, model.requiredFreeSpaceBytes)
-    if (!isUpdate) {
-        putExtra(EXTRA_SELECT_BACKEND, model.runtimeId)
-        model.variantId?.let { putExtra(EXTRA_SELECT_VARIANT, it) }
-    }
+    putExtra(EXTRA_SELECT_BACKEND, model.runtimeId)
+    model.variantId?.let { putExtra(EXTRA_SELECT_VARIANT, it) }
     putExtra(EXTRA_MODEL_ID, model.id)
     putExtra(EXTRA_MODEL_VERSION, model.version)
-    putExtra(EXTRA_IS_MODEL_UPDATE, isUpdate)
     model.archive?.let { archive ->
         putExtra(EXTRA_ARCHIVE_NAME, archive.name)
         putExtra(EXTRA_ARCHIVE_URL, archive.url)
@@ -112,13 +101,13 @@ fun Intent.putRecognitionModel(model: RecognitionModel, isUpdate: Boolean = fals
     }
 }
 
-fun Context.recognitionModelDownloadIntent(model: RecognitionModel, isUpdate: Boolean = false) =
+fun Context.recognitionModelDownloadIntent(model: RecognitionModel) =
     Intent(this, DownloadActivity::class.java).apply {
-        putRecognitionModel(model, isUpdate)
+        putRecognitionModel(model)
     }
 
-fun Context.startRecognitionModelDownloadActivity(model: RecognitionModel, isUpdate: Boolean = false) {
-    startActivity(recognitionModelDownloadIntent(model, isUpdate).apply {
+fun Context.startRecognitionModelDownloadActivity(model: RecognitionModel) {
+    startActivity(recognitionModelDownloadIntent(model).apply {
         if (this@startRecognitionModelDownloadActivity !is Activity) {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
@@ -595,37 +584,11 @@ class DownloadActivity : ComponentActivity() {
             return
         }
 
-        val isUpdate = intent.getBooleanExtra(EXTRA_IS_MODEL_UPDATE, false)
-        if (!isUpdate) completionMarker?.let { marker ->
+        completionMarker?.let { marker ->
             marker.parentFile?.mkdirs()
             val modelId = requireNotNull(intent.getStringExtra(EXTRA_MODEL_ID))
             val modelVersion = requireNotNull(intent.getStringExtra(EXTRA_MODEL_VERSION))
             marker.writeText("$modelId@$modelVersion")
-        }
-
-        if (isUpdate) {
-            val modelId = requireNotNull(intent.getStringExtra(EXTRA_MODEL_ID))
-            val modelVersion = requireNotNull(intent.getStringExtra(EXTRA_MODEL_VERSION))
-            val model = requireNotNull(
-                RecognitionModelCatalog.pinnedVersions.firstOrNull {
-                    it.id == modelId && it.version == modelVersion
-                }
-            )
-            val store = RecognitionModelStore(filesDir)
-            if (!store.completeUpdate(model)) {
-                modelsToDownload.forEach { it.error = true }
-                return
-            }
-            lifecycleScope.launch {
-                try {
-                    store.activateUpdate(model) { it.releaseRuntime() }
-                    finishSuccessfulDownload()
-                } catch (error: Exception) {
-                    error.printStackTrace()
-                    modelsToDownload.forEach { it.error = true }
-                }
-            }
-            return
         }
 
         finishSuccessfulDownload()

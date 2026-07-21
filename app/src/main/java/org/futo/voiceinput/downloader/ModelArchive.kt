@@ -2,6 +2,7 @@ package org.futo.voiceinput.downloader
 
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
 import org.apache.commons.compress.compressors.bzip2.BZip2CompressorInputStream
+import org.futo.voiceinput.sha256
 import org.futo.voiceinput.recognition.RecognitionModelArtifact
 import java.io.File
 import java.io.InputStream
@@ -50,7 +51,7 @@ internal fun extractModelArchive(
         artifacts.forEach { artifact ->
             val file = temporaryFiles.getValue(artifact)
             require(file.length() == artifact.sizeBytes) { "Unexpected size for ${artifact.name}" }
-            require(file.sha256() == artifact.sha256) { "Checksum mismatch for ${artifact.name}" }
+            require(sha256(file) == artifact.sha256) { "Checksum mismatch for ${artifact.name}" }
         }
         previousDirectory.deleteRecursively()
         val hadPreviousInstall = targetDirectory.exists()
@@ -71,19 +72,6 @@ internal fun extractModelArchive(
         stagingDirectory.deleteRecursively()
         throw error
     }
-}
-
-private fun File.sha256(): String {
-    val digest = MessageDigest.getInstance("SHA-256")
-    inputStream().use { input ->
-        val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
-        while (true) {
-            val read = input.read(buffer)
-            if (read < 0) break
-            digest.update(buffer, 0, read)
-        }
-    }
-    return digest.hex()
 }
 
 private fun MessageDigest.hex() = digest().joinToString("") { "%02x".format(it) }

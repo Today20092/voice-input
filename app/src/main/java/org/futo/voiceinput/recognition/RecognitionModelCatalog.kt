@@ -1,10 +1,8 @@
 package org.futo.voiceinput.recognition
 
 import org.futo.voiceinput.parakeet.ParakeetModel
+import org.futo.voiceinput.sha256
 import java.io.File
-import java.security.MessageDigest
-import java.nio.file.StandardCopyOption.ATOMIC_MOVE
-import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 
 enum class TranscriptionBehavior(val label: String) {
     LIVE("Live transcription"),
@@ -37,9 +35,6 @@ data class RecognitionModel(
     val variantId: String?,
     val directoryName: String,
     val source: String,
-    val sourceUrl: String,
-    val license: String,
-    val licenseUrl: String,
     val displayName: String,
     val description: String,
     val transcription: TranscriptionBehavior,
@@ -68,13 +63,6 @@ data class RecognitionModelCard(
     val performanceClasses: Set<PerformanceClass>,
     val models: List<RecognitionModel>
 )
-
-data class RecognitionModelUpdate(
-    val installed: RecognitionModel,
-    val available: RecognitionModel
-)
-
-fun RecognitionModel.updateDirectoryName() = "$directoryName.version-$version"
 
 object RecognitionModelCatalog {
     private const val MOONSHINE_REVISION = "2026-03-16-sha256"
@@ -137,9 +125,6 @@ object RecognitionModelCatalog {
         variantId = null,
         directoryName = PARAKEET_UNIFIED_DIRECTORY,
         source = "NVIDIA Parakeet Unified (NVIDIA Open Model License), Sherpa-ONNX export by k2-fsa",
-        sourceUrl = "https://huggingface.co/$PARAKEET_UNIFIED_REPOSITORY/tree/$PARAKEET_UNIFIED_VERSION",
-        license = "NVIDIA Open Model License",
-        licenseUrl = "https://www.nvidia.com/en-us/agreements/enterprise-software/nvidia-open-model-license/",
         displayName = "Parakeet Unified EN 0.6B",
         description = "560 ms buffered live English transcription that recomputes left context; Nemotron is preferred for the fastest updates.",
         transcription = TranscriptionBehavior.LIVE,
@@ -262,11 +247,6 @@ object RecognitionModelCatalog {
 
     val defaultModel = moonshineSmall
     val models = cards.flatMap { it.models }
-    private val historicalVersions = emptyList<RecognitionModel>()
-    val pinnedVersions = historicalVersions + models
-
-    fun versionsFor(modelId: String): List<RecognitionModel> =
-        pinnedVersions.filter { it.id == modelId }
 
     fun modelFor(runtimeId: String, variantId: String? = null): RecognitionModel? =
         models.firstOrNull {
@@ -289,9 +269,6 @@ object RecognitionModelCatalog {
         variantId = variantId,
         directoryName = directoryName,
         source = MOONSHINE_SOURCE,
-        sourceUrl = "https://github.com/moonshine-ai/moonshine",
-        license = "MIT License (English models)",
-        licenseUrl = "https://github.com/moonshine-ai/moonshine/blob/main/LICENSE",
         displayName = displayName,
         description = description,
         transcription = TranscriptionBehavior.LIVE,
@@ -328,9 +305,6 @@ object RecognitionModelCatalog {
             variantId = variantId,
             directoryName = directory,
             source = "NVIDIA Nemotron via k2-fsa/sherpa-onnx",
-            sourceUrl = "https://github.com/k2-fsa/sherpa-onnx/releases/tag/asr-models",
-            license = "NVIDIA Open Model License",
-            licenseUrl = "https://www.nvidia.com/en-us/agreements/enterprise-software/nvidia-open-model-license/",
             displayName = displayName,
             description = description,
             transcription = TranscriptionBehavior.LIVE,
@@ -375,9 +349,6 @@ object RecognitionModelCatalog {
             variantId = "multilingual",
             directoryName = directory,
             source = "NVIDIA Nemotron 3.5 (OpenMDW 1.1), Sherpa-ONNX export by k2-fsa",
-            sourceUrl = "https://huggingface.co/csukuangfj2/$directory/tree/$NEMOTRON_MULTILINGUAL_REVISION",
-            license = "OpenMDW 1.1",
-            licenseUrl = "https://www.nvidia.com/en-us/agreements/enterprise-software/open-model-data-weight-license/",
             displayName = "Nemotron 3.5 Multilingual",
             description = "560 ms live transcription with explicit language selection or Auto-detect.",
             transcription = TranscriptionBehavior.LIVE,
@@ -401,12 +372,7 @@ class SelectedModelDeletionException : IllegalStateException(
 )
 
 class RecognitionModelStore(private val rootDirectory: File) {
-    fun modelDirectory(model: RecognitionModel): File {
-        val activeName = runCatching { activeDirectoryPointer(model).readText() }.getOrNull()
-        return File(rootDirectory, activeName ?: model.directoryName)
-    }
-
-    fun updateDirectory(model: RecognitionModel) = File(rootDirectory, model.updateDirectoryName())
+    fun modelDirectory(model: RecognitionModel) = File(rootDirectory, model.directoryName)
 
     fun isInstalled(model: RecognitionModel, verifyHashes: Boolean = false): Boolean {
         val directory = modelDirectory(model)
@@ -427,66 +393,12 @@ class RecognitionModelStore(private val rootDirectory: File) {
         return true
     }
 
-    fun installedModel(pinnedVersions: List<RecognitionModel>): RecognitionModel? {
-        val groupedByDirectory = pinnedVersions.groupBy { it.directoryName }
-        return groupedByDirectory.values.firstNotNullOfOrNull { versions ->
-            val markerName = versions.first().completionMarker
-            val marker = File(modelDirectory(versions.first()), markerName)
-            val markerValue = runCatching { marker.readText() }.getOrNull()
-            versions.firstOrNull { model ->
-                markerValue == "${model.id}@${model.version}" && isInstalled(model)
-            }
-        }
-    }
-
-    fun findUpdate(
-        available: RecognitionModel,
-        pinnedVersions: List<RecognitionModel>
-    ): RecognitionModelUpdate? {
-        if (available !in pinnedVersions) return null
-        val installed = installedModel(pinnedVersions.filter { it.id == available.id }) ?: return null
-        if (installed.directoryName != available.directoryName) return null
-        return if (installed.version == available.version) null else RecognitionModelUpdate(installed, available)
-    }
-
     fun completeInstall(model: RecognitionModel): Boolean {
         val marker = File(modelDirectory(model), model.completionMarker)
         marker.delete()
         if (!artifactsValid(model, verifyHashes = true)) return false
         marker.writeText("${model.id}@${model.version}")
         return true
-    }
-
-    fun completeUpdate(model: RecognitionModel): Boolean {
-        val marker = File(updateDirectory(model), model.completionMarker)
-        marker.delete()
-        if (!artifactsValid(model, verifyHashes = true, directory = updateDirectory(model))) return false
-        marker.writeText("${model.id}@${model.version}")
-        return true
-    }
-
-    fun isUpdatePrepared(model: RecognitionModel): Boolean {
-        val marker = File(updateDirectory(model), model.completionMarker)
-        return marker.isFile && marker.readText() == "${model.id}@${model.version}" &&
-            artifactsValid(model, verifyHashes = true, directory = updateDirectory(model))
-    }
-
-    suspend fun activateUpdate(
-        model: RecognitionModel,
-        releaseRuntime: suspend (RecognitionModel) -> Unit
-    ) {
-        check(isUpdatePrepared(model)) { "${model.displayName} update is not complete" }
-        val current = modelDirectory(model)
-        val update = updateDirectory(model)
-        releaseRuntime(model)
-        activateDirectory(model, update)
-        if (!isInstalled(model, verifyHashes = true)) {
-            activateDirectory(model, current)
-            error("Activated ${model.displayName} failed validation")
-        }
-        if (current != update) {
-            check(current.deleteRecursively()) { "Failed to clean previous model" }
-        }
     }
 
     fun select(model: RecognitionModel, updateSelection: () -> Unit) {
@@ -504,17 +416,6 @@ class RecognitionModelStore(private val rootDirectory: File) {
         check(modelDirectory(model).deleteRecursively()) {
             "Failed to delete ${model.displayName}"
         }
-        activeDirectoryPointer(model).delete()
-    }
-
-    private fun activeDirectoryPointer(model: RecognitionModel) =
-        File(rootDirectory, ".${model.id}.active")
-
-    private fun activateDirectory(model: RecognitionModel, directory: File) {
-        val pointer = activeDirectoryPointer(model)
-        val temporary = File(rootDirectory, "${pointer.name}.tmp")
-        temporary.writeText(directory.name)
-        java.nio.file.Files.move(temporary.toPath(), pointer.toPath(), ATOMIC_MOVE, REPLACE_EXISTING)
     }
 
     private fun artifactsValid(
@@ -525,20 +426,7 @@ class RecognitionModelStore(private val rootDirectory: File) {
         return model.artifacts.all { artifact ->
             val file = File(directory, artifact.name)
             file.isFile && file.length() == artifact.sizeBytes &&
-                (!verifyHashes || file.sha256() == artifact.sha256)
+                (!verifyHashes || sha256(file) == artifact.sha256)
         }
     }
-}
-
-private fun File.sha256(): String {
-    val digest = MessageDigest.getInstance("SHA-256")
-    inputStream().use { input ->
-        val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
-        while (true) {
-            val read = input.read(buffer)
-            if (read < 0) break
-            digest.update(buffer, 0, read)
-        }
-    }
-    return digest.digest().joinToString("") { "%02x".format(it) }
 }

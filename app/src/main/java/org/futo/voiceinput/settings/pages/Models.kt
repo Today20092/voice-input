@@ -231,24 +231,19 @@ private fun ManagedRecognitionModelItem(
     val lifecycleOwner = LocalLifecycleOwner.current
     val bundled = model.runtimeId == SpeechBackendType.Parakeet.id &&
         BuildConfig.BUNDLE_PARAKEET_MODEL
-    val pinnedVersions = RecognitionModelCatalog.versionsFor(model.id)
-    val installedModel = if (bundled) model else store.installedModel(pinnedVersions)
-    val installed = installedModel != null
-    val update = if (bundled) null else store.findUpdate(model, pinnedVersions)
+    val installed = bundled || store.isInstalled(model)
     val selected = selectedModelId == model.id
     val status = when {
-        update != null && selected -> "Selected ${update.installed.version} • Update ${update.available.version} available"
-        update != null -> "Installed ${update.installed.version} • Update ${update.available.version} available"
         selected -> "Selected — choose another installed model before deleting"
         installed -> "Installed"
         else -> "Download required"
     }
     val subtitle = "${model.description}\n${model.transcription.label} • " +
         "${model.recognitionLanguages} • ${model.performanceClass.label}\n" +
-        "${model.source} • ${model.license} • ${"%.1f".format(model.transferBytes / 1_000_000.0)} MB • $status"
+        "${model.source} • ${"%.1f".format(model.transferBytes / 1_000_000.0)} MB • $status"
     val selectOrDownload = {
         if (installed) {
-            if (bundled) onSelect() else store.select(requireNotNull(installedModel), onSelect)
+            if (bundled) onSelect() else store.select(model, onSelect)
         } else {
             context.startRecognitionModelDownloadActivity(model)
         }
@@ -262,17 +257,12 @@ private fun ManagedRecognitionModelItem(
     ) {
         if (installed && !bundled) {
             Column {
-                if (update != null) {
-                    TextButton(onClick = {
-                        context.startRecognitionModelDownloadActivity(update.available, isUpdate = true)
-                    }) { Text("Update") }
-                }
                 TextButton(
                     enabled = !selected,
                     onClick = {
                         lifecycleOwner.lifecycleScope.launch {
                             store.delete(
-                                requireNotNull(installedModel),
+                                model,
                                 selectedModelId = selectedModelId
                             ) { it.releaseRuntime() }
                             onDeleted()
