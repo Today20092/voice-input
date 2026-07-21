@@ -137,25 +137,6 @@
             </intent-filter>
         </service>
 
-        <!--
-        <service
-            android:name=".WhisperRecognizerService"
-            android:exported="true"
-            android:foregroundServiceType="microphone"
-            android:icon="@drawable/ic_launcher_foreground"
-            android:label="whisperrecognitionservice"
-            android:permission="android.permission.RECORD_AUDIO" >
-            <intent-filter>
-                <action android:name="android.speech.RecognitionService" />
-
-                <category android:name="android.intent.category.DEFAULT" />
-            </intent-filter>
-
-            <meta-data
-                android:name="android.speech"
-                android:resource="@xml/recognition_service" />
-        </service>
-        -->
     </application>
 
 </manifest>
