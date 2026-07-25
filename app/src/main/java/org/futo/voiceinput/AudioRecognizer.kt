@@ -29,9 +29,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.yield
 import org.futo.voiceinput.ml.RunState
-import org.futo.voiceinput.moonshine.MoonshineBackend
-import org.futo.voiceinput.moonshine.getSelectedMoonshineModelVariant
-import org.futo.voiceinput.nemotron.SherpaStreamingBackend
 import org.futo.voiceinput.settings.ENABLE_30S_LIMIT
 import org.futo.voiceinput.settings.END_OF_SPEECH_PROFILE
 import org.futo.voiceinput.settings.IS_VAD_ENABLED
@@ -46,8 +43,6 @@ import org.futo.voiceinput.settings.SPEECH_BACKEND
 import org.futo.voiceinput.settings.SpeechBackendType
 import org.futo.voiceinput.settings.getSetting
 import org.futo.voiceinput.parakeet.ParakeetEngineLease
-import org.futo.voiceinput.parakeet.ParakeetEngineManager
-import org.futo.voiceinput.parakeet.parakeetUnifiedBackend
 import org.futo.voiceinput.parakeet.parakeetUnifiedRecognitionModel
 import org.futo.voiceinput.backend.SpeechBackend
 import org.futo.voiceinput.backend.StreamingSpeechBackend
@@ -55,6 +50,7 @@ import org.futo.voiceinput.recognition.RecognitionModel
 import org.futo.voiceinput.recognition.RecognitionModelLifecycle
 import org.futo.voiceinput.recognition.RecognitionModelSelection
 import org.futo.voiceinput.recognition.RecognitionModelStore
+import org.futo.voiceinput.recognition.RecognitionRuntimeCallbacks
 import org.futo.voiceinput.settings.toSpeechBackendType
 import org.futo.voiceinput.settings.toEndOfSpeechProfile
 import java.nio.FloatBuffer
@@ -175,6 +171,9 @@ abstract class RecordingSession {
     private var personalVocabulary = ""
     private val streamingAudio = StreamingAudioReplay()
     private var selectedManagedModel: RecognitionModel? = null
+    private val modelLifecycle by lazy {
+        RecognitionModelLifecycle.create(context.filesDir, BuildConfig.BUNDLE_PARAKEET_MODEL)
+    }
 
     private var canExpandSpace = true
 
@@ -310,14 +309,9 @@ abstract class RecordingSession {
             modelJobToJoin?.join()
             loadModelJobToJoin?.join()
             if (parakeetLeaseToRelease != null) {
-                ParakeetEngineManager.release(
-                    parakeetLeaseToRelease.lease,
-                    lifecycleScope,
-                    keepWarm = false
-                )
-            }
-            if (backendToClose !is ParakeetEngineLease) {
-                backendToClose?.close()
+                modelLifecycle.release(parakeetLeaseToRelease.lease, lifecycleScope)
+            } else if (backendToClose != null) {
+                modelLifecycle.release(backendToClose, lifecycleScope)
             }
         }
     }
@@ -368,39 +362,26 @@ abstract class RecordingSession {
     private suspend fun loadModelInner(retryAfterOom: Boolean = true) {
         val loadGeneration = recognitionGeneration
         try {
-            val backendType = context.getSetting(SPEECH_BACKEND).toSpeechBackendType()
-            val loadedBackend = when (backendType) {
-                SpeechBackendType.Parakeet -> ParakeetEngineManager.acquire(context)
-                SpeechBackendType.ParakeetUnified -> {
-                    ParakeetEngineManager.forceClose()
-                    parakeetUnifiedBackend().also { it.load(context) }
-                }
-                SpeechBackendType.Nemotron -> {
-                    ParakeetEngineManager.forceClose()
-                    SherpaStreamingBackend().also { it.load(context) }
-                }
-                SpeechBackendType.Moonshine -> {
-                    ParakeetEngineManager.forceClose()
-                    val variant = context.getSelectedMoonshineModelVariant()
-                    MoonshineBackend(variant).also { it.load(context) }
-                }
-                SpeechBackendType.WhisperGGML -> {
-                    ParakeetEngineManager.forceClose()
-                    WhisperGGMLBackend(
-                        onStatusUpdate = { decodingStatus(it) },
-                        onPartialDecode = {
-                            lifecycleScope.launch {
-                                withContext(Dispatchers.Main) {
-                                    partialResult(it)
-                                }
+            val selection = RecognitionModelSelection(
+                runtimeId = context.getSetting(SPEECH_BACKEND),
+                moonshineVariantId = context.getSetting(MOONSHINE_MODEL_VARIANT),
+                nemotronVariantId = context.getSetting(NEMOTRON_PROFILE)
+            )
+            val loadedBackend = modelLifecycle.load(
+                context,
+                selection,
+                RecognitionRuntimeCallbacks(
+                    onStatusUpdate = { decodingStatus(it) },
+                    onPartialDecode = {
+                        lifecycleScope.launch {
+                            withContext(Dispatchers.Main) {
+                                partialResult(it)
                             }
-                        },
-                        forceLanguageProvider = { forcedLanguage }
-                    ).also {
-                        it.load(context)
-                    }
-                }
-            }
+                        }
+                    },
+                    forceLanguageProvider = { forcedLanguage }
+                )
+            )
             val published = synchronized(this) {
                 if (loadGeneration != recognitionGeneration) {
                     false
@@ -415,15 +396,7 @@ abstract class RecordingSession {
             }
             if (!published) {
                 withContext(NonCancellable) {
-                    if (loadedBackend is ParakeetEngineLease) {
-                        ParakeetEngineManager.release(
-                            loadedBackend,
-                            lifecycleScope,
-                            keepWarm = false
-                        )
-                    } else {
-                        loadedBackend.close()
-                    }
+                    modelLifecycle.release(loadedBackend, lifecycleScope)
                 }
                 throw CancellationException("Recognition was reset while the model loaded")
             }
@@ -436,8 +409,8 @@ abstract class RecordingSession {
             }
             decodingStatus(RunState.OOMError)
             val failedBackend = backendForGeneration(loadGeneration)
-            if (failedBackend !is ParakeetEngineLease) {
-                failedBackend?.close()
+            if (failedBackend != null) {
+                modelLifecycle.release(failedBackend, lifecycleScope)
             }
             clearBackend(loadGeneration, failedBackend)
 
@@ -655,11 +628,11 @@ abstract class RecordingSession {
                                 AppendResult.Accepted -> Unit
                                 AppendResult.SessionEnded -> break
                                 AppendResult.DurationLimit -> {
-                                    withContext(Dispatchers.Main){
-                                        if(isRecording && captureGeneration == recognitionGeneration) {
-                                            finishRecognizer()
-                                        }
+                                withContext(Dispatchers.Main){
+                                    if(isRecording && captureGeneration == recognitionGeneration) {
+                                        finishRecognizer()
                                     }
+                                }
                                 }
                             }
 
@@ -945,11 +918,10 @@ abstract class RecordingSession {
         }
 
         val keepWarmEnabled = context.getSetting(PARAKEET_KEEP_WARM)
-        if (backendType == SpeechBackendType.Parakeet) {
-            val timeoutMs = context.getSetting(PARAKEET_KEEP_WARM_TIMEOUT_MS)
-            releaseParakeetLease(runGeneration, keepWarmEnabled, timeoutMs)
-        } else {
-            runBackend.close()
+        val timeoutMs = context.getSetting(PARAKEET_KEEP_WARM_TIMEOUT_MS)
+        modelLifecycle.release(runBackend, lifecycleScope, keepWarmEnabled, timeoutMs)
+        synchronized(this) {
+            if (parakeetLease?.generation == runGeneration) parakeetLease = null
         }
         clearBackend(runGeneration, runBackend)
 
@@ -966,7 +938,7 @@ abstract class RecordingSession {
     private suspend fun closeFailedBackend(generation: Long) {
         val backendToClose = backendForGeneration(generation)
         if (!releaseParakeetLease(generation, keepWarm = false)) {
-            backendToClose?.close()
+            backendToClose?.let { modelLifecycle.release(it, lifecycleScope) }
         }
         clearBackend(generation, backendToClose)
     }
@@ -981,7 +953,7 @@ abstract class RecordingSession {
                 parakeetLease = null
             }
         } ?: return false
-        ParakeetEngineManager.release(ownedLease.lease, lifecycleScope, keepWarm, timeoutMs)
+        modelLifecycle.release(ownedLease.lease, lifecycleScope, keepWarm, timeoutMs)
         return true
     }
 

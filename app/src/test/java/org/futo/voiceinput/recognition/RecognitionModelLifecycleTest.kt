@@ -62,6 +62,27 @@ class RecognitionModelLifecycleTest {
         )
     }
 
+    @Test
+    fun modelSelectionCarriesOnlyItsRuntimeVariant() {
+        val lifecycle = RecognitionModelLifecycle(
+            RecognitionModelStore(temporaryFolder.root),
+            emptyList()
+        )
+
+        assertEquals(
+            RecognitionModelSelection("moonshine", moonshineVariantId = "small"),
+            lifecycle.selectionFor(model("moonshine", "small"))
+        )
+        assertEquals(
+            RecognitionModelSelection("nemotron", nemotronVariantId = "balanced"),
+            lifecycle.selectionFor(model("nemotron", "balanced"))
+        )
+        assertEquals(
+            RecognitionModelSelection("parakeet"),
+            lifecycle.selectionFor(model("parakeet", null))
+        )
+    }
+
     private fun install(model: RecognitionModel) {
         val directory = File(temporaryFolder.root, model.directoryName).apply { mkdirs() }
         File(directory, "model.bin").writeText("valid")

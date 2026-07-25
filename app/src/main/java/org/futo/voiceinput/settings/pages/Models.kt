@@ -37,7 +37,6 @@ import org.futo.voiceinput.modelNeedsDownloading
 import org.futo.voiceinput.downloader.startRecognitionModelDownloadActivity
 import org.futo.voiceinput.migration.ConditionalModelUpdate
 import org.futo.voiceinput.migration.NeedsMigration
-import org.futo.voiceinput.parakeet.releaseRuntime
 import org.futo.voiceinput.nemotron.NEMOTRON_MULTILINGUAL_LANGUAGES
 import org.futo.voiceinput.settings.DISMISS_MIGRATION_TIP
 import org.futo.voiceinput.settings.ENABLE_MULTILINGUAL
@@ -68,7 +67,7 @@ import org.futo.voiceinput.recognition.RecognitionModelCatalog
 import org.futo.voiceinput.recognition.RecognitionModelLifecycle
 import org.futo.voiceinput.recognition.RecognitionModel
 import org.futo.voiceinput.recognition.RecognitionModelSelection
-import org.futo.voiceinput.recognition.RecognitionModelStore
+import org.futo.voiceinput.recognition.updateRecognitionModelSelection
 
 @Composable
 fun modelsSubtitle(): String? {
@@ -151,7 +150,6 @@ fun ManagedRecognitionModelCatalog() {
     val moonshineVariant = useDataStore(MOONSHINE_MODEL_VARIANT)
     val nemotronProfile = useDataStore(NEMOTRON_PROFILE)
     val refresh = remember { mutableStateOf(0) }
-    val store = remember(context) { RecognitionModelStore(context.filesDir) }
     val modelLifecycle = remember(context) {
         RecognitionModelLifecycle.create(context.filesDir, BuildConfig.BUNDLE_PARAKEET_MODEL)
     }
@@ -180,7 +178,11 @@ fun ManagedRecognitionModelCatalog() {
                 title = card.displayName,
                 subtitle = "${card.transcription.label} • ${card.recognitionLanguages} • " +
                     card.performanceClasses.joinToString(" to ") { it.label },
-                onClick = { backend.setValue(card.runtimeId) },
+                onClick = {
+                    context.updateRecognitionModelSelection(
+                        RecognitionModelSelection(card.runtimeId)
+                    )
+                },
                 icon = { RadioButton(selected = selected, onClick = null) }
             ) { }
         } else {
@@ -188,17 +190,7 @@ fun ManagedRecognitionModelCatalog() {
                 ManagedRecognitionModelItem(
                     model = model,
                     selectedModelId = selectedModelId,
-                    store = store,
                     modelLifecycle = modelLifecycle,
-                    onSelect = {
-                        model.variantId?.let {
-                            when (model.runtimeId) {
-                                SpeechBackendType.Moonshine.id -> moonshineVariant.setValue(it)
-                                SpeechBackendType.Nemotron.id -> nemotronProfile.setValue(it)
-                            }
-                        }
-                        backend.setValue(model.runtimeId)
-                    },
                     onDeleted = { refresh.value += 1 }
                 )
             }
@@ -220,9 +212,7 @@ fun ManagedRecognitionModelCatalog() {
 private fun ManagedRecognitionModelItem(
     model: RecognitionModel,
     selectedModelId: String?,
-    store: RecognitionModelStore,
     modelLifecycle: RecognitionModelLifecycle,
-    onSelect: () -> Unit,
     onDeleted: () -> Unit
 ) {
     val context = LocalContext.current
@@ -241,7 +231,7 @@ private fun ManagedRecognitionModelItem(
         "${model.source} • ${"%.1f".format(model.transferBytes / 1_000_000.0)} MB • $status"
     val selectOrDownload = {
         if (installed) {
-            if (bundled) onSelect() else store.select(model, onSelect)
+            modelLifecycle.select(model, context::updateRecognitionModelSelection)
         } else {
             context.startRecognitionModelDownloadActivity(model)
         }
@@ -259,10 +249,7 @@ private fun ManagedRecognitionModelItem(
                     enabled = !selected,
                     onClick = {
                         lifecycleOwner.lifecycleScope.launch {
-                            store.delete(
-                                model,
-                                selectedModelId = selectedModelId
-                            ) { it.releaseRuntime() }
+                            modelLifecycle.delete(model, selectedModelId)
                             onDeleted()
                         }
                     }

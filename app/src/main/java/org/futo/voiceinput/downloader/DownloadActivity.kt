@@ -47,15 +47,14 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
 import org.futo.voiceinput.R
+import org.futo.voiceinput.BuildConfig
 import org.futo.voiceinput.sha256
 import org.futo.voiceinput.recognition.RecognitionModel
-import org.futo.voiceinput.settings.MOONSHINE_MODEL_VARIANT
-import org.futo.voiceinput.settings.NEMOTRON_PROFILE
-import org.futo.voiceinput.settings.SPEECH_BACKEND
-import org.futo.voiceinput.settings.SpeechBackendType
+import org.futo.voiceinput.recognition.RecognitionModelCatalog
+import org.futo.voiceinput.recognition.RecognitionModelLifecycle
+import org.futo.voiceinput.recognition.updateRecognitionModelSelection
 import org.futo.voiceinput.settings.ScreenTitle
 import org.futo.voiceinput.settings.ScrollableList
-import org.futo.voiceinput.settings.setSettingBlocking
 import org.futo.voiceinput.theme.UixThemeAuto
 import org.futo.voiceinput.theme.Typography
 import java.io.File
@@ -74,8 +73,6 @@ const val EXTRA_TARGET_SUBDIR = "target_subdir"
 const val EXTRA_COMPLETION_MARKER = "completion_marker"
 const val EXTRA_DOWNLOAD_SOURCE = "download_source"
 const val EXTRA_REQUIRED_FREE_SPACE = "required_free_space"
-const val EXTRA_SELECT_BACKEND = "select_backend"
-const val EXTRA_SELECT_VARIANT = "select_variant"
 const val EXTRA_MODEL_ID = "recognition_model_id"
 const val EXTRA_MODEL_VERSION = "recognition_model_version"
 const val EXTRA_ARCHIVE_NAME = "recognition_model_archive_name"
@@ -96,8 +93,6 @@ fun Intent.putRecognitionModel(model: RecognitionModel) {
     putExtra(EXTRA_COMPLETION_MARKER, model.completionMarker)
     putExtra(EXTRA_DOWNLOAD_SOURCE, model.source)
     putExtra(EXTRA_REQUIRED_FREE_SPACE, model.requiredFreeSpaceBytes)
-    putExtra(EXTRA_SELECT_BACKEND, model.runtimeId)
-    model.variantId?.let { putExtra(EXTRA_SELECT_VARIANT, it) }
     putExtra(EXTRA_MODEL_ID, model.id)
     putExtra(EXTRA_MODEL_VERSION, model.version)
     model.archive?.let { archive ->
@@ -364,6 +359,14 @@ fun DownloadScreen(models: List<ModelInfo> = EXAMPLE_MODELS) {
 }
 
 class DownloadActivity : ComponentActivity() {
+    private val managedModel by lazy {
+        intent.getStringExtra(EXTRA_MODEL_ID)?.let { id ->
+            RecognitionModelCatalog.models.firstOrNull { it.id == id }
+        }
+    }
+    private val modelLifecycle by lazy {
+        RecognitionModelLifecycle.create(filesDir, BuildConfig.BUNDLE_PARAKEET_MODEL)
+    }
     private lateinit var modelsToDownload: List<ModelInfo>
     private lateinit var allRequestedFiles: List<ModelInfo>
     private val httpClient = OkHttpClient()
@@ -398,6 +401,13 @@ class DownloadActivity : ComponentActivity() {
 
     private fun startDownload() {
         if (confirmation?.hasEnoughSpace == false) return
+        lifecycleScope.launch {
+            managedModel?.let { modelLifecycle.releaseArtifacts(it) }
+            startDownloadAfterRuntimeRelease()
+        }
+    }
+
+    private fun startDownloadAfterRuntimeRelease() {
         completionMarker?.delete()
         isDownloading = true
 
@@ -642,30 +652,23 @@ class DownloadActivity : ComponentActivity() {
             return
         }
 
-        completionMarker?.let { marker ->
+        managedModel?.let { model ->
+            check(modelLifecycle.completeInstallation(model, ::updateRecognitionModelSelection)) {
+                "Downloaded ${model.displayName} failed validation"
+            }
+        } ?: completionMarker?.let { marker ->
             marker.parentFile?.mkdirs()
-            val modelId = requireNotNull(intent.getStringExtra(EXTRA_MODEL_ID))
-            val modelVersion = requireNotNull(intent.getStringExtra(EXTRA_MODEL_VERSION))
-            marker.writeText("$modelId@$modelVersion")
+            marker.writeText(
+                "${requireNotNull(intent.getStringExtra(EXTRA_MODEL_ID))}@" +
+                    requireNotNull(intent.getStringExtra(EXTRA_MODEL_VERSION))
+            )
         }
 
         finishSuccessfulDownload()
     }
 
     private fun finishSuccessfulDownload() {
-        val backend = intent.getStringExtra(EXTRA_SELECT_BACKEND)
-        intent.getStringExtra(EXTRA_SELECT_VARIANT)?.let { variant ->
-            when (backend) {
-                SpeechBackendType.Moonshine.id -> setSettingBlocking(MOONSHINE_MODEL_VARIANT.key, variant)
-                SpeechBackendType.Nemotron.id -> setSettingBlocking(NEMOTRON_PROFILE.key, variant)
-            }
-        }
-        backend?.let {
-            setSettingBlocking(SPEECH_BACKEND.key, it)
-        }
-
-        val returnIntent = Intent()
-        setResult(RESULT_OK, returnIntent)
+        setResult(RESULT_OK, Intent())
         finish()
     }
 

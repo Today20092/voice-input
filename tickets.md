@@ -254,6 +254,21 @@ Implemented by `650bebb` (`Remove nonfunctional recognition service`).
 
 Implemented by `149f568` (`refactor: centralize recognition model readiness`).
 
+## Route recognition-model loading and management through the lifecycle module
+
+**Triage:** ready-for-agent
+
+**What to build:** Make recording, Model Options, and model downloads use the recognition-model lifecycle module for loading, selection updates, installation, deletion, and runtime release, leaving no duplicated per-model lifecycle policy in callers.
+
+**Blocked by:** Make recognition-model readiness catalog-driven.
+
+- [x] Loading the selected recognition model is initiated through the lifecycle module while preserving warm-runtime behavior.
+- [x] Successful installation and selection update the correct runtime and variant settings through one path.
+- [x] Deleting or replacing a model safely releases any runtime that owns its artifacts.
+- [x] Repeated runtime-family branches for lifecycle policy are removed from recording, settings, and download callers.
+- [x] Existing live transcription and final-only transcription behavior remains unchanged across supported recognition models.
+- [x] Relevant unit, instrumentation, assembly, and lint checks pass.
+
 ## Lock down recording-session behavior
 
 **Triage:** ready-for-agent

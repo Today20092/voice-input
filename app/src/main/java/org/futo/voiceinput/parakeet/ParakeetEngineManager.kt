@@ -92,3 +92,23 @@ object ParakeetEngineManager {
 
     fun isWarm(): Boolean = backend != null
 }
+
+internal suspend fun acquireParakeetRuntime(context: Context): SpeechBackend =
+    ParakeetEngineManager.acquire(context)
+
+internal suspend fun releaseParakeetRuntime(
+    backend: SpeechBackend,
+    scope: LifecycleCoroutineScope,
+    keepWarm: Boolean,
+    timeoutMs: Long
+): Boolean {
+    val lease = backend as? ParakeetEngineLease ?: return false
+    ParakeetEngineManager.release(lease, scope, keepWarm, timeoutMs)
+    return true
+}
+
+internal suspend fun releaseParakeetArtifacts(runtimeId: String): Boolean {
+    if (runtimeId != "parakeet") return false
+    ParakeetEngineManager.forceClose()
+    return true
+}
