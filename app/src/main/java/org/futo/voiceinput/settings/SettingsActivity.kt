@@ -12,10 +12,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
-import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
-import androidx.lifecycle.repeatOnLifecycle
-import kotlinx.coroutines.launch
 import org.futo.voiceinput.R
 import org.futo.voiceinput.payments.BillingManager
 import org.futo.voiceinput.theme.UixThemeAuto
@@ -87,13 +84,7 @@ class SettingsActivity : ComponentActivity() {
 
         viewModel = viewModels<SettingsViewModel>().value
 
-        lifecycleScope.launch {
-            repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.uiState.collect {
-                    updateContent()
-                }
-            }
-        }
+        updateContent()
 
         scheduleUpdateCheckingJob(applicationContext)
     }

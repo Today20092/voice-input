@@ -17,7 +17,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
@@ -48,10 +48,11 @@ import kotlin.math.roundToLong
 
 @Composable
 fun ScreenTitle(title: String, showBack: Boolean = false, navController: NavHostController = rememberNavController()) {
+    val navigateBack = stringResource(R.string.navigate_back)
     val rowModifier = if(showBack) {
         Modifier
             .fillMaxWidth()
-            .clickable(onClickLabel = "Navigate back") { navController.navigateUp() }
+            .clickable(onClickLabel = navigateBack) { navController.navigateUp() }
     } else {
         Modifier.fillMaxWidth()
     }
@@ -59,7 +60,7 @@ fun ScreenTitle(title: String, showBack: Boolean = false, navController: NavHost
         Spacer(modifier = Modifier.width(16.dp))
 
         if(showBack) {
-            Icon(Icons.Default.ArrowBack, contentDescription = null, modifier = Modifier.align(CenterVertically))
+            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, modifier = Modifier.align(CenterVertically))
             Spacer(modifier = Modifier.width(18.dp))
         }
         Text(title, style = Typography.titleLarge, modifier = Modifier

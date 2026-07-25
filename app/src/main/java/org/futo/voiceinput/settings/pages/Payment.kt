@@ -376,8 +376,6 @@ fun PaymentScreen(
 
     val onAlreadyPaid = {
         isAlreadyPaid.setValue(true)
-        navController.navigateUp()
-        navController.navigate("paid", NavOptions.Builder().setLaunchSingleTop(true).build())
     }
 
     LaunchedEffect(Unit) {

@@ -7,6 +7,9 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -21,8 +24,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
@@ -116,6 +121,7 @@ fun SettingsMain(
     initialDestination: String = "home"
 ) {
     val settingsUiState by settingsViewModel.uiState.collectAsState()
+    val horizontalDirection = if (LocalLayoutDirection.current == LayoutDirection.Ltr) 1 else -1
 
     val isAlreadyPaid = useDataStore(IS_ALREADY_PAID.key, default = IS_ALREADY_PAID.default)
     val hasSeenNotice = useDataStore(HAS_SEEN_PAID_NOTICE.key, default = HAS_SEEN_PAID_NOTICE.default)
@@ -129,17 +135,31 @@ fun SettingsMain(
 
     LaunchedEffect(paymentDest) {
         if (paymentDest != "pleasePay") {
-            navController.popBackStack("home", false)
             navController.navigate(
                 paymentDest,
-                NavOptions.Builder().setLaunchSingleTop(true).build()
+                NavOptions.Builder()
+                    .setPopUpTo("home", false)
+                    .setLaunchSingleTop(true)
+                    .build()
             )
         }
     }
 
     NavHost(
         navController = navController,
-        startDestination = initialDestination
+        startDestination = initialDestination,
+        enterTransition = {
+            slideInHorizontally(tween(300)) { it * horizontalDirection }
+        },
+        exitTransition = {
+            slideOutHorizontally(tween(300)) { -it * horizontalDirection / 4 }
+        },
+        popEnterTransition = {
+            slideInHorizontally(tween(300)) { -it * horizontalDirection / 4 }
+        },
+        popExitTransition = {
+            slideOutHorizontally(tween(300)) { it * horizontalDirection }
+        }
     ) {
         composable("home") { HomeScreen(settingsViewModel, navController) }
         composable("advanced") { AdvancedScreen(settingsViewModel, navController) }

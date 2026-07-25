@@ -8,6 +8,7 @@
     <string name="testing_menu">Testing Menu</string>
     <string name="verbose_mode">Verbose Mode</string>
     <string name="go">Go</string>
+    <string name="navigate_back">Navigate back</string>
     <string name="thanks_for_the_voice_recognition_model">Thanks for the voice recognition model.</string>
     <string name="thanks_for_the_machine_learning_inference_library">Thanks for the machine learning inference library</string>
     <string name="thanks_for_the_fft_library_used_to_convert_audio_to_model_input">Thanks for the FFT library, used to convert audio to model input</string>
