@@ -50,11 +50,11 @@ import org.futo.voiceinput.parakeet.ParakeetEngineManager
 import org.futo.voiceinput.parakeet.parakeetUnifiedBackend
 import org.futo.voiceinput.parakeet.parakeetUnifiedRecognitionModel
 import org.futo.voiceinput.backend.SpeechBackend
-import org.futo.voiceinput.backend.StreamingAudioReplay
 import org.futo.voiceinput.backend.StreamingSpeechBackend
 import org.futo.voiceinput.recognition.RecognitionModel
 import org.futo.voiceinput.recognition.RecognitionModelLifecycle
 import org.futo.voiceinput.recognition.RecognitionModelSelection
+import org.futo.voiceinput.recognition.RecognitionModelStore
 import org.futo.voiceinput.settings.toSpeechBackendType
 import org.futo.voiceinput.settings.toEndOfSpeechProfile
 import java.nio.FloatBuffer
@@ -97,6 +97,49 @@ internal object RecordingSessionPolicy {
     }
 }
 
+internal class StreamingAudioReplay {
+    private val pendingAudio = mutableListOf<FloatArray>()
+    private var activeBackend: StreamingSpeechBackend? = null
+    private var enabled = false
+
+    @Synchronized
+    fun reset(enabled: Boolean = false) {
+        pendingAudio.clear()
+        activeBackend = null
+        this.enabled = enabled
+    }
+
+    @Synchronized
+    fun isEnabled() = enabled
+
+    @Synchronized
+    fun acceptAudio(samples: FloatArray) {
+        if (!enabled) return
+
+        val backend = activeBackend
+        if (backend == null) {
+            pendingAudio.add(samples)
+        } else {
+            backend.acceptAudio(samples)
+        }
+    }
+
+    @Synchronized
+    fun start(
+        backend: StreamingSpeechBackend,
+        onPartial: (String) -> Unit,
+        onCatchingUp: (Boolean) -> Unit
+    ) {
+        if (!enabled || activeBackend === backend) return
+        check(activeBackend == null)
+
+        backend.startStreaming(onPartial, onCatchingUp)
+        pendingAudio.forEach(backend::acceptAudio)
+        pendingAudio.clear()
+        activeBackend = backend
+    }
+}
+
 abstract class AudioRecognizer {
     private data class OwnedParakeetLease(
         val generation: Long,
@@ -123,6 +166,7 @@ abstract class AudioRecognizer {
     private var loadModelJob: Job? = null
     private var personalVocabulary = ""
     private val streamingAudio = StreamingAudioReplay()
+    private var selectedManagedModel: RecognitionModel? = null
 
     private var canExpandSpace = true
     private fun expandSpaceIfAllowed(): Boolean {
@@ -393,6 +437,9 @@ abstract class AudioRecognizer {
             withContext(Dispatchers.Main) { failed(e) }
         } catch (error: Exception) {
             if (loadGeneration == recognitionGeneration) {
+                selectedManagedModel?.let {
+                    RecognitionModelStore(context.filesDir).invalidate(it)
+                }
                 withContext(Dispatchers.Main) { failed(error) }
             }
         }
@@ -429,6 +476,7 @@ abstract class AudioRecognizer {
                     nemotronVariantId = context.getSetting(NEMOTRON_PROFILE)
                 )
             )
+            selectedManagedModel = readiness?.model
             if (readiness != null && !readiness.isReady) {
                 needRecognitionModelDownload(readiness.model)
                 return@launch

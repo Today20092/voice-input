@@ -2,6 +2,7 @@ package org.futo.voiceinput.parakeet
 
 import kotlinx.coroutines.runBlocking
 import org.futo.voiceinput.backend.SpeechBackend
+import org.futo.voiceinput.backend.StreamingSpeechBackend
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -21,6 +22,7 @@ class ParakeetBackendTest {
 
         assertEquals("known words", backend.transcribe(samples))
         assertArrayEquals(samples, decoder.samples, 0.0f)
+        assertTrue(backend !is StreamingSpeechBackend)
 
         backend.close()
         assertTrue(decoder.closed)

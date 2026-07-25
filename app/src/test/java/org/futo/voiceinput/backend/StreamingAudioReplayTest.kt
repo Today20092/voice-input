@@ -1,6 +1,7 @@
 package org.futo.voiceinput.backend
 
 import android.content.Context
+import org.futo.voiceinput.StreamingAudioReplay
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Test
