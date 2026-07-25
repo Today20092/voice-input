@@ -254,6 +254,44 @@ Implemented by `650bebb` (`Remove nonfunctional recognition service`).
 
 Implemented by `149f568` (`refactor: centralize recognition model readiness`).
 
+## Lock down recording-session behavior
+
+**Triage:** ready-for-agent
+
+**What to build:** Add runnable checks that preserve the current utterance lifecycle before it is deepened, covering recorder initialization, stop policy, streaming and final-only recognition, cancellation, and cleanup without changing user-visible behavior.
+
+**Blocked by:** None — can start immediately.
+
+- [x] Checks cover recorder initialization failure and bounded retry behavior.
+- [x] Checks cover manual, end-of-speech, and duration-limit stopping, including buffered tail handling.
+- [x] Checks cover partial live transcription followed by one final transcript.
+- [x] Checks cover final-only transcription without intermediate text.
+- [x] Checks prove cancellation and reset release jobs, recorder state, buffers, and recognition-model ownership.
+- [x] The checks run with the existing test toolchain and pass reliably without microphone hardware.
+
+### Resolution
+
+Implemented by `f233072`, `4a61d22`, and `5ab3750`.
+
+## Deepen the recording session behind AudioRecognizer
+
+**Triage:** ready-for-agent
+
+**What to build:** Concentrate one utterance lifecycle behind the existing AudioRecognizer seam so recorder state, jobs, audio buffers, voice-activity detection, streaming callbacks, stop reasons, final recognition, and cleanup change together while Activity and IME behavior remains stable.
+
+**Blocked by:** Lock down recording-session behavior.
+
+- [x] One recording-session implementation owns the mutable state and ordering rules for a single utterance.
+- [x] AudioRecognizer retains a small caller interface for starting, stopping, canceling, and receiving recognition progress and results.
+- [x] Existing recognition-model adapters remain internal to the recording flow; no hypothetical adapter is introduced.
+- [x] Recorder retry, microphone-blocked detection, voice-activity stopping, buffer growth, and tail draining preserve their verified behavior.
+- [x] Activity and IME callers require no recognition-session policy of their own.
+- [x] The recording-session checks and relevant unit, instrumentation, assembly, and lint checks pass.
+
+### Resolution
+
+`RecordingSession` now owns each utterance's recorder, jobs, audio, stop/VAD state, streaming replay, and recognition-model ownership. `AudioRecognizer` keeps its existing Activity/IME-facing contract.
+
 ## Remove full model hashing from interactive startup
 
 **Triage:** ready-for-agent

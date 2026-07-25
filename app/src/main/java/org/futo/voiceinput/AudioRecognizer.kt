@@ -140,7 +140,7 @@ internal class StreamingAudioReplay {
     }
 }
 
-abstract class AudioRecognizer {
+abstract class RecordingSession {
     private data class OwnedParakeetLease(
         val generation: Long,
         val lease: ParakeetEngineLease
@@ -984,3 +984,5 @@ abstract class AudioRecognizer {
         }
     }
 }
+
+abstract class AudioRecognizer : RecordingSession()
