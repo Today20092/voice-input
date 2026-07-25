@@ -79,9 +79,35 @@ jobs:
         with:
           name: FUTO Voice Input Moonshine ${{ github.ref_name }}
           body: |
-            Offline Moonshine streaming release of the FUTO Voice Input fork, with Parakeet and Whisper retained as selectable backends.
+            ## Beta 5 highlights
 
-            Models download on first use or from Model Options, keeping the APK smaller while preserving offline transcription after installation.
+            - Centralizes recognition-model readiness, loading, selection, installation, deletion, and runtime release.
+            - Keeps recording active while streaming models load so early speech is not dropped.
+            - Preserves queued streaming audio when decoding falls behind and rejects stale samples after a recording session ends.
+            - Removes full model-file hashing from interactive startup while retaining integrity checks during installation.
+            - Recovers more safely from model-load failures and now closes partially initialized backends when loading fails or is cancelled.
+            - Adds predictive-back transitions in Settings on supported Android versions.
+            - Expands regression coverage for recording stop policy, streaming replay/reset, catalog readiness, and model lifecycle behavior.
+
+            ## What to test
+
+            - Start speaking immediately after opening voice input, especially with a streaming model selected.
+            - Cancel and rapidly restart dictation; confirm no text or audio leaks between sessions.
+            - Switch among installed Moonshine, Parakeet, Nemotron, and Whisper models and verify selection survives restart.
+            - Interrupt or fail a model download/load and confirm the app offers a clean retry without deleting a valid download.
+            - Exercise Android 15 predictive back from Model Options and report animation or back-stack issues.
+
+            ## Known beta gaps
+
+            - Predictive-back animation still needs broader real-device and instrumentation validation.
+            - Model performance labels and latency guidance still need calibration across representative phones.
+            - Release-level thermal, memory, backlog, download-recovery, and full backend regression testing remains in progress.
+
+            ## Installation and models
+
+            This is a signed standalone APK for the FUTO Voice Input fork. Moonshine remains the default offline recognizer; Parakeet, Nemotron, and legacy Whisper/GGML remain selectable in Model Options.
+
+            Speech models are not bundled in the APK. Download the desired model on first use or from Model Options; transcription remains offline after installation.
 
             The Parakeet integration and repository changes in this fork were built with AI assistance using Codex (GPT-5).
           files: release/*.apk
