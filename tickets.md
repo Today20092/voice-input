@@ -235,6 +235,25 @@ Implemented by `14b268c` (`fix: return truthful recognition activity results`).
 
 Implemented by `650bebb` (`Remove nonfunctional recognition service`).
 
+## Make recognition-model readiness catalog-driven
+
+**Triage:** ready-for-agent
+
+**What to build:** Make every managed recognition model use one lifecycle module for selection, installed-model validation, and download requirements, so starting voice input and viewing Model Options agree about whether the selected model is ready.
+
+**Blocked by:** None — can start immediately.
+
+- [x] The selected recognition model is resolved from runtime and variant settings in one place.
+- [x] Readiness checks use the selected model's validated artifacts, including bundled-model behavior.
+- [x] Starting voice input requests the correct model download when the selected model is not installed.
+- [x] Model Options displays readiness from the same lifecycle behavior used by voice input.
+- [x] Focused tests cover at least one installed and one missing model for each supported runtime family.
+- [x] Relevant unit tests, assembly, and lint pass.
+
+### Resolution
+
+Implemented by `149f568` (`refactor: centralize recognition model readiness`).
+
 ## Remove full model hashing from interactive startup
 
 **Triage:** ready-for-agent
