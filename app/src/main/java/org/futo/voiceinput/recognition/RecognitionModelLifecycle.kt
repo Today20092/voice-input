@@ -2,8 +2,10 @@ package org.futo.voiceinput.recognition
 
 import android.content.Context
 import androidx.lifecycle.LifecycleCoroutineScope
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import org.futo.voiceinput.WhisperGGMLBackend
 import org.futo.voiceinput.backend.SpeechBackend
 import org.futo.voiceinput.ml.RunState
@@ -128,7 +130,7 @@ class RecognitionModelLifecycle(
                 activeRuntimes.remove(it)
             }
             releaseParakeetArtifacts(SpeechBackendType.Parakeet.id)
-            backend.load(context)
+            backend.loadOrCloseOnFailure { load(context) }
         }
         selectedModelId?.let { activeRuntimes[backend] = it }
         backend
@@ -154,6 +156,21 @@ class RecognitionModelLifecycle(
             store = RecognitionModelStore(rootDirectory),
             isBundled = { parakeetBundled && it.runtimeId == "parakeet" }
         )
+    }
+}
+
+internal suspend fun SpeechBackend.loadOrCloseOnFailure(
+    load: suspend SpeechBackend.() -> Unit
+) {
+    try {
+        load()
+    } catch (failure: Throwable) {
+        try {
+            withContext(NonCancellable) { close() }
+        } catch (closeFailure: Throwable) {
+            failure.addSuppressed(closeFailure)
+        }
+        throw failure
     }
 }
 

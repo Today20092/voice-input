@@ -1,5 +1,8 @@
 package org.futo.voiceinput.recognition
 
+import android.content.Context
+import kotlinx.coroutines.runBlocking
+import org.futo.voiceinput.backend.SpeechBackend
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -83,6 +86,18 @@ class RecognitionModelLifecycleTest {
         )
     }
 
+    @Test
+    fun failedBackendLoadClosesTheBackend() = runBlocking {
+        val backend = FailingBackend()
+
+        val failure = runCatching {
+            backend.loadOrCloseOnFailure { error("load failed") }
+        }.exceptionOrNull()
+
+        assertTrue(backend.closed)
+        assertEquals("load failed", failure?.message)
+    }
+
     private fun install(model: RecognitionModel) {
         val directory = File(temporaryFolder.root, model.directoryName).apply { mkdirs() }
         File(directory, "model.bin").writeText("valid")
@@ -110,4 +125,14 @@ class RecognitionModelLifecycleTest {
             )
         )
     )
+
+    private class FailingBackend : SpeechBackend {
+        var closed = false
+
+        override suspend fun load(context: Context) = error("unused")
+        override suspend fun transcribe(samples: FloatArray) = ""
+        override suspend fun close() {
+            closed = true
+        }
+    }
 }
