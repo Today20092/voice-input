@@ -2,6 +2,7 @@ package org.futo.voiceinput.backend
 
 import android.content.Context
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Test
 
 class StreamingAudioReplayTest {
@@ -18,6 +19,24 @@ class StreamingAudioReplayTest {
 
         assertEquals(listOf(1f, 2f, 3f, 4f), backend.samples)
         assertEquals(1, backend.starts)
+    }
+
+    @Test
+    fun resetDropsBufferedAudioAndDetachesTheStreamingBackend() {
+        val replay = StreamingAudioReplay()
+        val firstBackend = FakeStreamingBackend()
+        val secondBackend = FakeStreamingBackend()
+
+        replay.reset(enabled = true)
+        replay.acceptAudio(floatArrayOf(1f))
+        replay.start(firstBackend, {}, {})
+        replay.reset(enabled = true)
+        replay.acceptAudio(floatArrayOf(2f))
+        replay.start(secondBackend, {}, {})
+
+        assertEquals(listOf(1f), firstBackend.samples)
+        assertEquals(listOf(2f), secondBackend.samples)
+        assertFalse(firstBackend.samples.contains(2f))
     }
 
     private class FakeStreamingBackend : StreamingSpeechBackend {
