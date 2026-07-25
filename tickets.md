@@ -234,3 +234,23 @@ Implemented by `14b268c` (`fix: return truthful recognition activity results`).
 ### Resolution
 
 Implemented by `650bebb` (`Remove nonfunctional recognition service`).
+
+## Remove full model hashing from interactive startup
+
+**Triage:** ready-for-agent
+
+**What to build:** Keep model integrity validation at download/install time, but make voice-input startup and Model Options trust a versioned completion marker plus cheap artifact metadata so opening the microphone never hashes entire model files.
+
+**Blocked by:** Make recognition-model readiness catalog-driven.
+
+- [x] Successful model installation verifies configured hashes before writing a versioned completion marker.
+- [x] Voice-input startup performs no full-file hashing on the main thread.
+- [x] Model Options performs no full-file hashing during composition or recomposition.
+- [x] Missing, truncated, or version-mismatched artifacts are still reported as not installed.
+- [x] Backend load failure invalidates readiness or produces a clear recovery/download path.
+- [x] A focused test proves interactive readiness checks do not read complete artifact contents.
+- [x] Relevant unit tests, startup tracing, assembly, and lint pass.
+
+### Resolution
+
+Implemented by `44fb6fe`, `5ab3750`, and `bef4320`.
