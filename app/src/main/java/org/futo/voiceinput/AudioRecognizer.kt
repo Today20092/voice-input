@@ -50,6 +50,7 @@ import org.futo.voiceinput.parakeet.ParakeetEngineManager
 import org.futo.voiceinput.parakeet.parakeetUnifiedBackend
 import org.futo.voiceinput.parakeet.parakeetUnifiedRecognitionModel
 import org.futo.voiceinput.backend.SpeechBackend
+import org.futo.voiceinput.backend.StreamingAudioReplay
 import org.futo.voiceinput.backend.StreamingSpeechBackend
 import org.futo.voiceinput.recognition.RecognitionModel
 import org.futo.voiceinput.recognition.RecognitionModelLifecycle
@@ -121,6 +122,7 @@ abstract class AudioRecognizer {
     private var modelJob: Job? = null
     private var loadModelJob: Job? = null
     private var personalVocabulary = ""
+    private val streamingAudio = StreamingAudioReplay()
 
     private var canExpandSpace = true
     private fun expandSpaceIfAllowed(): Boolean {
@@ -229,6 +231,7 @@ abstract class AudioRecognizer {
             backend = null
             backendGeneration = -1L
             parakeetLease = null
+            streamingAudio.reset()
         }
         recorderJobToJoin?.cancel()
         modelJobToJoin?.cancel()
@@ -361,6 +364,7 @@ abstract class AudioRecognizer {
                 }
                 throw CancellationException("Recognition was reset while the model loaded")
             }
+            (loadedBackend as? StreamingSpeechBackend)?.let(::startStreaming)
         } catch (error: CancellationException) {
             throw error
         } catch(e: OutOfMemoryError) {
@@ -429,30 +433,17 @@ abstract class AudioRecognizer {
                 needRecognitionModelDownload(readiness.model)
                 return@launch
             }
-            when (backendType) {
-                SpeechBackendType.Parakeet -> Unit
-                SpeechBackendType.ParakeetUnified -> {
-                    loadModel()
-                    loadModelJob?.join()
-                    if (backend == null) return@launch
-                }
-                SpeechBackendType.Nemotron -> {
-                    loadModel()
-                    loadModelJob?.join()
-                    if (backend == null) return@launch
-                }
-                SpeechBackendType.Moonshine -> {
-                    loadModel()
-                    loadModelJob?.join()
-                    if (backend == null) return@launch
-                }
-                SpeechBackendType.WhisperGGML -> {
+            streamingAudio.reset(
+                backendType == SpeechBackendType.ParakeetUnified ||
+                    backendType == SpeechBackendType.Nemotron ||
+                    backendType == SpeechBackendType.Moonshine
+            )
+            if (backendType == SpeechBackendType.WhisperGGML) {
                     val requiredModels = context.selectedWhisperModelsForCurrentSettings(forcedLanguage)
                     if (requiredModels.any { context.modelNeedsDownloading(it) }) {
                         needWhisperModelDownload(requiredModels)
                         return@launch
                     }
-                }
             }
 
             if (context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
@@ -518,20 +509,7 @@ abstract class AudioRecognizer {
             focusAudio()
             isRecording = true
 
-            (backend as? StreamingSpeechBackend)?.startStreaming(
-                onPartial = { result ->
-                    lifecycleScope.launch {
-                        withContext(Dispatchers.Main) {
-                            partialResult(PersonalVocabulary.apply(result, personalVocabulary))
-                        }
-                    }
-                },
-                onCatchingUp = { catchingUp ->
-                    lifecycleScope.launch(Dispatchers.Main) {
-                        decodingStatus(if (catchingUp) RunState.CatchingUp else RunState.Streaming)
-                    }
-                }
-            )
+            (backend as? StreamingSpeechBackend)?.let(::startStreaming)
 
             val canMicBeBlocked = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 (context.getSystemService(SensorPrivacyManager::class.java) as SensorPrivacyManager).supportsSensorToggle(
@@ -725,16 +703,33 @@ abstract class AudioRecognizer {
             return false
         }
 
-        val streamingBackend = backend as? StreamingSpeechBackend
-        val streamingChunk = if (streamingBackend != null) FloatArray(nRead) else null
+        val streamingChunk = if (streamingAudio.isEnabled()) FloatArray(nRead) else null
         for(i in 0 until nRead) {
             val sample = samples[i].toFloat() / Short.MAX_VALUE.toFloat()
             floatSamples.put(sample)
             streamingChunk?.set(i, sample)
         }
-        streamingChunk?.let { streamingBackend?.acceptAudio(it) }
+        streamingChunk?.let(streamingAudio::acceptAudio)
 
         return true
+    }
+
+    private fun startStreaming(backend: StreamingSpeechBackend) {
+        streamingAudio.start(
+            backend = backend,
+            onPartial = { result ->
+                lifecycleScope.launch {
+                    withContext(Dispatchers.Main) {
+                        partialResult(PersonalVocabulary.apply(result, personalVocabulary))
+                    }
+                }
+            },
+            onCatchingUp = { catchingUp ->
+                lifecycleScope.launch(Dispatchers.Main) {
+                    decodingStatus(if (catchingUp) RunState.CatchingUp else RunState.Streaming)
+                }
+            }
+        )
     }
 
     private suspend fun drainRecorderTail(
