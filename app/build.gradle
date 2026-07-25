@@ -57,8 +57,8 @@ android {
         applicationId "org.futo.voiceinput"
         minSdk 26
         targetSdk 35
-        versionCode 41
-        versionName "1.4.2-beta.5"
+        versionCode 42
+        versionName "1.4.2-beta.6"
         buildConfigField "boolean", "BUNDLE_PARAKEET_MODEL", bundleParakeetModel.toString()
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"

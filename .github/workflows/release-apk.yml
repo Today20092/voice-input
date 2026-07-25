@@ -79,7 +79,7 @@ jobs:
         with:
           name: FUTO Voice Input Moonshine ${{ github.ref_name }}
           body: |
-            ## Beta 5 highlights
+            ## Beta 6 highlights
 
             - Centralizes recognition-model readiness, loading, selection, installation, deletion, and runtime release.
             - Keeps recording active while streaming models load so early speech is not dropped.
