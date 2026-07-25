@@ -381,10 +381,6 @@ class RecognitionModelStore(private val rootDirectory: File) {
 
         val expectedMarker = "${model.id}@${model.version}"
         val markerValue = runCatching { marker.readText() }.getOrNull()
-        if (markerValue == "ok" && artifactsValid(model, verifyHashes = true)) {
-            marker.writeText(expectedMarker)
-            return true
-        }
         if (markerValue != expectedMarker) return false
         if (!artifactsValid(model, verifyHashes)) {
             marker.delete()

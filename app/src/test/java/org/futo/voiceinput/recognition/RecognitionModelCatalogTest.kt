@@ -175,6 +175,29 @@ class RecognitionModelCatalogTest {
         assertTrue(File(packageDir, modelPackage.completionMarker).exists())
     }
 
+    @Test
+    fun interactiveReadinessDoesNotHashArtifactContents() {
+        val modelPackage = testPackage()
+        val store = RecognitionModelStore(temporaryFolder.root)
+        val packageDir = store.modelDirectory(modelPackage).apply { mkdirs() }
+        File(packageDir, "model.bin").writeText("wrong")
+        File(packageDir, modelPackage.completionMarker)
+            .writeText("${modelPackage.id}@${modelPackage.version}")
+
+        assertTrue(store.isInstalled(modelPackage))
+    }
+
+    @Test
+    fun legacyCompletionMarkerIsNotUpgradedDuringInteractiveReadiness() {
+        val modelPackage = testPackage()
+        val store = RecognitionModelStore(temporaryFolder.root)
+        val packageDir = store.modelDirectory(modelPackage).apply { mkdirs() }
+        File(packageDir, "model.bin").writeText("valid")
+        File(packageDir, modelPackage.completionMarker).writeText("ok")
+
+        assertFalse(store.isInstalled(modelPackage))
+    }
+
     private fun testPackage() = RecognitionModel(
         id = "test-package",
         version = "1",
