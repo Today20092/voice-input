@@ -136,6 +136,11 @@ class ModelInfo(
     var started by mutableStateOf(false)
 }
 
+internal fun incompleteDownloads(
+    files: List<ModelInfo>,
+    isValid: (ModelInfo) -> Boolean
+) = files.filterNot(isValid)
+
 val EXAMPLE_MODELS = listOf(
     ModelInfo(
         name = "tiny-encoder-xatn.tflite",
@@ -792,10 +797,8 @@ class DownloadActivity : ComponentActivity() {
         modelsToDownload = if (archiveToDownload != null &&
             (completionMarker?.isFile != true || allRequestedFiles.any { !isValidTargetFile(it) })) {
             listOf(requireNotNull(archiveToDownload))
-        } else if (completionMarker != null && completionMarker?.isFile != true) {
-            allRequestedFiles
         } else {
-            allRequestedFiles.filter { !isValidTargetFile(it) }
+            incompleteDownloads(allRequestedFiles, ::isValidTargetFile)
         }
 
         if (modelsToDownload.isEmpty()) {
