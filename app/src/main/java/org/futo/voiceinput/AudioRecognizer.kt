@@ -31,14 +31,13 @@ import kotlinx.coroutines.yield
 import org.futo.voiceinput.ml.RunState
 import org.futo.voiceinput.moonshine.MoonshineBackend
 import org.futo.voiceinput.moonshine.getSelectedMoonshineModelVariant
-import org.futo.voiceinput.moonshine.isMoonshineModelDownloaded
 import org.futo.voiceinput.nemotron.SherpaStreamingBackend
-import org.futo.voiceinput.nemotron.isNemotronModelDownloaded
-import org.futo.voiceinput.nemotron.selectedNemotronRecognitionModel
 import org.futo.voiceinput.settings.ENABLE_30S_LIMIT
 import org.futo.voiceinput.settings.END_OF_SPEECH_PROFILE
 import org.futo.voiceinput.settings.IS_VAD_ENABLED
 import org.futo.voiceinput.settings.MANUAL_STOP_DRAIN_MS
+import org.futo.voiceinput.settings.MOONSHINE_MODEL_VARIANT
+import org.futo.voiceinput.settings.NEMOTRON_PROFILE
 import org.futo.voiceinput.settings.PARAKEET_KEEP_WARM
 import org.futo.voiceinput.settings.PARAKEET_KEEP_WARM_TIMEOUT_MS
 import org.futo.voiceinput.settings.PARAKEET_USE_VAD
@@ -53,8 +52,8 @@ import org.futo.voiceinput.parakeet.parakeetUnifiedRecognitionModel
 import org.futo.voiceinput.backend.SpeechBackend
 import org.futo.voiceinput.backend.StreamingSpeechBackend
 import org.futo.voiceinput.recognition.RecognitionModel
-import org.futo.voiceinput.parakeet.isParakeetModelDownloaded
-import org.futo.voiceinput.parakeet.isParakeetUnifiedModelDownloaded
+import org.futo.voiceinput.recognition.RecognitionModelLifecycle
+import org.futo.voiceinput.recognition.RecognitionModelSelection
 import org.futo.voiceinput.settings.toSpeechBackendType
 import org.futo.voiceinput.settings.toEndOfSpeechProfile
 import java.nio.FloatBuffer
@@ -416,37 +415,33 @@ abstract class AudioRecognizer {
         lifecycleScope.launch {
             val backendType = context.getSetting(SPEECH_BACKEND).toSpeechBackendType()
             personalVocabulary = context.getSetting(PERSONAL_DICTIONARY)
+            val readiness = RecognitionModelLifecycle.create(
+                context.filesDir,
+                BuildConfig.BUNDLE_PARAKEET_MODEL
+            ).readiness(
+                RecognitionModelSelection(
+                    runtimeId = backendType.id,
+                    moonshineVariantId = context.getSetting(MOONSHINE_MODEL_VARIANT),
+                    nemotronVariantId = context.getSetting(NEMOTRON_PROFILE)
+                )
+            )
+            if (readiness != null && !readiness.isReady) {
+                needRecognitionModelDownload(readiness.model)
+                return@launch
+            }
             when (backendType) {
-                SpeechBackendType.Parakeet -> {
-                    if (!context.isParakeetModelDownloaded(verifyHashes = true)) {
-                        needParakeetModelDownload()
-                        return@launch
-                    }
-                }
+                SpeechBackendType.Parakeet -> Unit
                 SpeechBackendType.ParakeetUnified -> {
-                    if (!context.isParakeetUnifiedModelDownloaded(verifyHashes = true)) {
-                        needRecognitionModelDownload(parakeetUnifiedRecognitionModel())
-                        return@launch
-                    }
                     loadModel()
                     loadModelJob?.join()
                     if (backend == null) return@launch
                 }
                 SpeechBackendType.Nemotron -> {
-                    if (!context.isNemotronModelDownloaded(verifyHashes = true)) {
-                        needRecognitionModelDownload(context.selectedNemotronRecognitionModel())
-                        return@launch
-                    }
                     loadModel()
                     loadModelJob?.join()
                     if (backend == null) return@launch
                 }
                 SpeechBackendType.Moonshine -> {
-                    val variant = context.getSelectedMoonshineModelVariant()
-                    if (!context.isMoonshineModelDownloaded(variant)) {
-                        needMoonshineModelDownload()
-                        return@launch
-                    }
                     loadModel()
                     loadModelJob?.join()
                     if (backend == null) return@launch

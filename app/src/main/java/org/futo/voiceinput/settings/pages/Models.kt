@@ -37,16 +37,8 @@ import org.futo.voiceinput.modelNeedsDownloading
 import org.futo.voiceinput.downloader.startRecognitionModelDownloadActivity
 import org.futo.voiceinput.migration.ConditionalModelUpdate
 import org.futo.voiceinput.migration.NeedsMigration
-import org.futo.voiceinput.parakeet.isParakeetModelDownloaded
-import org.futo.voiceinput.parakeet.isParakeetUnifiedModelDownloaded
 import org.futo.voiceinput.parakeet.releaseRuntime
-import org.futo.voiceinput.moonshine.isMoonshineModelDownloaded
-import org.futo.voiceinput.moonshine.MoonshineModelVariant
-import org.futo.voiceinput.moonshine.toMoonshineModelVariant
-import org.futo.voiceinput.nemotron.isNemotronModelDownloaded
 import org.futo.voiceinput.nemotron.NEMOTRON_MULTILINGUAL_LANGUAGES
-import org.futo.voiceinput.nemotron.recognitionModel
-import org.futo.voiceinput.nemotron.toNemotronProfile
 import org.futo.voiceinput.settings.DISMISS_MIGRATION_TIP
 import org.futo.voiceinput.settings.ENABLE_MULTILINGUAL
 import org.futo.voiceinput.settings.ENGLISH_MODEL_INDEX
@@ -73,7 +65,9 @@ import org.futo.voiceinput.settings.toSpeechBackendType
 import org.futo.voiceinput.settings.useDataStore
 import org.futo.voiceinput.startModelDownloadActivity
 import org.futo.voiceinput.recognition.RecognitionModelCatalog
+import org.futo.voiceinput.recognition.RecognitionModelLifecycle
 import org.futo.voiceinput.recognition.RecognitionModel
+import org.futo.voiceinput.recognition.RecognitionModelSelection
 import org.futo.voiceinput.recognition.RecognitionModelStore
 
 @Composable
@@ -82,31 +76,35 @@ fun modelsSubtitle(): String? {
     val (backend, _) = useDataStore(SPEECH_BACKEND)
     val (moonshineVariantId, _) = useDataStore(MOONSHINE_MODEL_VARIANT)
     val (nemotronProfileId, _) = useDataStore(NEMOTRON_PROFILE)
+    val readiness = remember(context) {
+        RecognitionModelLifecycle.create(context.filesDir, BuildConfig.BUNDLE_PARAKEET_MODEL)
+    }.readiness(
+        RecognitionModelSelection(backend, moonshineVariantId, nemotronProfileId)
+    )
     return when (backend.toSpeechBackendType()) {
         SpeechBackendType.Parakeet -> {
-            if (context.isParakeetModelDownloaded(verifyHashes = true)) {
+            if (readiness?.isReady == true) {
                 stringResource(R.string.parakeet_model_active_subtitle)
             } else {
                 stringResource(R.string.parakeet_model_download_required)
             }
         }
         SpeechBackendType.ParakeetUnified -> {
-            if (context.isParakeetUnifiedModelDownloaded(verifyHashes = true)) {
+            if (readiness?.isReady == true) {
                 stringResource(R.string.parakeet_unified_model_active_subtitle)
             } else {
                 stringResource(R.string.parakeet_unified_model_download_required)
             }
         }
         SpeechBackendType.Nemotron -> {
-            val profile = nemotronProfileId.toNemotronProfile()
-            if (context.isNemotronModelDownloaded(profile)) {
-                stringResource(R.string.nemotron_model_active_subtitle, profile.recognitionModel().displayName)
+            if (readiness?.isReady == true) {
+                stringResource(R.string.nemotron_model_active_subtitle, readiness.model.displayName)
             } else {
-                stringResource(R.string.nemotron_model_download_required, profile.recognitionModel().displayName)
+                stringResource(R.string.nemotron_model_download_required, readiness?.model?.displayName.orEmpty())
             }
         }
         SpeechBackendType.Moonshine -> {
-            if (context.isMoonshineModelDownloaded(moonshineVariantId.toMoonshineModelVariant())) {
+            if (readiness?.isReady == true) {
                 stringResource(R.string.moonshine_model_active_subtitle)
             } else {
                 stringResource(R.string.moonshine_model_download_required)
@@ -154,14 +152,12 @@ fun ManagedRecognitionModelCatalog() {
     val nemotronProfile = useDataStore(NEMOTRON_PROFILE)
     val refresh = remember { mutableStateOf(0) }
     val store = remember(context) { RecognitionModelStore(context.filesDir) }
-    val selectedModelId = RecognitionModelCatalog.modelFor(
-        runtimeId = backend.value,
-        variantId = when (backend.value) {
-            SpeechBackendType.Moonshine.id -> moonshineVariant.value
-            SpeechBackendType.Nemotron.id -> nemotronProfile.value
-            else -> null
-        }
-    )?.id
+    val modelLifecycle = remember(context) {
+        RecognitionModelLifecycle.create(context.filesDir, BuildConfig.BUNDLE_PARAKEET_MODEL)
+    }
+    val selectedModelId = modelLifecycle.readiness(
+        RecognitionModelSelection(backend.value, moonshineVariant.value, nemotronProfile.value)
+    )?.model?.id
 
     DisposableEffect(lifecycleOwner, context) {
         val observer = LifecycleEventObserver { _, event ->
@@ -193,6 +189,7 @@ fun ManagedRecognitionModelCatalog() {
                     model = model,
                     selectedModelId = selectedModelId,
                     store = store,
+                    modelLifecycle = modelLifecycle,
                     onSelect = {
                         model.variantId?.let {
                             when (model.runtimeId) {
@@ -224,6 +221,7 @@ private fun ManagedRecognitionModelItem(
     model: RecognitionModel,
     selectedModelId: String?,
     store: RecognitionModelStore,
+    modelLifecycle: RecognitionModelLifecycle,
     onSelect: () -> Unit,
     onDeleted: () -> Unit
 ) {
@@ -231,7 +229,7 @@ private fun ManagedRecognitionModelItem(
     val lifecycleOwner = LocalLifecycleOwner.current
     val bundled = model.runtimeId == SpeechBackendType.Parakeet.id &&
         BuildConfig.BUNDLE_PARAKEET_MODEL
-    val installed = bundled || store.isInstalled(model)
+    val installed = modelLifecycle.isReady(model)
     val selected = selectedModelId == model.id
     val status = when {
         selected -> "Selected — choose another installed model before deleting"
