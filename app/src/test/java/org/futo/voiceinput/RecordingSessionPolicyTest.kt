@@ -14,6 +14,14 @@ class RecordingSessionPolicyTest {
     }
 
     @Test
+    fun cancelledSessionRejectsLateRecorderSamples() {
+        assertTrue(RecordingSessionPolicy.shouldAcceptSamples(null, 1L, 1L))
+        assertTrue(RecordingSessionPolicy.shouldAcceptSamples(StopReason.Manual, 1L, 1L))
+        assertFalse(RecordingSessionPolicy.shouldAcceptSamples(StopReason.Cancel, 1L, 1L))
+        assertFalse(RecordingSessionPolicy.shouldAcceptSamples(null, 1L, 2L))
+    }
+
+    @Test
     fun stopReasonsPreserveTheirBufferedTailPolicy() {
         assertEquals(275L, RecordingSessionPolicy.tailDrainMs(StopReason.Manual, SpeechBackendType.Moonshine, 275L))
         assertEquals(100L, RecordingSessionPolicy.tailDrainMs(StopReason.Vad, SpeechBackendType.Moonshine, 0L))

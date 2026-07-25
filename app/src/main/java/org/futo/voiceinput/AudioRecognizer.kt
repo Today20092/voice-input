@@ -86,8 +86,16 @@ internal enum class StopReason {
     Cancel
 }
 
+private enum class AppendResult {
+    Accepted,
+    DurationLimit,
+    SessionEnded
+}
+
 internal object RecordingSessionPolicy {
     fun shouldRetryRecorderInitialization(failedAttempt: Int) = failedAttempt <= 32
+    fun shouldAcceptSamples(stopReason: StopReason?, captureGeneration: Long, currentGeneration: Long) =
+        stopReason != StopReason.Cancel && captureGeneration == currentGeneration
 
     fun tailDrainMs(reason: StopReason, backendType: SpeechBackendType, manualDrainMs: Long) = when(reason) {
         StopReason.Manual -> manualDrainMs.coerceIn(0L, 1500L)
@@ -169,6 +177,17 @@ abstract class RecordingSession {
     private var selectedManagedModel: RecognitionModel? = null
 
     private var canExpandSpace = true
+
+    @Synchronized
+    private fun clearCapturedSamples() {
+        floatSamples.clear()
+    }
+
+    @Synchronized
+    private fun cancelCapture() {
+        stopReason = StopReason.Cancel
+    }
+
     private fun expandSpaceIfAllowed(): Boolean {
         if(canExpandSpace) {
             // Allocate an extra 30 seconds
@@ -255,7 +274,7 @@ abstract class RecordingSession {
 
     fun reset() {
         isVADPaused = false
-        stopReason = StopReason.Cancel
+        cancelCapture()
         stopAndReleaseRecorder()
         val recorderJobToJoin: Job?
         val modelJobToJoin: Job?
@@ -282,7 +301,7 @@ abstract class RecordingSession {
         loadModelJobToJoin?.cancel()
         isRecording = false
 
-        floatSamples.clear()
+        clearCapturedSamples()
 
         unfocusAudio()
 
@@ -517,7 +536,7 @@ abstract class RecordingSession {
 
         isVADPaused = false
         stopReason = null
-        floatSamples.clear()
+        clearCapturedSamples()
         canExpandSpace = true
 
         try {
@@ -553,6 +572,7 @@ abstract class RecordingSession {
 
             recorder!!.startRecording()
             val activeRecorder = recorder!!
+            val captureGeneration = recognitionGeneration
 
             focusAudio()
             isRecording = true
@@ -631,11 +651,14 @@ abstract class RecordingSession {
                                 numConsecutiveNonSpeech = 0
                             }
 
-                            if(!appendSamples(samples, nRead)) {
-                                stopReason = StopReason.DurationLimit
-                                withContext(Dispatchers.Main){
-                                    if(isRecording) {
-                                        finishRecognizer()
+                            when (appendSamples(samples, nRead, captureGeneration)) {
+                                AppendResult.Accepted -> Unit
+                                AppendResult.SessionEnded -> break
+                                AppendResult.DurationLimit -> {
+                                    withContext(Dispatchers.Main){
+                                        if(isRecording && captureGeneration == recognitionGeneration) {
+                                            finishRecognizer()
+                                        }
                                     }
                                 }
                             }
@@ -703,15 +726,18 @@ abstract class RecordingSession {
                                 yield()
                                 val nRead2 = activeRecorder.read(samples, 0, AUDIO_READ_SIZE, AudioRecord.READ_NON_BLOCKING)
                                 if(nRead2 > 0) {
-                                    if(!appendSamples(samples, nRead2)){
-                                        stopReason = StopReason.DurationLimit
-                                        yield()
-                                        withContext(Dispatchers.Main){
-                                            if(isRecording) {
-                                                finishRecognizer()
+                                    when (appendSamples(samples, nRead2, captureGeneration)) {
+                                        AppendResult.Accepted -> Unit
+                                        AppendResult.SessionEnded -> break@captureLoop
+                                        AppendResult.DurationLimit -> {
+                                            yield()
+                                            withContext(Dispatchers.Main){
+                                                if(isRecording && captureGeneration == recognitionGeneration) {
+                                                    finishRecognizer()
+                                                }
                                             }
+                                            break@captureLoop
                                         }
-                                        break@captureLoop
                                     }
                                 } else {
                                     break
@@ -721,8 +747,8 @@ abstract class RecordingSession {
 
                         val reason = stopReason
                         if(reason != null && reason != StopReason.Cancel && activeRecorder.recordingState == AudioRecord.RECORDSTATE_RECORDING) {
-                            drainRecorderTail(activeRecorder, reason, samples)
-                            appendFinalSilence()
+                            drainRecorderTail(activeRecorder, reason, samples, captureGeneration)
+                            appendFinalSilence(captureGeneration)
                         }
                     } finally {
                         stopAndReleaseRecorder(activeRecorder)
@@ -746,9 +772,15 @@ abstract class RecordingSession {
         }
     }
 
-    private fun appendSamples(samples: ShortArray, nRead: Int): Boolean {
+    @Synchronized
+    private fun appendSamples(samples: ShortArray, nRead: Int, captureGeneration: Long): AppendResult {
+        if (!RecordingSessionPolicy.shouldAcceptSamples(stopReason, captureGeneration, recognitionGeneration)) {
+            return AppendResult.SessionEnded
+        }
+
         if(floatSamples.remaining() < nRead && !expandSpaceIfAllowed()) {
-            return false
+            stopReason = StopReason.DurationLimit
+            return AppendResult.DurationLimit
         }
 
         val streamingChunk = if (streamingAudio.isEnabled()) FloatArray(nRead) else null
@@ -759,7 +791,7 @@ abstract class RecordingSession {
         }
         streamingChunk?.let(streamingAudio::acceptAudio)
 
-        return true
+        return AppendResult.Accepted
     }
 
     private fun startStreaming(backend: StreamingSpeechBackend) {
@@ -783,7 +815,8 @@ abstract class RecordingSession {
     private suspend fun drainRecorderTail(
         recorder: AudioRecord,
         reason: StopReason,
-        scratch: ShortArray
+        scratch: ShortArray,
+        captureGeneration: Long
     ) {
         val drainMs = RecordingSessionPolicy.tailDrainMs(
             reason,
@@ -796,7 +829,7 @@ abstract class RecordingSession {
             yield()
             val nRead = recorder.read(scratch, 0, scratch.size, AudioRecord.READ_NON_BLOCKING)
             if(nRead > 0) {
-                if(!appendSamples(scratch, nRead)) {
+                if(appendSamples(scratch, nRead, captureGeneration) != AppendResult.Accepted) {
                     return
                 }
             } else {
@@ -805,7 +838,10 @@ abstract class RecordingSession {
         }
     }
 
-    private fun appendFinalSilence() {
+    @Synchronized
+    private fun appendFinalSilence(captureGeneration: Long) {
+        if (!RecordingSessionPolicy.shouldAcceptSamples(stopReason, captureGeneration, recognitionGeneration)) return
+
         val silenceSamples = (AUDIO_SAMPLE_RATE * FINAL_SILENCE_PAD_MS) / 1000
         if(floatSamples.remaining() < silenceSamples && !expandSpaceIfAllowed()) {
             return
