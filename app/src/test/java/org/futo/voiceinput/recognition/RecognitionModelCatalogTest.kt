@@ -178,13 +178,30 @@ class RecognitionModelCatalogTest {
     @Test
     fun interactiveReadinessDoesNotHashArtifactContents() {
         val modelPackage = testPackage()
-        val store = RecognitionModelStore(temporaryFolder.root)
+        val store = RecognitionModelStore(temporaryFolder.root) {
+            throw AssertionError("Interactive readiness hashed an artifact")
+        }
         val packageDir = store.modelDirectory(modelPackage).apply { mkdirs() }
         File(packageDir, "model.bin").writeText("wrong")
         File(packageDir, modelPackage.completionMarker)
             .writeText("${modelPackage.id}@${modelPackage.version}")
 
         assertTrue(store.isInstalled(modelPackage))
+    }
+
+    @Test
+    fun invalidatingInstallRemovesReadinessMarkerButKeepsArtifacts() {
+        val modelPackage = testPackage()
+        val store = RecognitionModelStore(temporaryFolder.root)
+        val packageDir = store.modelDirectory(modelPackage).apply { mkdirs() }
+        val artifact = File(packageDir, "model.bin").apply { writeText("valid") }
+        File(packageDir, modelPackage.completionMarker)
+            .writeText("${modelPackage.id}@${modelPackage.version}")
+
+        store.invalidate(modelPackage)
+
+        assertFalse(store.isInstalled(modelPackage))
+        assertTrue(artifact.exists())
     }
 
     @Test

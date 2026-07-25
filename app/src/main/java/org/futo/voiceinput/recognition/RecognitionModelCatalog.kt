@@ -371,7 +371,10 @@ class SelectedModelDeletionException : IllegalStateException(
     "Select another installed recognition model before deleting this model."
 )
 
-class RecognitionModelStore(private val rootDirectory: File) {
+class RecognitionModelStore(
+    private val rootDirectory: File,
+    private val hashFile: (File) -> String = ::sha256
+) {
     fun modelDirectory(model: RecognitionModel) = File(rootDirectory, model.directoryName)
 
     fun isInstalled(model: RecognitionModel, verifyHashes: Boolean = false): Boolean {
@@ -395,6 +398,10 @@ class RecognitionModelStore(private val rootDirectory: File) {
         if (!artifactsValid(model, verifyHashes = true)) return false
         marker.writeText("${model.id}@${model.version}")
         return true
+    }
+
+    fun invalidate(model: RecognitionModel) {
+        File(modelDirectory(model), model.completionMarker).delete()
     }
 
     fun select(model: RecognitionModel, updateSelection: () -> Unit) {
@@ -422,7 +429,7 @@ class RecognitionModelStore(private val rootDirectory: File) {
         return model.artifacts.all { artifact ->
             val file = File(directory, artifact.name)
             file.isFile && file.length() == artifact.sizeBytes &&
-                (!verifyHashes || sha256(file) == artifact.sha256)
+                (!verifyHashes || hashFile(file) == artifact.sha256)
         }
     }
 }
