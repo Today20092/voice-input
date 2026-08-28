@@ -37,7 +37,7 @@ data class S1MiniDiagnosticRun(
     val chunkCount: Int,
     val totalMs: Long,
     val nativeMetricsJson: String,
-    val pssKb: Int,
+    val pssKb: Long,
     val nativeHeapBytes: Long,
     val javaUsedBytes: Long,
     val thermalStatus: Int?,
@@ -147,7 +147,7 @@ object S1MiniDiagnostics {
         File(context.cacheDir, "s1-diagnostics-export").deleteRecursively()
     }
 
-    fun pssKb(): Int = Debug.getPss()
+    fun pssKb(): Long = Debug.getPss()
     fun nativeHeapBytes(): Long = Debug.getNativeHeapAllocatedSize()
     fun javaUsedBytes(): Long = Runtime.getRuntime().run { totalMemory() - freeMemory() }
     fun thermalStatus(context: Context): Int? = if (Build.VERSION.SDK_INT >= 29) {

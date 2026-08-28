@@ -45,7 +45,7 @@ object S1MiniPrompt {
             if (hardEnd < words.size) {
                 val searchStart = maxOf(start + maxWords / 2, start)
                 for (index in hardEnd - 1 downTo searchStart) {
-                    if (words[index].lastOrNull() in charArrayOf('.', '!', '?', ';', ':')) {
+                    if (words[index].lastOrNull()?.let { it in charArrayOf('.', '!', '?', ';', ':') } == true) {
                         end = index + 1
                         break
                     }
