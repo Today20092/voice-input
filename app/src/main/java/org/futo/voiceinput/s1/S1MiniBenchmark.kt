@@ -41,10 +41,16 @@ data class S1MiniBenchmarkValidation(
 
 object S1MiniBenchmarkPolicy {
     private val whitespace = Regex("\\s+")
-    private val report = Regex("\\breport\\b")
+    private val artifact = Regex("\\b(?:report|write-up|writeup|document)\\b")
     private val thursday = Regex("\\bthursday\\b")
     private val friday = Regex("\\bfriday\\b")
     private val filler = Regex("\\b(?:um|uh)\\b")
+    private val delivery = Regex(
+        "\\b(?:send|sent|submit|submitted|deliver|delivered|due)\\b|\\bgo(?:es)? out\\b"
+    )
+    private val reversedIntent = Regex(
+        "\\b(?:not|never|cancel|canceled|cancelled|skip)\\b"
+    )
 
     fun candidates(
         availableProcessors: Int,
@@ -64,7 +70,8 @@ object S1MiniBenchmarkPolicy {
         val stable = normalized.isNotEmpty() && normalized.distinct().size == 1
         val preservesMeaning = normalized.isNotEmpty() && normalized.all { output ->
             val lower = output.lowercase()
-            output.isNotEmpty() && report.containsMatchIn(lower) &&
+            output.isNotEmpty() && artifact.containsMatchIn(lower) &&
+                delivery.containsMatchIn(lower) && !reversedIntent.containsMatchIn(lower) &&
                 thursday.containsMatchIn(lower) && !friday.containsMatchIn(lower) &&
                 !filler.containsMatchIn(lower)
         }
@@ -138,9 +145,9 @@ object S1MiniBenchmark {
 
         for ((backend, threads) in candidates) {
             val key = "$backend/$threads"
+            val outputs = mutableListOf<String>()
             try {
                 val samples = mutableListOf<Long>()
-                val outputs = mutableListOf<String>()
                 repeat(3) { iteration ->
                     val started = SystemClock.elapsedRealtime()
                     val result = withTimeout(30_000L) {
@@ -159,7 +166,6 @@ object S1MiniBenchmark {
                     if (iteration > 0) samples += SystemClock.elapsedRealtime() - started
                 }
                 val validation = S1MiniBenchmarkPolicy.validate(outputs)
-                validationDetails[key] = validation
                 check(validation.accepted) {
                     validation.failureReason ?: "benchmark_validation_failed"
                 }
@@ -174,6 +180,10 @@ object S1MiniBenchmark {
                 failures[key] = error.message
                     ?.takeIf { it.matches(Regex("[a-z0-9_]+")) }
                     ?: error.javaClass.simpleName
+            } finally {
+                if (outputs.isNotEmpty()) {
+                    validationDetails[key] = S1MiniBenchmarkPolicy.validate(outputs)
+                }
             }
         }
 
