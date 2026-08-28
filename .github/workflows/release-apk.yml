@@ -98,9 +98,10 @@ jobs:
         with:
           name: FUTO Voice Input Moonshine ${{ github.ref_name }}
           body: |
-            ## Beta 8 highlights
+            ## Beta 9 highlights
 
-            - Fixes Android discovery of the packaged llama.cpp CPU and OpenCL backend libraries.
+            - Extracts packaged llama.cpp CPU and OpenCL backend libraries so Android's filesystem loader can discover them.
+            - Prevents release publication unless the APK manifest requires native-library extraction.
             - Adds per-candidate benchmark failures, packaged libraries, and discovered devices to standard diagnostics.
             - Adds persistent opt-in transcript capture for eligible English S1-mini cleanup runs.
             - Keeps standard diagnostics transcript-free and adds a separately confirmed, clearly labeled transcript ZIP.

@@ -57,8 +57,8 @@ android {
         applicationId "org.futo.voiceinput"
         minSdk 26
         targetSdk 35
-        versionCode 44
-        versionName "1.4.2-beta.8"
+        versionCode 45
+        versionName "1.4.2-beta.9"
         buildConfigField "boolean", "BUNDLE_PARAKEET_MODEL", bundleParakeetModel.toString()
         buildConfigField "String", "S1_LLAMA_COMMIT", '"b19cbe925be361d229f0fe03435affe4a2717f37"'
 
@@ -146,7 +146,7 @@ android {
             excludes += '/META-INF/{AL2.0,LGPL2.1}'
         }
         jniLibs {
-            useLegacyPackaging false
+            useLegacyPackaging true
             keepDebugSymbols += '**/*.so'
         }
     }
