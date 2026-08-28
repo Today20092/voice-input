@@ -24,6 +24,7 @@ std::string g_model_path;
 std::string g_runtime;
 bool g_initialized = false;
 std::string g_backend_path;
+std::vector<std::string> g_backend_load_errors;
 
 using Clock = std::chrono::steady_clock;
 long elapsed_ms(Clock::time_point start) {
@@ -73,6 +74,12 @@ const char * safe_string(const char * value, const char * fallback = "") {
 void log_callback(enum ggml_log_level level, const char * text, void *) {
     if (level == GGML_LOG_LEVEL_ERROR) {
         __android_log_write(ANDROID_LOG_ERROR, TAG, text);
+        if (text != nullptr && g_backend_load_errors.size() < 8) {
+            std::string detail(text);
+            detail.erase(std::remove(detail.begin(), detail.end(), '\n'), detail.end());
+            detail.erase(std::remove(detail.begin(), detail.end(), '\r'), detail.end());
+            g_backend_load_errors.push_back(detail.substr(0, 512));
+        }
     }
 }
 
@@ -83,6 +90,7 @@ void ensure_initialized(const std::string & backend_path) {
         return;
     }
     llama_log_set(log_callback, nullptr);
+    g_backend_load_errors.clear();
     ggml_backend_load_all_from_path(backend_path.c_str());
     llama_backend_init();
     g_backend_path = backend_path;
@@ -308,6 +316,10 @@ Java_org_futo_voiceinput_s1_S1MiniNative_availableBackends(
                     type == GGML_BACKEND_DEVICE_TYPE_GPU ? "gpu" : "other";
             result.push_back(std::string(kind) + ":" + description);
         }
+        for (const auto & error : g_backend_load_errors) {
+            result.push_back("loader_error:" + error);
+        }
+        if (result.empty()) result.push_back("loader_error:no_backend_devices_discovered");
         return string_array(env, result);
     } catch (const std::exception & error) {
         throw_runtime(env, error.what());

@@ -101,14 +101,18 @@ object S1MiniBenchmark {
         }
 
         val nativeLibraryDir = context.applicationInfo.nativeLibraryDir
-        val backendDevices = runCatching { S1MiniClient.availableBackends(context) }.getOrDefault(emptyList())
+        val backendDiscovery = runCatching { S1MiniClient.discoverBackends(context) }
+            .getOrElse {
+                S1MiniBackendDiscovery(emptyList(), listOf(it.javaClass.simpleName))
+            }
         runCatching {
             S1MiniDiagnostics.recordBenchmark(
                 context,
                 S1MiniBenchmarkDiagnostic(
                     measurementsMs = measurements,
                     failures = failures,
-                    discoveredBackendDevices = backendDevices,
+                    discoveredBackendDevices = backendDiscovery.devices,
+                    backendLoaderErrors = backendDiscovery.loaderErrors,
                     packagedBackendLibraries = File(nativeLibraryDir).listFiles().orEmpty()
                         .map { it.name }
                         .filter {

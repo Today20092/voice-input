@@ -58,4 +58,29 @@ class S1MiniDiagnosticArchiveTest {
             output.delete()
         }
     }
+
+    @Test
+    fun allUnreadableTranscriptArchiveStillContainsOmissionReport() {
+        val output = Files.createTempFile("s1-all-unreadable", ".zip").toFile()
+        try {
+            S1MiniDiagnosticArchive.write(
+                output = output,
+                environmentJson = "{\"transcriptIncluded\":true}",
+                runsJsonl = "",
+                benchmarkJson = null,
+                reportText = "",
+                transcriptsJsonl = "",
+                unreadableTranscriptCaptures = 2
+            )
+
+            ZipFile(output).use { zip ->
+                assertTrue(zip.getEntry("transcripts.jsonl") != null)
+                val omissions = zip.getInputStream(zip.getEntry("omissions.json"))
+                    .bufferedReader().readText()
+                assertTrue("\"unreadableTranscriptCaptures\":2" in omissions)
+            }
+        } finally {
+            output.delete()
+        }
+    }
 }

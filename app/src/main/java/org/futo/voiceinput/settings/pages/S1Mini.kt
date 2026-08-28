@@ -24,6 +24,7 @@ import org.futo.voiceinput.s1.S1MiniClient
 import org.futo.voiceinput.s1.S1MiniDiagnostics
 import org.futo.voiceinput.s1.S1MiniModel
 import org.futo.voiceinput.s1.S1MiniTranscriptCapture
+import org.futo.voiceinput.s1.S1MiniTranscriptStageStatus
 import org.futo.voiceinput.settings.S1_MINI_CONTEXT
 import org.futo.voiceinput.settings.S1_MINI_ENABLED
 import org.futo.voiceinput.settings.S1_MINI_RUNTIME
@@ -204,8 +205,13 @@ fun S1MiniOptions() {
         }) { }
         SettingItem(
             title = "Export diagnostics WITH TRANSCRIPTS",
-            subtitle = "${transcriptCaptureResult.captures.size} captured run(s)",
-            disabled = transcriptCaptureResult.captures.isEmpty(),
+            subtitle = buildString {
+                append("${transcriptCaptureResult.captures.size} captured run(s)")
+                if (transcriptCaptureResult.unreadableCount > 0) {
+                    append(", ${transcriptCaptureResult.unreadableCount} unreadable")
+                }
+            },
+            disabled = !transcriptCaptureResult.hasExportableEvidence,
             onClick = { showTranscriptExportConfirmation.value = true }
         ) { }
         transcriptCaptureResult.captures.forEach { capture ->
@@ -308,6 +314,14 @@ fun S1MiniOptions() {
 }
 
 @Composable
-private fun TranscriptStage(label: String, status: String, text: String?) {
-    Text("$label: ${if (status == "produced") text.orEmpty() else "Not produced"}")
+private fun TranscriptStage(
+    label: String,
+    status: S1MiniTranscriptStageStatus,
+    text: String?
+) {
+    val value = when (status) {
+        S1MiniTranscriptStageStatus.Produced -> text.orEmpty()
+        S1MiniTranscriptStageStatus.NotProduced -> "Not produced"
+    }
+    Text("$label: $value")
 }

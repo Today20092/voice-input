@@ -1,13 +1,23 @@
 package org.futo.voiceinput.s1
 
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.io.File
 
 @Serializable
+enum class S1MiniTranscriptStageStatus {
+    @SerialName("produced")
+    Produced,
+
+    @SerialName("not_produced")
+    NotProduced
+}
+
+@Serializable
 data class S1MiniTranscriptStage(
-    val status: String,
+    val status: S1MiniTranscriptStageStatus,
     val text: String? = null,
     val originalCharacters: Int = 0,
     val truncated: Boolean = false
@@ -16,13 +26,14 @@ data class S1MiniTranscriptStage(
         private const val MAX_CHARACTERS = 100_000
 
         fun produced(text: String): S1MiniTranscriptStage = S1MiniTranscriptStage(
-            status = "produced",
+            status = S1MiniTranscriptStageStatus.Produced,
             text = text.take(MAX_CHARACTERS),
             originalCharacters = text.length,
             truncated = text.length > MAX_CHARACTERS
         )
 
-        fun notProduced(): S1MiniTranscriptStage = S1MiniTranscriptStage(status = "not_produced")
+        fun notProduced(): S1MiniTranscriptStage =
+            S1MiniTranscriptStage(status = S1MiniTranscriptStageStatus.NotProduced)
     }
 }
 
@@ -63,7 +74,10 @@ data class S1MiniTranscriptCapture(
 data class S1MiniTranscriptCaptureLoadResult(
     val captures: List<S1MiniTranscriptCapture>,
     val unreadableCount: Int
-)
+) {
+    val hasExportableEvidence: Boolean
+        get() = captures.isNotEmpty() || unreadableCount > 0
+}
 
 object S1MiniTranscriptCaptureStore {
     private const val MAX_CAPTURES = 10

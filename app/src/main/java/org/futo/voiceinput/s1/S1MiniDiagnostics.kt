@@ -21,7 +21,7 @@ import java.util.UUID
 
 @Serializable
 data class S1MiniDiagnosticRun(
-    val schemaVersion: Int = 2,
+    val schemaVersion: Int = 3,
     val reportId: String = UUID.randomUUID().toString(),
     val appVersion: String = BuildConfig.VERSION_NAME,
     val modelVersion: String = S1MiniModel.VERSION,
@@ -47,6 +47,7 @@ data class S1MiniDiagnosticRun(
     val nativeLibraryDirPresent: Boolean = false,
     val packagedBackendLibraries: List<String> = emptyList(),
     val discoveredBackendDevices: List<String> = emptyList(),
+    val backendLoaderErrors: List<String> = emptyList(),
     val transcriptIncluded: Boolean = false
 )
 
@@ -71,11 +72,12 @@ private data class S1MiniDiagnosticEnvironment(
 
 @Serializable
 data class S1MiniBenchmarkDiagnostic(
-    val schemaVersion: Int = 1,
+    val schemaVersion: Int = 2,
     val recordedAtEpochMs: Long = System.currentTimeMillis(),
     val measurementsMs: Map<String, Long>,
     val failures: Map<String, String>,
     val discoveredBackendDevices: List<String>,
+    val backendLoaderErrors: List<String>,
     val packagedBackendLibraries: List<String>,
     val transcriptIncluded: Boolean = false
 )
@@ -123,9 +125,9 @@ object S1MiniDiagnostics {
 
     fun exportZip(context: Context, includeTranscripts: Boolean = false): File? {
         val runs = runsFile(context).takeIf { it.isFile }?.readText().orEmpty()
-        if (runs.isBlank() && !benchmarkFile(context).isFile) return null
         val transcriptResult = if (includeTranscripts) transcriptCaptures(context) else null
-        if (includeTranscripts && transcriptResult?.captures.isNullOrEmpty()) return null
+        if (includeTranscripts && transcriptResult?.hasExportableEvidence != true) return null
+        if (!includeTranscripts && runs.isBlank() && !benchmarkFile(context).isFile) return null
         val exportDir = File(context.cacheDir, "s1-diagnostics-export").apply { mkdirs() }
         exportDir.listFiles()?.forEach { it.delete() }
         val suffix = SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(Date())
@@ -142,9 +144,9 @@ object S1MiniDiagnostics {
             runsJsonl = runs,
             benchmarkJson = benchmarkFile(context).takeIf { it.isFile }?.readText(),
             reportText = latestText(context).orEmpty(),
-            transcriptsJsonl = transcriptResult?.captures?.joinToString("\n", postfix = "\n") {
+            transcriptsJsonl = transcriptResult?.captures?.joinToString("\n") {
                 json.encodeToString(it)
-            },
+            }?.let { if (it.isEmpty()) it else "$it\n" },
             unreadableTranscriptCaptures = transcriptResult?.unreadableCount ?: 0
         )
         return output

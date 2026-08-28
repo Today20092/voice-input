@@ -27,13 +27,26 @@ class S1MiniTranscriptCaptureStoreTest {
             assertEquals(0, result.unreadableCount)
             assertEquals(1, result.captures.size)
             assertEquals("hello comma world", result.captures.single().raw.text)
-            assertEquals("not_produced", result.captures.single().cleaned.status)
+            assertEquals(
+                S1MiniTranscriptStageStatus.NotProduced,
+                result.captures.single().cleaned.status
+            )
             assertNull(result.captures.single().cleaned.text)
             assertEquals("hello, world", result.captures.single().finalDelivered.text)
             assertEquals("cpu_unavailable", result.captures.single().failureOrBypassReason)
         } finally {
             directory.deleteRecursively()
         }
+    }
+
+    @Test
+    fun unreadableCapturesAloneRemainExportableAsAnOmissionReport() {
+        val result = S1MiniTranscriptCaptureLoadResult(
+            captures = emptyList(),
+            unreadableCount = 2
+        )
+
+        assertTrue(result.hasExportableEvidence)
     }
 
     @Test

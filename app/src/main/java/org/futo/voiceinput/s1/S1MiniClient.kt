@@ -18,6 +18,23 @@ import kotlin.coroutines.resumeWithException
 
 data class S1MiniServiceResult(val text: String, val nativeMetricsJson: String)
 
+data class S1MiniBackendDiscovery(
+    val devices: List<String>,
+    val loaderErrors: List<String>
+) {
+    companion object {
+        private const val LOADER_ERROR_PREFIX = "loader_error:"
+
+        fun fromNativeEntries(entries: List<String>) = S1MiniBackendDiscovery(
+            devices = entries.filterNot { it.startsWith(LOADER_ERROR_PREFIX) },
+            loaderErrors = entries.mapNotNull { entry ->
+                entry.takeIf { it.startsWith(LOADER_ERROR_PREFIX) }
+                    ?.removePrefix(LOADER_ERROR_PREFIX)
+            }
+        )
+    }
+}
+
 class S1MiniServiceException(val category: String) : Exception("S1-mini service failed: $category")
 
 object S1MiniClient {
@@ -110,17 +127,21 @@ object S1MiniClient {
 
     suspend fun unload(context: Context) = sendOneWay(context, S1MiniProtocol.MSG_UNLOAD)
 
-    suspend fun availableBackends(context: Context): List<String> =
+    suspend fun discoverBackends(context: Context): S1MiniBackendDiscovery =
         suspendCancellableCoroutine { continuation ->
             val appContext = context.applicationContext
             lateinit var connection: ServiceConnection
-            fun finish(backends: List<String>) {
+            fun finish(discovery: S1MiniBackendDiscovery) {
                 runCatching { appContext.unbindService(connection) }
-                if (continuation.isActive) continuation.resume(backends)
+                if (continuation.isActive) continuation.resume(discovery)
             }
             val replies = Messenger(Handler(Looper.getMainLooper()) { message ->
                 if (message.what == S1MiniProtocol.MSG_BACKENDS) {
-                    finish(message.data.getStringArray(S1MiniProtocol.KEY_BACKENDS).orEmpty().toList())
+                    finish(
+                        S1MiniBackendDiscovery.fromNativeEntries(
+                            message.data.getStringArray(S1MiniProtocol.KEY_BACKENDS).orEmpty().toList()
+                        )
+                    )
                 }
                 true
             })
@@ -130,12 +151,15 @@ object S1MiniClient {
                         Messenger(service).send(Message.obtain(null, S1MiniProtocol.MSG_BACKENDS).apply {
                             replyTo = replies
                         })
-                    }.onFailure { finish(emptyList()) }
+                    }.onFailure { finish(S1MiniBackendDiscovery(emptyList(), listOf("service_send_failed"))) }
                 }
 
-                override fun onServiceDisconnected(name: ComponentName?) = finish(emptyList())
-                override fun onBindingDied(name: ComponentName?) = finish(emptyList())
-                override fun onNullBinding(name: ComponentName?) = finish(emptyList())
+                override fun onServiceDisconnected(name: ComponentName?) =
+                    finish(S1MiniBackendDiscovery(emptyList(), listOf("service_disconnected")))
+                override fun onBindingDied(name: ComponentName?) =
+                    finish(S1MiniBackendDiscovery(emptyList(), listOf("service_binding_died")))
+                override fun onNullBinding(name: ComponentName?) =
+                    finish(S1MiniBackendDiscovery(emptyList(), listOf("service_null_binding")))
             }
             continuation.invokeOnCancellation { runCatching { appContext.unbindService(connection) } }
             if (!appContext.bindService(
@@ -143,8 +167,10 @@ object S1MiniClient {
                     connection,
                     Context.BIND_AUTO_CREATE
                 )
-            ) finish(emptyList())
+            ) finish(S1MiniBackendDiscovery(emptyList(), listOf("service_bind_failed")))
         }
+
+    suspend fun availableBackends(context: Context): List<String> = discoverBackends(context).devices
 
     private suspend fun sendOneWay(context: Context, what: Int) =
         suspendCancellableCoroutine<Unit> { continuation ->

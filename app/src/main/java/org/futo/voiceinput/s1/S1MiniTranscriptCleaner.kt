@@ -85,10 +85,10 @@ object S1MiniTranscriptCleaner {
             outcome: String,
             errorCategory: String?
         ): String {
-            val discoveredBackends = try {
-                withTimeout(2_000L) { S1MiniClient.availableBackends(context) }
-            } catch (_: Throwable) {
-                emptyList()
+            val backendDiscovery = try {
+                withTimeout(2_000L) { S1MiniClient.discoverBackends(context) }
+            } catch (error: Throwable) {
+                S1MiniBackendDiscovery(emptyList(), listOf(error.javaClass.simpleName))
             }
             val run = S1MiniDiagnosticRun(
                 runtimeRequested = requestedRuntime.id,
@@ -111,7 +111,8 @@ object S1MiniTranscriptCleaner {
                 errorCategory = errorCategory,
                 nativeLibraryDirPresent = nativeLibraryDir.isNotBlank() && File(nativeLibraryDir).isDirectory,
                 packagedBackendLibraries = packagedBackendLibraries,
-                discoveredBackendDevices = discoveredBackends
+                discoveredBackendDevices = backendDiscovery.devices,
+                backendLoaderErrors = backendDiscovery.loaderErrors
             )
             runCatching { S1MiniDiagnostics.record(context, run) }
             return run.reportId
