@@ -72,10 +72,12 @@ private data class S1MiniDiagnosticEnvironment(
 
 @Serializable
 data class S1MiniBenchmarkDiagnostic(
-    val schemaVersion: Int = 2,
+    val schemaVersion: Int = 3,
     val recordedAtEpochMs: Long = System.currentTimeMillis(),
     val measurementsMs: Map<String, Long>,
     val failures: Map<String, String>,
+    val skippedCandidates: Map<String, String> = emptyMap(),
+    val validationDetails: Map<String, S1MiniBenchmarkValidation> = emptyMap(),
     val discoveredBackendDevices: List<String>,
     val backendLoaderErrors: List<String>,
     val packagedBackendLibraries: List<String>,

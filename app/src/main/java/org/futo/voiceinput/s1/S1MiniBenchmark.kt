@@ -5,6 +5,7 @@ import android.os.Build
 import android.os.SystemClock
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withTimeout
+import kotlinx.serialization.Serializable
 import org.futo.voiceinput.BuildConfig
 import org.futo.voiceinput.settings.S1_MINI_AUTO_BACKEND
 import org.futo.voiceinput.settings.S1_MINI_AUTO_THREADS
@@ -15,6 +16,7 @@ import org.futo.voiceinput.settings.S1MiniStyling
 import org.futo.voiceinput.settings.getSetting
 import org.futo.voiceinput.settings.setSetting
 import java.io.File
+import java.security.MessageDigest
 
 data class S1MiniBenchmarkResult(
     val backend: String,
@@ -23,13 +25,79 @@ data class S1MiniBenchmarkResult(
     val candidates: Map<String, Long>
 )
 
+data class S1MiniBenchmarkCandidate(val backend: String, val threads: Int) {
+    val key: String = "$backend/$threads"
+}
+
+@Serializable
+data class S1MiniBenchmarkValidation(
+    val accepted: Boolean,
+    val stable: Boolean,
+    val preservesMeaning: Boolean,
+    val attempts: Int,
+    val outputHashes: List<String>,
+    val failureReason: String? = null
+)
+
+object S1MiniBenchmarkPolicy {
+    private val whitespace = Regex("\\s+")
+    private val report = Regex("\\breport\\b")
+    private val thursday = Regex("\\bthursday\\b")
+    private val friday = Regex("\\bfriday\\b")
+    private val filler = Regex("\\b(?:um|uh)\\b")
+
+    fun candidates(
+        availableProcessors: Int,
+        discoveredDevices: List<String>
+    ): List<S1MiniBenchmarkCandidate> = buildList {
+        val available = availableProcessors.coerceAtLeast(1)
+        listOf(2, 4, 6).filter { it <= available }
+            .forEach { add(S1MiniBenchmarkCandidate("cpu", it)) }
+        if (none { it.backend == "cpu" }) add(S1MiniBenchmarkCandidate("cpu", 1))
+        if (discoveredDevices.any { it.startsWith("gpu:") }) {
+            add(S1MiniBenchmarkCandidate("opencl", minOf(4, available)))
+        }
+    }
+
+    fun validate(outputs: List<String>): S1MiniBenchmarkValidation {
+        val normalized = outputs.map { it.trim().replace(whitespace, " ") }
+        val stable = normalized.isNotEmpty() && normalized.distinct().size == 1
+        val preservesMeaning = normalized.isNotEmpty() && normalized.all { output ->
+            val lower = output.lowercase()
+            output.isNotEmpty() && report.containsMatchIn(lower) &&
+                thursday.containsMatchIn(lower) && !friday.containsMatchIn(lower) &&
+                !filler.containsMatchIn(lower)
+        }
+        val failureReason = when {
+            outputs.size != 3 -> "incomplete_validation"
+            normalized.any { it.isEmpty() } -> "empty_output"
+            !stable -> "unstable_output"
+            !preservesMeaning -> "meaning_mismatch"
+            else -> null
+        }
+        return S1MiniBenchmarkValidation(
+            accepted = failureReason == null,
+            stable = stable,
+            preservesMeaning = preservesMeaning,
+            attempts = outputs.size,
+            outputHashes = normalized.map(::sha256).distinct(),
+            failureReason = failureReason
+        )
+    }
+
+    private fun sha256(value: String): String = MessageDigest.getInstance("SHA-256")
+        .digest(value.toByteArray())
+        .joinToString("") { "%02x".format(it.toInt() and 0xff) }
+}
+
 object S1MiniBenchmark {
     private const val RAW = "so um i need to like send the the report by uh friday no wait make that thursday"
-    private const val EXPECTED = "I need to send the report by Thursday."
+    private const val POLICY_VERSION = "2"
 
     fun fingerprint(): String = listOf(
         S1MiniModel.VERSION,
         BuildConfig.S1_LLAMA_COMMIT,
+        POLICY_VERSION,
         Build.VERSION.SDK_INT,
         if (Build.VERSION.SDK_INT >= 31) Build.SOC_MANUFACTURER else Build.MANUFACTURER,
         if (Build.VERSION.SDK_INT >= 31) Build.SOC_MODEL else Build.HARDWARE
@@ -56,19 +124,23 @@ object S1MiniBenchmark {
             S1MiniStructure.Prose,
             S1MiniContext.General
         )
-        val candidates = buildList {
-            val available = Runtime.getRuntime().availableProcessors().coerceAtLeast(1)
-            listOf(2, 4, 6).filter { it <= available }.forEach { add("cpu" to it) }
-            if (none { it.first == "cpu" }) add("cpu" to 1)
-            add("opencl" to minOf(4, available))
-        }
+        val backendDiscovery = runCatching { S1MiniClient.discoverBackends(context) }
+            .getOrElse {
+                S1MiniBackendDiscovery(emptyList(), listOf(it.javaClass.simpleName))
+            }
+        val candidates = S1MiniBenchmarkPolicy.candidates(
+            Runtime.getRuntime().availableProcessors(),
+            backendDiscovery.devices
+        )
         val measurements = linkedMapOf<String, Long>()
         val failures = linkedMapOf<String, String>()
+        val validationDetails = linkedMapOf<String, S1MiniBenchmarkValidation>()
 
         for ((backend, threads) in candidates) {
             val key = "$backend/$threads"
             try {
                 val samples = mutableListOf<Long>()
+                val outputs = mutableListOf<String>()
                 repeat(3) { iteration ->
                     val started = SystemClock.elapsedRealtime()
                     val result = withTimeout(30_000L) {
@@ -83,8 +155,13 @@ object S1MiniBenchmark {
                             warmTimeoutMs = -1L
                         )
                     }
-                    check(result.text.trim() == EXPECTED) { "deterministic_output_mismatch" }
+                    outputs += result.text
                     if (iteration > 0) samples += SystemClock.elapsedRealtime() - started
+                }
+                val validation = S1MiniBenchmarkPolicy.validate(outputs)
+                validationDetails[key] = validation
+                check(validation.accepted) {
+                    validation.failureReason ?: "benchmark_validation_failed"
                 }
                 measurements[key] = samples.sorted()[samples.size / 2]
             } catch (_: TimeoutCancellationException) {
@@ -101,16 +178,18 @@ object S1MiniBenchmark {
         }
 
         val nativeLibraryDir = context.applicationInfo.nativeLibraryDir
-        val backendDiscovery = runCatching { S1MiniClient.discoverBackends(context) }
-            .getOrElse {
-                S1MiniBackendDiscovery(emptyList(), listOf(it.javaClass.simpleName))
-            }
         runCatching {
             S1MiniDiagnostics.recordBenchmark(
                 context,
                 S1MiniBenchmarkDiagnostic(
                     measurementsMs = measurements,
                     failures = failures,
+                    skippedCandidates = if (backendDiscovery.devices.none { it.startsWith("gpu:") }) {
+                        mapOf("opencl" to "no_discovered_gpu")
+                    } else {
+                        emptyMap()
+                    },
+                    validationDetails = validationDetails,
                     discoveredBackendDevices = backendDiscovery.devices,
                     backendLoaderErrors = backendDiscovery.loaderErrors,
                     packagedBackendLibraries = File(nativeLibraryDir).listFiles().orEmpty()

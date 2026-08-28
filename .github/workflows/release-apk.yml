@@ -98,8 +98,12 @@ jobs:
         with:
           name: FUTO Voice Input Moonshine ${{ github.ref_name }}
           body: |
-            ## Beta 9 highlights
+            ## Beta 10 highlights
 
+            - Fixes the optimization test rejecting valid S1-mini rewrites that differ from one exact sentence.
+            - Validates three stable outputs for required meaning before timing a backend.
+            - Skips OpenCL benchmarking when Android discovers no GPU backend.
+            - Records validation hashes, stability, meaning checks, and skipped candidates in diagnostics.
             - Extracts packaged llama.cpp CPU and OpenCL backend libraries so Android's filesystem loader can discover them.
             - Prevents release publication unless the APK manifest requires native-library extraction.
             - Adds per-candidate benchmark failures, packaged libraries, and discovered devices to standard diagnostics.
