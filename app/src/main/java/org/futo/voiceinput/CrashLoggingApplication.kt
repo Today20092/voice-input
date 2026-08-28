@@ -7,8 +7,14 @@ import org.acra.config.httpSender
 import org.acra.data.StringFormat
 import org.acra.ktx.initAcra
 import org.acra.sender.HttpSender
+import org.futo.voiceinput.s1.S1MiniDiagnostics
 
 class CrashLoggingApplication : Application() {
+    override fun onCreate() {
+        super.onCreate()
+        runCatching { S1MiniDiagnostics.purgeTranscriptCaptures(this) }
+    }
+
     override fun attachBaseContext(base: Context?) {
         super.attachBaseContext(base)
 

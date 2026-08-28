@@ -7,6 +7,7 @@ internal object S1MiniNative {
 
     /** Returns [cleanedText, nativeMetricsJson]. */
     external fun normalize(
+        nativeLibraryDir: String,
         modelPath: String,
         prompt: String,
         contextSize: Int,
@@ -17,5 +18,5 @@ internal object S1MiniNative {
 
     external fun cancel()
     external fun unload()
-    external fun availableBackends(): Array<String>
+    external fun availableBackends(nativeLibraryDir: String): Array<String>
 }

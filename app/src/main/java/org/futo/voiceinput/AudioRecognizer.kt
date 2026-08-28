@@ -40,6 +40,7 @@ import org.futo.voiceinput.settings.PARAKEET_KEEP_WARM_TIMEOUT_MS
 import org.futo.voiceinput.settings.PARAKEET_USE_VAD
 import org.futo.voiceinput.settings.PERSONAL_DICTIONARY
 import org.futo.voiceinput.settings.SPEECH_BACKEND
+import org.futo.voiceinput.settings.S1_MINI_TRANSCRIPT_DIAGNOSTICS
 import org.futo.voiceinput.settings.SpeechBackendType
 import org.futo.voiceinput.settings.getSetting
 import org.futo.voiceinput.parakeet.ParakeetEngineLease
@@ -52,6 +53,7 @@ import org.futo.voiceinput.recognition.RecognitionModelSelection
 import org.futo.voiceinput.recognition.RecognitionModelStore
 import org.futo.voiceinput.recognition.RecognitionRuntimeCallbacks
 import org.futo.voiceinput.s1.S1MiniCleanupResult
+import org.futo.voiceinput.s1.S1MiniDiagnostics
 import org.futo.voiceinput.s1.S1MiniTranscriptCleaner
 import org.futo.voiceinput.settings.toSpeechBackendType
 import org.futo.voiceinput.settings.toEndOfSpeechProfile
@@ -910,7 +912,23 @@ abstract class RecordingSession {
                 forcedLanguage = forcedLanguage,
                 onCleaning = { withContext(Dispatchers.Main) { cleaning() } }
             )
-            PersonalVocabulary.apply(cleanupResult.text, personalVocabulary)
+            val finalDeliveredText = PersonalVocabulary.apply(cleanupResult.text, personalVocabulary)
+            if (
+                cleanupResult.diagnosticReportId != null &&
+                context.getSetting(S1_MINI_TRANSCRIPT_DIAGNOSTICS)
+            ) {
+                runCatching {
+                    S1MiniDiagnostics.recordTranscript(
+                        context = context,
+                        reportId = cleanupResult.diagnosticReportId,
+                        rawTranscript = rawText,
+                        cleanedTranscript = cleanupResult.text.takeIf { cleanupResult.applied },
+                        finalDeliveredTranscript = finalDeliveredText,
+                        failureOrBypassReason = cleanupResult.fallbackCategory
+                    )
+                }
+            }
+            finalDeliveredText
         } catch(e: OutOfMemoryError) {
             decodingStatus(RunState.OOMError)
             closeFailedBackend(runGeneration)

@@ -14,13 +14,14 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.futo.voiceinput.BuildConfig
 import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import java.util.UUID
-import java.util.zip.ZipEntry
-import java.util.zip.ZipOutputStream
 
 @Serializable
 data class S1MiniDiagnosticRun(
-    val schemaVersion: Int = 1,
+    val schemaVersion: Int = 2,
     val reportId: String = UUID.randomUUID().toString(),
     val appVersion: String = BuildConfig.VERSION_NAME,
     val modelVersion: String = S1MiniModel.VERSION,
@@ -43,12 +44,15 @@ data class S1MiniDiagnosticRun(
     val thermalStatus: Int?,
     val outcome: String,
     val errorCategory: String? = null,
+    val nativeLibraryDirPresent: Boolean = false,
+    val packagedBackendLibraries: List<String> = emptyList(),
+    val discoveredBackendDevices: List<String> = emptyList(),
     val transcriptIncluded: Boolean = false
 )
 
 @Serializable
 private data class S1MiniDiagnosticEnvironment(
-    val schemaVersion: Int = 1,
+    val schemaVersion: Int = 2,
     val appVersion: String = BuildConfig.VERSION_NAME,
     val buildFlavor: String = BuildConfig.FLAVOR,
     val manufacturer: String = Build.MANUFACTURER,
@@ -62,6 +66,17 @@ private data class S1MiniDiagnosticEnvironment(
     val availableProcessors: Int = Runtime.getRuntime().availableProcessors(),
     val modelFileBytes: Long = S1MiniModel.FILE_SIZE,
     val modelSha256: String = S1MiniModel.SHA256,
+    val transcriptIncluded: Boolean
+)
+
+@Serializable
+data class S1MiniBenchmarkDiagnostic(
+    val schemaVersion: Int = 1,
+    val recordedAtEpochMs: Long = System.currentTimeMillis(),
+    val measurementsMs: Map<String, Long>,
+    val failures: Map<String, String>,
+    val discoveredBackendDevices: List<String>,
+    val packagedBackendLibraries: List<String>,
     val transcriptIncluded: Boolean = false
 )
 
@@ -71,6 +86,8 @@ object S1MiniDiagnostics {
 
     private fun directory(context: Context) = File(context.filesDir, "s1-diagnostics").apply { mkdirs() }
     private fun runsFile(context: Context) = File(directory(context), "runs.jsonl")
+    private fun benchmarkFile(context: Context) = File(directory(context), "benchmark.json")
+    private fun transcriptDirectory(context: Context) = File(context.filesDir, "s1-transcript-captures")
 
     @Synchronized
     fun record(context: Context, run: S1MiniDiagnosticRun) {
@@ -104,39 +121,44 @@ object S1MiniDiagnostics {
         return true
     }
 
-    fun exportZip(context: Context): File? {
+    fun exportZip(context: Context, includeTranscripts: Boolean = false): File? {
         val runs = runsFile(context).takeIf { it.isFile }?.readText().orEmpty()
-        if (runs.isBlank()) return null
+        if (runs.isBlank() && !benchmarkFile(context).isFile) return null
+        val transcriptResult = if (includeTranscripts) transcriptCaptures(context) else null
+        if (includeTranscripts && transcriptResult?.captures.isNullOrEmpty()) return null
         val exportDir = File(context.cacheDir, "s1-diagnostics-export").apply { mkdirs() }
         exportDir.listFiles()?.forEach { it.delete() }
-        val output = File(exportDir, "s1-diagnostics.zip")
-        ZipOutputStream(output.outputStream().buffered()).use { zip ->
-            fun entry(name: String, contents: String) {
-                zip.putNextEntry(ZipEntry(name))
-                zip.write(contents.toByteArray(Charsets.UTF_8))
-                zip.closeEntry()
-            }
-            entry(
-                "README.txt",
-                "S1-mini by Superwhisper diagnostic bundle.\n" +
-                    "Contains device/model/performance metadata only. Transcript included: false.\n"
-            )
-            entry("environment.json", json.encodeToString(S1MiniDiagnosticEnvironment()))
-            entry("runs.jsonl", runs)
-            entry("report.txt", latestText(context).orEmpty())
-        }
+        val suffix = SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(Date())
+        val output = File(
+            exportDir,
+            if (includeTranscripts) "s1-diagnostics-WITH-TRANSCRIPTS-$suffix.zip"
+            else "s1-diagnostics-$suffix.zip"
+        )
+        S1MiniDiagnosticArchive.write(
+            output = output,
+            environmentJson = json.encodeToString(
+                S1MiniDiagnosticEnvironment(transcriptIncluded = includeTranscripts)
+            ),
+            runsJsonl = runs,
+            benchmarkJson = benchmarkFile(context).takeIf { it.isFile }?.readText(),
+            reportText = latestText(context).orEmpty(),
+            transcriptsJsonl = transcriptResult?.captures?.joinToString("\n", postfix = "\n") {
+                json.encodeToString(it)
+            },
+            unreadableTranscriptCaptures = transcriptResult?.unreadableCount ?: 0
+        )
         return output
     }
 
-    fun shareZip(context: Context): Boolean {
-        val file = exportZip(context) ?: return false
+    fun shareZip(context: Context, includeTranscripts: Boolean = false): Boolean {
+        val file = exportZip(context, includeTranscripts) ?: return false
         val uri = FileProvider.getUriForFile(context, "${BuildConfig.APPLICATION_ID}.files", file)
         context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
             type = "application/zip"
             putExtra(Intent.EXTRA_STREAM, uri)
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             if (context !is android.app.Activity) addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        }, "Share S1-mini diagnostics").apply {
+        }, if (includeTranscripts) "Share diagnostics with transcripts" else "Share S1-mini diagnostics").apply {
             if (context !is android.app.Activity) addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         })
         return true
@@ -144,7 +166,63 @@ object S1MiniDiagnostics {
 
     fun clear(context: Context) {
         directory(context).deleteRecursively()
+        clearTranscriptCaptures(context)
         File(context.cacheDir, "s1-diagnostics-export").deleteRecursively()
+    }
+
+    fun recordTranscript(
+        context: Context,
+        reportId: String,
+        rawTranscript: String,
+        cleanedTranscript: String?,
+        finalDeliveredTranscript: String,
+        failureOrBypassReason: String?,
+        nowEpochMs: Long = System.currentTimeMillis()
+    ) {
+        S1MiniTranscriptCaptureStore.save(
+            transcriptDirectory(context),
+            S1MiniTranscriptCapture.create(
+                reportId = reportId,
+                capturedAtEpochMs = nowEpochMs,
+                rawTranscript = rawTranscript,
+                cleanedTranscript = cleanedTranscript,
+                finalDeliveredTranscript = finalDeliveredTranscript,
+                failureOrBypassReason = failureOrBypassReason
+            ),
+            nowEpochMs
+        )
+    }
+
+    @Synchronized
+    fun recordBenchmark(context: Context, diagnostic: S1MiniBenchmarkDiagnostic) {
+        val target = benchmarkFile(context)
+        val temporary = File(target.parentFile, "${target.name}.tmp")
+        temporary.writeText(json.encodeToString(diagnostic))
+        if (!temporary.renameTo(target)) {
+            target.delete()
+            check(temporary.renameTo(target)) { "Unable to replace S1-mini benchmark diagnostics" }
+        }
+    }
+
+    fun transcriptCaptures(
+        context: Context,
+        nowEpochMs: Long = System.currentTimeMillis()
+    ): S1MiniTranscriptCaptureLoadResult =
+        S1MiniTranscriptCaptureStore.load(transcriptDirectory(context), nowEpochMs)
+
+    fun deleteTranscriptCapture(context: Context, reportId: String): Boolean =
+        S1MiniTranscriptCaptureStore.delete(
+            transcriptDirectory(context),
+            reportId,
+            System.currentTimeMillis()
+        )
+
+    fun clearTranscriptCaptures(context: Context) {
+        S1MiniTranscriptCaptureStore.clear(transcriptDirectory(context))
+    }
+
+    fun purgeTranscriptCaptures(context: Context) {
+        transcriptCaptures(context)
     }
 
     fun pssKb(): Long = Debug.getPss()

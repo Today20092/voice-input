@@ -23,6 +23,7 @@ llama_model * g_model = nullptr;
 std::string g_model_path;
 std::string g_runtime;
 bool g_initialized = false;
+std::string g_backend_path;
 
 using Clock = std::chrono::steady_clock;
 long elapsed_ms(Clock::time_point start) {
@@ -75,11 +76,16 @@ void log_callback(enum ggml_log_level level, const char * text, void *) {
     }
 }
 
-void ensure_initialized() {
-    if (g_initialized) return;
+void ensure_initialized(const std::string & backend_path) {
+    if (backend_path.empty()) throw std::runtime_error("invalid_native_library_dir");
+    if (g_initialized) {
+        if (g_backend_path != backend_path) throw std::runtime_error("native_library_dir_changed");
+        return;
+    }
     llama_log_set(log_callback, nullptr);
+    ggml_backend_load_all_from_path(backend_path.c_str());
     llama_backend_init();
-    ggml_backend_load_all();
+    g_backend_path = backend_path;
     g_initialized = true;
 }
 
@@ -125,8 +131,11 @@ struct ModelLoad {
     std::string device_name;
 };
 
-ModelLoad load_model(const std::string & path, const std::string & runtime) {
-    ensure_initialized();
+ModelLoad load_model(
+        const std::string & backend_path,
+        const std::string & path,
+        const std::string & runtime) {
+    ensure_initialized(backend_path);
     auto device = find_device(runtime);
     const std::string normalized_runtime = lower(runtime);
     if (g_model != nullptr && g_model_path == path && g_runtime == normalized_runtime) {
@@ -188,16 +197,17 @@ void throw_runtime(JNIEnv * env, const char * category) {
 
 extern "C" JNIEXPORT jobjectArray JNICALL
 Java_org_futo_voiceinput_s1_S1MiniNative_normalize(
-        JNIEnv * env, jobject, jstring model_path_value, jstring prompt_value,
+        JNIEnv * env, jobject, jstring backend_path_value, jstring model_path_value, jstring prompt_value,
         jint context_size, jint max_new_tokens, jint threads, jstring runtime_value) {
     std::lock_guard<std::mutex> lock(g_mutex);
     g_cancelled.store(false, std::memory_order_relaxed);
     const auto total_started = Clock::now();
     try {
+        const auto backend_path = jstring_to_string(env, backend_path_value);
         const auto model_path = jstring_to_string(env, model_path_value);
         const auto prompt = jstring_to_string(env, prompt_value);
         const auto runtime = jstring_to_string(env, runtime_value);
-        const auto loaded = load_model(model_path, runtime);
+        const auto loaded = load_model(backend_path, model_path, runtime);
         const auto vocab = llama_model_get_vocab(loaded.model);
 
         const auto tokenize_started = Clock::now();
@@ -283,19 +293,24 @@ Java_org_futo_voiceinput_s1_S1MiniNative_unload(JNIEnv *, jobject) {
 }
 
 extern "C" JNIEXPORT jobjectArray JNICALL
-Java_org_futo_voiceinput_s1_S1MiniNative_availableBackends(JNIEnv * env, jobject) {
+Java_org_futo_voiceinput_s1_S1MiniNative_availableBackends(
+        JNIEnv * env, jobject, jstring backend_path_value) {
     std::lock_guard<std::mutex> lock(g_mutex);
     try {
-        ensure_initialized();
+        ensure_initialized(jstring_to_string(env, backend_path_value));
         std::vector<std::string> result;
         for (size_t i = 0; i < ggml_backend_dev_count(); ++i) {
             auto device = ggml_backend_dev_get(i);
             if (device == nullptr) continue;
             const std::string description = safe_string(ggml_backend_dev_description(device), "unknown");
-            result.push_back(description);
+            const auto type = ggml_backend_dev_type(device);
+            const char * kind = type == GGML_BACKEND_DEVICE_TYPE_CPU ? "cpu" :
+                    type == GGML_BACKEND_DEVICE_TYPE_GPU ? "gpu" : "other";
+            result.push_back(std::string(kind) + ":" + description);
         }
         return string_array(env, result);
-    } catch (...) {
-        return string_array(env, {"cpu"});
+    } catch (const std::exception & error) {
+        throw_runtime(env, error.what());
+        return nullptr;
     }
 }

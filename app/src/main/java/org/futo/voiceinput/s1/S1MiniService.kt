@@ -59,6 +59,7 @@ class S1MiniService : Service() {
         val job = scope.launch(start = CoroutineStart.LAZY) {
             try {
                 val result = S1MiniNative.normalize(
+                    nativeLibraryDir = applicationInfo.nativeLibraryDir,
                     modelPath = requireNotNull(data.getString(S1MiniProtocol.KEY_MODEL_PATH)),
                     prompt = requireNotNull(data.getString(S1MiniProtocol.KEY_PROMPT)),
                     contextSize = data.getInt(S1MiniProtocol.KEY_CONTEXT_SIZE),
@@ -107,8 +108,9 @@ class S1MiniService : Service() {
     private fun replyBackends(message: Message) {
         val replyTo = message.replyTo ?: return
         scope.launch {
-            val backends = runCatching { S1MiniNative.availableBackends() }
-                .getOrDefault(arrayOf("cpu"))
+            val backends = runCatching {
+                S1MiniNative.availableBackends(applicationInfo.nativeLibraryDir)
+            }.getOrDefault(emptyArray())
             replyTo.send(Message.obtain(null, S1MiniProtocol.MSG_BACKENDS).apply {
                 data = Bundle().apply { putStringArray(S1MiniProtocol.KEY_BACKENDS, backends) }
             })

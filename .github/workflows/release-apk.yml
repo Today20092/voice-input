@@ -96,28 +96,25 @@ jobs:
         with:
           name: FUTO Voice Input Moonshine ${{ github.ref_name }}
           body: |
-            ## Beta 7 highlights
+            ## Beta 8 highlights
 
-            - Adds optional on-device final-transcript cleanup with S1-mini by Superwhisper.
-            - Clearly labels the feature English-only and bypasses cleanup unless English is established.
-            - Adds styling, structure, context, model warm-time, and runtime controls.
-            - Downloads and verifies the pinned Q4_K_M model at runtime; model weights are not bundled in the APK.
-            - Benchmarks CPU thread counts and experimental OpenCL on the phone, selecting OpenCL only when its validated result is at least 15% faster.
-            - Runs cleanup in an isolated app process with a 15-second raw-transcript fallback.
-            - Adds transcript-free performance diagnostics with copy and ZIP export.
+            - Fixes Android discovery of the packaged llama.cpp CPU and OpenCL backend libraries.
+            - Adds per-candidate benchmark failures, packaged libraries, and discovered devices to standard diagnostics.
+            - Adds persistent opt-in transcript capture for eligible English S1-mini cleanup runs.
+            - Keeps standard diagnostics transcript-free and adds a separately confirmed, clearly labeled transcript ZIP.
+            - Adds transcript review, individual deletion, clear-all, ten-run retention, and seven-day expiry.
 
             ## What to test
 
-            - Download S1-mini from Model Options, enable it, and dictate English on a Galaxy S24+.
-            - Try every styling, structure, and context option and confirm cleanup runs only after Stop.
-            - Try non-English and mixed-language configurations; confirm raw text is retained when English is not established.
-            - Compare Auto, CPU, and OpenCL and rerun the optimization test while watching latency and thermals.
-            - Test immediate unload and each keep-warm duration, cancellation, long dictation, and low-memory recovery.
-            - Export the diagnostics ZIP after any slow or incorrect run and attach it with feedback.
+            - Rerun the optimization test on a Galaxy S24+; it should select a valid CPU or OpenCL result.
+            - Dictate English, press Stop, and confirm S1-mini changes the final transcript instead of falling back immediately.
+            - Enable transcript capture, perform a cleanup run, and review all three labeled transcript stages.
+            - Export both ZIP types and confirm only the `WITH-TRANSCRIPTS` archive contains dictated text.
+            - Attach the new standard or transcript-inclusive ZIP with any failure or quality feedback.
 
             ## Known beta gaps
 
-            - This beta has not yet been performance-validated on the target Galaxy S24+.
+            - The backend-loader fix still needs validation on the target Galaxy S24+.
             - OpenCL support depends on the phone vendor's driver and automatically falls back to validated CPU inference.
             - Cleanup may return the raw transcript after a timeout, model/process failure, or memory pressure.
             - Release-level thermal, memory, long-transcript, and full backend regression testing remains in progress.

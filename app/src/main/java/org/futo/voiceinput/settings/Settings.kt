@@ -186,6 +186,8 @@ fun String.toS1MiniWarmDuration() =
     S1MiniWarmDuration.entries.firstOrNull { it.id == this } ?: S1MiniWarmDuration.TwoMinutes
 
 val S1_MINI_ENABLED = SettingsKey(booleanPreferencesKey("s1_mini_enabled"), false)
+val S1_MINI_TRANSCRIPT_DIAGNOSTICS =
+    SettingsKey(booleanPreferencesKey("s1_mini_transcript_diagnostics"), false)
 val S1_MINI_STYLING =
     SettingsKey(stringPreferencesKey("s1_mini_styling"), S1MiniStyling.SemiFormal.id)
 val S1_MINI_STRUCTURE =

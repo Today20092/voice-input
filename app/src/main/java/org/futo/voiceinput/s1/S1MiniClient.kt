@@ -110,6 +110,42 @@ object S1MiniClient {
 
     suspend fun unload(context: Context) = sendOneWay(context, S1MiniProtocol.MSG_UNLOAD)
 
+    suspend fun availableBackends(context: Context): List<String> =
+        suspendCancellableCoroutine { continuation ->
+            val appContext = context.applicationContext
+            lateinit var connection: ServiceConnection
+            fun finish(backends: List<String>) {
+                runCatching { appContext.unbindService(connection) }
+                if (continuation.isActive) continuation.resume(backends)
+            }
+            val replies = Messenger(Handler(Looper.getMainLooper()) { message ->
+                if (message.what == S1MiniProtocol.MSG_BACKENDS) {
+                    finish(message.data.getStringArray(S1MiniProtocol.KEY_BACKENDS).orEmpty().toList())
+                }
+                true
+            })
+            connection = object : ServiceConnection {
+                override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
+                    runCatching {
+                        Messenger(service).send(Message.obtain(null, S1MiniProtocol.MSG_BACKENDS).apply {
+                            replyTo = replies
+                        })
+                    }.onFailure { finish(emptyList()) }
+                }
+
+                override fun onServiceDisconnected(name: ComponentName?) = finish(emptyList())
+                override fun onBindingDied(name: ComponentName?) = finish(emptyList())
+                override fun onNullBinding(name: ComponentName?) = finish(emptyList())
+            }
+            continuation.invokeOnCancellation { runCatching { appContext.unbindService(connection) } }
+            if (!appContext.bindService(
+                    Intent(appContext, S1MiniService::class.java),
+                    connection,
+                    Context.BIND_AUTO_CREATE
+                )
+            ) finish(emptyList())
+        }
+
     private suspend fun sendOneWay(context: Context, what: Int) =
         suspendCancellableCoroutine<Unit> { continuation ->
             val appContext = context.applicationContext

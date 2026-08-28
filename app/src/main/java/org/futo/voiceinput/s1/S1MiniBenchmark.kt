@@ -14,6 +14,7 @@ import org.futo.voiceinput.settings.S1MiniStructure
 import org.futo.voiceinput.settings.S1MiniStyling
 import org.futo.voiceinput.settings.getSetting
 import org.futo.voiceinput.settings.setSetting
+import java.io.File
 
 data class S1MiniBenchmarkResult(
     val backend: String,
@@ -62,6 +63,7 @@ object S1MiniBenchmark {
             add("opencl" to minOf(4, available))
         }
         val measurements = linkedMapOf<String, Long>()
+        val failures = linkedMapOf<String, String>()
 
         for ((backend, threads) in candidates) {
             val key = "$backend/$threads"
@@ -87,9 +89,34 @@ object S1MiniBenchmark {
                 measurements[key] = samples.sorted()[samples.size / 2]
             } catch (_: TimeoutCancellationException) {
                 // Unsupported or too slow: omit the candidate and retain CPU fallback.
-            } catch (_: Throwable) {
+                failures[key] = "timeout"
+            } catch (error: S1MiniServiceException) {
+                failures[key] = error.category
+            } catch (error: Throwable) {
                 // A backend must pass deterministic output before it can be selected.
+                failures[key] = error.message
+                    ?.takeIf { it.matches(Regex("[a-z0-9_]+")) }
+                    ?: error.javaClass.simpleName
             }
+        }
+
+        val nativeLibraryDir = context.applicationInfo.nativeLibraryDir
+        val backendDevices = runCatching { S1MiniClient.availableBackends(context) }.getOrDefault(emptyList())
+        runCatching {
+            S1MiniDiagnostics.recordBenchmark(
+                context,
+                S1MiniBenchmarkDiagnostic(
+                    measurementsMs = measurements,
+                    failures = failures,
+                    discoveredBackendDevices = backendDevices,
+                    packagedBackendLibraries = File(nativeLibraryDir).listFiles().orEmpty()
+                        .map { it.name }
+                        .filter {
+                            it.startsWith("libggml-") || it == "libs1mini.so" || it == "libllama.so"
+                        }
+                        .sorted()
+                )
+            )
         }
 
         val cpuWinner = measurements.filterKeys { it.startsWith("cpu/") }.minByOrNull { it.value }
