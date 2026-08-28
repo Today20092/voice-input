@@ -66,6 +66,8 @@ jobs:
           printf '%s\n' "$APK_LISTING" | grep -Fx 'lib/arm64-v8a/libggml-opencl.so'
           printf '%s\n' "$APK_LISTING" | grep -Fx 'lib/arm64-v8a/libOpenCL.so'
           printf '%s\n' "$APK_LISTING" | grep -E '^lib/arm64-v8a/libggml-cpu.*\.so$'
+          "$ANDROID_HOME/cmdline-tools/latest/bin/apkanalyzer" manifest print "$APK_PATH" \
+            | grep -F 'android:extractNativeLibs="true"'
           if printf '%s\n' "$APK_LISTING" | grep -E '^lib/(armeabi|armeabi-v7a|x86|x86_64)/'; then
             echo 'Unexpected non-arm64 native library found'
             exit 1
