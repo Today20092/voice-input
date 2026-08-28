@@ -326,3 +326,22 @@ Implemented by `f233072`, `4a61d22`, and `5ab3750`.
 ### Resolution
 
 Implemented by `44fb6fe`, `5ab3750`, and `bef4320`.
+
+## Clarify and reorganize Model Options
+
+**Triage:** ready-for-agent
+
+**What to build:** Make Model Options accurately explain recognition behavior and keep recognition-model selection separate from transcript cleanup. Present concise model choices first, with technical attribution and version details available on demand.
+
+**Blocked by:** None — can start immediately.
+
+- [ ] Whisper is described as final-only transcription rather than live transcription.
+- [ ] Model information distinguishes live transcription, buffered live transcription, and final-only transcription: Moonshine and Nemotron are live, Parakeet Unified is buffered live, and Parakeet TDT and Whisper are final-only.
+- [ ] S1-mini transcript cleanup has a dedicated settings destination and is no longer presented inside the recognition-model catalog flow.
+- [ ] Recognition-model rows show a compact summary containing recognition behavior, languages, download size, installed size, and installation/selection status.
+- [ ] Source, license/attribution, version, and other technical information remain available from a model-details action instead of crowding the primary row.
+- [ ] Whisper English and multilingual variants appear directly with the Whisper choice rather than at the bottom of the catalog after selection.
+- [ ] Model Options and its parent settings summary identify the exact selected variant where a family has multiple choices.
+- [ ] Focused tests cover model-presentation metadata and the settings navigation/placement behavior at stable public seams.
+- [ ] Relevant unit tests, instrumentation tests, assembly, and lint pass.
+- [ ] Whisper native-runtime modernization and Whisper large-v3-turbo Q5/Q8 models remain out of scope.

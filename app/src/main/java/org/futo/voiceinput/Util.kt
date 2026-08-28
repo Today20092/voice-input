@@ -66,6 +66,7 @@ data class ModelDataGGML(
 
 data class ModelData(
     val name: String,
+    val sizeBytes: Long,
     val ggml: ModelDataGGML,
     val legacy: ModelDataLegacy
 )
@@ -258,6 +259,7 @@ val LANGUAGE_LIST = listOf(
 val ENGLISH_MODELS = listOf(
     ModelData(
         name = "English-39 (default)",
+        sizeBytes = 43_550_795,
 
         ggml = ModelDataGGML(
             is_builtin_asset = true,
@@ -280,6 +282,7 @@ val ENGLISH_MODELS = listOf(
 
     ModelData(
         name = "English-74 (slower, more accurate)",
+        sizeBytes = 81_781_811,
 
         ggml = ModelDataGGML(
             is_builtin_asset = false,
@@ -306,6 +309,7 @@ val ENGLISH_MODELS = listOf(
 
     ModelData(
         name = "English-244 (slow)",
+        sizeBytes = 264_477_561,
 
         ggml = ModelDataGGML(
             is_builtin_asset = false,
@@ -336,6 +340,7 @@ val ENGLISH_MODELS = listOf(
 val MULTILINGUAL_MODELS = listOf(
     ModelData(
         name = "Multilingual-39 (less accurate)",
+        sizeBytes = 43_537_450,
 
         ggml = ModelDataGGML(
         is_builtin_asset = false,
@@ -361,6 +366,7 @@ val MULTILINGUAL_MODELS = listOf(
     ),
     ModelData(
         name = "Multilingual-74 (default)",
+        sizeBytes = 81_768_602,
 
         ggml = ModelDataGGML(
             is_builtin_asset = false,
@@ -386,6 +392,7 @@ val MULTILINGUAL_MODELS = listOf(
     ),
     ModelData(
         name = "Multilingual-244 (slow)",
+        sizeBytes = 264_464_624,
 
         ggml = ModelDataGGML(
         is_builtin_asset = false,

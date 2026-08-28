@@ -15,9 +15,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.lifecycleScope
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.rememberNavController
 import kotlinx.coroutines.launch
 import org.futo.voiceinput.s1.S1MiniBenchmark
 import org.futo.voiceinput.s1.S1MiniClient
@@ -38,6 +41,7 @@ import org.futo.voiceinput.settings.S1MiniStructure
 import org.futo.voiceinput.settings.S1MiniStyling
 import org.futo.voiceinput.settings.S1MiniWarmDuration
 import org.futo.voiceinput.settings.ScreenTitle
+import org.futo.voiceinput.settings.ScrollableList
 import org.futo.voiceinput.settings.SettingItem
 import org.futo.voiceinput.settings.SettingRadio
 import org.futo.voiceinput.settings.SettingToggleDataStoreItem
@@ -48,7 +52,7 @@ import java.text.DateFormat
 import java.util.Date
 
 @Composable
-fun S1MiniOptions() {
+fun S1MiniOptions(showTitle: Boolean = true) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val enabled = useDataStore(S1_MINI_ENABLED)
@@ -82,7 +86,9 @@ fun S1MiniOptions() {
         }
     }
 
-    ScreenTitle("Transcript cleanup")
+    if (showTitle) {
+        ScreenTitle("Transcript cleanup")
+    }
     Tip(
         "S1-mini by Superwhisper cleans final English transcripts on-device after you press Stop. " +
             "English only • 484.2 MB download • experimental beta feature."
@@ -324,4 +330,13 @@ private fun TranscriptStage(
         S1MiniTranscriptStageStatus.NotProduced -> "Not produced"
     }
     Text("$label: $value")
+}
+
+@Composable
+@Preview
+fun TranscriptCleanupScreen(navController: NavHostController = rememberNavController()) {
+    ScrollableList {
+        ScreenTitle("Transcript Cleanup", showBack = true, navController = navController)
+        S1MiniOptions(showTitle = false)
+    }
 }

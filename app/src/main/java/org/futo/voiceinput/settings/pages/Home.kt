@@ -39,6 +39,7 @@ import org.futo.voiceinput.settings.ScreenTitle
 import org.futo.voiceinput.settings.ScrollableList
 import org.futo.voiceinput.settings.SettingItem
 import org.futo.voiceinput.settings.SettingsViewModel
+import org.futo.voiceinput.settings.SettingsDestination
 import org.futo.voiceinput.settings.isParakeetSelected
 import org.futo.voiceinput.settings.useDataStore
 
@@ -125,7 +126,7 @@ fun HomeScreen(
                 title = stringResource(R.string.languages),
                 subtitle = multilingualSubtitle,
                 style = NavigationItemStyle.Misc,
-                navigate = { navController.navigate("languages") },
+                navigate = { navController.navigate(SettingsDestination.Languages.route) },
                 icon = painterResource(R.drawable.globe)
             )
         }
@@ -134,14 +135,22 @@ fun HomeScreen(
             title = stringResource(R.string.model),
             subtitle = modelsSubtitle(),
             style = NavigationItemStyle.Misc,
-            navigate = { navController.navigate("models") },
+            navigate = { navController.navigate(SettingsDestination.Models.route) },
             icon = painterResource(R.drawable.cpu)
+        )
+
+        NavigationItem(
+            title = "Transcript Cleanup",
+            subtitle = "Optional S1-mini cleanup after final recognition",
+            style = NavigationItemStyle.Misc,
+            navigate = { navController.navigate(SettingsDestination.TranscriptCleanup.route) },
+            icon = painterResource(R.drawable.edit)
         )
 
         NavigationItem(
             title = stringResource(R.string.input_options),
             style = NavigationItemStyle.Misc,
-            navigate = { navController.navigate("input") },
+            navigate = { navController.navigate(SettingsDestination.Input.route) },
             icon = painterResource(R.drawable.shift)
         )
 
@@ -149,7 +158,7 @@ fun HomeScreen(
         NavigationItem(
             title = stringResource(R.string.theme),
             style = NavigationItemStyle.Misc,
-            navigate = { navController.navigate("themes") },
+            navigate = { navController.navigate(SettingsDestination.Themes.route) },
             icon = painterResource(R.drawable.eye)
         )
 
@@ -157,7 +166,7 @@ fun HomeScreen(
             title = stringResource(R.string.testing_menu),
             subtitle = stringResource(R.string.try_out_voice_input),
             style = NavigationItemStyle.Misc,
-            navigate = { navController.navigate("testing") },
+            navigate = { navController.navigate(SettingsDestination.Testing.route) },
             icon = painterResource(R.drawable.edit)
         )
 
@@ -165,7 +174,7 @@ fun HomeScreen(
             NavigationItem(
                 title = stringResource(R.string.payment),
                 style = NavigationItemStyle.Misc,
-                navigate = { navController.navigate("pleasePay") },
+                navigate = { navController.navigate(SettingsDestination.PleasePay.route) },
                 icon = painterResource(R.drawable.dollar_sign)
             )
         }
@@ -173,7 +182,7 @@ fun HomeScreen(
         NavigationItem(
             title = stringResource(R.string.advanced),
             style = NavigationItemStyle.Misc,
-            navigate = { navController.navigate("advanced") },
+            navigate = { navController.navigate(SettingsDestination.Advanced.route) },
             icon = painterResource(R.drawable.code)
         )
 
@@ -181,14 +190,14 @@ fun HomeScreen(
         NavigationItem(
             title = stringResource(R.string.help),
             style = NavigationItemStyle.Misc,
-            navigate = { navController.navigate("help") },
+            navigate = { navController.navigate(SettingsDestination.Help.route) },
             icon = painterResource(R.drawable.help_circle)
         )
 
         NavigationItem(
             title = stringResource(R.string.credits),
             style = NavigationItemStyle.Misc,
-            navigate = { navController.navigate("credits") },
+            navigate = { navController.navigate(SettingsDestination.Credits.route) },
             icon = painterResource(R.drawable.users)
         )
         ShareFeedbackOption()

@@ -50,6 +50,7 @@ import org.futo.voiceinput.settings.pages.PaymentScreen
 import org.futo.voiceinput.settings.pages.PaymentThankYouScreen
 import org.futo.voiceinput.settings.pages.TestScreen
 import org.futo.voiceinput.settings.pages.ThemeScreen
+import org.futo.voiceinput.settings.pages.TranscriptCleanupScreen
 
 
 data class SettingsUiState(
@@ -113,25 +114,25 @@ fun SettingsMain(
     settingsViewModel: SettingsViewModel = viewModel(),
     navController: NavHostController = rememberNavController(),
     billing: BillingManager? = null,
-    initialDestination: String = "home"
+    initialDestination: String = SettingsDestination.Home.route
 ) {
     val settingsUiState by settingsViewModel.uiState.collectAsState()
     val isAlreadyPaid = useDataStore(IS_ALREADY_PAID.key, default = IS_ALREADY_PAID.default)
     val hasSeenNotice = useDataStore(HAS_SEEN_PAID_NOTICE.key, default = HAS_SEEN_PAID_NOTICE.default)
     val paymentDest = if (!isAlreadyPaid.value && hasSeenNotice.value) {
-        "error"
+        SettingsDestination.Error.route
     } else if (isAlreadyPaid.value && !hasSeenNotice.value) {
-        "paid"
+        SettingsDestination.Paid.route
     } else {
-        "pleasePay"
+        SettingsDestination.PleasePay.route
     }
 
     LaunchedEffect(paymentDest) {
-        if (paymentDest != "pleasePay") {
+        if (paymentDest != SettingsDestination.PleasePay.route) {
             navController.navigate(
                 paymentDest,
                 NavOptions.Builder()
-                    .setPopUpTo("home", false)
+                    .setPopUpTo(SettingsDestination.Home.route, false)
                     .setLaunchSingleTop(true)
                     .build()
             )
@@ -142,23 +143,24 @@ fun SettingsMain(
         navController = navController,
         startDestination = initialDestination
     ) {
-        composable("home") { HomeScreen(settingsViewModel, navController) }
-        composable("advanced") { AdvancedScreen(settingsViewModel, navController) }
-        composable("help") { HelpScreen(navController) }
-        composable("languages") { LanguagesScreen(settingsViewModel, navController) }
-        composable("testing") { TestScreen(settingsUiState.intentResultText, navController) }
-        composable("models") { ModelsScreen(settingsViewModel, navController) }
-        composable("input") { InputScreen(settingsViewModel, navController) }
-        composable("themes") { ThemeScreen(navController) }
+        composable(SettingsDestination.Home.route) { HomeScreen(settingsViewModel, navController) }
+        composable(SettingsDestination.Advanced.route) { AdvancedScreen(settingsViewModel, navController) }
+        composable(SettingsDestination.Help.route) { HelpScreen(navController) }
+        composable(SettingsDestination.Languages.route) { LanguagesScreen(settingsViewModel, navController) }
+        composable(SettingsDestination.Testing.route) { TestScreen(settingsUiState.intentResultText, navController) }
+        composable(SettingsDestination.Models.route) { ModelsScreen(settingsViewModel, navController) }
+        composable(SettingsDestination.TranscriptCleanup.route) { TranscriptCleanupScreen(navController) }
+        composable(SettingsDestination.Input.route) { InputScreen(settingsViewModel, navController) }
+        composable(SettingsDestination.Themes.route) { ThemeScreen(navController) }
 
-        composable("credits") {
+        composable(SettingsDestination.Credits.route) {
             CreditsScreen(openDependencies = {
-                navController.navigate("dependencies")
+                navController.navigate(SettingsDestination.Dependencies.route)
             }, navController = navController)
         }
-        composable("dependencies") { DependenciesScreen(navController) }
+        composable(SettingsDestination.Dependencies.route) { DependenciesScreen(navController) }
 
-        composable("pleasePay") {
+        composable(SettingsDestination.PleasePay.route) {
             PaymentScreen(
                 settingsViewModel,
                 navController,
@@ -167,11 +169,11 @@ fun SettingsMain(
             )
         }
 
-        composable("paid") {
+        composable(SettingsDestination.Paid.route) {
             PaymentThankYouScreen { navController.navigateUp() }
         }
 
-        composable("error") {
+        composable(SettingsDestination.Error.route) {
             PaymentFailedScreen { navController.navigateUp() }
         }
     }
@@ -184,7 +186,7 @@ data class BlacklistedInputMethod(val packageName: String, val details: String, 
 fun SetupOrMain(
     settingsViewModel: SettingsViewModel = viewModel(),
     billing: BillingManager,
-    initialDestination: String = "home"
+    initialDestination: String = SettingsDestination.Home.route
 ) {
     val blacklistedMethods =
         listOf(

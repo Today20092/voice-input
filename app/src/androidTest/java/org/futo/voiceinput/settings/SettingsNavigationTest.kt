@@ -5,6 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
@@ -31,13 +32,25 @@ class SettingsNavigationTest {
         }
         compose.waitUntil(5_000) { navController.currentDestination?.route == "home" }
 
-        compose.runOnUiThread { navController.navigate("models") }
-        compose.waitUntil(5_000) { navController.currentDestination?.route == "models" }
+        compose.runOnUiThread { navController.navigate(SettingsDestination.Models.route) }
+        compose.waitUntil(5_000) {
+            navController.currentDestination?.route == SettingsDestination.Models.route
+        }
 
         dispatchPredictiveBack(cancel = true)
-        compose.waitUntil(5_000) { navController.currentDestination?.route == "models" }
+        compose.waitUntil(5_000) {
+            navController.currentDestination?.route == SettingsDestination.Models.route
+        }
 
         dispatchPredictiveBack(cancel = false)
+        compose.waitUntil(5_000) { navController.currentDestination?.route == "home" }
+
+        compose.onNodeWithText("Transcript Cleanup").performClick()
+        compose.waitUntil(5_000) {
+            navController.currentDestination?.route == SettingsDestination.TranscriptCleanup.route
+        }
+        compose.onNodeWithText("Transcript Cleanup").assertIsDisplayed()
+        compose.runOnUiThread { compose.activity.onBackPressedDispatcher.onBackPressed() }
         compose.waitUntil(5_000) { navController.currentDestination?.route == "home" }
 
         compose.runOnUiThread { navController.navigate("advanced") }
