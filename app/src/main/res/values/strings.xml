@@ -1,4 +1,5 @@
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+    <string name="s1_cleaning_transcript">Cleaning transcript…</string>
     <string name="app_name">FUTO Voice Input Moonshine</string>
     <string name="voice_input_method">FUTO Voice Input Moonshine Method</string>
     <string name="support_email" translatable="false">voiceinput@futo.org</string>

@@ -13,6 +13,8 @@ The goal is straightforward: keep the FUTO UI and recording flow while adding re
 - Parakeet and legacy Whisper/GGML remain selectable backends.
 - Batch and streaming recognizers share backend-neutral Kotlin contracts.
 - Personal vocabulary entries correct partial and final transcripts; use `heard => preferred` for explicit aliases.
+- Optional **S1-mini by Superwhisper** cleanup runs locally on final English transcripts after Stop.
+- S1-mini includes styling, structure, context, keep-warm, CPU/OpenCL, optimization, and transcript-free diagnostics controls.
 - The stable app uses the distinct `org.futo.voiceinput.moonshine` package ID.
 - Only the selected backend's model files are required before voice input starts.
 
@@ -58,6 +60,18 @@ filesDir/moonshine-medium-streaming-en/
 ```
 
 Parakeet and Whisper/GGML models are also stored in app-private storage and run offline after download.
+
+## Optional S1-mini transcript cleanup
+
+Open **Model Options → Transcript cleanup** to download and enable **S1-mini by Superwhisper**.
+The pinned Q4_K_M model is approximately 484.2 MB. It is English-only, disabled by default, and
+runs only after recording stops. If cleanup times out, fails, or English is not established, the app
+keeps the raw transcript. Personal Vocabulary corrections run after cleanup.
+
+The first run benchmarks validated CPU configurations and experimental OpenCL on the phone. The
+Auto setting selects OpenCL only when it produces the expected output and is at least 15% faster than
+the best CPU result. Diagnostics contain timing, runtime, memory, and thermal data only—never audio,
+transcripts, prompts, or vocabulary—and can be exported as a ZIP for bug reports.
 
 ## Building Locally
 
@@ -132,5 +146,11 @@ You can also run the workflow manually from the Actions tab. Manual runs upload 
 This fork is based on FUTO Voice Input and keeps FUTO's license and notices. FUTO Voice Input is licensed under the FUTO Source First License. Review [LICENSE.md](LICENSE.md) before distributing modified builds.
 
 Parakeet model assets come from `istupakov/parakeet-tdt-0.6b-v3-onnx`, an ONNX conversion of NVIDIA Parakeet TDT 0.6B V3, licensed CC-BY-4.0.
+
+The optional downloaded cleanup model is **S1-mini by Superwhisper**, licensed under Apache License
+2.0 with the publisher's required naming condition. See
+[the model notice](docs/third-party/S1-mini-NOTICE.md). llama.cpp is included as a pinned submodule
+under its MIT license; Khronos OpenCL headers and loader are included as pinned submodules under
+their respective upstream licenses.
 
 This fork is not affiliated with or endorsed by FUTO.

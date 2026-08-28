@@ -39,3 +39,7 @@ _Avoid_: Frozen, failed, dropping audio
 **Model artifact**:
 An immutable, hash-checked file belonging to a recognition model, which may be hosted by its original publisher or a community converter.
 _Avoid_: Model, unverified download
+
+**Transcript cleanup**:
+An optional on-device transformation of a final raw English recognition transcript into clean written text before personal vocabulary corrections and insertion.
+_Avoid_: Recognition model, transcription model, speech cleanup

@@ -51,6 +51,8 @@ import org.futo.voiceinput.recognition.RecognitionModelLifecycle
 import org.futo.voiceinput.recognition.RecognitionModelSelection
 import org.futo.voiceinput.recognition.RecognitionModelStore
 import org.futo.voiceinput.recognition.RecognitionRuntimeCallbacks
+import org.futo.voiceinput.s1.S1MiniCleanupResult
+import org.futo.voiceinput.s1.S1MiniTranscriptCleaner
 import org.futo.voiceinput.settings.toSpeechBackendType
 import org.futo.voiceinput.settings.toEndOfSpeechProfile
 import java.nio.FloatBuffer
@@ -221,6 +223,7 @@ abstract class RecordingSession {
     protected abstract fun updateMagnitude(magnitude: Float, state: MagnitudeState)
 
     protected abstract fun processing()
+    protected abstract fun cleaning()
 
     private var isVADPaused = false
     fun pauseVAD(v: Boolean) {
@@ -895,10 +898,19 @@ abstract class RecordingSession {
         }
 
         yield()
+        var cleanupResult = S1MiniCleanupResult("", applied = false)
         val text = try {
             val rawText = (runBackend as? StreamingSpeechBackend)?.finishStreaming()
                 ?: runBackend.transcribe(floatArray)
-            PersonalVocabulary.apply(rawText, personalVocabulary)
+            cleanupResult = S1MiniTranscriptCleaner.clean(
+                context = context,
+                rawTranscript = rawText,
+                backend = backendType,
+                detectedLanguage = runBackend.detectedLanguage,
+                forcedLanguage = forcedLanguage,
+                onCleaning = { withContext(Dispatchers.Main) { cleaning() } }
+            )
+            PersonalVocabulary.apply(cleanupResult.text, personalVocabulary)
         } catch(e: OutOfMemoryError) {
             decodingStatus(RunState.OOMError)
             closeFailedBackend(runGeneration)
@@ -927,7 +939,7 @@ abstract class RecordingSession {
 
         withContext(Dispatchers.Main) {
             runBackend.detectedLanguage?.let(::languageDetected)
-            if (text.isBlank()) {
+            if (text.isBlank() && !cleanupResult.validEmpty) {
                 failed(NoSpeechRecognizedException())
             } else {
                 finished(text)

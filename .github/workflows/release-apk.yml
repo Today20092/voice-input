@@ -5,6 +5,7 @@ on:
     branches:
       - "master"
       - "codex/moonshine-vocabulary-beta"
+      - "codex/s1-mini-beta"
     tags:
       - "v*"
   workflow_dispatch:
@@ -79,35 +80,37 @@ jobs:
         with:
           name: FUTO Voice Input Moonshine ${{ github.ref_name }}
           body: |
-            ## Beta 6 highlights
+            ## Beta 7 highlights
 
-            - Centralizes recognition-model readiness, loading, selection, installation, deletion, and runtime release.
-            - Keeps recording active while streaming models load so early speech is not dropped.
-            - Preserves queued streaming audio when decoding falls behind and rejects stale samples after a recording session ends.
-            - Removes full model-file hashing from interactive startup while retaining integrity checks during installation.
-            - Recovers more safely from model-load failures and now closes partially initialized backends when loading fails or is cancelled.
-            - Adds predictive-back transitions in Settings on supported Android versions.
-            - Expands regression coverage for recording stop policy, streaming replay/reset, catalog readiness, and model lifecycle behavior.
+            - Adds optional on-device final-transcript cleanup with S1-mini by Superwhisper.
+            - Clearly labels the feature English-only and bypasses cleanup unless English is established.
+            - Adds styling, structure, context, model warm-time, and runtime controls.
+            - Downloads and verifies the pinned Q4_K_M model at runtime; model weights are not bundled in the APK.
+            - Benchmarks CPU thread counts and experimental OpenCL on the phone, selecting OpenCL only when its validated result is at least 15% faster.
+            - Runs cleanup in an isolated app process with a 15-second raw-transcript fallback.
+            - Adds transcript-free performance diagnostics with copy and ZIP export.
 
             ## What to test
 
-            - Start speaking immediately after opening voice input, especially with a streaming model selected.
-            - Cancel and rapidly restart dictation; confirm no text or audio leaks between sessions.
-            - Switch among installed Moonshine, Parakeet, Nemotron, and Whisper models and verify selection survives restart.
-            - Interrupt or fail a model download/load and confirm the app offers a clean retry without deleting a valid download.
-            - Exercise Android 15 predictive back from Model Options and report animation or back-stack issues.
+            - Download S1-mini from Model Options, enable it, and dictate English on a Galaxy S24+.
+            - Try every styling, structure, and context option and confirm cleanup runs only after Stop.
+            - Try non-English and mixed-language configurations; confirm raw text is retained when English is not established.
+            - Compare Auto, CPU, and OpenCL and rerun the optimization test while watching latency and thermals.
+            - Test immediate unload and each keep-warm duration, cancellation, long dictation, and low-memory recovery.
+            - Export the diagnostics ZIP after any slow or incorrect run and attach it with feedback.
 
             ## Known beta gaps
 
-            - Predictive-back animation still needs broader real-device and instrumentation validation.
-            - Model performance labels and latency guidance still need calibration across representative phones.
-            - Release-level thermal, memory, backlog, download-recovery, and full backend regression testing remains in progress.
+            - This beta has not yet been performance-validated on the target Galaxy S24+.
+            - OpenCL support depends on the phone vendor's driver and automatically falls back to validated CPU inference.
+            - Cleanup may return the raw transcript after a timeout, model/process failure, or memory pressure.
+            - Release-level thermal, memory, long-transcript, and full backend regression testing remains in progress.
 
             ## Installation and models
 
             This is a signed standalone APK for the FUTO Voice Input fork. Moonshine remains the default offline recognizer; Parakeet, Nemotron, and legacy Whisper/GGML remain selectable in Model Options.
 
-            Speech models are not bundled in the APK. Download the desired model on first use or from Model Options; transcription remains offline after installation.
+            Speech models and S1-mini weights are not bundled in the APK. Download the desired model on first use or from Model Options; transcription and cleanup remain offline after installation.
 
             The Parakeet integration and repository changes in this fork were built with AI assistance using Codex (GPT-5).
           files: release/*.apk

@@ -615,6 +615,19 @@ abstract class RecognizerView {
                 }
             }
         }
+
+        override fun cleaning() {
+            setContent {
+                this@RecognizerView.Window(
+                    onClose = { cancelRecognizer() },
+                    onFinish = { },
+                    onPauseVAD = { },
+                    allowClick = false
+                ) {
+                    RecognizeLoadingCircle(text = stringResource(R.string.s1_cleaning_transcript))
+                }
+            }
+        }
     }
 
     fun isRecording(): Boolean {

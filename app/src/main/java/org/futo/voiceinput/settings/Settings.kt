@@ -142,6 +142,65 @@ val PARAKEET_KEEP_WARM_TIMEOUT_MS =
 val PARAKEET_ENGINE_DIAGNOSTICS =
     SettingsKey(booleanPreferencesKey("parakeet_engine_diagnostics"), false)
 
+enum class S1MiniStyling(val id: String, val label: String) {
+    Casual("casual", "Casual"),
+    SemiCasual("semi-casual", "Semi-casual"),
+    SemiFormal("semi-formal", "Semi-formal"),
+    Formal("formal", "Formal")
+}
+
+enum class S1MiniStructure(val id: String, val label: String) {
+    Prose("prose", "Prose"),
+    Lists("lists", "Lists")
+}
+
+enum class S1MiniContext(val id: String, val label: String) {
+    General("general", "General"),
+    Email("email", "Email")
+}
+
+enum class S1MiniRuntime(val id: String, val label: String) {
+    Auto("auto", "Auto (recommended)"),
+    Cpu("cpu", "CPU"),
+    OpenCl("opencl", "OpenCL (experimental)")
+}
+
+enum class S1MiniWarmDuration(val id: String, val label: String, val timeoutMs: Long) {
+    Immediate("immediate", "Immediately unload", 0L),
+    TwoMinutes("2m", "2 minutes", 2 * 60 * 1000L),
+    FiveMinutes("5m", "5 minutes", 5 * 60 * 1000L),
+    FifteenMinutes("15m", "15 minutes", 15 * 60 * 1000L),
+    ThirtyMinutes("30m", "30 minutes", 30 * 60 * 1000L),
+    ProcessLifetime("process", "Until Android stops cleanup", -1L)
+}
+
+fun String.toS1MiniStyling() =
+    S1MiniStyling.entries.firstOrNull { it.id == this } ?: S1MiniStyling.SemiFormal
+fun String.toS1MiniStructure() =
+    S1MiniStructure.entries.firstOrNull { it.id == this } ?: S1MiniStructure.Prose
+fun String.toS1MiniContext() =
+    S1MiniContext.entries.firstOrNull { it.id == this } ?: S1MiniContext.General
+fun String.toS1MiniRuntime() =
+    S1MiniRuntime.entries.firstOrNull { it.id == this } ?: S1MiniRuntime.Auto
+fun String.toS1MiniWarmDuration() =
+    S1MiniWarmDuration.entries.firstOrNull { it.id == this } ?: S1MiniWarmDuration.TwoMinutes
+
+val S1_MINI_ENABLED = SettingsKey(booleanPreferencesKey("s1_mini_enabled"), false)
+val S1_MINI_STYLING =
+    SettingsKey(stringPreferencesKey("s1_mini_styling"), S1MiniStyling.SemiFormal.id)
+val S1_MINI_STRUCTURE =
+    SettingsKey(stringPreferencesKey("s1_mini_structure"), S1MiniStructure.Prose.id)
+val S1_MINI_CONTEXT =
+    SettingsKey(stringPreferencesKey("s1_mini_context"), S1MiniContext.General.id)
+val S1_MINI_RUNTIME =
+    SettingsKey(stringPreferencesKey("s1_mini_runtime"), S1MiniRuntime.Auto.id)
+val S1_MINI_WARM_DURATION =
+    SettingsKey(stringPreferencesKey("s1_mini_warm_duration"), S1MiniWarmDuration.TwoMinutes.id)
+val S1_MINI_AUTO_BACKEND = SettingsKey(stringPreferencesKey("s1_mini_auto_backend"), "cpu")
+val S1_MINI_AUTO_THREADS = SettingsKey(intPreferencesKey("s1_mini_auto_threads"), 4)
+val S1_MINI_BENCHMARK_FINGERPRINT =
+    SettingsKey(stringPreferencesKey("s1_mini_benchmark_fingerprint"), "")
+
 @Composable
 fun isParakeetSelected(): Boolean {
     val (backend, _) = useDataStore(SPEECH_BACKEND)

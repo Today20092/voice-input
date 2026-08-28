@@ -122,6 +122,22 @@
             android:permission="android.permission.BIND_JOB_SERVICE" >
         </service>
 
+        <service
+            android:name=".s1.S1MiniService"
+            android:exported="false"
+            android:process=":s1_cleanup"
+            android:stopWithTask="true" />
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.files"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/s1_file_paths" />
+        </provider>
+
         <!-- Workaround for https://github.com/futo-org/voice-input/issues/17 -->
         <service
             android:name=".DummyService"

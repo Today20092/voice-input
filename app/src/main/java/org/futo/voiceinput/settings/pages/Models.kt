@@ -376,6 +376,9 @@ fun ModelsScreen(
         PersonalDictionaryEditor(disabled = false)
         Spacer(modifier = Modifier.height(32.dp))
 
+        S1MiniOptions()
+        Spacer(modifier = Modifier.height(32.dp))
+
         ManagedRecognitionModelCatalog()
 
         if (whisperSelected) WhisperModelOptions()

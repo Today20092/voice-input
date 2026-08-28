@@ -57,9 +57,10 @@ android {
         applicationId "org.futo.voiceinput"
         minSdk 26
         targetSdk 35
-        versionCode 42
-        versionName "1.4.2-beta.6"
+        versionCode 43
+        versionName "1.4.2-beta.7"
         buildConfigField "boolean", "BUNDLE_PARAKEET_MODEL", bundleParakeetModel.toString()
+        buildConfigField "String", "S1_LLAMA_COMMIT", '"b19cbe925be361d229f0fe03435affe4a2717f37"'
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
