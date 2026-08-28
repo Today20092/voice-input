@@ -31,11 +31,31 @@ class S1MiniBenchmarkPolicyTest {
         val wrongMeaning = S1MiniBenchmarkPolicy.validate(
             List(3) { "Send the report by Friday." }
         )
+        val reversedIntent = S1MiniBenchmarkPolicy.validate(
+            List(3) { "Do not send the report by Thursday." }
+        )
 
         assertFalse(unstable.accepted)
         assertFalse(unstable.stable)
         assertFalse(wrongMeaning.accepted)
         assertFalse(wrongMeaning.preservesMeaning)
+        assertFalse(reversedIntent.accepted)
+        assertFalse(reversedIntent.preservesMeaning)
+    }
+
+    @Test
+    fun acceptsStableSynonymsAndDescribesPartialValidation() {
+        val synonym = "The write-up needs to go out by Thursday."
+
+        val accepted = S1MiniBenchmarkPolicy.validate(List(3) { synonym })
+        val partial = S1MiniBenchmarkPolicy.validate(listOf(synonym))
+
+        assertTrue(accepted.accepted)
+        assertTrue(accepted.preservesMeaning)
+        assertFalse(partial.accepted)
+        assertEquals("incomplete_validation", partial.failureReason)
+        assertEquals(1, partial.attempts)
+        assertEquals(1, partial.outputHashes.size)
     }
 
     @Test
