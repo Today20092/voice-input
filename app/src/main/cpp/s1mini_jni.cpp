@@ -237,7 +237,7 @@ Java_org_futo_voiceinput_s1_S1MiniNative_normalize(
         std::string output;
         int output_tokens = 0;
         for (; output_tokens < max_new_tokens && !g_cancelled.load(); ++output_tokens) {
-            const llama_token token = llama_sampler_sample(sampler.get(), ctx.get(), -1);
+            llama_token token = llama_sampler_sample(sampler.get(), ctx.get(), -1);
             if (llama_vocab_is_eog(vocab, token)) break;
             output += token_piece(vocab, token);
             auto next = llama_batch_get_one(&token, 1);
