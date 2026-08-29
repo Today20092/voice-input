@@ -21,8 +21,9 @@ import java.util.UUID
 
 @Serializable
 data class S1MiniDiagnosticRun(
-    val schemaVersion: Int = 3,
+    val schemaVersion: Int = 4,
     val reportId: String = UUID.randomUUID().toString(),
+    val recordedAtEpochMs: Long = System.currentTimeMillis(),
     val appVersion: String = BuildConfig.VERSION_NAME,
     val modelVersion: String = S1MiniModel.VERSION,
     val quantization: String = "Q4_K_M",
@@ -32,6 +33,8 @@ data class S1MiniDiagnosticRun(
     val styling: String,
     val structure: String,
     val context: String,
+    val warmDurationId: String,
+    val warmTimeoutMs: Long,
     val warm: Boolean,
     val inputApproxWords: Int,
     val outputCharacters: Int,

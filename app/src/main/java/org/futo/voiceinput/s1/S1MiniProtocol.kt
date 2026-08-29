@@ -15,7 +15,6 @@ internal object S1MiniProtocol {
     const val KEY_MAX_NEW_TOKENS = "max_new_tokens"
     const val KEY_THREADS = "threads"
     const val KEY_RUNTIME = "runtime"
-    const val KEY_WARM_TIMEOUT_MS = "warm_timeout_ms"
     const val KEY_TEXT = "text"
     const val KEY_METRICS = "metrics"
     const val KEY_ERROR_CATEGORY = "error_category"

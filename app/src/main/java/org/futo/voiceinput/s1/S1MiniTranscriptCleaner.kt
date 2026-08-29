@@ -70,7 +70,8 @@ object S1MiniTranscriptCleaner {
         } else {
             minOf(4, Runtime.getRuntime().availableProcessors()).coerceAtLeast(1)
         }
-        val warmTimeout = context.getSetting(S1_MINI_WARM_DURATION).toS1MiniWarmDuration().timeoutMs
+        val warmDuration = context.getSetting(S1_MINI_WARM_DURATION).toS1MiniWarmDuration()
+        val warmTimeout = warmDuration.timeoutMs
         val nativeLibraryDir = context.applicationInfo.nativeLibraryDir
         val packagedBackendLibraries = File(nativeLibraryDir).listFiles().orEmpty()
             .map { it.name }
@@ -97,6 +98,8 @@ object S1MiniTranscriptCleaner {
                 styling = styling.id,
                 structure = structure.id,
                 context = cleanupContext.id,
+                warmDurationId = warmDuration.id,
+                warmTimeoutMs = warmTimeout,
                 warm = nativeMetrics.any { "\"warm\":true" in it },
                 inputApproxWords = rawTranscript.split(Regex("\\s+")).count { it.isNotBlank() },
                 outputCharacters = outputCharacters,
