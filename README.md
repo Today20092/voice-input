@@ -1,16 +1,16 @@
 # FUTO Voice Input Moonshine
 
-This personal fork keeps the FUTO voice keyboard experience and uses Moonshine v2 Streaming as its default offline recognizer. Choose the Small model for balanced speed and accuracy or Medium for higher accuracy. NVIDIA Parakeet TDT 0.6B V3 and the legacy FUTO Whisper/GGML backend remain selectable from Model Options.
+This personal fork keeps the FUTO voice keyboard experience, uses Moonshine v2 Streaming as its default offline recognizer, and adds optional on-device transcript cleanup with S1-mini by Superwhisper. Moonshine Small and Medium, Parakeet, Nemotron, and legacy FUTO Whisper/GGML models are available from Model Options.
 
 This fork's Parakeet integration and repository changes were built with AI assistance using Codex (GPT-5).
 
-The goal is straightforward: keep the FUTO UI and recording flow while adding responsive streaming transcription and personal vocabulary corrections.
+The goal is straightforward: keep the FUTO UI and recording flow while adding responsive streaming transcription, personal vocabulary corrections, and private offline transcript cleanup.
 
 ## What Changed
 
 - Moonshine v2 Small Streaming is the default balanced option and emits live partial transcripts.
 - Moonshine v2 Medium Streaming is available as a higher-accuracy option.
-- Parakeet and legacy Whisper/GGML remain selectable backends.
+- Parakeet, Nemotron, and legacy Whisper/GGML remain selectable backends.
 - Batch and streaming recognizers share backend-neutral Kotlin contracts.
 - Personal vocabulary entries correct partial and final transcripts; use `heard => preferred` for explicit aliases.
 - Optional **S1-mini by Superwhisper** cleanup runs locally on final English transcripts after Stop.
@@ -24,7 +24,12 @@ The goal is straightforward: keep the FUTO UI and recording flow while adding re
 
 <img src="docs/screenshots/model-options.png" alt="Model Options screen" width="360">
 
-Moonshine is selected by default, with Parakeet and Whisper/GGML available as fallbacks.
+Moonshine is selected by default, with Parakeet, Nemotron, and Whisper/GGML available as alternatives.
+
+## Project branches
+
+- `master` contains the current stable release.
+- `codex/s1-mini-beta` preserves the S1-mini development and release-validation history.
 
 ## Active Model
 
@@ -63,7 +68,7 @@ Parakeet and Whisper/GGML models are also stored in app-private storage and run 
 
 ## Optional S1-mini transcript cleanup
 
-Open **Model Options → Transcript cleanup** to download and enable **S1-mini by Superwhisper**.
+Open **Transcript Cleanup** from the main settings screen to download and enable **S1-mini by Superwhisper**.
 The pinned Q4_K_M model is approximately 484.2 MB. It is English-only, disabled by default, and
 runs only after recording stops. If cleanup times out, fails, or English is not established, the app
 keeps the raw transcript. Personal Vocabulary corrections run after cleanup.
@@ -108,20 +113,16 @@ app/build/outputs/apk/standalone/release/app-standalone-release.apk
 
 ## GitHub Releases
 
-This repository includes a GitHub Actions workflow that builds an APK when a `v*` tag is pushed.
+The current stable release is the tested `v1.4.2-beta.11` build, promoted unchanged after beta validation. Download it from [GitHub Releases](https://github.com/Today20092/voice-input/releases/latest).
 
-The first bundled-model Parakeet fork release was tagged as:
-
-```text
-v1.0.0-parakeet
-```
+This repository includes a GitHub Actions workflow that builds and verifies an APK when a `v*` tag is pushed.
 
 To create a new release:
 
 ```bash
-git tag v1.1.0-parakeet-runtime-download
+git tag v1.4.3
 git push origin master
-git push origin v1.1.0-parakeet-runtime-download
+git push origin v1.4.3
 ```
 
 GitHub Actions will:
