@@ -15,6 +15,8 @@ object S1MiniEnglishGate {
         SpeechBackendType.Parakeet,
         SpeechBackendType.ParakeetUnified -> true
 
+        SpeechBackendType.Orukeet -> detectedLanguage.equals("en", ignoreCase = true)
+
         SpeechBackendType.Nemotron -> {
             if (nemotronProfile != "multilingual") {
                 true

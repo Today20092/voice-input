@@ -98,41 +98,35 @@ jobs:
         with:
           name: FUTO Voice Input Moonshine ${{ github.ref_name }}
           body: |
-            ## Beta 10 highlights
+            ## Orukeet beta
 
-            - Fixes the optimization test rejecting valid S1-mini rewrites that differ from one exact sentence.
-            - Validates three stable outputs for required meaning before timing a backend.
-            - Skips OpenCL benchmarking when Android discovers no GPU backend.
-            - Records validation hashes, stability, meaning checks, and skipped candidates in diagnostics.
-            - Extracts packaged llama.cpp CPU and OpenCL backend libraries so Android's filesystem loader can discover them.
-            - Prevents release publication unless the APK manifest requires native-library extraction.
-            - Adds per-candidate benchmark failures, packaged libraries, and discovered devices to standard diagnostics.
-            - Adds persistent opt-in transcript capture for eligible English S1-mini cleanup runs.
-            - Keeps standard diagnostics transcript-free and adds a separately confirmed, clearly labeled transcript ZIP.
-            - Adds transcript review, individual deletion, clear-all, ten-run retention, and seven-day expiry.
+            - Adds Orukeet as a selectable offline recognizer under Model Options.
+            - Reuses the existing Sherpa-ONNX runtime with Orukeet's 128-bin audio features.
+            - Downloads the pinned INT8 archive (about 487 MB; about 672 MB installed), verifying the archive and every installed file.
+            - Preserves Oruk AI's CC BY-SA 4.0 license and NVIDIA attribution alongside the weights.
+            - Includes the current S1-mini features and model-picker improvements. Moonshine remains the default.
 
             ## What to test
 
-            - Rerun the optimization test on a Galaxy S24+; it should select a valid CPU or OpenCL result.
-            - Dictate English, press Stop, and confirm S1-mini changes the final transcript instead of falling back immediately.
-            - Enable transcript capture, perform a cleanup run, and review all three labeled transcript stages.
-            - Export both ZIP types and confirm only the `WITH-TRANSCRIPTS` archive contains dictated text.
-            - Attach the new standard or transcript-inclusive ZIP with any failure or quality feedback.
+            - Open Model Options, choose Orukeet, and complete the download.
+            - Dictate and press Stop; Orukeet returns a final transcript, without live partials.
+            - Compare accuracy and response time with Parakeet on the same speech.
+            - Switch models, restart the app, and confirm the selection persists.
 
             ## Known beta gaps
 
-            - The backend-loader fix still needs validation on the target Galaxy S24+.
-            - OpenCL support depends on the phone vendor's driver and automatically falls back to validated CPU inference.
-            - Cleanup may return the raw transcript after a timeout, model/process failure, or memory pressure.
-            - Release-level thermal, memory, long-transcript, and full backend regression testing remains in progress.
+            - Orukeet supports 25 languages. Published accuracy gains are the authors' measurements, not Android benchmarks.
+            - On-device Orukeet transcription, speed, and memory use await phone testing.
+            - Orukeet currently releases its recognizer after each dictation; Parakeet's keep-warm setting does not apply to it.
+            - S1-mini cleanup is skipped for Orukeet because this model does not report a detected language.
 
             ## Installation and models
 
-            This is a signed standalone APK for the FUTO Voice Input fork. Moonshine remains the default offline recognizer; Parakeet, Nemotron, and legacy Whisper/GGML remain selectable in Model Options.
+            This is a signed standalone arm64 APK for the FUTO Voice Input fork, with a higher version code for upgrading the current release.
 
             Speech models and S1-mini weights are not bundled in the APK. Download the desired model on first use or from Model Options; transcription and cleanup remain offline after installation.
 
-            The Parakeet integration and repository changes in this fork were built with AI assistance using Codex (GPT-5).
+            Model source: https://huggingface.co/oruk/orukeet
           files: release/*.apk
           generate_release_notes: true
           prerelease: ${{ contains(github.ref_name, '-beta') }}

@@ -3,6 +3,8 @@ package org.futo.voiceinput.parakeet
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import kotlinx.coroutines.runBlocking
+import org.futo.voiceinput.backend.SpeechBackend
+import org.futo.voiceinput.recognition.RecognitionModelStore
 import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
 import org.junit.Test
@@ -18,12 +20,24 @@ class ParakeetSherpaSmokeTest {
     fun downloadedModelTranscribesKnownAudioSample() = runBlocking {
         val context = ApplicationProvider.getApplicationContext<android.content.Context>()
         assumeTrue(context.isParakeetModelDownloaded(verifyHashes = true))
+        transcribeKnownAudio(context, ParakeetBackend())
+    }
+
+    @Test
+    fun downloadedOrukeetTranscribesKnownAudioSample() = runBlocking {
+        val context = ApplicationProvider.getApplicationContext<android.content.Context>()
+        assumeTrue(RecognitionModelStore(context.filesDir).isInstalled(
+            OrukeetModel.recognitionModel, verifyHashes = true
+        ))
+        transcribeKnownAudio(context, orukeetBackend())
+    }
+
+    private suspend fun transcribeKnownAudio(context: android.content.Context, backend: SpeechBackend) {
         val bytes = context.assets.open("jfk.wav").use { it.readBytes() }
         val pcm = ByteBuffer.wrap(bytes, JFK_WAV_DATA_OFFSET, bytes.size - JFK_WAV_DATA_OFFSET)
             .order(ByteOrder.LITTLE_ENDIAN)
             .asShortBuffer()
         val samples = FloatArray(pcm.remaining()) { pcm.get() / 32768.0f }
-        val backend = ParakeetBackend()
 
         try {
             backend.load(context)

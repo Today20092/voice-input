@@ -13,6 +13,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import org.futo.voiceinput.BuildConfig
 import org.futo.voiceinput.backend.SpeechBackend
+import org.futo.voiceinput.recognition.RecognitionModel
 import org.futo.voiceinput.settings.PARAKEET_ENGINE_DIAGNOSTICS
 import org.futo.voiceinput.settings.getSetting
 import java.io.File
@@ -26,7 +27,7 @@ internal interface ParakeetDecoder {
 }
 
 class ParakeetBackend internal constructor(
-    private val decoderFactory: (Context) -> ParakeetDecoder = ::SherpaParakeetDecoder,
+    private val decoderFactory: (Context) -> ParakeetDecoder = { SherpaParakeetDecoder(it) },
     private var decoder: ParakeetDecoder? = null
 ) : SpeechBackend {
     private companion object {
@@ -93,18 +94,28 @@ class ParakeetBackend internal constructor(
         decoder ?: throw IllegalStateException("Parakeet backend is not loaded")
 }
 
-private class SherpaParakeetDecoder(context: Context) : ParakeetDecoder {
+internal fun orukeetBackend(): SpeechBackend = ParakeetBackend(
+    decoderFactory = { SherpaParakeetDecoder(it, OrukeetModel.recognitionModel, featureDim = 128) }
+)
+
+private class SherpaParakeetDecoder(
+    context: Context,
+    recognitionModel: RecognitionModel = ParakeetModel.recognitionModel,
+    featureDim: Int = 80
+) : ParakeetDecoder {
     private val recognizer: OfflineRecognizer
 
     init {
-        val assetManager = if (BuildConfig.BUNDLE_PARAKEET_MODEL) context.assets else null
+        val assetManager = if (BuildConfig.BUNDLE_PARAKEET_MODEL &&
+            recognitionModel.id == ParakeetModel.recognitionModel.id
+        ) context.assets else null
         fun model(name: String) = if (assetManager != null) {
-            "${ParakeetModel.directoryName}/$name"
+            "${recognitionModel.directoryName}/$name"
         } else {
-            File(context.parakeetModelDir(), name).absolutePath
+            File(File(context.filesDir, recognitionModel.directoryName), name).absolutePath
         }
         val config = OfflineRecognizerConfig(
-            featConfig = FeatureConfig(sampleRate = SAMPLE_RATE, featureDim = 80, dither = 0.0f),
+            featConfig = FeatureConfig(sampleRate = SAMPLE_RATE, featureDim = featureDim, dither = 0.0f),
             modelConfig = OfflineModelConfig(
                 transducer = OfflineTransducerModelConfig(
                     encoder = model("encoder.int8.onnx"),

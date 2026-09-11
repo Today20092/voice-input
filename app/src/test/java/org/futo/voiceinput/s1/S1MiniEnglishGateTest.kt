@@ -25,6 +25,14 @@ class S1MiniEnglishGateTest {
     }
 
     @Test
+    fun orukeetDoesNotAssumeMultilingualSpeechIsEnglish() {
+        assertFalse(established(SpeechBackendType.Orukeet))
+        assertFalse(established(SpeechBackendType.Orukeet, forced = "en"))
+        assertFalse(established(SpeechBackendType.Orukeet, detected = "fr"))
+        assertTrue(established(SpeechBackendType.Orukeet, detected = "en"))
+    }
+
+    @Test
     fun multilingualNemotronRequiresEnglishSelectionOrDetection() {
         assertTrue(established(SpeechBackendType.Nemotron, profile = "multilingual", nemotronLanguage = "en"))
         assertTrue(established(SpeechBackendType.Nemotron, detected = "EN", profile = "multilingual", nemotronLanguage = "auto"))

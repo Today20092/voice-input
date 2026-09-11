@@ -21,6 +21,7 @@ class RecognitionModelLifecycleTest {
             model("moonshine", "small"),
             model("nemotron", "balanced"),
             model("parakeet", null),
+            model("orukeet", null),
             model("parakeet_unified", null)
         )
         val lifecycle = RecognitionModelLifecycle(
@@ -31,6 +32,7 @@ class RecognitionModelLifecycleTest {
             RecognitionModelSelection("moonshine", moonshineVariantId = "small"),
             RecognitionModelSelection("nemotron", nemotronVariantId = "balanced"),
             RecognitionModelSelection("parakeet"),
+            RecognitionModelSelection("orukeet"),
             RecognitionModelSelection("parakeet_unified")
         )
 
@@ -63,6 +65,16 @@ class RecognitionModelLifecycleTest {
         assertTrue(
             requireNotNull(lifecycle.readiness(RecognitionModelSelection("parakeet"))).isReady
         )
+    }
+
+    @Test
+    fun bundledParakeetDoesNotMakeOrukeetReady() {
+        val lifecycle = RecognitionModelLifecycle.create(temporaryFolder.root, parakeetBundled = true)
+        assertTrue(requireNotNull(lifecycle.readiness(RecognitionModelSelection("parakeet"))).isReady)
+        val readiness = requireNotNull(lifecycle.readiness(RecognitionModelSelection("orukeet")))
+        assertEquals("orukeet-v0.1.0", readiness.model.id)
+        assertFalse(readiness.isReady)
+        assertEquals(RecognitionModelSelection("orukeet"), lifecycle.selectionFor(readiness.model))
     }
 
     @Test

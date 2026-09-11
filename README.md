@@ -154,4 +154,8 @@ The optional downloaded cleanup model is **S1-mini by Superwhisper**, licensed u
 under its MIT license; Khronos OpenCL headers and loader are included as pinned submodules under
 their respective upstream licenses.
 
+Orukeet is available under **Model Options → Orukeet**. Its pinned INT8 package downloads about 487 MB and uses about 672 MB of app-private storage. It supports 25 languages and returns the final transcript after recording stops, using the existing Sherpa-ONNX 1.13.4 runtime. Moonshine remains the default.
+
+Orukeet weights are licensed CC BY-SA 4.0 by Oruk AI and retain NVIDIA Parakeet attribution. The installer verifies and preserves the package's `LICENSE-WEIGHTS` and `NOTICE.md`. See the [model card](https://huggingface.co/oruk/orukeet) and [pinned package manifest](https://huggingface.co/oruk/orukeet/blob/55a984d46f68323301837194ce647c702f55facc/onnx/manifest.json). The authors report lower WER than Parakeet on many evaluated splits; these are not Android benchmarks, and LibriSpeech test-other was used for adaptation and checkpoint selection.
+
 This fork is not affiliated with or endorsed by FUTO.
