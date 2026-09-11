@@ -137,6 +137,8 @@ class ModelInfo(
     var error by mutableStateOf(error)
     var finished by mutableStateOf(finished)
     var started by mutableStateOf(false)
+    var verifying by mutableStateOf(false)
+    var errorMessage by mutableStateOf<String?>(null)
 }
 
 internal fun incompleteDownloads(
@@ -260,6 +262,9 @@ fun DownloadPrompt(
             Text(stringResource(R.string.download_source, it.source), modifier = Modifier.padding(16.dp, 4.dp))
             Text(stringResource(R.string.download_transfer_size, it.transferBytes.megabytes()), modifier = Modifier.padding(16.dp, 4.dp))
             Text(stringResource(R.string.download_required_space, it.requiredFreeSpaceBytes.megabytes()), modifier = Modifier.padding(16.dp, 4.dp))
+            if (it.requiredFreeSpaceBytes > it.transferBytes) {
+                Text(stringResource(R.string.download_compressed_space_explanation), modifier = Modifier.padding(16.dp, 4.dp))
+            }
             Text(
                 stringResource(if (it.cellular) R.string.download_network_cellular else R.string.download_network_not_cellular),
                 modifier = Modifier.padding(16.dp, 4.dp)
@@ -326,13 +331,14 @@ fun DownloadScreen(models: List<ModelInfo> = EXAMPLE_MODELS) {
         ScreenTitle(stringResource(R.string.download_progress))
         if (models.any { it.error }) {
             Text(
-                stringResource(R.string.download_failed),
+                models.mapNotNull { it.errorMessage }.joinToString("\n")
+                    .ifEmpty { stringResource(R.string.download_failed) },
                 modifier = Modifier.padding(16.dp, 0.dp),
                 style = Typography.bodyMedium
             )
         } else {
             Text(
-                stringResource(R.string.download_in_progress),
+                stringResource(if (models.any { it.verifying }) R.string.download_verifying else R.string.download_in_progress),
                 modifier = Modifier.padding(16.dp, 0.dp),
                 style = Typography.bodyMedium
             )
@@ -586,7 +592,10 @@ class DownloadActivity : ComponentActivity() {
                     }
                     try {
                         val progressInput = ProgressInputStream(body.byteStream(), model.expectedSize) {
-                            updateModelOnMain { model.progress = it }
+                            updateModelOnMain {
+                                model.progress = it
+                                if (it >= 1.0f) model.verifying = true
+                            }
                         }
                         val artifacts = allRequestedFiles.map {
                             org.futo.voiceinput.recognition.RecognitionModelArtifact(
@@ -609,7 +618,8 @@ class DownloadActivity : ComponentActivity() {
                         markFinished(model)
                     } catch (error: Exception) {
                         error.printStackTrace()
-                        markError(model)
+                        markError(model, getString(R.string.download_archive_failed,
+                            error.message ?: error.javaClass.simpleName))
                     }
                 }
             }
@@ -622,8 +632,9 @@ class DownloadActivity : ComponentActivity() {
         }
     }
 
-    private fun markError(model: ModelInfo) {
+    private fun markError(model: ModelInfo, message: String? = null) {
         updateModelOnMain {
+            model.errorMessage = message
             model.error = true
         }
     }
@@ -846,7 +857,7 @@ private class ProgressInputStream(
         val total = totalBytes ?: return
         val progress = (bytesRead.toFloat() / total.toFloat()).coerceIn(0.0f, 1.0f)
         val now = SystemClock.elapsedRealtime()
-        if (progress - lastProgress >= 0.01f || now - lastUpdateTime >= 250L) {
+        if (bytesRead == total || progress - lastProgress >= 0.01f || now - lastUpdateTime >= 250L) {
             lastProgress = progress
             lastUpdateTime = now
             onProgress(progress)

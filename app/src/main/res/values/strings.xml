@@ -273,4 +273,7 @@
     <string name="commitment_to_privacy_title">Commitment to Privacy</string>
     <string name="commitment_to_privacy_body">This app will never serve you ads or sell your data. We are not in the business of doing that.</string>
 
+    <string name="download_compressed_space_explanation">The download is compressed. Required free space allows for the larger extracted model.</string>
+    <string name="download_verifying">Download received. Verifying and installing model files…</string>
+    <string name="download_archive_failed">Model archive download or installation failed: %1$s</string>
 </resources>

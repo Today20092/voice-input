@@ -43,6 +43,9 @@ internal fun extractModelArchive(
                     }
                     extracted += artifact
                 }
+                // Tar EOF can precede the compressed trailer and padding. Hash the whole download.
+                val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+                while (verifiedInput.read(buffer) != -1) { }
             }
         }
 

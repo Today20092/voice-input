@@ -98,17 +98,18 @@ jobs:
         with:
           name: FUTO Voice Input Moonshine ${{ github.ref_name }}
           body: |
-            ## Orukeet beta
+            ## Orukeet download fix
 
-            - Adds Orukeet as a selectable offline recognizer under Model Options.
-            - Reuses the existing Sherpa-ONNX runtime with Orukeet's 128-bin audio features.
-            - Downloads the pinned INT8 archive (about 487 MB; about 672 MB installed), verifying the archive and every installed file.
-            - Preserves Oruk AI's CC BY-SA 4.0 license and NVIDIA attribution alongside the weights.
-            - Includes the current S1-mini features and model-picker improvements. Moonshine remains the default.
+            - Fixes a valid Orukeet download being rejected at 100%: the installer now includes the compressed archive's trailing bytes when checking its SHA-256.
+            - Shows verification/install progress and archive error details instead of always suggesting a network-permission problem.
+            - Explains why the compressed download is about 487 MB while the extracted model requires about 672 MB.
+            - Retains all beta 12 features, including Orukeet, S1-mini, and the current model picker. Moonshine remains the default.
+            - Validated the fix against the complete published Orukeet archive and a small padded-archive regression test.
 
             ## What to test
 
             - Open Model Options, choose Orukeet, and complete the download.
+            - Beta 12 discarded failed downloads, so one fresh download is required after updating.
             - Dictate and press Stop; Orukeet returns a final transcript, without live partials.
             - Compare accuracy and response time with Parakeet on the same speech.
             - Switch models, restart the app, and confirm the selection persists.
