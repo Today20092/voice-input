@@ -119,7 +119,7 @@ fun S1MiniOptions(showTitle: Boolean = true) {
     SettingToggleDataStoreItem(
         title = "Enable S1-mini cleanup",
         dataStoreItem = enabled,
-        subtitle = "Runs once on the final transcript; non-English input is bypassed.",
+        subtitle = "Runs once on the final transcript. Assumes English when the recognizer cannot report a language; known non-English input is bypassed.",
         onChanged = { newValue ->
             if (newValue && !installed) {
                 enabled.setValue(false)

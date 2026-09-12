@@ -18,18 +18,20 @@ class S1MiniEnglishGateTest {
     )
 
     @Test
-    fun englishOnlyBackendsAlwaysQualify() {
-        assertTrue(established(SpeechBackendType.Moonshine))
-        assertTrue(established(SpeechBackendType.Parakeet))
-        assertTrue(established(SpeechBackendType.ParakeetUnified))
+    fun allBackendsAllowEnglishDictationWithoutLanguageMetadata() {
+        SpeechBackendType.entries.forEach { backend ->
+            assertTrue(backend.id, established(backend))
+            assertTrue(backend.id, established(backend, detected = ""))
+            assertTrue(backend.id, established(backend, detected = "EN"))
+        }
     }
 
     @Test
-    fun orukeetDoesNotAssumeMultilingualSpeechIsEnglish() {
-        assertFalse(established(SpeechBackendType.Orukeet))
-        assertFalse(established(SpeechBackendType.Orukeet, forced = "en"))
-        assertFalse(established(SpeechBackendType.Orukeet, detected = "fr"))
-        assertTrue(established(SpeechBackendType.Orukeet, detected = "en"))
+    fun knownNonEnglishInputIsBypassedForEveryBackend() {
+        SpeechBackendType.entries.forEach { backend ->
+            assertFalse(backend.id, established(backend, detected = "fr"))
+            assertFalse(backend.id, established(backend, forced = "fr"))
+        }
     }
 
     @Test
@@ -37,12 +39,15 @@ class S1MiniEnglishGateTest {
         assertTrue(established(SpeechBackendType.Nemotron, profile = "multilingual", nemotronLanguage = "en"))
         assertTrue(established(SpeechBackendType.Nemotron, detected = "EN", profile = "multilingual", nemotronLanguage = "auto"))
         assertFalse(established(SpeechBackendType.Nemotron, detected = "es", profile = "multilingual", nemotronLanguage = "auto"))
+        assertTrue(established(SpeechBackendType.Nemotron, profile = "multilingual", nemotronLanguage = "auto"))
+        assertFalse(established(SpeechBackendType.Nemotron, profile = "multilingual", nemotronLanguage = "fr"))
     }
 
     @Test
-    fun whisperAutoWithoutDetectionOnlyQualifiesWhenEnglishIsTheSoleLanguage() {
+    fun whisperAllowsUnknownEnglishUnlessLanguagesExplicitlyExcludeIt() {
         assertTrue(established(SpeechBackendType.WhisperGGML, enabledWhisperLanguages = setOf("en")))
-        assertFalse(established(SpeechBackendType.WhisperGGML, enabledWhisperLanguages = setOf("en", "es")))
+        assertTrue(established(SpeechBackendType.WhisperGGML, enabledWhisperLanguages = setOf("en", "es")))
+        assertFalse(established(SpeechBackendType.WhisperGGML, enabledWhisperLanguages = setOf("fr", "es")))
         assertFalse(established(SpeechBackendType.WhisperGGML, forced = "fr"))
     }
 }

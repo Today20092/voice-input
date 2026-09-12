@@ -10,27 +10,22 @@ object S1MiniEnglishGate {
         nemotronProfile: String,
         nemotronLanguage: String,
         enabledWhisperLanguages: Set<String>
-    ): Boolean = when (backend) {
-        SpeechBackendType.Moonshine,
-        SpeechBackendType.Parakeet,
-        SpeechBackendType.ParakeetUnified -> true
+    ): Boolean {
+        if (!detectedLanguage.isNullOrBlank()) return detectedLanguage.equals("en", ignoreCase = true)
+        if (!forcedLanguage.isNullOrBlank()) return forcedLanguage.equals("en", ignoreCase = true)
 
-        SpeechBackendType.Orukeet -> detectedLanguage.equals("en", ignoreCase = true)
+        // Enabling English cleanup also covers recognizers that cannot report a language.
+        return when (backend) {
+            SpeechBackendType.Moonshine,
+            SpeechBackendType.Orukeet,
+            SpeechBackendType.Parakeet,
+            SpeechBackendType.ParakeetUnified -> true
 
-        SpeechBackendType.Nemotron -> {
-            if (nemotronProfile != "multilingual") {
-                true
-            } else if (nemotronLanguage == "auto") {
-                detectedLanguage.equals("en", ignoreCase = true)
-            } else {
-                nemotronLanguage.equals("en", ignoreCase = true)
-            }
-        }
+            SpeechBackendType.Nemotron -> nemotronProfile != "multilingual" ||
+                nemotronLanguage == "auto" || nemotronLanguage.equals("en", ignoreCase = true)
 
-        SpeechBackendType.WhisperGGML -> when {
-            forcedLanguage != null -> forcedLanguage.equals("en", ignoreCase = true)
-            detectedLanguage != null -> detectedLanguage.equals("en", ignoreCase = true)
-            else -> enabledWhisperLanguages == setOf("en")
+            SpeechBackendType.WhisperGGML ->
+                enabledWhisperLanguages.isEmpty() || "en" in enabledWhisperLanguages
         }
     }
 }

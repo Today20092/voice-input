@@ -98,28 +98,27 @@ jobs:
         with:
           name: FUTO Voice Input Moonshine ${{ github.ref_name }}
           body: |
-            ## Orukeet download fix
+            ## S1-mini English cleanup fix
 
-            - Fixes a valid Orukeet download being rejected at 100%: the installer now includes the compressed archive's trailing bytes when checking its SHA-256.
-            - Shows verification/install progress and archive error details instead of always suggesting a network-permission problem.
-            - Explains why the compressed download is about 487 MB while the extracted model requires about 672 MB.
-            - Retains all beta 12 features, including Orukeet, S1-mini, and the current model picker. Moonshine remains the default.
-            - Validated the fix against the complete published Orukeet archive and a small padded-archive regression test.
+            - Fixes S1-mini always skipping Orukeet because Orukeet does not report a detected language.
+            - Enabled S1-mini cleanup now assumes English when the recognizer cannot identify the language.
+            - Applies the same rule to Nemotron Auto-detect and Whisper with English enabled, while preserving explicit non-English bypasses.
+            - Tests English eligibility and non-English bypasses across all six recognizers.
+            - Retains all features and the archive-download fix from the stable Orukeet release.
 
             ## What to test
 
-            - Open Model Options, choose Orukeet, and complete the download.
-            - Beta 12 discarded failed downloads, so one fresh download is required after updating.
-            - Dictate and press Stop; Orukeet returns a final transcript, without live partials.
-            - Compare accuracy and response time with Parakeet on the same speech.
-            - Switch models, restart the app, and confirm the selection persists.
+            - Keep Orukeet selected and S1-mini downloaded and enabled.
+            - Dictate English and press Stop; cleanup should run instead of skipping for missing language metadata.
+            - Existing downloaded models remain installed; no model download is required for this update.
+            - Try the other English recognizers with S1-mini enabled.
 
             ## Known beta gaps
 
             - Orukeet supports 25 languages. Published accuracy gains are the authors' measurements, not Android benchmarks.
-            - On-device Orukeet transcription, speed, and memory use await phone testing.
+            - On-device S1-mini cleanup with Orukeet awaits phone testing; timeout and memory fallbacks still preserve the raw transcript.
             - Orukeet currently releases its recognizer after each dictation; Parakeet's keep-warm setting does not apply to it.
-            - S1-mini cleanup is skipped for Orukeet because this model does not report a detected language.
+            - Use enabled S1-mini for English dictation. Unknown-language input is treated as English, not automatically language-detected.
 
             ## Installation and models
 
