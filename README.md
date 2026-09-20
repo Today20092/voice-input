@@ -18,6 +18,29 @@ The goal is straightforward: keep the FUTO UI and recording flow while adding re
 - The stable app uses the distinct `org.futo.voiceinput.moonshine` package ID.
 - Only the selected backend's model files are required before voice input starts.
 
+## Audio history
+
+Added in `v1.4.2-beta.16`, based on beta 15. Open **Audio history** from the main settings page to
+view saved recordings, retranscribe them with the currently selected recognition
+model, and copy the resulting text. Existing successful transcripts are saved too.
+
+Backups are enabled by default and kept for 24 hours. Set retention to any value
+from 1 to 720 hours, for example 2 hours or 72 hours for three days. Turning backups
+off stops new saves; existing recordings keep their expiry. Each recording can also
+be deleted with its transcript. Shortening retention deletes older recordings.
+
+The app writes 16 kHz mono PCM into private, Android-backup-excluded storage during
+capture, including canceled and failed attempts. Interrupted files remain readable
+up to the last complete sample written. Storage failures show a warning and do not
+prevent ordinary transcription. Uninstalling the app or clearing its data removes
+the recordings. Recordings use about 1.9 MB per minute.
+
+Expiry is checked on launch, capture, history access, and by a periodic Android job.
+Android can delay background deletion while the app or device is stopped. Active
+capture and retranscription are protected from deletion until they finish.
+Retranscription stays on-device and uses current language, model, vocabulary, and
+cleanup settings. Keep the history screen open until it finishes.
+
 ## Screenshots
 
 ### Model Options

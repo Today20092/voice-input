@@ -4,6 +4,14 @@ Offline speech recognition for entering dictated text on Android.
 
 ## Language
 
+**Audio history**:
+Saved dictation recordings retained for recovery, including canceled attempts and attempts without a transcript. A saved transcript can be viewed and copied until its recording expires or is deleted.
+_Avoid_: Transcript-inclusive diagnostics, recording log
+
+**Retranscription**:
+A new recognition attempt using a saved recording and the current recognition settings. A successful attempt replaces its saved transcript; a failed or canceled attempt preserves the previous transcript.
+_Avoid_: Live transcription, replay
+
 **Live transcription**:
 Recognition text that is updated while the speaker is still talking and finalized when the utterance ends.
 _Avoid_: Real-time transcription, responsive transcription

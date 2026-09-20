@@ -100,26 +100,30 @@ jobs:
         with:
           name: FUTO Voice Input Moonshine ${{ github.ref_name }}
           body: |
-            ## Download recovery and processing improvements
+            ## Audio backups and recovery
 
-            - Resume interrupted Orukeet and Nemotron archive downloads from saved bytes when the server supports byte ranges.
-            - Add a Retry download button and keep complete archives when installation fails.
-            - Download compressed archives before extraction and process input in blocks to remove byte-by-byte progress and checksum overhead.
-            - Run final model validation off the UI thread and recover completed installations without downloading them again.
-            - Account for both the archive and extracted files in the storage check. Orukeet needs about 1.16 GB free during installation and occupies about 672 MB afterward.
-            - Retain beta 14's S1-mini English cleanup fix and existing model support.
+            - Back up audio during recording, including canceled attempts and attempts where transcription fails.
+            - Open Audio history from settings to view recordings, retranscribe them with the current model, and copy text.
+            - Backups are enabled by default and kept for 24 hours. Set retention from 1 to 720 hours, or turn off new backups.
+            - Delete individual recordings and their transcripts. Expired recordings are removed during app use and by a periodic Android cleanup job; Android may delay background deletion.
+            - Keep active recordings protected from deletion. Failed or canceled retranscription preserves previously saved text.
+            - Store recordings privately on the device, excluded from Android backups. Audio uses about 1.9 MB per minute.
+            - Retain beta 15's resumable model downloads, S1-mini cleanup, and existing recognition models.
 
             ## What to test
 
-            - Interrupt an Orukeet download, then tap Retry download and confirm saved progress resumes.
-            - Compare download and installation time on your phone; no on-device speedup measurement is claimed.
+            - Dictate from the keyboard and recognition activity, then open Audio history and copy the saved text.
+            - Cancel a recording, then retranscribe the saved audio from history. Keep the history screen open until it finishes.
+            - Change retention, turn backups off, and delete a recording.
             - Confirm existing models and S1-mini settings survive the update.
+
+            Automated unit tests, including six audio-history tests, and Android lint passed locally. Microphone capture and recovery still need phone testing.
 
             ## Installation
 
-            Signed standalone arm64 APK, version code 50. Install over the previous release; models are not bundled.
+            Signed standalone arm64 APK, version code 51. Install over the previous beta; models are not bundled.
 
-            Previously discarded download progress cannot be recovered. This update preserves progress from new attempts.
+            Audio lost before this update cannot be recovered. Backups begin with new recordings. Uninstalling the app or clearing its data deletes saved recordings.
           files: release/*.apk
           generate_release_notes: true
           prerelease: ${{ contains(github.ref_name, '-beta') }}

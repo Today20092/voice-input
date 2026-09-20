@@ -121,6 +121,13 @@ fun HomeScreen(
         ConditionalModelUpdate()
 
         SettingsSeparator(stringResource(R.string.options))
+        NavigationItem(
+            title = stringResource(R.string.audio_history),
+            subtitle = stringResource(R.string.audio_history_subtitle),
+            style = NavigationItemStyle.Misc,
+            navigate = { navController.navigate(SettingsDestination.AudioHistory.route) },
+            icon = painterResource(R.drawable.edit)
+        )
         if (!parakeetSelected) {
             NavigationItem(
                 title = stringResource(R.string.languages),

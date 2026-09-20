@@ -2,6 +2,7 @@ package org.futo.voiceinput.settings
 
 enum class SettingsDestination(val route: String) {
     Home("home"),
+    AudioHistory("audioHistory"),
     Advanced("advanced"),
     Help("help"),
     Languages("languages"),

@@ -38,6 +38,7 @@ import org.futo.voiceinput.R
 import org.futo.voiceinput.Status
 import org.futo.voiceinput.payments.BillingManager
 import org.futo.voiceinput.settings.pages.AdvancedScreen
+import org.futo.voiceinput.settings.pages.AudioHistoryScreen
 import org.futo.voiceinput.settings.pages.CreditsScreen
 import org.futo.voiceinput.settings.pages.DependenciesScreen
 import org.futo.voiceinput.settings.pages.HelpScreen
@@ -144,6 +145,7 @@ fun SettingsMain(
         startDestination = initialDestination
     ) {
         composable(SettingsDestination.Home.route) { HomeScreen(settingsViewModel, navController) }
+        composable(SettingsDestination.AudioHistory.route) { AudioHistoryScreen(navController) }
         composable(SettingsDestination.Advanced.route) { AdvancedScreen(settingsViewModel, navController) }
         composable(SettingsDestination.Help.route) { HelpScreen(navController) }
         composable(SettingsDestination.Languages.route) { LanguagesScreen(settingsViewModel, navController) }

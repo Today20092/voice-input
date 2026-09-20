@@ -88,6 +88,9 @@ data class SettingsKey<T>(
     val default: T
 )
 
+val AUDIO_HISTORY_ENABLED = SettingsKey(booleanPreferencesKey("audio_history_enabled"), true)
+val AUDIO_HISTORY_RETENTION_HOURS = SettingsKey(intPreferencesKey("audio_history_retention_hours"), 24)
+
 suspend fun <T> Context.getSetting(key: SettingsKey<T>): T {
     return getSetting(key.key, key.default)
 }
