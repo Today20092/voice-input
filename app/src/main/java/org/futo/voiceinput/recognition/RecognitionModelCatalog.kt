@@ -53,7 +53,7 @@ data class RecognitionModel(
     }
 
     val transferBytes = archive?.sizeBytes ?: artifacts.sumOf { it.sizeBytes }
-    val requiredFreeSpaceBytes = maxOf(transferBytes, artifacts.sumOf { it.sizeBytes })
+    val requiredFreeSpaceBytes = artifacts.sumOf { it.sizeBytes } + (archive?.sizeBytes ?: 0L)
 }
 
 data class RecognitionModelCard(

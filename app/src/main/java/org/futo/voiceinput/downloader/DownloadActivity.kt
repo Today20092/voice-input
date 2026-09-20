@@ -41,6 +41,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import okhttp3.Call
 import okhttp3.Callback
 import okhttp3.OkHttpClient
@@ -55,17 +56,20 @@ import org.futo.voiceinput.recognition.RecognitionModelLifecycle
 import org.futo.voiceinput.recognition.updateRecognitionModelSelection
 import org.futo.voiceinput.s1.EXTRA_ENABLE_S1_MINI_AFTER_DOWNLOAD
 import org.futo.voiceinput.settings.S1_MINI_ENABLED
+import org.futo.voiceinput.settings.setSettingBlocking
 import org.futo.voiceinput.settings.ScreenTitle
 import org.futo.voiceinput.settings.ScrollableList
-import org.futo.voiceinput.settings.setSettingBlocking
 import org.futo.voiceinput.theme.UixThemeAuto
 import org.futo.voiceinput.theme.Typography
 import java.io.File
-import java.io.FilterInputStream
-import java.io.InputStream
 import java.io.IOException
 import java.io.RandomAccessFile
 import java.util.concurrent.atomic.AtomicLong
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import org.futo.voiceinput.recognition.RecognitionModelArtifact
 import kotlin.math.max
 
 const val EXTRA_DOWNLOAD_FILE_NAMES = "download_file_names"
@@ -86,6 +90,8 @@ const val EXTRA_ARCHIVE_ROOT = "recognition_model_archive_root"
 
 private const val PARALLEL_DOWNLOAD_MIN_SIZE = 32L * 1024L * 1024L
 private const val PROGRESS_SAVE_INTERVAL = 1024L * 1024L
+// Activity recreation must not start a second writer while the previous install is finishing.
+private val archiveDownloadMutex = Mutex()
 
 fun Intent.putRecognitionModel(model: RecognitionModel) {
     putStringArrayListExtra(EXTRA_DOWNLOAD_FILE_NAMES, ArrayList(model.artifacts.map { it.name }))
@@ -310,7 +316,7 @@ fun DownloadPrompt(
 
 @Composable
 @Preview(showBackground = true)
-fun DownloadScreen(models: List<ModelInfo> = EXAMPLE_MODELS) {
+fun DownloadScreen(models: List<ModelInfo> = EXAMPLE_MODELS, onRetry: (() -> Unit)? = null) {
     val finishedCount = models.count { it.finished }
     val hasUnknownActiveSize = models.any { !it.finished && !it.error && it.size == null }
     val knownSizeProgress = if (!hasUnknownActiveSize && models.all { it.size != null || it.finished }) {
@@ -369,6 +375,11 @@ fun DownloadScreen(models: List<ModelInfo> = EXAMPLE_MODELS) {
         }
 
         models.forEach { ModelItem(it, showProgress = true) }
+        if (models.any { it.error } && onRetry != null) {
+            Button(onClick = onRetry, modifier = Modifier.padding(16.dp, 8.dp)) {
+                Text(stringResource(R.string.download_retry))
+            }
+        }
     }
 }
 
@@ -399,7 +410,8 @@ class DownloadActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     if (isDownloading) {
-                        DownloadScreen(models = modelsToDownload)
+                        DownloadScreen(models = modelsToDownload,
+                            onRetry = archiveToDownload?.let { model -> { downloadArchive(model) } })
                     } else {
                         DownloadPrompt(
                             onContinue = { startDownload() },
@@ -579,52 +591,52 @@ class DownloadActivity : ComponentActivity() {
     private fun downloadArchive(model: ModelInfo) {
         model.started = true
         model.error = false
-        val request = Request.Builder().get().url(model.url).build()
-        httpClient.newCall(request).enqueue(object : Callback {
-            override fun onFailure(call: Call, e: IOException) = markError(model)
-
-            override fun onResponse(call: Call, response: Response) {
-                response.use {
-                    val body = response.body
-                    if (!response.isSuccessful || body == null) {
-                        markError(model)
-                        return
+        model.errorMessage = null
+        model.verifying = false
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                archiveDownloadMutex.withLock {
+                    ensureActive()
+                    if (allRequestedFiles.all { isValidTargetFile(it) }) {
+                        markFinished(model)
+                        return@withLock
                     }
-                    try {
-                        val progressInput = ProgressInputStream(body.byteStream(), model.expectedSize) {
+                    val total = requireNotNull(model.expectedSize)
+                    var lastUpdate = 0L
+                    downloadModelArchive(
+                        client = httpClient,
+                        archive = RecognitionModelArtifact(model.name, model.url, total, requireNotNull(model.sha256)),
+                        savedArchive = savedArchive(model),
+                        targetDirectory = requireNotNull(allRequestedFiles.firstOrNull()?.targetFile?.parentFile),
+                        archiveRoot = requireNotNull(archiveRoot),
+                        artifacts = allRequestedFiles.map {
+                            RecognitionModelArtifact(it.name, it.url, requireNotNull(it.expectedSize), requireNotNull(it.sha256))
+                        }
+                    ) { downloaded ->
+                        ensureActive()
+                        val now = SystemClock.elapsedRealtime()
+                        if (downloaded == total || now - lastUpdate >= 250L) {
+                            lastUpdate = now
                             updateModelOnMain {
-                                model.progress = it
-                                if (it >= 1.0f) model.verifying = true
+                                model.progress = downloaded.toFloat() / total
+                                model.verifying = downloaded == total
                             }
                         }
-                        val artifacts = allRequestedFiles.map {
-                            org.futo.voiceinput.recognition.RecognitionModelArtifact(
-                                it.name,
-                                it.url,
-                                requireNotNull(it.expectedSize),
-                                requireNotNull(it.sha256)
-                            )
-                        }
-                        extractModelArchive(
-                            input = progressInput,
-                            targetDirectory = requireNotNull(allRequestedFiles.firstOrNull()?.targetFile?.parentFile),
-                            archiveRoot = requireNotNull(archiveRoot),
-                            artifacts = artifacts,
-                            expectedArchiveSha256 = requireNotNull(model.sha256)
-                        )
-                        require(model.expectedSize == null || progressInput.bytesRead == model.expectedSize) {
-                            "Downloaded archive size mismatch"
-                        }
-                        markFinished(model)
-                    } catch (error: Exception) {
-                        error.printStackTrace()
-                        markError(model, getString(R.string.download_archive_failed,
-                            error.message ?: error.javaClass.simpleName))
                     }
+                    ensureActive()
+                    markFinished(model)
                 }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                error.printStackTrace()
+                markError(model, getString(R.string.download_archive_failed,
+                    error.message ?: error.javaClass.simpleName))
             }
-        })
+        }
     }
+
+    private fun savedArchive(model: ModelInfo) = File(filesDir, ".${model.sha256}.archive.download")
 
     private fun updateModelOnMain(update: () -> Unit) {
         lifecycleScope.launch(Dispatchers.Main) {
@@ -666,24 +678,41 @@ class DownloadActivity : ComponentActivity() {
     }
 
     private fun downloadsFinished() {
-        if (!allRequestedFiles.all { isValidTargetFile(it) }) {
-            modelsToDownload.forEach { it.error = true }
-            return
-        }
-
-        managedModel?.let { model ->
-            check(modelLifecycle.completeInstallation(model, ::updateRecognitionModelSelection)) {
-                "Downloaded ${model.displayName} failed validation"
+        lifecycleScope.launch {
+            try {
+                withContext(Dispatchers.IO) {
+                    check(allRequestedFiles.all { isValidTargetFile(it) }) {
+                        "Downloaded model files failed validation"
+                    }
+                    managedModel?.let { model ->
+                        check(modelLifecycle.completeInstallation(model, ::updateRecognitionModelSelection)) {
+                            "Downloaded ${model.displayName} failed validation"
+                        }
+                    } ?: completionMarker?.let { marker ->
+                        marker.parentFile?.mkdirs()
+                        marker.writeText(
+                            "${requireNotNull(intent.getStringExtra(EXTRA_MODEL_ID))}@" +
+                                requireNotNull(intent.getStringExtra(EXTRA_MODEL_VERSION))
+                        )
+                    }
+                    archiveToDownload?.let { savedArchive(it).delete() }
+                }
+                finishSuccessfulDownload()
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                if (modelsToDownload.isEmpty()) {
+                    modelsToDownload = archiveToDownload?.let { listOf(it) } ?: allRequestedFiles
+                }
+                modelsToDownload.forEach {
+                    it.finished = false
+                    it.error = true
+                    it.errorMessage = error.message
+                }
+                isDownloading = true
+                updateContent()
             }
-        } ?: completionMarker?.let { marker ->
-            marker.parentFile?.mkdirs()
-            marker.writeText(
-                "${requireNotNull(intent.getStringExtra(EXTRA_MODEL_ID))}@" +
-                    requireNotNull(intent.getStringExtra(EXTRA_MODEL_VERSION))
-            )
         }
-
-        finishSuccessfulDownload()
     }
 
     private fun finishSuccessfulDownload() {
@@ -806,27 +835,31 @@ class DownloadActivity : ComponentActivity() {
             confirmation = DownloadConfirmation(
                 source = source,
                 transferBytes = transferBytes,
-                requiredFreeSpaceBytes = intent.getLongExtra(EXTRA_REQUIRED_FREE_SPACE, transferBytes),
+                requiredFreeSpaceBytes = (intent.getLongExtra(EXTRA_REQUIRED_FREE_SPACE, transferBytes) -
+                    (archiveToDownload?.let { savedArchive(it).length().coerceAtMost(transferBytes) } ?: 0L))
+                    .coerceAtLeast(0L),
                 availableBytes = filesDir.usableSpace,
                 cellular = isCellularNetwork()
             )
         }
-        modelsToDownload = if (archiveToDownload != null &&
-            (completionMarker?.isFile != true || allRequestedFiles.any { !isValidTargetFile(it) })) {
-            listOf(requireNotNull(archiveToDownload))
-        } else {
-            incompleteDownloads(allRequestedFiles, ::isValidTargetFile)
+        lifecycleScope.launch {
+            modelsToDownload = withContext(Dispatchers.IO) {
+                val incomplete = incompleteDownloads(allRequestedFiles, ::isValidTargetFile)
+                if (archiveToDownload != null && incomplete.isNotEmpty()) {
+                    listOf(requireNotNull(archiveToDownload))
+                } else {
+                    incomplete
+                }
+            }
+            if (modelsToDownload.isEmpty()) {
+                downloadsFinished()
+                return@launch
+            }
+
+            isDownloading = false
+            updateContent()
+            if (modelsToDownload.any { it.size == null }) obtainModelSizes()
         }
-
-        if (modelsToDownload.isEmpty()) {
-            downloadsFinished()
-            return
-        }
-
-        isDownloading = false
-        updateContent()
-
-        if (modelsToDownload.any { it.size == null }) obtainModelSizes()
     }
 
     private fun isCellularNetwork(): Boolean {
@@ -834,33 +867,5 @@ class DownloadActivity : ComponentActivity() {
         val network = manager.activeNetwork ?: return false
         return manager.getNetworkCapabilities(network)
             ?.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) == true
-    }
-}
-
-private class ProgressInputStream(
-    input: InputStream,
-    private val totalBytes: Long?,
-    private val onProgress: (Float) -> Unit
-) : FilterInputStream(input) {
-    var bytesRead = 0L
-        private set
-    private var lastProgress = 0.0f
-    private var lastUpdateTime = 0L
-
-    override fun read(): Int = super.read().also { if (it >= 0) advanced(1) }
-
-    override fun read(buffer: ByteArray, offset: Int, length: Int): Int =
-        super.read(buffer, offset, length).also { if (it > 0) advanced(it) }
-
-    private fun advanced(count: Int) {
-        bytesRead += count
-        val total = totalBytes ?: return
-        val progress = (bytesRead.toFloat() / total.toFloat()).coerceIn(0.0f, 1.0f)
-        val now = SystemClock.elapsedRealtime()
-        if (bytesRead == total || progress - lastProgress >= 0.01f || now - lastUpdateTime >= 250L) {
-            lastProgress = progress
-            lastUpdateTime = now
-            onProgress(progress)
-        }
     }
 }

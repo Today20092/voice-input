@@ -80,7 +80,7 @@ filesDir/moonshine-medium-streaming-en/
 
 All recognizers store their downloaded files in app-private storage and run offline after download. Only the selected recognizer needs to be downloaded; S1-mini is an additional optional download.
 
-Orukeet's pinned INT8 package downloads about **487 MB** and installs about **672 MB** of files. The download is compressed, so its download size and required free space differ. Installation verifies the archive and extracted resources before marking the model ready.
+Orukeet's pinned INT8 package downloads about **487 MB** and installs about **672 MB** of files. Installation needs about **1.16 GB** free for the saved archive and extracted model. Interrupted transfers resume on retry when the server supports byte ranges. Installation verifies the archive and extracted resources before marking the model ready, then removes the saved archive.
 
 ## Optional S1-mini transcript cleanup
 
@@ -140,7 +140,7 @@ Standalone release builds use `:app:assembleStandaloneRelease` and write APKs un
 ## GitHub Releases
 
 - **Stable:** [v1.4.2 — Orukeet](https://github.com/Today20092/voice-input/releases/latest), the tested `v1.4.2-beta.13` build promoted unchanged. Its tag and APK filename retain the beta suffix.
-- **Beta:** [v1.4.2-beta.14](https://github.com/Today20092/voice-input/releases/tag/v1.4.2-beta.14), which fixes S1-mini skipping recognizers with missing language information. Existing downloaded models can be reused after updating.
+- **Beta:** [v1.4.2-beta.15](https://github.com/Today20092/voice-input/releases/tag/v1.4.2-beta.15), which adds resumable archive downloads and reduces download-processing overhead while retaining beta 14's S1-mini fix. Existing downloaded models can be reused after updating.
 
 This repository includes a GitHub Actions workflow that builds and verifies an APK when a `v*` tag is pushed.
 

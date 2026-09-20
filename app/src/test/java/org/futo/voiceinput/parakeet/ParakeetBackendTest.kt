@@ -33,7 +33,7 @@ class ParakeetBackendTest {
         val model = OrukeetModel.recognitionModel
         assertEquals("orukeet", model.runtimeId)
         assertEquals(486_807_585L, model.transferBytes)
-        assertEquals(671_619_800L, model.requiredFreeSpaceBytes)
+        assertEquals(1_158_427_385L, model.requiredFreeSpaceBytes)
         assertEquals(model.directoryName, model.archiveRoot)
         assertEquals(
             "f9191f30178cc9122ce2f023bf9fefafc822028307b0efa4caff645ba3fe8d0a",

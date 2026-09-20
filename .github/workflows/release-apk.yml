@@ -98,35 +98,26 @@ jobs:
         with:
           name: FUTO Voice Input Moonshine ${{ github.ref_name }}
           body: |
-            ## S1-mini English cleanup fix
+            ## Download recovery and processing improvements
 
-            - Fixes S1-mini always skipping Orukeet because Orukeet does not report a detected language.
-            - Enabled S1-mini cleanup now assumes English when the recognizer cannot identify the language.
-            - Applies the same rule to Nemotron Auto-detect and Whisper with English enabled, while preserving explicit non-English bypasses.
-            - Tests English eligibility and non-English bypasses across all six recognizers.
-            - Retains all features and the archive-download fix from the stable Orukeet release.
+            - Resume interrupted Orukeet and Nemotron archive downloads from saved bytes when the server supports byte ranges.
+            - Add a Retry download button and keep complete archives when installation fails.
+            - Download compressed archives before extraction and process input in blocks to remove byte-by-byte progress and checksum overhead.
+            - Run final model validation off the UI thread and recover completed installations without downloading them again.
+            - Account for both the archive and extracted files in the storage check. Orukeet needs about 1.16 GB free during installation and occupies about 672 MB afterward.
+            - Retain beta 14's S1-mini English cleanup fix and existing model support.
 
             ## What to test
 
-            - Keep Orukeet selected and S1-mini downloaded and enabled.
-            - Dictate English and press Stop; cleanup should run instead of skipping for missing language metadata.
-            - Existing downloaded models remain installed; no model download is required for this update.
-            - Try the other English recognizers with S1-mini enabled.
+            - Interrupt an Orukeet download, then tap Retry download and confirm saved progress resumes.
+            - Compare download and installation time on your phone; no on-device speedup measurement is claimed.
+            - Confirm existing models and S1-mini settings survive the update.
 
-            ## Known beta gaps
+            ## Installation
 
-            - Orukeet supports 25 languages. Published accuracy gains are the authors' measurements, not Android benchmarks.
-            - On-device S1-mini cleanup with Orukeet awaits phone testing; timeout and memory fallbacks still preserve the raw transcript.
-            - Orukeet currently releases its recognizer after each dictation; Parakeet's keep-warm setting does not apply to it.
-            - Use enabled S1-mini for English dictation. Unknown-language input is treated as English, not automatically language-detected.
+            Signed standalone arm64 APK, version code 50. Install over the previous release; models are not bundled.
 
-            ## Installation and models
-
-            This is a signed standalone arm64 APK for the FUTO Voice Input fork, with a higher version code for upgrading the current release.
-
-            Speech models and S1-mini weights are not bundled in the APK. Download the desired model on first use or from Model Options; transcription and cleanup remain offline after installation.
-
-            Model source: https://huggingface.co/oruk/orukeet
+            Previously discarded download progress cannot be recovered. This update preserves progress from new attempts.
           files: release/*.apk
           generate_release_notes: true
           prerelease: ${{ contains(github.ref_name, '-beta') }}
