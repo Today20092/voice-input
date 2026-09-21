@@ -100,28 +100,28 @@ jobs:
         with:
           name: FUTO Voice Input Moonshine ${{ github.ref_name }}
           body: |
-            ## Audio backups and recovery
+            ## Waveform and organized settings
 
-            - Back up audio during recording, including canceled attempts and attempts where transcription fails.
-            - Open Audio history from settings to view recordings, retranscribe them with the current model, and copy text.
-            - Backups are enabled by default and kept for 24 hours. Set retention from 1 to 720 hours, or turn off new backups.
-            - Delete individual recordings and their transcripts. Expired recordings are removed during app use and by a periodic Android cleanup job; Android may delay background deletion.
-            - Keep active recordings protected from deletion. Failed or canceled retranscription preserves previously saved text.
-            - Store recordings privately on the device, excluded from Android backups. Audio uses about 1.9 MB per minute.
-            - Retain beta 15's resumable model downloads, S1-mini cleanup, and existing recognition models.
+            Built directly on v1.4.2-beta.16, retaining audio backups, history, retranscription, model downloads, and S1-mini cleanup.
+
+            - Replace the pulsing recording circle with a scrolling four-second waveform from microphone samples. Tap anywhere on the recording surface to stop.
+            - Group settings into Speech, Recording, Appearance, Support, Advanced, and About.
+            - Move personal dictionary into its own Speech page and language controls into Languages.
+            - Move stopping controls into Recording options and S1-mini runtime tuning into Advanced.
+            - Move reports, transcript capture, and ZIP export into Support → Diagnostics, preserving transcript capture and export consent.
 
             ## What to test
 
-            - Dictate from the keyboard and recognition activity, then open Audio history and copy the saved text.
-            - Cancel a recording, then retranscribe the saved audio from history. Keep the history screen open until it finishes.
-            - Change retention, turn backups off, and delete a recording.
-            - Confirm existing models and S1-mini settings survive the update.
+            - Dictate from the keyboard and recognition activity. Confirm the waveform follows speech and silence and resets on the next recording.
+            - Stop or cancel, then confirm audio history and retranscription still work.
+            - Open the reorganized settings pages and confirm existing settings survive the update.
+            - Export standard diagnostics and verify transcript export still asks for confirmation.
 
-            Automated unit tests, including six audio-history tests, and Android lint passed locally. Microphone capture and recovery still need phone testing.
+            All 95 unit tests, the standalone release build, and Android lint passed locally. Microphone capture and visual behavior still need phone testing.
 
             ## Installation
 
-            Signed standalone arm64 APK, version code 51. Install over the previous beta; models are not bundled.
+            Signed standalone arm64 APK, version code 52. Install over beta 16; models are not bundled.
 
             Audio lost before this update cannot be recovered. Backups begin with new recordings. Uninstalling the app or clearing its data deletes saved recordings.
           files: release/*.apk

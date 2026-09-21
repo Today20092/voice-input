@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -120,13 +119,13 @@ fun HomeScreen(
         ConditionalUpdate()
         ConditionalModelUpdate()
 
-        SettingsSeparator(stringResource(R.string.options))
+        SettingsSeparator(stringResource(R.string.settings_speech))
         NavigationItem(
-            title = stringResource(R.string.audio_history),
-            subtitle = stringResource(R.string.audio_history_subtitle),
+            title = stringResource(R.string.model),
+            subtitle = modelsSubtitle(),
             style = NavigationItemStyle.Misc,
-            navigate = { navController.navigate(SettingsDestination.AudioHistory.route) },
-            icon = painterResource(R.drawable.edit)
+            navigate = { navController.navigate(SettingsDestination.Models.route) },
+            icon = painterResource(R.drawable.cpu)
         )
         if (!parakeetSelected) {
             NavigationItem(
@@ -139,14 +138,6 @@ fun HomeScreen(
         }
 
         NavigationItem(
-            title = stringResource(R.string.model),
-            subtitle = modelsSubtitle(),
-            style = NavigationItemStyle.Misc,
-            navigate = { navController.navigate(SettingsDestination.Models.route) },
-            icon = painterResource(R.drawable.cpu)
-        )
-
-        NavigationItem(
             title = "Transcript Cleanup",
             subtitle = "Optional S1-mini cleanup after final recognition",
             style = NavigationItemStyle.Misc,
@@ -155,13 +146,29 @@ fun HomeScreen(
         )
 
         NavigationItem(
-            title = stringResource(R.string.input_options),
+            title = stringResource(R.string.personal_dictionary),
+            style = NavigationItemStyle.Misc,
+            navigate = { navController.navigate(SettingsDestination.PersonalDictionary.route) },
+            icon = painterResource(R.drawable.edit)
+        )
+
+        SettingsSeparator(stringResource(R.string.settings_recording))
+        NavigationItem(
+            title = stringResource(R.string.recording_options),
             style = NavigationItemStyle.Misc,
             navigate = { navController.navigate(SettingsDestination.Input.route) },
             icon = painterResource(R.drawable.shift)
         )
 
-        SettingsSeparator(stringResource(R.string.miscellaneous))
+        NavigationItem(
+            title = stringResource(R.string.audio_history),
+            subtitle = stringResource(R.string.audio_history_subtitle),
+            style = NavigationItemStyle.Misc,
+            navigate = { navController.navigate(SettingsDestination.AudioHistory.route) },
+            icon = painterResource(R.drawable.edit)
+        )
+
+        SettingsSeparator(stringResource(R.string.settings_appearance))
         NavigationItem(
             title = stringResource(R.string.theme),
             style = NavigationItemStyle.Misc,
@@ -169,14 +176,46 @@ fun HomeScreen(
             icon = painterResource(R.drawable.eye)
         )
 
+        SettingsSeparator(stringResource(R.string.settings_support))
         NavigationItem(
-            title = stringResource(R.string.testing_menu),
+            title = stringResource(R.string.diagnostics),
+            subtitle = stringResource(R.string.diagnostics_subtitle),
+            style = NavigationItemStyle.Misc,
+            navigate = { navController.navigate(SettingsDestination.Diagnostics.route) },
+            icon = painterResource(R.drawable.alert_circle)
+        )
+        NavigationItem(
+            title = stringResource(R.string.test_dictation),
             subtitle = stringResource(R.string.try_out_voice_input),
             style = NavigationItemStyle.Misc,
             navigate = { navController.navigate(SettingsDestination.Testing.route) },
             icon = painterResource(R.drawable.edit)
         )
 
+        NavigationItem(
+            title = stringResource(R.string.help),
+            style = NavigationItemStyle.Misc,
+            navigate = { navController.navigate(SettingsDestination.Help.route) },
+            icon = painterResource(R.drawable.help_circle)
+        )
+        ShareFeedbackOption()
+        IssueTrackerOption()
+
+        SettingsSeparator(stringResource(R.string.advanced))
+        NavigationItem(
+            title = stringResource(R.string.advanced_settings),
+            style = NavigationItemStyle.Misc,
+            navigate = { navController.navigate(SettingsDestination.Advanced.route) },
+            icon = painterResource(R.drawable.code)
+        )
+
+        SettingsSeparator(stringResource(R.string.about))
+        NavigationItem(
+            title = stringResource(R.string.credits),
+            style = NavigationItemStyle.Misc,
+            navigate = { navController.navigate(SettingsDestination.Credits.route) },
+            icon = painterResource(R.drawable.users)
+        )
         UnpaidNoticeCondition(showOnlyIfReminder = true) {
             NavigationItem(
                 title = stringResource(R.string.payment),
@@ -185,30 +224,6 @@ fun HomeScreen(
                 icon = painterResource(R.drawable.dollar_sign)
             )
         }
-
-        NavigationItem(
-            title = stringResource(R.string.advanced),
-            style = NavigationItemStyle.Misc,
-            navigate = { navController.navigate(SettingsDestination.Advanced.route) },
-            icon = painterResource(R.drawable.code)
-        )
-
-        SettingsSeparator(stringResource(R.string.about))
-        NavigationItem(
-            title = stringResource(R.string.help),
-            style = NavigationItemStyle.Misc,
-            navigate = { navController.navigate(SettingsDestination.Help.route) },
-            icon = painterResource(R.drawable.help_circle)
-        )
-
-        NavigationItem(
-            title = stringResource(R.string.credits),
-            style = NavigationItemStyle.Misc,
-            navigate = { navController.navigate(SettingsDestination.Credits.route) },
-            icon = painterResource(R.drawable.users)
-        )
-        ShareFeedbackOption()
-        IssueTrackerOption()
 
         Spacer(modifier = Modifier.height(32.dp))
 

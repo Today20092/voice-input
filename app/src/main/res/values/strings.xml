@@ -1,4 +1,12 @@
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+    <string name="settings_speech">Speech</string>
+    <string name="settings_recording">Recording</string>
+    <string name="settings_appearance">Appearance</string>
+    <string name="settings_support">Support</string>
+    <string name="recording_options">Recording options</string>
+    <string name="diagnostics">Diagnostics</string>
+    <string name="diagnostics_subtitle">Reports, transcript capture, and ZIP export</string>
+    <string name="test_dictation">Test dictation</string>
     <string name="audio_history">Audio history</string>
     <string name="audio_history_subtitle">Recover recordings and copy transcripts</string>
     <string name="audio_history_save">Back up recordings</string>

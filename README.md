@@ -18,6 +18,16 @@ The goal is straightforward: keep the FUTO UI and recording flow while adding re
 - The stable app uses the distinct `org.futo.voiceinput.moonshine` package ID.
 - Only the selected backend's model files are required before voice input starts.
 
+## Beta 17: waveform and settings
+
+`v1.4.2-beta.17` builds directly on beta 16. Recording now shows a scrolling
+four-second waveform from captured microphone samples, with tap-to-stop preserved.
+Settings are grouped into Speech, Recording, Appearance, Support, Advanced, and
+About. Personal dictionary has its own page; language controls are under Languages.
+S1-mini runtime tuning is under Advanced. Reports, transcript capture, and ZIP
+export are under Support → Diagnostics, with the existing sharing consent intact.
+Audio history and all beta 16 backup and recovery behavior are retained.
+
 ## Audio history
 
 Added in `v1.4.2-beta.16`, based on beta 15. Open **Audio history** from the main settings page to

@@ -42,8 +42,6 @@ import org.futo.voiceinput.nemotron.NEMOTRON_MULTILINGUAL_LANGUAGES
 import org.futo.voiceinput.settings.DISMISS_MIGRATION_TIP
 import org.futo.voiceinput.settings.ENABLE_MULTILINGUAL
 import org.futo.voiceinput.settings.ENGLISH_MODEL_INDEX
-import org.futo.voiceinput.settings.LANGUAGE_TOGGLES
-import org.futo.voiceinput.settings.MANUALLY_SELECT_LANGUAGE
 import org.futo.voiceinput.settings.MODELS_MIGRATED
 import org.futo.voiceinput.settings.MOONSHINE_MODEL_VARIANT
 import org.futo.voiceinput.settings.NEMOTRON_PROFILE
@@ -55,7 +53,6 @@ import org.futo.voiceinput.settings.ScreenTitle
 import org.futo.voiceinput.settings.ScrollableList
 import org.futo.voiceinput.settings.SettingItem
 import org.futo.voiceinput.settings.SettingRadio
-import org.futo.voiceinput.settings.SettingToggleDataStore
 import org.futo.voiceinput.settings.SettingsViewModel
 import org.futo.voiceinput.settings.SpeechBackendType
 import org.futo.voiceinput.settings.Tip
@@ -101,7 +98,7 @@ fun modelsSubtitle(): String? {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PersonalDictionaryEditor(disabled: Boolean) {
+fun PersonalDictionaryEditor(disabled: Boolean, showTitle: Boolean = true) {
     val context = LocalContext.current
 
     val personalDict = useDataStore(PERSONAL_DICTIONARY)
@@ -112,7 +109,7 @@ fun PersonalDictionaryEditor(disabled: Boolean) {
         personalDict.setValue(textFieldValue.value)
     }
     
-    ScreenTitle(title = stringResource(R.string.personal_dictionary))
+    if (showTitle) ScreenTitle(title = stringResource(R.string.personal_dictionary))
 
     TextField(
         value = textFieldValue.value,
@@ -342,7 +339,6 @@ fun ModelsScreen(
     settingsViewModel: SettingsViewModel = viewModel(),
     navController: NavHostController = rememberNavController()
 ) {
-    val (languages, _) = useDataStore(LANGUAGE_TOGGLES)
     val (backend, _) = useDataStore(SPEECH_BACKEND)
     val whisperSelected = backend.toSpeechBackendType() == SpeechBackendType.WhisperGGML
 
@@ -361,19 +357,16 @@ fun ModelsScreen(
                 Tip(stringResource(R.string.new_model_features_tip), onDismiss = { dismissMigrationTip.setValue(true) })
             }
 
-            if(languages.size > 1) {
-                SettingToggleDataStore(
-                    stringResource(R.string.manually_select_language),
-                    MANUALLY_SELECT_LANGUAGE,
-                    subtitle = stringResource(R.string.manual_language_selection_toggle_subtitle)
-                )
-            }
-
         }
 
-        PersonalDictionaryEditor(disabled = false)
-        Spacer(modifier = Modifier.height(32.dp))
-
         ManagedRecognitionModelCatalog()
+    }
+}
+
+@Composable
+fun PersonalDictionaryScreen(navController: NavHostController = rememberNavController()) {
+    ScrollableList {
+        ScreenTitle(stringResource(R.string.personal_dictionary), showBack = true, navController = navController)
+        PersonalDictionaryEditor(disabled = false, showTitle = false)
     }
 }

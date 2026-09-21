@@ -9,6 +9,8 @@ enum class SettingsDestination(val route: String) {
     Testing("testing"),
     Models("models"),
     TranscriptCleanup("transcriptCleanup"),
+    PersonalDictionary("personalDictionary"),
+    Diagnostics("diagnostics"),
     Input("input"),
     Themes("themes"),
     Credits("credits"),

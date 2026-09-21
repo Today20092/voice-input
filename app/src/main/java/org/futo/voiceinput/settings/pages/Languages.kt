@@ -20,6 +20,9 @@ import org.futo.voiceinput.settings.ALLOW_UNDERTRAINED_LANGUAGES
 import org.futo.voiceinput.settings.ENABLE_MULTILINGUAL
 import org.futo.voiceinput.settings.LANGUAGE_TOGGLES
 import org.futo.voiceinput.settings.MULTILINGUAL_MODEL_INDEX
+import org.futo.voiceinput.settings.MANUALLY_SELECT_LANGUAGE
+import org.futo.voiceinput.settings.USE_LANGUAGE_SPECIFIC_MODELS
+import org.futo.voiceinput.settings.SettingToggleDataStore
 import org.futo.voiceinput.settings.ScreenTitle
 import org.futo.voiceinput.settings.SettingListLazy
 import org.futo.voiceinput.settings.SettingToggleRaw
@@ -96,6 +99,20 @@ fun LanguagesScreen(
         }
 
         item {
+            if (languages.size > 1 && languages.contains("en")) {
+                Tip(stringResource(R.string.use_language_specific_models_info))
+                SettingToggleDataStore(
+                    stringResource(R.string.use_language_specific_models),
+                    USE_LANGUAGE_SPECIFIC_MODELS
+                )
+            }
+            if (languages.size > 1) {
+                SettingToggleDataStore(
+                    stringResource(R.string.manually_select_language),
+                    MANUALLY_SELECT_LANGUAGE,
+                    subtitle = stringResource(R.string.manual_language_selection_toggle_subtitle)
+                )
+            }
             Tip(stringResource(R.string.language_tip_1))
             Tip(stringResource(R.string.language_tip_2))
             Tip(stringResource(R.string.language_tip_3))

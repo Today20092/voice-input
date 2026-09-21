@@ -15,6 +15,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -22,6 +23,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import kotlinx.coroutines.launch
+import org.futo.voiceinput.R
 import org.futo.voiceinput.s1.S1MiniBenchmark
 import org.futo.voiceinput.s1.S1MiniClient
 import org.futo.voiceinput.s1.S1MiniDiagnostics
@@ -46,6 +48,8 @@ import org.futo.voiceinput.settings.SettingItem
 import org.futo.voiceinput.settings.SettingRadio
 import org.futo.voiceinput.settings.SettingToggleDataStoreItem
 import org.futo.voiceinput.settings.SettingToggleRaw
+import org.futo.voiceinput.settings.SettingToggleDataStore
+import org.futo.voiceinput.settings.VERBOSE_PROGRESS
 import org.futo.voiceinput.settings.Tip
 import org.futo.voiceinput.settings.useDataStore
 import java.text.DateFormat
@@ -56,17 +60,10 @@ fun S1MiniOptions(showTitle: Boolean = true) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val enabled = useDataStore(S1_MINI_ENABLED)
-    val transcriptDiagnostics = useDataStore(S1_MINI_TRANSCRIPT_DIAGNOSTICS)
     val refresh = remember { mutableStateOf(0) }
     val benchmarking = remember { mutableStateOf(false) }
-    val showCaptureConsent = remember { mutableStateOf(false) }
-    val showTranscriptExportConfirmation = remember { mutableStateOf(false) }
-    val selectedCapture = remember { mutableStateOf<S1MiniTranscriptCapture?>(null) }
     refresh.value
     val installed = S1MiniModel.isInstalled(context)
-    val transcriptCaptureResult = remember(refresh.value) {
-        S1MiniDiagnostics.transcriptCaptures(context)
-    }
 
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
@@ -77,8 +74,6 @@ fun S1MiniOptions(showTitle: Boolean = true) {
     }
 
     LaunchedEffect(installed) {
-        S1MiniDiagnostics.purgeTranscriptCaptures(context)
-        refresh.value += 1
         if (installed && S1MiniBenchmark.needsRun(context)) {
             benchmarking.value = true
             S1MiniBenchmark.run(context)
@@ -148,6 +143,16 @@ fun S1MiniOptions(showTitle: Boolean = true) {
         S1MiniContext.entries.map { it.label },
         S1_MINI_CONTEXT
     )
+    if (benchmarking.value) Tip("Optimizing S1-mini…")
+}
+
+@Composable
+fun S1MiniRuntimeOptions() {
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val installed = S1MiniModel.isInstalled(context)
+    val benchmarking = remember { mutableStateOf(false) }
+    SettingsSeparator("S1-mini performance")
     SettingRadio(
         "Keep model weights warm",
         S1MiniWarmDuration.entries.map { it.id },
@@ -182,7 +187,35 @@ fun S1MiniOptions(showTitle: Boolean = true) {
         }
     ) { }
 
-    ScreenTitle("Diagnostics")
+}
+
+@Composable
+private fun DiagnosticOptions() {
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val transcriptDiagnostics = useDataStore(S1_MINI_TRANSCRIPT_DIAGNOSTICS)
+    val refresh = remember { mutableStateOf(0) }
+    val showCaptureConsent = remember { mutableStateOf(false) }
+    val showTranscriptExportConfirmation = remember { mutableStateOf(false) }
+    val selectedCapture = remember { mutableStateOf<S1MiniTranscriptCapture?>(null) }
+    val transcriptCaptureResult = remember(refresh.value) {
+        S1MiniDiagnostics.transcriptCaptures(context)
+    }
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                S1MiniDiagnostics.purgeTranscriptCaptures(context)
+                refresh.value += 1
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        S1MiniDiagnostics.purgeTranscriptCaptures(context)
+        refresh.value += 1
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
+    SettingToggleDataStore(stringResource(R.string.verbose_mode), VERBOSE_PROGRESS)
+    SettingsSeparator("S1-mini reports")
     Tip(
         if (transcriptDiagnostics.value) {
             "Transcript capture is ON. Standard exports remain transcript-free; use the separately labeled transcript export only when you intend to share dictated text."
@@ -338,5 +371,13 @@ fun TranscriptCleanupScreen(navController: NavHostController = rememberNavContro
     ScrollableList {
         ScreenTitle("Transcript Cleanup", showBack = true, navController = navController)
         S1MiniOptions(showTitle = false)
+    }
+}
+
+@Composable
+fun DiagnosticsScreen(navController: NavHostController = rememberNavController()) {
+    ScrollableList {
+        ScreenTitle(stringResource(R.string.diagnostics), showBack = true, navController = navController)
+        DiagnosticOptions()
     }
 }

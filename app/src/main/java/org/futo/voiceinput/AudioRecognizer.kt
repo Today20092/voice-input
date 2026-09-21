@@ -176,6 +176,7 @@ abstract class RecordingSession {
     private var recognitionGeneration = 0L
 
     private var floatSamples: FloatBuffer = FloatBuffer.allocate(16000 * 30)
+    private val waveform = RecordingWaveform()
     private var recorderJob: Job? = null
     private var modelJob: Job? = null
     private var loadModelJob: Job? = null
@@ -208,6 +209,7 @@ abstract class RecordingSession {
     @Synchronized
     private fun clearCapturedSamples() {
         floatSamples.clear()
+        waveform.clear()
     }
 
     @Synchronized
@@ -246,7 +248,7 @@ abstract class RecordingSession {
     protected abstract fun permissionRejected()
 
     protected abstract fun recordingStarted()
-    protected abstract fun updateMagnitude(magnitude: Float, state: MagnitudeState)
+    protected abstract fun updateWaveform(bars: List<Pair<Float, Float>>, state: MagnitudeState)
 
     protected abstract fun processing()
     protected abstract fun cleaning()
@@ -720,8 +722,6 @@ abstract class RecordingSession {
                                 break
                             }
 
-                            val magnitude = (1.0f - 0.1f.pow(24.0f * rms))
-
                             val state = if (!canExpandSpace && floatSamples.remaining() < (AUDIO_SAMPLE_RATE * 5)) {
                                 MagnitudeState.ENDING_SOON_30S
                             } else if(hasTalked && shouldUseVad && (numConsecutiveNonSpeech > 33)) {
@@ -737,8 +737,8 @@ abstract class RecordingSession {
                             yield()
                             withContext(Dispatchers.Main) {
                                 yield()
-                                if(isRecording) {
-                                    updateMagnitude(magnitude, state)
+                                if(isRecording && captureGeneration == recognitionGeneration) {
+                                    updateWaveform(synchronized(this@RecordingSession) { waveform.snapshot() }, state)
                                 }
                             }
 
@@ -830,6 +830,7 @@ abstract class RecordingSession {
             streamingChunk?.set(i, sample)
         }
         streamingChunk?.let(streamingAudio::acceptAudio)
+        waveform.append(samples, nRead)
 
         return AppendResult.Accepted
     }
