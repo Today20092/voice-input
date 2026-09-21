@@ -8,6 +8,7 @@ internal class RecordingWaveform {
     private var samplesInBar = 0
     private var low = 0f
     private var high = 0f
+    private var displayGain = 40f
 
     fun clear() {
         next = 0
@@ -15,6 +16,7 @@ internal class RecordingWaveform {
         samplesInBar = 0
         low = 0f
         high = 0f
+        displayGain = 40f
     }
 
     fun append(samples: ShortArray, length: Int) {
@@ -23,6 +25,13 @@ internal class RecordingWaveform {
             low = minOf(low, sample)
             high = maxOf(high, sample)
             if (++samplesInBar == 320) {
+                // Display-only gain: react quickly to loud speech and recover gently.
+                // A floor and bounded gain keep microphone noise close to the baseline.
+                val peak = maxOf(-low, high)
+                if (peak >= 0.002f) {
+                    val target = (0.8f / peak).coerceIn(1f, 40f)
+                    displayGain += (target - displayGain) * if (target < displayGain) 0.65f else 0.03f
+                }
                 bars[next] = low to high
                 next = (next + 1) % bars.size
                 count = minOf(count + 1, bars.size)
@@ -33,7 +42,13 @@ internal class RecordingWaveform {
         }
     }
 
-    fun snapshot(): List<Pair<Float, Float>> = List(count) {
-        bars[(next - count + it + bars.size) % bars.size]
+    fun snapshot(): List<Pair<Float, Float>> {
+        val complete = List(count) { bars[(next - count + it + bars.size) % bars.size] }
+        return if (samplesInBar == 0) complete else (complete + (low to high)).takeLast(bars.size)
+    }
+
+    fun displaySnapshot(): List<Pair<Float, Float>> = snapshot().map { (low, high) ->
+        if (maxOf(-low, high) < 0.002f) 0f to 0f
+        else (low * displayGain).coerceIn(-1f, 0f) to (high * displayGain).coerceIn(0f, 1f)
     }
 }

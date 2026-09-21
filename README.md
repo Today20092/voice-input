@@ -18,6 +18,23 @@ The goal is straightforward: keep the FUTO UI and recording flow while adding re
 - The stable app uses the distinct `org.futo.voiceinput.moonshine` package ID.
 - Only the selected backend's model files are required before voice input starts.
 
+## Beta 18: waveform visibility and bulk dictionary entry
+
+`v1.4.2-beta.18` builds on beta 17. The recording waveform is taller and uses
+bounded, adaptive display gain so quiet speech is easier to see. Partial bars
+are visible immediately; the saved audio and recognition input are unchanged.
+
+Personal Dictionary now supports pasting multiple entries and importing UTF-8
+text files up to 1 MiB. Preview additions, skip duplicates, and fix invalid
+mappings before adding. Existing entries are preserved. These corrections run
+after recognition and optional S1-mini cleanup, including with Orukeet; they do
+not train or provide recognition hints to Orukeet. Use `heard phrase => preferred phrase`
+for exact corrections. The optional `arabic-transliteration.txt` release download
+is an editable example list, not bundled or automatically enabled in the app.
+
+Iconless settings rows now align with the page margin, including Back up
+recordings. Audio-history explanations use smaller supporting text.
+
 ## Beta 17: waveform and settings
 
 `v1.4.2-beta.17` builds directly on beta 16. Recording now shows a scrolling

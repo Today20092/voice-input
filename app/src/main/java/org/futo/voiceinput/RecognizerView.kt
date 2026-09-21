@@ -101,29 +101,31 @@ fun Modifier.recognizerSurfaceClickable(disabled: Boolean, onPauseVAD: (Boolean)
 @Composable
 fun InnerRecognize(
     bars: List<Pair<Float, Float>> = emptyList(),
-    state: MagnitudeState = MagnitudeState.MIC_MAY_BE_BLOCKED
+    state: MagnitudeState = MagnitudeState.MIC_MAY_BE_BLOCKED,
+    onDrawn: () -> Unit = {}
 ) {
     val color = MaterialTheme.colorScheme.primary
     val baseline = MaterialTheme.colorScheme.outlineVariant
     Canvas(
         modifier = Modifier
             .fillMaxWidth()
-            .height(80.dp)
-            .padding(16.dp)
+            .height(120.dp)
+            .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
         val middle = size.height / 2f
         drawLine(baseline, Offset(0f, middle), Offset(size.width, middle), 1.dp.toPx())
         val step = size.width / 200f
         bars.forEachIndexed { index, (low, high) ->
             val x = size.width - (bars.size - index - 0.5f) * step
-            // Fixed display gain keeps quiet speech visible without amplifying silence.
+            // Envelopes are normalized for display without changing captured PCM.
             drawLine(
                 color,
-                Offset(x, middle - (high * 4f).coerceIn(0f, 1f) * middle),
-                Offset(x, middle - (low * 4f).coerceIn(-1f, 0f) * middle),
+                Offset(x, middle - high.coerceIn(0f, 1f) * middle),
+                Offset(x, middle - low.coerceIn(-1f, 0f) * middle),
                 step.coerceAtLeast(1f)
             )
         }
+        onDrawn()
     }
 
     val text = when (state) {
@@ -291,6 +293,7 @@ abstract class RecognizerView {
 
     private var startSoundId: Int = -1
     private var cancelSoundId: Int = -1
+    private var firstWaveformFrame = true
 
     protected abstract val context: Context
     protected abstract val lifecycleScope: LifecycleCoroutineScope
@@ -547,6 +550,7 @@ abstract class RecognizerView {
         }
 
         override fun recordingStarted() {
+            firstWaveformFrame = true
             updateWaveform(emptyList(), MagnitudeState.NOT_TALKED_YET)
 
             playSound(startSoundId)
@@ -562,7 +566,13 @@ abstract class RecognizerView {
                 ) {
                     InnerRecognize(
                         bars = bars,
-                        state = state
+                        state = state,
+                        onDrawn = {
+                            if (BuildConfig.DEBUG && firstWaveformFrame && bars.isNotEmpty()) {
+                                firstWaveformFrame = false
+                                Log.d("WaveformTiming", "first_frame t=${SystemClock.elapsedRealtime()}")
+                            }
+                        }
                     )
                 }
             }

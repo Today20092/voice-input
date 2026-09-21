@@ -15,6 +15,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.widget.Toast
 import android.provider.Settings
 import android.util.Log
@@ -539,6 +540,7 @@ abstract class RecordingSession {
     }
 
     private fun startRecording(numTries: Int = 0) {
+        if (BuildConfig.DEBUG) Log.d("WaveformTiming", "recorder_requested t=${SystemClock.elapsedRealtime()}")
         if (isRecording) {
             throw IllegalStateException("Start recording when already recording")
         }
@@ -580,6 +582,7 @@ abstract class RecordingSession {
             }
 
             recorder!!.startRecording()
+            if (BuildConfig.DEBUG) Log.d("WaveformTiming", "recorder_started t=${SystemClock.elapsedRealtime()}")
             val activeRecorder = recorder!!
             val captureGeneration = recognitionGeneration
 
@@ -621,6 +624,8 @@ abstract class RecordingSession {
                     var numConsecutiveSpeech = 0
 
                     val samples = ShortArray(AUDIO_READ_SIZE)
+                    var firstRead = true
+                    var firstUpdate = true
 
                     val capture = try {
                         val store = context.audioHistory()
@@ -645,6 +650,10 @@ abstract class RecordingSession {
                             val nRead = activeRecorder.read(samples, 0, AUDIO_READ_SIZE, AudioRecord.READ_BLOCKING)
 
                             if(nRead <= 0) break
+                            if (firstRead) {
+                                firstRead = false
+                                if (BuildConfig.DEBUG) Log.d("WaveformTiming", "first_samples t=${SystemClock.elapsedRealtime()}")
+                            }
                             yield()
 
                             // Persist before VAD or streaming recognition can fail.
@@ -738,7 +747,11 @@ abstract class RecordingSession {
                             withContext(Dispatchers.Main) {
                                 yield()
                                 if(isRecording && captureGeneration == recognitionGeneration) {
-                                    updateWaveform(synchronized(this@RecordingSession) { waveform.snapshot() }, state)
+                                    if (firstUpdate) {
+                                        firstUpdate = false
+                                        if (BuildConfig.DEBUG) Log.d("WaveformTiming", "first_update t=${SystemClock.elapsedRealtime()}")
+                                    }
+                                    updateWaveform(synchronized(this@RecordingSession) { waveform.displaySnapshot() }, state)
                                 }
                             }
 

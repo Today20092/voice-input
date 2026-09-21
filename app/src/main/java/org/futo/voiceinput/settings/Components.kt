@@ -115,19 +115,18 @@ fun SettingItem(
             .padding(0.dp, 4.dp, 0.dp, 4.dp)
     ) {
         Spacer(modifier = Modifier.width(16.dp))
-        Column(
-            modifier = Modifier
-                .width(48.dp)
-                .align(Alignment.CenterVertically)
-        ) {
-            Box(modifier = Modifier.align(Alignment.CenterHorizontally)) {
-                if (icon != null) {
+        if (icon != null) {
+            Column(
+                modifier = Modifier
+                    .width(48.dp)
+                    .align(Alignment.CenterVertically)
+            ) {
+                Box(modifier = Modifier.align(Alignment.CenterHorizontally)) {
                     icon()
                 }
             }
+            Spacer(modifier = Modifier.width(12.dp))
         }
-
-        Spacer(modifier = Modifier.width(12.dp))
 
         Row(
             modifier = Modifier
@@ -153,7 +152,7 @@ fun SettingItem(
                 }
             }
         }
-        Box(modifier = Modifier.align(Alignment.CenterVertically)) {
+        Box(modifier = Modifier.align(Alignment.CenterVertically).padding(start = 12.dp)) {
             content()
         }
 
@@ -344,7 +343,8 @@ fun NavigationItem(title: String, style: NavigationItemStyle, navigate: () -> Un
         title = title,
         subtitle = subtitle,
         onClick = navigate,
-        icon = {
+        icon = if (icon == null) null else {
+          {
             icon?.let {
                 val circleColor = when(style) {
                     NavigationItemStyle.HomePrimary -> MaterialTheme.colorScheme.primaryContainer
@@ -374,6 +374,7 @@ fun NavigationItem(title: String, style: NavigationItemStyle, navigate: () -> Un
                     }
                 }
             }
+          }
         }
     ) {
         when(style) {

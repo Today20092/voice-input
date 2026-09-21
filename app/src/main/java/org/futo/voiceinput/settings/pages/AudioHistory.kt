@@ -78,7 +78,8 @@ fun AudioHistoryScreen(navController: NavHostController) {
             SettingToggleDataStore(stringResource(R.string.audio_history_save), AUDIO_HISTORY_ENABLED,
                 subtitle = stringResource(R.string.audio_history_private))
             Column(Modifier.padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(stringResource(R.string.audio_history_retention_info))
+                Text(stringResource(R.string.audio_history_retention_info),
+                    style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 OutlinedTextField(value = hours, onValueChange = { hours = it },
                     label = { Text(stringResource(R.string.audio_history_keep_hours)) },
                     supportingText = { Text(stringResource(R.string.audio_history_hours_hint)) },
@@ -94,7 +95,8 @@ fun AudioHistoryScreen(navController: NavHostController) {
                             } catch (failure: Exception) { error = context.getString(R.string.audio_history_save_failed) }
                         }
                     }) { Text(stringResource(R.string.audio_history_apply)) }
-                Text(stringResource(R.string.audio_history_model_info))
+                Text(stringResource(R.string.audio_history_model_info),
+                    style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 if (!loaded) LinearProgressIndicator(Modifier.fillMaxWidth())
                 if (loaded && entries.isEmpty()) Text(stringResource(R.string.audio_history_empty))
                 if (selected == null) error?.let { Text(it, color = MaterialTheme.colorScheme.error) }

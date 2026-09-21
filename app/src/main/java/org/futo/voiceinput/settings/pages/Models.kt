@@ -1,27 +1,18 @@
 package org.futo.voiceinput.settings.pages
 
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.lifecycleScope
@@ -47,7 +38,6 @@ import org.futo.voiceinput.settings.MOONSHINE_MODEL_VARIANT
 import org.futo.voiceinput.settings.NEMOTRON_PROFILE
 import org.futo.voiceinput.settings.NEMOTRON_MULTILINGUAL_LANGUAGE
 import org.futo.voiceinput.settings.MULTILINGUAL_MODEL_INDEX
-import org.futo.voiceinput.settings.PERSONAL_DICTIONARY
 import org.futo.voiceinput.settings.SPEECH_BACKEND
 import org.futo.voiceinput.settings.ScreenTitle
 import org.futo.voiceinput.settings.ScrollableList
@@ -56,7 +46,6 @@ import org.futo.voiceinput.settings.SettingRadio
 import org.futo.voiceinput.settings.SettingsViewModel
 import org.futo.voiceinput.settings.SpeechBackendType
 import org.futo.voiceinput.settings.Tip
-import org.futo.voiceinput.settings.getSettingBlocking
 import org.futo.voiceinput.settings.toSpeechBackendType
 import org.futo.voiceinput.settings.useDataStore
 import org.futo.voiceinput.startModelDownloadActivity
@@ -94,35 +83,6 @@ fun modelsSubtitle(): String? {
     } else {
         selected
     }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun PersonalDictionaryEditor(disabled: Boolean, showTitle: Boolean = true) {
-    val context = LocalContext.current
-
-    val personalDict = useDataStore(PERSONAL_DICTIONARY)
-    val textFieldValue = remember { mutableStateOf(context.getSettingBlocking(
-        PERSONAL_DICTIONARY.key, PERSONAL_DICTIONARY.default)) }
-
-    LaunchedEffect(textFieldValue.value) {
-        personalDict.setValue(textFieldValue.value)
-    }
-    
-    if (showTitle) ScreenTitle(title = stringResource(R.string.personal_dictionary))
-
-    TextField(
-        value = textFieldValue.value,
-        onValueChange = {
-            textFieldValue.value = it
-        },
-        placeholder = { Text(stringResource(R.string.personal_dictionary_placeholder)) },
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(8.dp, 4.dp),
-        enabled = !disabled
-    )
-
 }
 
 @Composable

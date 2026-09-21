@@ -296,6 +296,23 @@
     <string name="new_model_features_tip">Models have been updated for better accuracy and faster performance. You can now also add words/phrases in the personal dictionary. If you have any issues or feedback after this change please contact us.</string>
     <string name="personal_dictionary_placeholder">One preferred word or phrase per line. Use heard phrase => preferred phrase for exact corrections, for example: photo => FUTO</string>
     <string name="personal_dictionary">Personal Dictionary</string>
+    <string name="dictionary_help">Words and phrases are corrected after recognition and optional transcript cleanup, including with Orukeet. This does not train the recognition model. Use an exact mapping when it hears a different phrase.</string>
+    <string name="dictionary_entries">Your entries · saved automatically</string>
+    <string name="dictionary_add_multiple">Add multiple entries</string>
+    <string name="dictionary_import_file">Import text file</string>
+    <string name="dictionary_preview">Preview additions</string>
+    <string name="dictionary_preview_count">%1$d new entries · %2$d duplicates skipped · %3$d invalid entries</string>
+    <string name="dictionary_preview_truncated">Showing the first 100 additions. All new entries will be added.</string>
+    <string name="dictionary_invalid_entries">Fix these entries before adding. Mappings need one =&gt; with text on both sides; control characters are not allowed. Showing up to 10 invalid entries.</string>
+    <string name="dictionary_edit_import">Edit imported text</string>
+    <string name="dictionary_add_entries">Add entries</string>
+    <string name="dictionary_saving">Saving…</string>
+    <string name="dictionary_retry_save">Retry save</string>
+    <string name="dictionary_read_failed">Could not load your dictionary. Reopen this page to try again.</string>
+    <string name="dictionary_save_failed">Could not save your dictionary. Your edits are still shown; tap Retry save.</string>
+    <string name="dictionary_invalid_utf8">This file is not valid UTF-8 text. Save it as a UTF-8 .txt file and try again.</string>
+    <string name="dictionary_too_large">The dictionary import is too large. Use at most 1 MiB of text.</string>
+    <string name="dictionary_import_failed">Could not read this file. Choose an accessible plain-text .txt file and try again.</string>
     <string name="manual_language_selection_toggle_subtitle">Avoids model switching delay if you have multiple languages enabled</string>
     <string name="unpaid_futo_voice_input">Unpaid FUTO Voice Input Moonshine</string>
     <string name="pay_for_futo_voice_input">Pay for FUTO Voice Input Moonshine</string>

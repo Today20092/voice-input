@@ -99,31 +99,9 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           name: FUTO Voice Input Moonshine ${{ github.ref_name }}
-          body: |
-            ## Waveform and organized settings
-
-            Built directly on v1.4.2-beta.16, retaining audio backups, history, retranscription, model downloads, and S1-mini cleanup.
-
-            - Replace the pulsing recording circle with a scrolling four-second waveform from microphone samples. Tap anywhere on the recording surface to stop.
-            - Group settings into Speech, Recording, Appearance, Support, Advanced, and About.
-            - Move personal dictionary into its own Speech page and language controls into Languages.
-            - Move stopping controls into Recording options and S1-mini runtime tuning into Advanced.
-            - Move reports, transcript capture, and ZIP export into Support → Diagnostics, preserving transcript capture and export consent.
-
-            ## What to test
-
-            - Dictate from the keyboard and recognition activity. Confirm the waveform follows speech and silence and resets on the next recording.
-            - Stop or cancel, then confirm audio history and retranscription still work.
-            - Open the reorganized settings pages and confirm existing settings survive the update.
-            - Export standard diagnostics and verify transcript export still asks for confirmation.
-
-            All 95 unit tests, the standalone release build, and Android lint passed locally. Microphone capture and visual behavior still need phone testing.
-
-            ## Installation
-
-            Signed standalone arm64 APK, version code 52. Install over beta 16; models are not bundled.
-
-            Audio lost before this update cannot be recovered. Backups begin with new recordings. Uninstalling the app or clearing its data deletes saved recordings.
-          files: release/*.apk
+          body_path: docs/releases/beta18.md
+          files: |
+            release/*.apk
+            docs/examples/arabic-transliteration.txt
           generate_release_notes: true
           prerelease: ${{ contains(github.ref_name, '-beta') }}
