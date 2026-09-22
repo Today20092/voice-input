@@ -24,6 +24,7 @@ object ParakeetModel {
         variantId = null,
         directoryName = "sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8",
         source = "NVIDIA Parakeet TDT 0.6B V3 (CC BY 4.0), Sherpa-ONNX export by twmht",
+        licenseAttribution = "CC BY 4.0",
         displayName = "Parakeet TDT 0.6B V3",
         description = "High-accuracy NVIDIA recognition that returns text after recording stops.",
         transcription = TranscriptionBehavior.FINAL_ONLY,

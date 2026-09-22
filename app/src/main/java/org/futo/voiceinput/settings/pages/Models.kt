@@ -1,26 +1,18 @@
 package org.futo.voiceinput.settings.pages
 
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.lifecycleScope
@@ -41,25 +33,19 @@ import org.futo.voiceinput.nemotron.NEMOTRON_MULTILINGUAL_LANGUAGES
 import org.futo.voiceinput.settings.DISMISS_MIGRATION_TIP
 import org.futo.voiceinput.settings.ENABLE_MULTILINGUAL
 import org.futo.voiceinput.settings.ENGLISH_MODEL_INDEX
-import org.futo.voiceinput.settings.LANGUAGE_TOGGLES
-import org.futo.voiceinput.settings.MANUALLY_SELECT_LANGUAGE
 import org.futo.voiceinput.settings.MODELS_MIGRATED
 import org.futo.voiceinput.settings.MOONSHINE_MODEL_VARIANT
 import org.futo.voiceinput.settings.NEMOTRON_PROFILE
 import org.futo.voiceinput.settings.NEMOTRON_MULTILINGUAL_LANGUAGE
 import org.futo.voiceinput.settings.MULTILINGUAL_MODEL_INDEX
-import org.futo.voiceinput.settings.PERSONAL_DICTIONARY
 import org.futo.voiceinput.settings.SPEECH_BACKEND
 import org.futo.voiceinput.settings.ScreenTitle
 import org.futo.voiceinput.settings.ScrollableList
 import org.futo.voiceinput.settings.SettingItem
 import org.futo.voiceinput.settings.SettingRadio
-import org.futo.voiceinput.settings.SettingToggleDataStore
 import org.futo.voiceinput.settings.SettingsViewModel
 import org.futo.voiceinput.settings.SpeechBackendType
 import org.futo.voiceinput.settings.Tip
-import org.futo.voiceinput.settings.USE_LANGUAGE_SPECIFIC_MODELS
-import org.futo.voiceinput.settings.getSettingBlocking
 import org.futo.voiceinput.settings.toSpeechBackendType
 import org.futo.voiceinput.settings.useDataStore
 import org.futo.voiceinput.startModelDownloadActivity
@@ -75,78 +61,28 @@ fun modelsSubtitle(): String? {
     val (backend, _) = useDataStore(SPEECH_BACKEND)
     val (moonshineVariantId, _) = useDataStore(MOONSHINE_MODEL_VARIANT)
     val (nemotronProfileId, _) = useDataStore(NEMOTRON_PROFILE)
+    val (englishModelIndex, _) = useDataStore(ENGLISH_MODEL_INDEX)
+    val (multilingualModelIndex, _) = useDataStore(MULTILINGUAL_MODEL_INDEX)
+    val (multilingualEnabled, _) = useDataStore(ENABLE_MULTILINGUAL)
     val readiness = remember(context) {
         RecognitionModelLifecycle.create(context.filesDir, BuildConfig.BUNDLE_PARAKEET_MODEL)
     }.readiness(
         RecognitionModelSelection(backend, moonshineVariantId, nemotronProfileId)
     )
-    return when (backend.toSpeechBackendType()) {
-        SpeechBackendType.Parakeet -> {
-            if (readiness?.isReady == true) {
-                stringResource(R.string.parakeet_model_active_subtitle)
-            } else {
-                stringResource(R.string.parakeet_model_download_required)
-            }
-        }
-        SpeechBackendType.Orukeet -> {
-            if (readiness?.isReady == true) {
-                stringResource(R.string.orukeet_model_active_subtitle)
-            } else {
-                stringResource(R.string.orukeet_model_download_required)
-            }
-        }
-        SpeechBackendType.ParakeetUnified -> {
-            if (readiness?.isReady == true) {
-                stringResource(R.string.parakeet_unified_model_active_subtitle)
-            } else {
-                stringResource(R.string.parakeet_unified_model_download_required)
-            }
-        }
-        SpeechBackendType.Nemotron -> {
-            if (readiness?.isReady == true) {
-                stringResource(R.string.nemotron_model_active_subtitle, readiness.model.displayName)
-            } else {
-                stringResource(R.string.nemotron_model_download_required, readiness?.model?.displayName.orEmpty())
-            }
-        }
-        SpeechBackendType.Moonshine -> {
-            if (readiness?.isReady == true) {
-                stringResource(R.string.moonshine_model_active_subtitle)
-            } else {
-                stringResource(R.string.moonshine_model_download_required)
-            }
-        }
-        SpeechBackendType.WhisperGGML -> stringResource(R.string.whisper_ggml_model_active_subtitle)
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun PersonalDictionaryEditor(disabled: Boolean) {
-    val context = LocalContext.current
-
-    val personalDict = useDataStore(PERSONAL_DICTIONARY)
-    val textFieldValue = remember { mutableStateOf(context.getSettingBlocking(
-        PERSONAL_DICTIONARY.key, PERSONAL_DICTIONARY.default)) }
-
-    LaunchedEffect(textFieldValue.value) {
-        personalDict.setValue(textFieldValue.value)
-    }
-    
-    ScreenTitle(title = stringResource(R.string.personal_dictionary))
-
-    TextField(
-        value = textFieldValue.value,
-        onValueChange = {
-            textFieldValue.value = it
-        },
-        placeholder = { Text(stringResource(R.string.personal_dictionary_placeholder)) },
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(8.dp, 4.dp),
-        enabled = !disabled
+    val selected = selectedRecognitionModelSummary(
+        runtimeId = backend,
+        managedModelName = readiness?.model?.displayName,
+        englishModel = ENGLISH_MODELS[englishModelIndex.coerceIn(ENGLISH_MODELS.indices)],
+        multilingualModel = MULTILINGUAL_MODELS[multilingualModelIndex.coerceIn(MULTILINGUAL_MODELS.indices)],
+        multilingualEnabled = multilingualEnabled
     )
-
+    return if (backend.toSpeechBackendType() != SpeechBackendType.WhisperGGML &&
+        readiness?.isReady != true
+    ) {
+        "$selected • Download required"
+    } else {
+        selected
+    }
 }
 
 @Composable
@@ -181,17 +117,9 @@ fun ManagedRecognitionModelCatalog() {
 
         if (card.models.isEmpty()) {
             val selected = backend.value == card.runtimeId
-            SettingItem(
-                title = card.displayName,
-                subtitle = "${card.transcription.label} • ${card.recognitionLanguages} • " +
-                    card.performanceClasses.joinToString(" to ") { it.label },
-                onClick = {
-                    context.updateRecognitionModelSelection(
-                        RecognitionModelSelection(card.runtimeId)
-                    )
-                },
-                icon = { RadioButton(selected = selected, onClick = null) }
-            ) { }
+            if (card.id == "whisper") {
+                WhisperModelOptions(whisperSelected = selected)
+            }
         } else {
             card.models.forEach { model ->
                 ManagedRecognitionModelItem(
@@ -228,14 +156,8 @@ private fun ManagedRecognitionModelItem(
         BuildConfig.BUNDLE_PARAKEET_MODEL
     val installed = modelLifecycle.isReady(model)
     val selected = selectedModelId == model.id
-    val status = when {
-        selected -> "Selected — choose another installed model before deleting"
-        installed -> "Installed"
-        else -> "Download required"
-    }
-    val subtitle = "${model.description}\n${model.transcription.label} • " +
-        "${model.recognitionLanguages} • ${model.performanceClass.label}\n" +
-        "${model.source} • ${"%.1f".format(model.transferBytes / 1_000_000.0)} MB • $status"
+    val presentation = presentRecognitionModel(model, installed, selected)
+    val showDetails = remember { mutableStateOf(false) }
     val selectOrDownload = {
         if (installed) {
             modelLifecycle.select(model, context::updateRecognitionModelSelection)
@@ -245,13 +167,14 @@ private fun ManagedRecognitionModelItem(
     }
 
     SettingItem(
-        title = model.displayName,
-        subtitle = subtitle,
+        title = presentation.title,
+        subtitle = presentation.summary,
         onClick = selectOrDownload,
         icon = { RadioButton(selected = selected, onClick = selectOrDownload) }
     ) {
-        if (installed && !bundled) {
-            Column {
+        Column {
+            TextButton(onClick = { showDetails.value = true }) { Text("Details") }
+            if (installed && !bundled) {
                 TextButton(
                     enabled = !selected,
                     onClick = {
@@ -264,13 +187,18 @@ private fun ManagedRecognitionModelItem(
             }
         }
     }
+    if (showDetails.value) {
+        ModelDetailsDialog(presentation) { showDetails.value = false }
+    }
 }
 
 @Composable
 fun WhisperModelRadio(
     title: String,
     models: List<ModelData>,
-    setting: org.futo.voiceinput.settings.SettingsKey<Int>
+    setting: org.futo.voiceinput.settings.SettingsKey<Int>,
+    whisperSelected: Boolean,
+    variantSelected: Boolean
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -293,11 +221,19 @@ fun WhisperModelRadio(
     ScreenTitle(title)
     models.forEachIndexed { index, model ->
         val needsDownload = context.modelNeedsDownloading(model)
+        val presentation = presentWhisperModel(
+            model = model,
+            languages = title,
+            installed = !needsDownload,
+            selected = whisperSelected && variantSelected && modelIndex.value == index
+        )
+        val showDetails = remember(model.ggml.ggml_file) { mutableStateOf(false) }
         refresh.value
         SettingItem(
-            title = model.name,
-            subtitle = if (needsDownload) stringResource(R.string.whisper_model_download_required) else null,
+            title = presentation.title,
+            subtitle = presentation.summary,
             onClick = {
+                context.updateRecognitionModelSelection(RecognitionModelSelection("whisper_ggml"))
                 if (modelIndex.value == index && needsDownload) {
                     context.startModelDownloadActivity(listOf(model))
                 } else {
@@ -306,8 +242,9 @@ fun WhisperModelRadio(
             },
             icon = {
                 RadioButton(
-                    selected = modelIndex.value == index,
+                    selected = whisperSelected && variantSelected && modelIndex.value == index,
                     onClick = {
+                        context.updateRecognitionModelSelection(RecognitionModelSelection("whisper_ggml"))
                         if (modelIndex.value == index && needsDownload) {
                             context.startModelDownloadActivity(listOf(model))
                         } else {
@@ -316,33 +253,44 @@ fun WhisperModelRadio(
                     }
                 )
             }
-        ) { }
+        ) {
+            TextButton(onClick = { showDetails.value = true }) { Text("Details") }
+        }
+        if (showDetails.value) {
+            ModelDetailsDialog(presentation) { showDetails.value = false }
+        }
     }
 }
 
 @Composable
-fun WhisperModelOptions() {
-    val (useMultilingual, _) = useDataStore(ENABLE_MULTILINGUAL)
-    val (languages, _) = useDataStore(LANGUAGE_TOGGLES)
-    val (useLanguageSpecificModels, _) = useDataStore(USE_LANGUAGE_SPECIFIC_MODELS)
-
-    if (useMultilingual) {
-        WhisperModelRadio(
-            stringResource(R.string.multilingual_model),
-            MULTILINGUAL_MODELS,
-            MULTILINGUAL_MODEL_INDEX
-        )
-    }
-
-    if((!useMultilingual) || (languages.contains("en") && useLanguageSpecificModels)) {
-        WhisperModelRadio(
-            stringResource(R.string.english_model),
-            ENGLISH_MODELS,
-            ENGLISH_MODEL_INDEX
-        )
-    }
+fun WhisperModelOptions(whisperSelected: Boolean) {
+    val multilingualEnabled = useDataStore(ENABLE_MULTILINGUAL).value
+    WhisperModelRadio(
+        "English",
+        ENGLISH_MODELS,
+        ENGLISH_MODEL_INDEX,
+        whisperSelected,
+        variantSelected = true
+    )
+    WhisperModelRadio(
+        "Multilingual",
+        MULTILINGUAL_MODELS,
+        MULTILINGUAL_MODEL_INDEX,
+        whisperSelected,
+        variantSelected = multilingualEnabled
+    )
 
     Tip(stringResource(R.string.parameter_count_tip))
+}
+
+@Composable
+private fun ModelDetailsDialog(presentation: ModelPresentation, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(presentation.title) },
+        text = { Text(presentation.details) },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Done") } }
+    )
 }
 
 @Composable
@@ -351,11 +299,10 @@ fun ModelsScreen(
     settingsViewModel: SettingsViewModel = viewModel(),
     navController: NavHostController = rememberNavController()
 ) {
-    val (languages, _) = useDataStore(LANGUAGE_TOGGLES)
     val (backend, _) = useDataStore(SPEECH_BACKEND)
     val whisperSelected = backend.toSpeechBackendType() == SpeechBackendType.WhisperGGML
 
-    val needsUpdate = NeedsMigration()
+    NeedsMigration()
 
     val wasMigrated = useDataStore(setting = MODELS_MIGRATED)
     val dismissMigrationTip = useDataStore(setting = DISMISS_MIGRATION_TIP)
@@ -370,21 +317,16 @@ fun ModelsScreen(
                 Tip(stringResource(R.string.new_model_features_tip), onDismiss = { dismissMigrationTip.setValue(true) })
             }
 
-            if(languages.size > 1) {
-                SettingToggleDataStore(
-                    stringResource(R.string.manually_select_language),
-                    MANUALLY_SELECT_LANGUAGE,
-                    subtitle = stringResource(R.string.manual_language_selection_toggle_subtitle)
-                )
-            }
-
         }
 
-        PersonalDictionaryEditor(disabled = false)
-        Spacer(modifier = Modifier.height(32.dp))
-
         ManagedRecognitionModelCatalog()
+    }
+}
 
-        if (whisperSelected) WhisperModelOptions()
+@Composable
+fun PersonalDictionaryScreen(navController: NavHostController = rememberNavController()) {
+    ScrollableList {
+        ScreenTitle(stringResource(R.string.personal_dictionary), showBack = true, navController = navController)
+        PersonalDictionaryEditor(disabled = false, showTitle = false)
     }
 }

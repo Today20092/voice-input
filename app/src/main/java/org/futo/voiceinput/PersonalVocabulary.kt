@@ -7,6 +7,7 @@ object PersonalVocabulary {
         val entries = vocabulary.split(ENTRY_SEPARATOR)
             .map(String::trim)
             .filter(String::isNotEmpty)
+        val preferredTerms = entries.map { normalize(it.substringAfter("=>").trim()) }.toSet()
         var corrected = text
 
         entries.mapNotNull { entry ->
@@ -16,17 +17,17 @@ object PersonalVocabulary {
         }.forEach { (heard, preferred) ->
             corrected = Regex(
                 "(?i)(?<![\\p{L}\\p{N}])${Regex.escape(heard)}(?![\\p{L}\\p{N}])"
-            ).replace(corrected, preferred)
+            ).replace(corrected) { preferred }
         }
 
         entries.filterNot { it.contains("=>") }
             .sortedByDescending { normalize(it).length }
-            .forEach { preferred -> corrected = correctTerm(corrected, preferred) }
+            .forEach { preferred -> corrected = correctTerm(corrected, preferred, preferredTerms) }
 
         return corrected
     }
 
-    private fun correctTerm(text: String, preferred: String): String {
+    private fun correctTerm(text: String, preferred: String, preferredTerms: Set<String>): String {
         val preferredWords = WORD.findAll(preferred).toList()
         if (preferredWords.isEmpty()) return text
 
@@ -43,12 +44,18 @@ object PersonalVocabulary {
         var index = 0
         while (index < words.size) {
             val widths = (preferredWidth + 1 downTo maxOf(1, preferredWidth - 1))
-            val matchedWidth = widths.firstOrNull { width ->
-                if (index + width > words.size) return@firstOrNull false
+            fun candidate(width: Int): String? {
+                if (index + width > words.size) return null
                 val first = words[index]
                 val last = words[index + width - 1]
-                val candidate = normalize(text.substring(first.range.first, last.range.last + 1))
-                editDistance(candidate, wanted) <= maxDistance
+                return normalize(text.substring(first.range.first, last.range.last + 1))
+            }
+            // An exact preferred spelling wins over fuzzy matches, including alias outputs.
+            val matchedWidth = widths.firstOrNull { candidate(it) == wanted } ?: widths.firstOrNull { width ->
+                val candidate = candidate(width) ?: return@firstOrNull false
+                candidate !in preferredTerms &&
+                    (index until index + width).none { normalize(words[it].value) in preferredTerms } &&
+                    editDistance(candidate, wanted) <= maxDistance
             }
             if (matchedWidth == null) {
                 index++

@@ -37,8 +37,8 @@ class ManagedRecognitionModelCatalogTest {
         compose.onNodeWithText("Parakeet TDT").assertIsDisplayed()
         compose.onNodeWithText("Parakeet Unified").assertIsDisplayed()
         compose.onNodeWithText("Parakeet Unified EN 0.6B").assertIsDisplayed()
-        compose.onNodeWithText("560 ms buffered live English", substring = true).assertIsDisplayed()
-        compose.onNodeWithText("Nemotron is preferred", substring = true).assertIsDisplayed()
+        compose.onNodeWithText("Buffered live transcription • English", substring = true).assertIsDisplayed()
+        compose.onNodeWithText("Download 663.0 MB • Installed 663.0 MB", substring = true).assertIsDisplayed()
     }
 
     @Test
@@ -48,7 +48,20 @@ class ManagedRecognitionModelCatalogTest {
         }
 
         compose.onNodeWithText("Nemotron 3.5 Multilingual").assertIsDisplayed()
-        compose.onNodeWithText("Auto-detect and 28 selectable languages", substring = true).assertIsDisplayed()
-        compose.onNodeWithText("OpenMDW 1.1", substring = true).assertIsDisplayed()
+        compose.onNodeWithText("Live transcription • 28 languages and Auto-detect", substring = true).assertIsDisplayed()
+        compose.onNodeWithText("OpenMDW 1.1", substring = true).assertDoesNotExist()
+    }
+
+    @Test
+    fun whisperVariantsAppearDirectlyWithFinalOnlyChoice() {
+        compose.setContent {
+            UixThemeAuto { ManagedRecognitionModelCatalog() }
+        }
+
+        compose.onNodeWithText("Whisper (legacy)").assertIsDisplayed()
+        compose.onNodeWithText("English-39 (default)").assertIsDisplayed()
+        compose.onNodeWithText("Multilingual-74 (default)").assertIsDisplayed()
+        compose.onAllNodesWithText("Final-only transcription", substring = true)
+            .assertCountEquals(7)
     }
 }

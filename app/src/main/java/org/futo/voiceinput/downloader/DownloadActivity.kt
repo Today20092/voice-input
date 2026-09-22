@@ -54,6 +54,9 @@ import org.futo.voiceinput.recognition.RecognitionModel
 import org.futo.voiceinput.recognition.RecognitionModelCatalog
 import org.futo.voiceinput.recognition.RecognitionModelLifecycle
 import org.futo.voiceinput.recognition.updateRecognitionModelSelection
+import org.futo.voiceinput.s1.EXTRA_ENABLE_S1_MINI_AFTER_DOWNLOAD
+import org.futo.voiceinput.settings.S1_MINI_ENABLED
+import org.futo.voiceinput.settings.setSettingBlocking
 import org.futo.voiceinput.settings.ScreenTitle
 import org.futo.voiceinput.settings.ScrollableList
 import org.futo.voiceinput.theme.UixThemeAuto
@@ -713,6 +716,9 @@ class DownloadActivity : ComponentActivity() {
     }
 
     private fun finishSuccessfulDownload() {
+        if (intent.getBooleanExtra(EXTRA_ENABLE_S1_MINI_AFTER_DOWNLOAD, false)) {
+            setSettingBlocking(S1_MINI_ENABLED.key, true)
+        }
         setResult(RESULT_OK, Intent())
         finish()
     }

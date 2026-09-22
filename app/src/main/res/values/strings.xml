@@ -1,4 +1,40 @@
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+    <string name="settings_speech">Speech</string>
+    <string name="settings_recording">Recording</string>
+    <string name="settings_appearance">Appearance</string>
+    <string name="settings_support">Support</string>
+    <string name="recording_options">Recording options</string>
+    <string name="diagnostics">Diagnostics</string>
+    <string name="diagnostics_subtitle">Reports, transcript capture, and ZIP export</string>
+    <string name="test_dictation">Test dictation</string>
+    <string name="audio_history">Audio history</string>
+    <string name="audio_history_subtitle">Recover recordings and copy transcripts</string>
+    <string name="audio_history_save">Back up recordings</string>
+    <string name="audio_history_private">Save every recording on this device, including canceled attempts. Audio stays in private app storage.</string>
+    <string name="audio_history_retention_info">Expired audio and text are deleted automatically. Android may delay background deletion; opening history also removes expired recordings. Turning backups off stops new saves.</string>
+    <string name="audio_history_keep_hours">Keep recordings for (hours)</string>
+    <string name="audio_history_hours_hint">1–720 hours. 2 = two hours, 24 = one day, 72 = three days. Shortening this deletes older recordings.</string>
+    <string name="audio_history_apply">Apply retention</string>
+    <string name="audio_history_model_info">Retranscription uses your current model, language, and cleanup settings. Change the model in Model Options to try another one.</string>
+    <string name="audio_history_empty">No saved recordings yet. New recordings will appear here while backups are enabled.</string>
+    <string name="audio_history_duration">%1$s seconds</string>
+    <string name="audio_history_recording">Recording or processing in progress</string>
+    <string name="audio_history_transcribing">Transcribing… Keep this screen open.</string>
+    <string name="audio_history_open">View recording</string>
+    <string name="audio_history_hide">Hide transcript</string>
+    <string name="audio_history_no_text">No saved transcript. Retranscribe this audio to recover the text.</string>
+    <string name="audio_history_retranscribe">Retranscribe</string>
+    <string name="audio_history_copy">Copy text</string>
+    <string name="audio_history_copied">Text copied</string>
+    <string name="audio_history_delete">Delete</string>
+    <string name="audio_history_delete_question">Delete this recording?</string>
+    <string name="audio_history_delete_info">This permanently deletes the saved audio and transcript.</string>
+    <string name="audio_history_delete_failed">Could not delete this recording. It may still be in use.</string>
+    <string name="audio_history_save_failed">Could not save the audio backup or transcript. Check available storage.</string>
+    <string name="audio_history_read_failed">Could not read audio history. Try reopening this screen.</string>
+    <string name="audio_history_memory_failed">Not enough memory to transcribe this recording. The saved audio is unchanged. Try a smaller model.</string>
+    <string name="audio_history_transcribe_failed">Transcription failed or returned no speech. The saved audio and previous text are unchanged. Check that your model is downloaded, or try another model.</string>
+    <string name="s1_cleaning_transcript">Cleaning transcript…</string>
     <string name="app_name">FUTO Voice Input Moonshine</string>
     <string name="voice_input_method">FUTO Voice Input Moonshine Method</string>
     <string name="suppress_non_speech_annotations">Suppress non-speech annotations</string>
@@ -259,6 +295,23 @@
     <string name="new_model_features_tip">Models have been updated for better accuracy and faster performance. You can now also add words/phrases in the personal dictionary. If you have any issues or feedback after this change please contact us.</string>
     <string name="personal_dictionary_placeholder">One preferred word or phrase per line. Use heard phrase => preferred phrase for exact corrections, for example: photo => FUTO</string>
     <string name="personal_dictionary">Personal Dictionary</string>
+    <string name="dictionary_help">Words and phrases are corrected after recognition and optional transcript cleanup, including with Orukeet. This does not train the recognition model. Use an exact mapping when it hears a different phrase.</string>
+    <string name="dictionary_entries">Your entries · saved automatically</string>
+    <string name="dictionary_add_multiple">Add multiple entries</string>
+    <string name="dictionary_import_file">Import text file</string>
+    <string name="dictionary_preview">Preview additions</string>
+    <string name="dictionary_preview_count">%1$d new entries · %2$d duplicates skipped · %3$d invalid entries</string>
+    <string name="dictionary_preview_truncated">Showing the first 100 additions. All new entries will be added.</string>
+    <string name="dictionary_invalid_entries">Fix these entries before adding. Mappings need one =&gt; with text on both sides; control characters are not allowed. Showing up to 10 invalid entries.</string>
+    <string name="dictionary_edit_import">Edit imported text</string>
+    <string name="dictionary_add_entries">Add entries</string>
+    <string name="dictionary_saving">Saving…</string>
+    <string name="dictionary_retry_save">Retry save</string>
+    <string name="dictionary_read_failed">Could not load your dictionary. Reopen this page to try again.</string>
+    <string name="dictionary_save_failed">Could not save your dictionary. Your edits are still shown; tap Retry save.</string>
+    <string name="dictionary_invalid_utf8">This file is not valid UTF-8 text. Save it as a UTF-8 .txt file and try again.</string>
+    <string name="dictionary_too_large">The dictionary import is too large. Use at most 1 MiB of text.</string>
+    <string name="dictionary_import_failed">Could not read this file. Choose an accessible plain-text .txt file and try again.</string>
     <string name="manual_language_selection_toggle_subtitle">Avoids model switching delay if you have multiple languages enabled</string>
     <string name="unpaid_futo_voice_input">Unpaid FUTO Voice Input Moonshine</string>
     <string name="pay_for_futo_voice_input">Pay for FUTO Voice Input Moonshine</string>
@@ -271,8 +324,6 @@
     <string name="commitment_to_privacy_title">Commitment to Privacy</string>
     <string name="commitment_to_privacy_body">This app will never serve you ads or sell your data. We are not in the business of doing that.</string>
 
-    <string name="orukeet_model_active_subtitle">Orukeet active (offline, final-only)</string>
-    <string name="orukeet_model_download_required">Orukeet download required</string>
     <string name="download_compressed_space_explanation">Free space is needed for both the saved download and the extracted model. Interrupted downloads resume when you retry.</string>
     <string name="download_retry">Retry download</string>
     <string name="download_verifying">Download received. Verifying and installing model files…</string>

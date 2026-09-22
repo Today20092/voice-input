@@ -19,7 +19,7 @@ class RecognitionModelCatalogTest {
         val models = RecognitionModelCatalog.models
 
         assertEquals(7, RecognitionModelCatalog.cards.size)
-        assertEquals("moonshine-small", RecognitionModelCatalog.defaultModel.id)
+        assertEquals("orukeet-v0.1.0", RecognitionModelCatalog.defaultModel.id)
         assertTrue(models.isNotEmpty())
         models.forEach { model ->
             assertTrue(model.version.isNotBlank())
@@ -51,7 +51,7 @@ class RecognitionModelCatalogTest {
         val unifiedCard = RecognitionModelCatalog.cards.single { it.id == "parakeet-unified" }
         assertEquals("parakeet_unified", unified.runtimeId)
         assertEquals("sherpa-onnx-nemo-parakeet-unified-en-0.6b-int8-streaming-560ms", unified.directoryName)
-        assertEquals(TranscriptionBehavior.LIVE, unified.transcription)
+        assertEquals(TranscriptionBehavior.BUFFERED_LIVE, unified.transcription)
         assertEquals("English", unified.recognitionLanguages)
         assertEquals(4, unified.artifacts.size)
         assertEquals(663_048_978, unified.transferBytes)
@@ -79,6 +79,7 @@ class RecognitionModelCatalogTest {
     fun downloadableModelsExposeSourceNotices() {
         RecognitionModelCatalog.models.forEach { model ->
             assertTrue(model.source.isNotBlank())
+            assertTrue(model.licenseAttribution.isNotBlank())
         }
     }
 

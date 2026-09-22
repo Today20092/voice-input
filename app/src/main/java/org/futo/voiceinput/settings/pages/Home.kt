@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -39,6 +38,7 @@ import org.futo.voiceinput.settings.ScreenTitle
 import org.futo.voiceinput.settings.ScrollableList
 import org.futo.voiceinput.settings.SettingItem
 import org.futo.voiceinput.settings.SettingsViewModel
+import org.futo.voiceinput.settings.SettingsDestination
 import org.futo.voiceinput.settings.isParakeetSelected
 import org.futo.voiceinput.settings.useDataStore
 
@@ -46,7 +46,7 @@ import org.futo.voiceinput.settings.useDataStore
 @Composable
 fun ShareFeedbackOption(title: String = stringResource(R.string.send_feedback)) {
     val context = LocalContext.current
-    val feedbackUri = "https://github.com/Today20092/futo_with_parakeet/issues/new"
+    val feedbackUri = "https://github.com/Today20092/voice-input/issues/new"
 
     val color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.75f)
     val icon = painterResource(id = R.drawable.mail)
@@ -71,7 +71,7 @@ fun ShareFeedbackOption(title: String = stringResource(R.string.send_feedback)) 
 @Composable
 fun IssueTrackerOption(title: String = stringResource(R.string.issue_tracker)) {
     val context = LocalContext.current
-    val issueTrackerUri = "https://github.com/Today20092/futo_with_parakeet/issues"
+    val issueTrackerUri = "https://github.com/Today20092/voice-input/issues"
 
     NavigationItem(
         title = title,
@@ -119,80 +119,111 @@ fun HomeScreen(
         ConditionalUpdate()
         ConditionalModelUpdate()
 
-        SettingsSeparator(stringResource(R.string.options))
+        SettingsSeparator(stringResource(R.string.settings_speech))
+        NavigationItem(
+            title = stringResource(R.string.model),
+            subtitle = modelsSubtitle(),
+            style = NavigationItemStyle.Misc,
+            navigate = { navController.navigate(SettingsDestination.Models.route) },
+            icon = painterResource(R.drawable.cpu)
+        )
         if (!parakeetSelected) {
             NavigationItem(
                 title = stringResource(R.string.languages),
                 subtitle = multilingualSubtitle,
                 style = NavigationItemStyle.Misc,
-                navigate = { navController.navigate("languages") },
+                navigate = { navController.navigate(SettingsDestination.Languages.route) },
                 icon = painterResource(R.drawable.globe)
             )
         }
 
         NavigationItem(
-            title = stringResource(R.string.model),
-            subtitle = modelsSubtitle(),
+            title = "Transcript Cleanup",
+            subtitle = "Optional S1-mini cleanup after final recognition",
             style = NavigationItemStyle.Misc,
-            navigate = { navController.navigate("models") },
-            icon = painterResource(R.drawable.cpu)
-        )
-
-        NavigationItem(
-            title = stringResource(R.string.input_options),
-            style = NavigationItemStyle.Misc,
-            navigate = { navController.navigate("input") },
-            icon = painterResource(R.drawable.shift)
-        )
-
-        SettingsSeparator(stringResource(R.string.miscellaneous))
-        NavigationItem(
-            title = stringResource(R.string.theme),
-            style = NavigationItemStyle.Misc,
-            navigate = { navController.navigate("themes") },
-            icon = painterResource(R.drawable.eye)
-        )
-
-        NavigationItem(
-            title = stringResource(R.string.testing_menu),
-            subtitle = stringResource(R.string.try_out_voice_input),
-            style = NavigationItemStyle.Misc,
-            navigate = { navController.navigate("testing") },
+            navigate = { navController.navigate(SettingsDestination.TranscriptCleanup.route) },
             icon = painterResource(R.drawable.edit)
         )
 
-        UnpaidNoticeCondition(showOnlyIfReminder = true) {
-            NavigationItem(
-                title = stringResource(R.string.payment),
-                style = NavigationItemStyle.Misc,
-                navigate = { navController.navigate("pleasePay") },
-                icon = painterResource(R.drawable.dollar_sign)
-            )
-        }
+        NavigationItem(
+            title = stringResource(R.string.personal_dictionary),
+            style = NavigationItemStyle.Misc,
+            navigate = { navController.navigate(SettingsDestination.PersonalDictionary.route) },
+            icon = painterResource(R.drawable.edit)
+        )
+
+        SettingsSeparator(stringResource(R.string.settings_recording))
+        NavigationItem(
+            title = stringResource(R.string.recording_options),
+            style = NavigationItemStyle.Misc,
+            navigate = { navController.navigate(SettingsDestination.Input.route) },
+            icon = painterResource(R.drawable.shift)
+        )
 
         NavigationItem(
-            title = stringResource(R.string.advanced),
+            title = stringResource(R.string.audio_history),
+            subtitle = stringResource(R.string.audio_history_subtitle),
             style = NavigationItemStyle.Misc,
-            navigate = { navController.navigate("advanced") },
+            navigate = { navController.navigate(SettingsDestination.AudioHistory.route) },
+            icon = painterResource(R.drawable.edit)
+        )
+
+        SettingsSeparator(stringResource(R.string.settings_appearance))
+        NavigationItem(
+            title = stringResource(R.string.theme),
+            style = NavigationItemStyle.Misc,
+            navigate = { navController.navigate(SettingsDestination.Themes.route) },
+            icon = painterResource(R.drawable.eye)
+        )
+
+        SettingsSeparator(stringResource(R.string.settings_support))
+        NavigationItem(
+            title = stringResource(R.string.diagnostics),
+            subtitle = stringResource(R.string.diagnostics_subtitle),
+            style = NavigationItemStyle.Misc,
+            navigate = { navController.navigate(SettingsDestination.Diagnostics.route) },
+            icon = painterResource(R.drawable.alert_circle)
+        )
+        NavigationItem(
+            title = stringResource(R.string.test_dictation),
+            subtitle = stringResource(R.string.try_out_voice_input),
+            style = NavigationItemStyle.Misc,
+            navigate = { navController.navigate(SettingsDestination.Testing.route) },
+            icon = painterResource(R.drawable.edit)
+        )
+
+        NavigationItem(
+            title = stringResource(R.string.help),
+            style = NavigationItemStyle.Misc,
+            navigate = { navController.navigate(SettingsDestination.Help.route) },
+            icon = painterResource(R.drawable.help_circle)
+        )
+        ShareFeedbackOption()
+        IssueTrackerOption()
+
+        SettingsSeparator(stringResource(R.string.advanced))
+        NavigationItem(
+            title = stringResource(R.string.advanced_settings),
+            style = NavigationItemStyle.Misc,
+            navigate = { navController.navigate(SettingsDestination.Advanced.route) },
             icon = painterResource(R.drawable.code)
         )
 
         SettingsSeparator(stringResource(R.string.about))
         NavigationItem(
-            title = stringResource(R.string.help),
-            style = NavigationItemStyle.Misc,
-            navigate = { navController.navigate("help") },
-            icon = painterResource(R.drawable.help_circle)
-        )
-
-        NavigationItem(
             title = stringResource(R.string.credits),
             style = NavigationItemStyle.Misc,
-            navigate = { navController.navigate("credits") },
+            navigate = { navController.navigate(SettingsDestination.Credits.route) },
             icon = painterResource(R.drawable.users)
         )
-        ShareFeedbackOption()
-        IssueTrackerOption()
+        UnpaidNoticeCondition(showOnlyIfReminder = true) {
+            NavigationItem(
+                title = stringResource(R.string.payment),
+                style = NavigationItemStyle.Misc,
+                navigate = { navController.navigate(SettingsDestination.PleasePay.route) },
+                icon = painterResource(R.drawable.dollar_sign)
+            )
+        }
 
         Spacer(modifier = Modifier.height(32.dp))
 

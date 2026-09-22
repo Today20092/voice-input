@@ -3,6 +3,9 @@ package org.futo.voiceinput.recognition
 import android.content.Context
 import kotlinx.coroutines.runBlocking
 import org.futo.voiceinput.backend.SpeechBackend
+import org.futo.voiceinput.settings.SPEECH_BACKEND
+import org.futo.voiceinput.settings.SpeechBackendType
+import org.futo.voiceinput.settings.toSpeechBackendType
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -14,6 +17,17 @@ import java.io.File
 class RecognitionModelLifecycleTest {
     @get:Rule
     val temporaryFolder = TemporaryFolder()
+
+    @Test
+    fun defaultSelectionRequiresOrukeetAndPreservesExplicitModels() {
+        assertEquals("orukeet", SPEECH_BACKEND.default)
+        assertEquals(SpeechBackendType.Orukeet, "unknown".toSpeechBackendType())
+        assertEquals(SpeechBackendType.Moonshine, "moonshine".toSpeechBackendType())
+        val lifecycle = RecognitionModelLifecycle.create(temporaryFolder.root, parakeetBundled = false)
+        val readiness = requireNotNull(lifecycle.readiness(RecognitionModelSelection(SPEECH_BACKEND.default)))
+        assertEquals("orukeet-v0.1.0", readiness.model.id)
+        assertFalse(readiness.isReady)
+    }
 
     @Test
     fun selectedManagedModelsUseTheSameValidatedReadinessCheck() {

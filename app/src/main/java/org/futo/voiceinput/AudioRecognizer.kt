@@ -13,6 +13,10 @@ import android.media.MediaRecorder
 import android.media.MicrophoneDirection
 import android.net.Uri
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
+import android.os.SystemClock
+import android.widget.Toast
 import android.provider.Settings
 import android.util.Log
 import androidx.lifecycle.LifecycleCoroutineScope
@@ -29,6 +33,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.yield
 import org.futo.voiceinput.ml.RunState
+import org.futo.voiceinput.history.AudioHistoryStore
+import org.futo.voiceinput.history.audioHistory
+import org.futo.voiceinput.settings.AUDIO_HISTORY_ENABLED
+import org.futo.voiceinput.settings.AUDIO_HISTORY_RETENTION_HOURS
 import org.futo.voiceinput.settings.ENABLE_30S_LIMIT
 import org.futo.voiceinput.settings.END_OF_SPEECH_PROFILE
 import org.futo.voiceinput.settings.IS_VAD_ENABLED
@@ -40,6 +48,7 @@ import org.futo.voiceinput.settings.PARAKEET_KEEP_WARM_TIMEOUT_MS
 import org.futo.voiceinput.settings.PARAKEET_USE_VAD
 import org.futo.voiceinput.settings.PERSONAL_DICTIONARY
 import org.futo.voiceinput.settings.SPEECH_BACKEND
+import org.futo.voiceinput.settings.S1_MINI_TRANSCRIPT_DIAGNOSTICS
 import org.futo.voiceinput.settings.SpeechBackendType
 import org.futo.voiceinput.settings.getSetting
 import org.futo.voiceinput.parakeet.ParakeetEngineLease
@@ -51,6 +60,9 @@ import org.futo.voiceinput.recognition.RecognitionModelLifecycle
 import org.futo.voiceinput.recognition.RecognitionModelSelection
 import org.futo.voiceinput.recognition.RecognitionModelStore
 import org.futo.voiceinput.recognition.RecognitionRuntimeCallbacks
+import org.futo.voiceinput.s1.S1MiniCleanupResult
+import org.futo.voiceinput.s1.S1MiniDiagnostics
+import org.futo.voiceinput.s1.S1MiniTranscriptCleaner
 import org.futo.voiceinput.settings.toSpeechBackendType
 import org.futo.voiceinput.settings.toEndOfSpeechProfile
 import java.nio.FloatBuffer
@@ -170,6 +182,23 @@ abstract class RecordingSession {
     private var modelJob: Job? = null
     private var loadModelJob: Job? = null
     private var personalVocabulary = ""
+    private var backup: Pair<Long, AudioHistoryStore.Capture>? = null
+    private var backupId: Pair<Long, String>? = null
+
+    private fun backupFailed() {
+        Handler(Looper.getMainLooper()).post {
+            Toast.makeText(context, R.string.audio_history_save_failed, Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun saveBackupTranscript(id: String?, text: String) {
+        if (id == null) return
+        try {
+            context.audioHistory().saveTranscript(id, text)
+        } catch (error: Exception) {
+            backupFailed()
+        }
+    }
     private val streamingAudio = StreamingAudioReplay()
     private var selectedManagedModel: RecognitionModel? = null
     private val modelLifecycle by lazy {
@@ -223,6 +252,7 @@ abstract class RecordingSession {
     protected abstract fun updateWaveform(bars: List<Pair<Float, Float>>, state: MagnitudeState)
 
     protected abstract fun processing()
+    protected abstract fun cleaning()
 
     private var isVADPaused = false
     fun pauseVAD(v: Boolean) {
@@ -282,8 +312,12 @@ abstract class RecordingSession {
         val loadModelJobToJoin: Job?
         val backendToClose: SpeechBackend?
         val parakeetLeaseToRelease: OwnedParakeetLease?
+        val backupToClose: AudioHistoryStore.Capture?
         synchronized(this) {
             recognitionGeneration += 1
+            backupToClose = backup?.second
+            backup = null
+            backupId = null
             recorderJobToJoin = recorderJob
             modelJobToJoin = modelJob
             loadModelJobToJoin = loadModelJob
@@ -310,6 +344,7 @@ abstract class RecordingSession {
             recorderJobToJoin?.join()
             modelJobToJoin?.join()
             loadModelJobToJoin?.join()
+            withContext(Dispatchers.IO) { runCatching { backupToClose?.close() } }
             if (parakeetLeaseToRelease != null) {
                 modelLifecycle.release(parakeetLeaseToRelease.lease, lifecycleScope)
             } else if (backendToClose != null) {
@@ -505,6 +540,7 @@ abstract class RecordingSession {
     }
 
     private fun startRecording(numTries: Int = 0) {
+        if (BuildConfig.DEBUG) Log.d("WaveformTiming", "recorder_requested t=${SystemClock.elapsedRealtime()}")
         if (isRecording) {
             throw IllegalStateException("Start recording when already recording")
         }
@@ -546,6 +582,7 @@ abstract class RecordingSession {
             }
 
             recorder!!.startRecording()
+            if (BuildConfig.DEBUG) Log.d("WaveformTiming", "recorder_started t=${SystemClock.elapsedRealtime()}")
             val activeRecorder = recorder!!
             val captureGeneration = recognitionGeneration
 
@@ -587,14 +624,47 @@ abstract class RecordingSession {
                     var numConsecutiveSpeech = 0
 
                     val samples = ShortArray(AUDIO_READ_SIZE)
+                    var firstRead = true
+                    var firstUpdate = true
+
+                    val capture = try {
+                        val store = context.audioHistory()
+                        store.purge(context.getSetting(AUDIO_HISTORY_RETENTION_HOURS))
+                        if (context.getSetting(AUDIO_HISTORY_ENABLED)) store.begin() else null
+                    } catch (error: CancellationException) {
+                        throw error
+                    } catch (error: Exception) {
+                        backupFailed()
+                        null
+                    }
 
                     try {
+                        synchronized(this@RecordingSession) {
+                            if (captureGeneration == recognitionGeneration) {
+                                backup = capture?.let { captureGeneration to it }
+                                backupId = capture?.let { captureGeneration to it.id }
+                            }
+                        }
                         captureLoop@ while(stopReason == null && activeRecorder.recordingState == AudioRecord.RECORDSTATE_RECORDING){
                             yield()
                             val nRead = activeRecorder.read(samples, 0, AUDIO_READ_SIZE, AudioRecord.READ_BLOCKING)
 
                             if(nRead <= 0) break
+                            if (firstRead) {
+                                firstRead = false
+                                if (BuildConfig.DEBUG) Log.d("WaveformTiming", "first_samples t=${SystemClock.elapsedRealtime()}")
+                            }
                             yield()
+
+                            // Persist before VAD or streaming recognition can fail.
+                            val appendResult = appendSamples(samples, nRead, captureGeneration)
+                            if (appendResult == AppendResult.SessionEnded) break
+                            if (appendResult == AppendResult.DurationLimit) {
+                                withContext(Dispatchers.Main) {
+                                    if (isRecording && captureGeneration == recognitionGeneration) finishRecognizer()
+                                }
+                                break
+                            }
 
                             // Run VAD
                             if(shouldUseVad && !isVADPaused) {
@@ -624,18 +694,6 @@ abstract class RecordingSession {
                                 }
                             } else {
                                 numConsecutiveNonSpeech = 0
-                            }
-
-                            when (appendSamples(samples, nRead, captureGeneration)) {
-                                AppendResult.Accepted -> Unit
-                                AppendResult.SessionEnded -> break
-                                AppendResult.DurationLimit -> {
-                                withContext(Dispatchers.Main){
-                                    if(isRecording && captureGeneration == recognitionGeneration) {
-                                        finishRecognizer()
-                                    }
-                                }
-                                }
                             }
 
                             if(stopReason != null) break
@@ -689,6 +747,10 @@ abstract class RecordingSession {
                             withContext(Dispatchers.Main) {
                                 yield()
                                 if(isRecording && captureGeneration == recognitionGeneration) {
+                                    if (firstUpdate) {
+                                        firstUpdate = false
+                                        if (BuildConfig.DEBUG) Log.d("WaveformTiming", "first_update t=${SystemClock.elapsedRealtime()}")
+                                    }
                                     updateWaveform(synchronized(this@RecordingSession) { waveform.snapshot() }, state)
                                 }
                             }
@@ -724,6 +786,14 @@ abstract class RecordingSession {
                             appendFinalSilence(captureGeneration)
                         }
                     } finally {
+                        try {
+                            capture?.finishWriting()
+                            if (stopReason == null || stopReason == StopReason.Cancel ||
+                                captureGeneration != recognitionGeneration) capture?.close()
+                        } catch (error: Exception) {
+                            runCatching { capture?.close() }
+                            backupFailed()
+                        }
                         stopAndReleaseRecorder(activeRecorder)
                     }
                 }
@@ -749,6 +819,16 @@ abstract class RecordingSession {
     private fun appendSamples(samples: ShortArray, nRead: Int, captureGeneration: Long): AppendResult {
         if (!RecordingSessionPolicy.shouldAcceptSamples(stopReason, captureGeneration, recognitionGeneration)) {
             return AppendResult.SessionEnded
+        }
+
+        backup?.takeIf { it.first == captureGeneration }?.second?.let { capture ->
+            try {
+                capture.append(samples, nRead)
+            } catch (error: Exception) {
+                backup = null
+                runCatching { capture.close() }
+                backupFailed()
+            }
         }
 
         if(floatSamples.remaining() < nRead && !expandSpaceIfAllowed()) {
@@ -851,12 +931,20 @@ abstract class RecordingSession {
             }
         } finally {
             withContext(NonCancellable) {
-                releaseParakeetLease(runGeneration, keepWarm = false)
+                try {
+                    releaseParakeetLease(runGeneration, keepWarm = false)
+                } finally {
+                    val capture = synchronized(this@RecordingSession) {
+                        backup?.takeIf { it.first == runGeneration }?.second
+                    }
+                    withContext(Dispatchers.IO) { runCatching { capture?.close() } }
+                }
             }
         }
     }
 
     private suspend fun runModelInner(runGeneration: Long, runLoadModelJob: Job?) {
+        val savedAudioId = synchronized(this) { backupId?.takeIf { it.first == runGeneration }?.second }
         if(runLoadModelJob != null && runLoadModelJob.isActive) {
             println("Model was not finished loading...")
             runLoadModelJob.join()
@@ -896,10 +984,36 @@ abstract class RecordingSession {
         }
 
         yield()
+        var cleanupResult = S1MiniCleanupResult("", applied = false)
         val text = try {
             val rawText = (runBackend as? StreamingSpeechBackend)?.finishStreaming()
                 ?: runBackend.transcribe(floatArray)
-            PersonalVocabulary.apply(rawText, personalVocabulary)
+            saveBackupTranscript(savedAudioId, rawText)
+            cleanupResult = S1MiniTranscriptCleaner.clean(
+                context = context,
+                rawTranscript = rawText,
+                backend = backendType,
+                detectedLanguage = runBackend.detectedLanguage,
+                forcedLanguage = forcedLanguage,
+                onCleaning = { withContext(Dispatchers.Main) { cleaning() } }
+            )
+            val finalDeliveredText = PersonalVocabulary.apply(cleanupResult.text, personalVocabulary)
+            if (
+                cleanupResult.diagnosticReportId != null &&
+                context.getSetting(S1_MINI_TRANSCRIPT_DIAGNOSTICS)
+            ) {
+                runCatching {
+                    S1MiniDiagnostics.recordTranscript(
+                        context = context,
+                        reportId = cleanupResult.diagnosticReportId,
+                        rawTranscript = rawText,
+                        cleanedTranscript = cleanupResult.text.takeIf { cleanupResult.applied },
+                        finalDeliveredTranscript = finalDeliveredText,
+                        failureOrBypassReason = cleanupResult.fallbackCategory
+                    )
+                }
+            }
+            finalDeliveredText
         } catch(e: OutOfMemoryError) {
             decodingStatus(RunState.OOMError)
             closeFailedBackend(runGeneration)
@@ -918,6 +1032,8 @@ abstract class RecordingSession {
             throw CancellationException("Recognition was reset while decoding")
         }
 
+        saveBackupTranscript(savedAudioId, text)
+
         val keepWarmEnabled = context.getSetting(PARAKEET_KEEP_WARM)
         val timeoutMs = context.getSetting(PARAKEET_KEEP_WARM_TIMEOUT_MS)
         modelLifecycle.release(runBackend, lifecycleScope, keepWarmEnabled, timeoutMs)
@@ -928,7 +1044,7 @@ abstract class RecordingSession {
 
         withContext(Dispatchers.Main) {
             runBackend.detectedLanguage?.let(::languageDetected)
-            if (text.isBlank()) {
+            if (text.isBlank() && !cleanupResult.validEmpty) {
                 failed(NoSpeechRecognizedException())
             } else {
                 finished(text)

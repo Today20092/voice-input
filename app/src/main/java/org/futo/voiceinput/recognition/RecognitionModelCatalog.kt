@@ -7,6 +7,7 @@ import java.io.File
 
 enum class TranscriptionBehavior(val label: String) {
     LIVE("Live transcription"),
+    BUFFERED_LIVE("Buffered live transcription"),
     FINAL_ONLY("Final-only transcription")
 }
 
@@ -36,6 +37,7 @@ data class RecognitionModel(
     val variantId: String?,
     val directoryName: String,
     val source: String,
+    val licenseAttribution: String = source,
     val displayName: String,
     val description: String,
     val transcription: TranscriptionBehavior,
@@ -126,9 +128,10 @@ object RecognitionModelCatalog {
         variantId = null,
         directoryName = PARAKEET_UNIFIED_DIRECTORY,
         source = "NVIDIA Parakeet Unified (NVIDIA Open Model License), Sherpa-ONNX export by k2-fsa",
+        licenseAttribution = "NVIDIA Open Model License",
         displayName = "Parakeet Unified EN 0.6B",
         description = "560 ms buffered live English transcription that recomputes left context; Nemotron is preferred for the fastest updates.",
-        transcription = TranscriptionBehavior.LIVE,
+        transcription = TranscriptionBehavior.BUFFERED_LIVE,
         recognitionLanguages = "English",
         performanceClass = PerformanceClass.DEMANDING,
         artifacts = listOf(
@@ -239,7 +242,7 @@ object RecognitionModelCatalog {
             runtimeId = "parakeet_unified",
             displayName = "Parakeet Unified",
             description = "Buffered live English recognition that recomputes left context; choose Nemotron for lower-latency streaming.",
-            transcription = TranscriptionBehavior.LIVE,
+            transcription = TranscriptionBehavior.BUFFERED_LIVE,
             recognitionLanguages = "English",
             performanceClasses = setOf(PerformanceClass.DEMANDING),
             models = listOf(parakeetUnified)
@@ -248,15 +251,15 @@ object RecognitionModelCatalog {
             id = "whisper",
             runtimeId = "whisper_ggml",
             displayName = "Whisper (legacy)",
-            description = "Existing English and multilingual offline models.",
-            transcription = TranscriptionBehavior.LIVE,
+            description = "Legacy English and multilingual recognition that returns text after recording stops.",
+            transcription = TranscriptionBehavior.FINAL_ONLY,
             recognitionLanguages = "English and multilingual",
             performanceClasses = PerformanceClass.entries.toSet(),
             models = emptyList()
         )
     )
 
-    val defaultModel = moonshineSmall
+    val defaultModel = OrukeetModel.recognitionModel
     val models = cards.flatMap { it.models }
 
     fun modelFor(runtimeId: String, variantId: String? = null): RecognitionModel? =
@@ -280,6 +283,7 @@ object RecognitionModelCatalog {
         variantId = variantId,
         directoryName = directoryName,
         source = MOONSHINE_SOURCE,
+        licenseAttribution = "MIT",
         displayName = displayName,
         description = description,
         transcription = TranscriptionBehavior.LIVE,
@@ -316,6 +320,7 @@ object RecognitionModelCatalog {
             variantId = variantId,
             directoryName = directory,
             source = "NVIDIA Nemotron via k2-fsa/sherpa-onnx",
+            licenseAttribution = "NVIDIA Open Model License",
             displayName = displayName,
             description = description,
             transcription = TranscriptionBehavior.LIVE,
@@ -360,6 +365,7 @@ object RecognitionModelCatalog {
             variantId = "multilingual",
             directoryName = directory,
             source = "NVIDIA Nemotron 3.5 (OpenMDW 1.1), Sherpa-ONNX export by k2-fsa",
+            licenseAttribution = "OpenMDW 1.1",
             displayName = "Nemotron 3.5 Multilingual",
             description = "560 ms live transcription with explicit language selection or Auto-detect.",
             transcription = TranscriptionBehavior.LIVE,

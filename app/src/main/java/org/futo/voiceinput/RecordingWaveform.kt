@@ -33,7 +33,9 @@ internal class RecordingWaveform {
         }
     }
 
-    fun snapshot(): List<Pair<Float, Float>> = List(count) {
-        bars[(next - count + it + bars.size) % bars.size]
+    fun snapshot(): List<Pair<Float, Float>> {
+        val complete = List(count) { bars[(next - count + it + bars.size) % bars.size] }
+        return if (samplesInBar == 0) complete else (complete + (low to high)).takeLast(bars.size)
     }
+
 }

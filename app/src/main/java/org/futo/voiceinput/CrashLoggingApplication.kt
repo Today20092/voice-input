@@ -2,13 +2,26 @@ package org.futo.voiceinput
 
 import android.app.Application
 import android.content.Context
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import org.futo.voiceinput.history.AudioHistoryCleanupService
+import org.futo.voiceinput.history.purgeAudioHistory
 import org.acra.config.dialog
 import org.acra.config.httpSender
 import org.acra.data.StringFormat
 import org.acra.ktx.initAcra
 import org.acra.sender.HttpSender
+import org.futo.voiceinput.s1.S1MiniDiagnostics
 
 class CrashLoggingApplication : Application() {
+    override fun onCreate() {
+        super.onCreate()
+        runCatching { S1MiniDiagnostics.purgeTranscriptCaptures(this) }
+        runCatching { AudioHistoryCleanupService.schedule(this) }
+        CoroutineScope(Dispatchers.IO).launch { runCatching { purgeAudioHistory() } }
+    }
+
     override fun attachBaseContext(base: Context?) {
         super.attachBaseContext(base)
 

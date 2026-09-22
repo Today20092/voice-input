@@ -8,9 +8,9 @@ This is a personal fork of FUTO Voice Input. Upstreams:
 
 - GitHub mirror: `https://github.com/futo-org/voice-input`
 - Original GitLab: `https://gitlab.futo.org/keyboard/voiceinput`
-- Public fork: `https://github.com/Today20092/futo_with_parakeet`
+- Public fork: `https://github.com/Today20092/voice-input`
 
-The goal is to preserve FUTO Voice Input's Android IME/activity UX while making Moonshine v2 Small Streaming the default offline recognizer. NVIDIA Parakeet TDT 0.6B V3 and legacy FUTO Whisper/GGML remain selectable from Model Options.
+The goal is to preserve FUTO Voice Input's Android IME/activity UX with Orukeet as the default offline recognizer. Moonshine, NVIDIA Parakeet, Nemotron, and legacy FUTO Whisper/GGML remain selectable from Model Options.
 
 ## High-Level Architecture
 
@@ -27,7 +27,7 @@ Primary runtime flow:
 2. Both wrap `RecognizerView`, which owns the Compose recognition UI and forwards lifecycle events.
 3. `RecognizerView` delegates recording/model work to `AudioRecognizer`.
 4. `AudioRecognizer` records 16 kHz mono PCM with `AudioRecord`, applies WebRTC VAD, buffers float samples, then selects a `SpeechBackend`.
-5. Default backend is `MoonshineBackend`; optional backends are `ParakeetBackend` and `WhisperGGMLBackend`.
+5. Default recognition uses `orukeetBackend()`, a `ParakeetBackend` configured for Orukeet. Other backends remain selectable.
 6. `ParakeetBackend` uses the maintained Sherpa-ONNX Kotlin runtime.
 
 ## Key Files
@@ -38,7 +38,7 @@ Primary runtime flow:
 - `app/src/main/java/org/futo/voiceinput/RecognizerView.kt`: recognition UI state machine, sounds, permission/model prompts, result dispatch hooks.
 - `app/src/main/java/org/futo/voiceinput/RecognizeActivity.kt`: speech recognizer activity entry point.
 - `app/src/main/java/org/futo/voiceinput/VoiceInputMethodService.kt`: IME entry point, commits final/partial text to the active input connection, switches back on cancel.
-- `app/src/main/java/org/futo/voiceinput/settings/Settings.kt`: DataStore keys. `SPEECH_BACKEND` defaults to `moonshine`.
+- `app/src/main/java/org/futo/voiceinput/settings/Settings.kt`: DataStore keys. `SPEECH_BACKEND` defaults to `orukeet`; saved selections are preserved.
 - `app/src/main/java/org/futo/voiceinput/settings/pages/Models.kt`: Model Options UI for Moonshine, Parakeet, and Whisper/GGML.
 - `app/src/main/java/org/futo/voiceinput/downloader/DownloadActivity.kt`: shared model downloader. Supports explicit file URLs/hashes for Parakeet and legacy FUTO model names for Whisper.
 - `app/src/main/java/org/futo/voiceinput/parakeet/ParakeetModel.kt`: Parakeet file list, Hugging Face URLs, download marker, hash verification, model download intent.

@@ -13,7 +13,6 @@ import org.futo.voiceinput.settings.ALLOW_UNDERTRAINED_LANGUAGES
 import org.futo.voiceinput.settings.BEAM_SEARCH
 import org.futo.voiceinput.settings.DISALLOW_SYMBOLS
 import org.futo.voiceinput.settings.DevOnlySettings
-import org.futo.voiceinput.settings.ENABLE_30S_LIMIT
 import org.futo.voiceinput.settings.MULTILINGUAL_MODEL_INDEX
 import org.futo.voiceinput.settings.NavigationItem
 import org.futo.voiceinput.settings.NavigationItemStyle
@@ -21,7 +20,6 @@ import org.futo.voiceinput.settings.ScreenTitle
 import org.futo.voiceinput.settings.ScrollableList
 import org.futo.voiceinput.settings.SettingToggleDataStore
 import org.futo.voiceinput.settings.SettingsViewModel
-import org.futo.voiceinput.settings.VERBOSE_PROGRESS
 import org.futo.voiceinput.settings.isParakeetSelected
 import org.futo.voiceinput.settings.openImeOptions
 import org.futo.voiceinput.settings.useDataStore
@@ -50,11 +48,6 @@ fun AdvancedScreen(
             )
         }
 
-        SettingToggleDataStore(
-            stringResource(R.string.verbose_mode),
-            VERBOSE_PROGRESS
-        )
-
         if (!parakeetSelected) {
             SettingToggleDataStore(stringResource(R.string.use_beam_search), BEAM_SEARCH, subtitle = stringResource(R.string.recommended))
 
@@ -77,11 +70,7 @@ fun AdvancedScreen(
             navigate = { openImeOptions(context) }
         )
 
-        SettingToggleDataStore(
-            stringResource(R.string.re_enable_30s_limit),
-            ENABLE_30S_LIMIT,
-        )
-
+        S1MiniRuntimeOptions()
         DevOnlySettings()
     }
 }
