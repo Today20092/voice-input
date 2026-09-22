@@ -196,12 +196,52 @@ Commit `d12ee49` removes the Rust/JNI runtime, Cargo/NDK wiring, duplicate-libra
 
 - [x] The compatible Compose navigation stack uses Navigation Compose 2.8.0 or newer without raising the minimum supported Android version.
 - [ ] Swiping back from Model Options on Android 15 or newer previews the settings home screen with an interactive cross-fade instead of freezing until commit.
+- [ ] Swiping back from Input keeps the outgoing and incoming page text visually distinct instead of compositing both pages' text on top of each other.
 - [x] Committing the gesture returns to the correct previous destination, while cancelling it retains the current destination.
 - [x] Another settings destination exhibits the same predictive-back behavior through the shared navigation host.
 - [x] System back and the in-app back arrow continue to return to the correct previous destination.
 - [x] Forward navigation retains clear transition feedback.
 - [ ] An instrumentation check covers settings back-stack behavior at the shared navigation-host seam, and a real-device or emulator check verifies the interactive animation.
 - [ ] Relevant unit, instrumentation, build, and lint checks pass after the dependency upgrade.
+
+### Beta observation
+
+Confirmed in the signed `v1.4.2-beta.5` prerelease: start on Input, swipe from the left edge toward the right to return to the settings home screen, and hold or continue the gesture. Text from both pages remains visible in the same area and overlaps during the transition. A screen recording supplied during beta testing captures the behavior.
+
+## Exclude test audio from the Nemotron 3.5 Multilingual installation
+
+**What to build:** Install only the files required to run Nemotron 3.5 Multilingual so beta testers are not blocked waiting for packaged English and Japanese test recordings.
+
+**Blocked by:** None — can start immediately.
+
+**Triage:** ready-for-agent
+
+- [ ] Starting a Nemotron 3.5 Multilingual download does not request `test_wavs/en.wav` or `test_wavs/ja.wav`.
+- [ ] The model becomes installed after its runtime model and token files download and validate.
+- [ ] Existing incomplete installations that are waiting on test recordings can recover without downloading completed runtime files again.
+- [ ] A focused catalog check prevents non-runtime test assets from returning to the installation manifest.
+
+### Beta observation
+
+In the signed `v1.4.2-beta.5` prerelease, Download Progress remained at 4 of 6 files while showing `test_wavs/en.wav` and `test_wavs/ja.wav` as the final two resources.
+
+## Resume interrupted model downloads across retries
+
+**What to build:** Preserve validated files and partial transfer progress when a large recognition-model download stalls or is retried, avoiding another full transfer of completed data.
+
+**Blocked by:** None — can start immediately.
+
+**Triage:** ready-for-agent
+
+- [ ] Retrying an interrupted model installation skips files that already downloaded and validated.
+- [ ] Retrying a partially downloaded file continues from its saved byte position when the server supports range requests.
+- [ ] If a server cannot resume safely, the UI explains that the affected file must restart instead of silently presenting it as resumed.
+- [ ] A failed retry cannot replace a previously validated file or mark an incomplete model as installed.
+- [ ] A focused download check covers interruption and retry of a large model artifact.
+
+### Beta observation
+
+In the signed `v1.4.2-beta.5` prerelease, retrying the stalled Nemotron 3.5 Multilingual installation appeared to restart the full 657.6 MB `encoder.int8.onnx` transfer.
 
 ## Return truthful recognition activity results
 
@@ -326,3 +366,19 @@ Implemented by `f233072`, `4a61d22`, and `5ab3750`.
 ### Resolution
 
 Implemented by `44fb6fe`, `5ab3750`, and `bef4320`.
+
+## Verify long Moonshine dictation and improve segmentation only if needed
+
+**Triage:** ready-for-agent
+
+**What to build:** Establish whether Moonshine's existing streaming segmentation adequately handles longer dictation, and make the smallest demonstrated improvement only if it does not. Short-message dictation must retain its current stopping behavior. Do not add a separate VAD model or a new recording mode merely because recordings can exceed 30 seconds; a documented finding that no change is needed is a valid resolution.
+
+**Blocked by:** None — can start immediately.
+
+- [ ] Inspect the installed Moonshine runtime and current recording flow to distinguish built-in speech segmentation from app-level silence auto-stop and duration limits; document which behavior is already available.
+- [ ] Establish a baseline with short messages, approximately 30-second recordings, and recordings of at least two minutes, including natural pauses, extended thinking pauses, and uninterrupted speech. Use existing manual-stop controls where available and record the settings used.
+- [ ] Check partial and final transcript continuity, missing or repeated words at segment boundaries, premature stopping, and whether processing falls behind recording. Measure processing overhead, memory growth, and time from Stop to the final speech-recognition transcript on the user's phone; report S1 rewriting separately. Do not infer audio/VAD performance from the existing S1 diagnostic archive.
+- [ ] Record an evidence-based decision. If existing behavior is adequate, close with the results and no production changes. If a problem is demonstrated, implement only the necessary correction, preferring Moonshine's existing VAD, segment completion, and configuration over an additional detector.
+- [ ] Any changed long-recording path continues capture across segment boundaries until manual Stop, preserves boundary audio and transcript ordering, and handles uninterrupted speech without unbounded segments. Preserve current short-message behavior and defaults in both Activity and IME entry points; elapsed duration alone must not silently change stop behavior.
+- [ ] If evidence requires a new user-facing long-dictation mode or a separate VAD model, document the concrete need and proposed behavior for user agreement before expanding scope. Neither is pre-authorized by this ticket. Leave other recognition backends and S1 rewriting unchanged.
+- [ ] For production changes, add focused runnable regression checks for the demonstrated failure and short-message behavior, run relevant build/test/lint checks, and repeat the affected device scenarios. If device measurements are unavailable, document that validation gap rather than claiming a benefit or completing unverified criteria.

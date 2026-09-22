@@ -46,12 +46,12 @@ import org.futo.voiceinput.settings.useDataStore
 @Composable
 fun ShareFeedbackOption(title: String = stringResource(R.string.send_feedback)) {
     val context = LocalContext.current
-    val mailUri = "mailto:${stringResource(R.string.support_email)}"
+    val feedbackUri = "https://github.com/Today20092/futo_with_parakeet/issues/new"
 
     val color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.75f)
     val icon = painterResource(id = R.drawable.mail)
     SettingItem(title = title, onClick = {
-        context.openURI(mailUri)
+        context.openURI(feedbackUri)
     }, icon = {
         Canvas(modifier = Modifier.fillMaxSize()) {
             translate(
@@ -71,12 +71,12 @@ fun ShareFeedbackOption(title: String = stringResource(R.string.send_feedback)) 
 @Composable
 fun IssueTrackerOption(title: String = stringResource(R.string.issue_tracker)) {
     val context = LocalContext.current
-    val mailUri = "https://github.com/futo-org/voice-input/issues"
+    val issueTrackerUri = "https://github.com/Today20092/futo_with_parakeet/issues"
 
     NavigationItem(
         title = title,
         style = NavigationItemStyle.Misc,
-        navigate = { context.openURI(mailUri) },
+        navigate = { context.openURI(issueTrackerUri) },
         icon = painterResource(R.drawable.alert_circle)
     )
 }

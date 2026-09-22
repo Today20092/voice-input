@@ -1,6 +1,7 @@
 package org.futo.voiceinput.recognition
 
 import org.futo.voiceinput.parakeet.ParakeetModel
+import org.futo.voiceinput.parakeet.OrukeetModel
 import org.futo.voiceinput.sha256
 import java.io.File
 
@@ -50,7 +51,7 @@ data class RecognitionModel(
     }
 
     val transferBytes = archive?.sizeBytes ?: artifacts.sumOf { it.sizeBytes }
-    val requiredFreeSpaceBytes = maxOf(transferBytes, artifacts.sumOf { it.sizeBytes })
+    val requiredFreeSpaceBytes = artifacts.sumOf { it.sizeBytes } + (archive?.sizeBytes ?: 0L)
 }
 
 data class RecognitionModelCard(
@@ -222,6 +223,16 @@ object RecognitionModelCatalog {
             recognitionLanguages = "English",
             performanceClasses = setOf(PerformanceClass.DEMANDING),
             models = listOf(ParakeetModel.recognitionModel)
+        ),
+        RecognitionModelCard(
+            id = "orukeet",
+            runtimeId = "orukeet",
+            displayName = "Orukeet",
+            description = OrukeetModel.recognitionModel.description,
+            transcription = TranscriptionBehavior.FINAL_ONLY,
+            recognitionLanguages = OrukeetModel.recognitionModel.recognitionLanguages,
+            performanceClasses = setOf(PerformanceClass.DEMANDING),
+            models = listOf(OrukeetModel.recognitionModel)
         ),
         RecognitionModelCard(
             id = "parakeet-unified",

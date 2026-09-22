@@ -15,7 +15,6 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.indication
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
@@ -39,29 +38,24 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.withFrameMillis
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.core.math.MathUtils.clamp
 import androidx.lifecycle.LifecycleCoroutineScope
-import com.google.android.material.math.MathUtils
 import kotlinx.coroutines.launch
 import org.futo.voiceinput.ml.RunState
 import org.futo.voiceinput.recognition.RecognitionModel
-import org.futo.voiceinput.settings.ENABLE_ANIMATIONS
 import org.futo.voiceinput.settings.ENABLE_SOUND
 import org.futo.voiceinput.settings.LANGUAGE_TOGGLES
 import org.futo.voiceinput.settings.MANUALLY_SELECT_LANGUAGE
@@ -69,7 +63,6 @@ import org.futo.voiceinput.settings.SETTINGS_DESTINATION_EXTRA
 import org.futo.voiceinput.settings.SettingsActivity
 import org.futo.voiceinput.settings.VERBOSE_PROGRESS
 import org.futo.voiceinput.settings.getSetting
-import org.futo.voiceinput.settings.useDataStoreValueNullable
 import org.futo.voiceinput.theme.Typography
 
 fun Modifier.recognizerSurfaceClickable(disabled: Boolean, onPauseVAD: (Boolean) -> Unit, onFinish: () -> Unit): Modifier = composed {
@@ -94,71 +87,43 @@ fun Modifier.recognizerSurfaceClickable(disabled: Boolean, onPauseVAD: (Boolean)
                     }
                 }
             })
-        }.indication(interactionSource, ripple).semantics(mergeDescendants = true) { }
-}
-
-@Composable
-fun AnimatedRecognizeCircle(magnitude: Float = 0.5f) {
-    var radius by remember { mutableStateOf(0.0f) }
-    var lastMagnitude by remember { mutableStateOf(0.0f) }
-
-    LaunchedEffect(magnitude) {
-        val lastMagnitudeValue = lastMagnitude
-        if (lastMagnitude != magnitude) {
-            lastMagnitude = magnitude
-        }
-
-        launch {
-            val startTime = withFrameMillis { it }
-
-            while (true) {
-                val time = withFrameMillis { frameTime ->
-                    val t = (frameTime - startTime).toFloat() / 100.0f
-
-                    val t1 = clamp(t * t * (3f - 2f * t), 0.0f, 1.0f)
-
-                    radius = MathUtils.lerp(lastMagnitudeValue, magnitude, t1)
-
-                    frameTime
+        }.indication(interactionSource, ripple).semantics(mergeDescendants = true) {
+            if (!disabled) {
+                role = Role.Button
+                onClick {
+                    onFinish()
+                    true
                 }
-                if (time > (startTime + 100)) break
             }
         }
-    }
-
-    val color = MaterialTheme.colorScheme.primaryContainer
-
-    Canvas(modifier = Modifier.fillMaxSize()) {
-        val drawRadius = size.height * (0.8f + radius * 2.0f)
-        drawCircle(color = color, radius = drawRadius)
-    }
 }
 
 @Composable
 fun InnerRecognize(
-    magnitude: Float = 0.5f,
+    bars: List<Pair<Float, Float>> = emptyList(),
     state: MagnitudeState = MagnitudeState.MIC_MAY_BE_BLOCKED
 ) {
-    val shouldUseCircle = useDataStoreValueNullable(ENABLE_ANIMATIONS.key, default = ENABLE_ANIMATIONS.default)
-
-
-    Box(
+    val color = MaterialTheme.colorScheme.primary
+    val baseline = MaterialTheme.colorScheme.outlineVariant
+    Canvas(
         modifier = Modifier
             .fillMaxWidth()
             .height(80.dp)
             .padding(16.dp)
     ) {
-        AnimatedRecognizeCircle(magnitude = if(shouldUseCircle == true) { magnitude } else { 0.0f })
-
-        Icon(
-            painter = painterResource(R.drawable.mic_2_),
-            contentDescription = stringResource(R.string.stop_recording),
-            modifier = Modifier
-                .size(48.dp)
-                .align(Alignment.Center),
-            tint = MaterialTheme.colorScheme.onPrimaryContainer
-        )
-
+        val middle = size.height / 2f
+        drawLine(baseline, Offset(0f, middle), Offset(size.width, middle), 1.dp.toPx())
+        val step = size.width / 200f
+        bars.forEachIndexed { index, (low, high) ->
+            val x = size.width - (bars.size - index - 0.5f) * step
+            // Use the PCM amplitude directly so background noise stays small.
+            drawLine(
+                color,
+                Offset(x, middle - high.coerceIn(0f, 1f) * middle),
+                Offset(x, middle - low.coerceIn(-1f, 0f) * middle),
+                step.coerceAtLeast(1f)
+            )
+        }
     }
 
     val text = when (state) {
@@ -582,12 +547,12 @@ abstract class RecognizerView {
         }
 
         override fun recordingStarted() {
-            updateMagnitude(0.0f, MagnitudeState.NOT_TALKED_YET)
+            updateWaveform(emptyList(), MagnitudeState.NOT_TALKED_YET)
 
             playSound(startSoundId)
         }
 
-        override fun updateMagnitude(magnitude: Float, state: MagnitudeState) {
+        override fun updateWaveform(bars: List<Pair<Float, Float>>, state: MagnitudeState) {
             setContent {
                 this@RecognizerView.Window(
                     onClose = { cancelRecognizer() },
@@ -596,7 +561,7 @@ abstract class RecognizerView {
                     allowClick = true
                 ) {
                     InnerRecognize(
-                        magnitude = magnitude,
+                        bars = bars,
                         state = state
                     )
                 }

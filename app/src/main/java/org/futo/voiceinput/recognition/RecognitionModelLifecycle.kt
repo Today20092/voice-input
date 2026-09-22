@@ -13,6 +13,7 @@ import org.futo.voiceinput.moonshine.MoonshineBackend
 import org.futo.voiceinput.moonshine.getSelectedMoonshineModelVariant
 import org.futo.voiceinput.nemotron.SherpaStreamingBackend
 import org.futo.voiceinput.parakeet.acquireParakeetRuntime
+import org.futo.voiceinput.parakeet.orukeetBackend
 import org.futo.voiceinput.parakeet.parakeetUnifiedBackend
 import org.futo.voiceinput.parakeet.releaseParakeetArtifacts
 import org.futo.voiceinput.parakeet.releaseParakeetRuntime
@@ -113,6 +114,7 @@ class RecognitionModelLifecycle(
         val selectedModelId = readiness(selection)?.model?.id
         val backend = when (selection.runtimeId.toSpeechBackendType()) {
             SpeechBackendType.Parakeet -> acquireParakeetRuntime(context)
+            SpeechBackendType.Orukeet -> orukeetBackend()
             SpeechBackendType.ParakeetUnified -> parakeetUnifiedBackend()
             SpeechBackendType.Nemotron -> SherpaStreamingBackend()
             SpeechBackendType.Moonshine -> MoonshineBackend(context.getSelectedMoonshineModelVariant())

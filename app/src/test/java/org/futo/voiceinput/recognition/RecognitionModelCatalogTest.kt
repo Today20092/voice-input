@@ -18,7 +18,7 @@ class RecognitionModelCatalogTest {
     fun catalogHasCompleteImmutableManifests() {
         val models = RecognitionModelCatalog.models
 
-        assertEquals(6, RecognitionModelCatalog.cards.size)
+        assertEquals(7, RecognitionModelCatalog.cards.size)
         assertEquals("moonshine-small", RecognitionModelCatalog.defaultModel.id)
         assertTrue(models.isNotEmpty())
         models.forEach { model ->

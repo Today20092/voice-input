@@ -88,6 +88,13 @@ fun modelsSubtitle(): String? {
                 stringResource(R.string.parakeet_model_download_required)
             }
         }
+        SpeechBackendType.Orukeet -> {
+            if (readiness?.isReady == true) {
+                stringResource(R.string.orukeet_model_active_subtitle)
+            } else {
+                stringResource(R.string.orukeet_model_download_required)
+            }
+        }
         SpeechBackendType.ParakeetUnified -> {
             if (readiness?.isReady == true) {
                 stringResource(R.string.parakeet_unified_model_active_subtitle)
