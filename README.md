@@ -1,273 +1,158 @@
 # FUTO Voice Input Moonshine
 
-This personal fork keeps the FUTO voice keyboard experience, uses Orukeet as its default offline recognizer, and adds optional on-device transcript cleanup with S1-mini by Superwhisper. Moonshine, Parakeet TDT, Orukeet, Parakeet Unified, Nemotron, and legacy FUTO Whisper/GGML models are available from Model Options.
+[![Latest release](https://img.shields.io/github/v/release/Today20092/voice-input)](https://github.com/Today20092/voice-input/releases/latest)
+[![APK build](https://github.com/Today20092/voice-input/actions/workflows/release-apk.yml/badge.svg?branch=master)](https://github.com/Today20092/voice-input/actions/workflows/release-apk.yml)
+![Android 8.0+](https://img.shields.io/badge/Android-8.0%2B-3DDC84)
+![ARM64](https://img.shields.io/badge/ABI-arm64--v8a-blue)
+[![License](https://img.shields.io/badge/License-FUTO%20Source%20First-blue)](LICENSE.md)
 
-This fork's Parakeet integration and repository changes were built with AI assistance using Codex (GPT-5).
+Offline voice typing for Android, with a choice of speech models, recoverable recordings, personal dictionary corrections, and optional local transcript cleanup.
 
-The goal is straightforward: keep the FUTO UI and recording flow while adding responsive streaming transcription, personal vocabulary corrections, and private offline transcript cleanup.
-
-## What Changed
+This personal fork keeps the [FUTO Voice Input](https://github.com/futo-org/voice-input) keyboard and speech-recognition activity experience. Orukeet is the default recognizer; Moonshine, NVIDIA Parakeet and Nemotron, Cohere Transcribe, and legacy Whisper remain selectable. Speech recognition and cleanup run on your phone after their models are downloaded.
 
-- Orukeet is the default recognizer for new installations and returns the transcript after Stop. Existing saved model choices are preserved.
-- Moonshine v2 Small Streaming remains available and emits live partial transcripts.
-- Moonshine v2 Medium Streaming is available as a higher-accuracy option.
-- Parakeet TDT, Parakeet Unified, Nemotron English and multilingual, and legacy Whisper/GGML are selectable alternatives.
-- Batch and streaming recognizers share backend-neutral Kotlin contracts.
-- Personal vocabulary entries correct partial and final transcripts; use `heard => preferred` for explicit aliases.
-- Optional **S1-mini by Superwhisper** cleanup runs locally on final English transcripts after Stop.
-- S1-mini includes styling, structure, context, keep-warm, CPU/OpenCL, optimization, and transcript-free diagnostics controls.
-- The stable app uses the distinct `org.futo.voiceinput.moonshine` package ID.
-- Only the selected backend's model files are required before voice input starts.
+[Download the APK](https://github.com/Today20092/voice-input/releases/latest) · [Model guide](#choose-a-model) · [Release notes](docs/releases/v1.4.3.md) · [Report a problem](https://github.com/Today20092/voice-input/issues)
 
-## Stable 1.4.3
+## Why this fork exists
 
-Version 1.4.3 combines the tested history, Cohere, and recognizer-popup betas,
-adds app-wide local diagnostics, and fixes S1-mini's keep-warm behavior.
-Audio history has transcript previews and confirmed bulk clearing. Cohere Transcribe
-is an optional on-device model with an explicit language selector. The recognition
-popup shows the selected model and provides the new layout option.
+I made this fork because I really like FUTO Voice Input. It already has a good interface and a working Android voice-input flow, which made it a useful starting point. I wanted to keep that experience and try faster local speech models, starting with NVIDIA Parakeet.
 
-Under **Support → Diagnostics**, review local technical evidence and manually share
-a bug-report ZIP. Standard reports exclude dictated text and audio. Collection can
-be disabled, and detailed mode stops automatically after 30 minutes.
+The app has since grown to include Orukeet and Cohere Transcribe, both of which have worked well in my use, alongside live-transcription options and optional English text cleanup. My current testing phone is a **Samsung Galaxy S25 Ultra**, and local transcription has been working very well on it. This is hands-on experience, not a controlled performance benchmark; results on other phones may differ.
 
-Orukeet remains the default, and saved model selections are preserved. See the
-[1.4.3 release notes](docs/releases/v1.4.3.md) for downloads, limitations, and
-verification details.
+The goal is to make local dictation useful in everyday Android apps while keeping control over the model, recordings, and resulting text. Audio history lets you recover or retranscribe a recording, a personal dictionary fixes recurring names and phrases, and local diagnostics help investigate failures without automatically uploading your dictation.
 
-## Previous stable 1.4.2
+If another open-source app has a feature you think would improve this one, please [open an issue](https://github.com/Today20092/voice-input/issues) with a link to the project and a description of what you find useful. Suggestions can help guide new features or compatible integrations, with credit to the original authors and respect for their licenses.
 
-Version 1.4.2 includes the beta 18 features, defaults new installations to Orukeet,
-and routes issue reports and feedback to this fork on GitHub. The waveform now
-uses PCM amplitude directly, without adaptive gain that resized bars during pauses.
-Immediate partial bars and the taller waveform remain. See the
-[release notes](docs/releases/v1.4.2.md) for installation details.
+Development is AI-assisted through Codex, originally with GPT-5 and now with **GPT-6 Astra**. Those models help develop the app; they are not used to process your voice input.
 
-## Beta 18: waveform visibility and bulk dictionary entry
+## Get started
 
-`v1.4.2-beta.18` builds on beta 17. The recording waveform is taller and uses
-bounded, adaptive display gain so quiet speech is easier to see. Partial bars
-are visible immediately; the saved audio and recognition input are unchanged.
+1. Install the signed APK from [GitHub Releases](https://github.com/Today20092/voice-input/releases/latest). Android 8.0 or newer and an ARM64 device are required.
+2. Open the app's settings, grant microphone permission, and follow the voice-input setup.
+3. Open **Model Options**, keep Orukeet or select another recognizer, and confirm its download.
+4. Start dictating. Live text depends on the model; the final result is delivered after recording stops.
 
-Personal Dictionary now supports pasting multiple entries and importing UTF-8
-text files up to 1 MiB. Preview additions, skip duplicates, and fix invalid
-mappings before adding. Existing entries are preserved. These corrections run
-after recognition and optional S1-mini cleanup, including with Orukeet; they do
-not train or provide recognition hints to Orukeet. Use `heard phrase => preferred phrase`
-for exact corrections. The optional `arabic-transliteration.txt` release download
-is an editable example list, not bundled or automatically enabled in the app.
+The stable app uses `org.futo.voiceinput.moonshine`, a separate package from upstream FUTO Voice Input. Stable 1.4.3 updates this fork's earlier releases and tested betas while retaining settings and downloaded models. Existing model selections are preserved.
 
-Iconless settings rows now align with the page margin, including Back up
-recordings. Audio-history explanations use smaller supporting text.
+## What the app offers
 
-## Beta 17: waveform and settings
+| Feature | What it does |
+| --- | --- |
+| Multiple offline recognizers | Choose a model for your language, phone, and preferred transcription behavior. Only the selected recognizer needs downloading. |
+| Live transcription | Moonshine and Nemotron show partial text while you speak; Parakeet Unified provides buffered live updates. |
+| Personal dictionary | Correct names and recurring phrases with `heard phrase => preferred phrase`. Paste multiple entries or import a UTF-8 file, with a preview before saving. |
+| Audio history | Save recordings and transcripts, preview entries, retranscribe with another model, and copy the result. Confirmed bulk clearing preserves entries in use. |
+| S1-mini cleanup | Optionally rewrite final English transcripts locally, with style, structure, and context controls. |
+| Recording feedback | A scrolling waveform displays captured microphone amplitude; tap to stop recording. |
+| Recognizer popup | See the selected model. An optional bottom-positioned popup removes background dimming. |
+| Local diagnostics | Review technical events and manually share a bug-report ZIP. Detailed collection expires after 30 minutes. |
 
-`v1.4.2-beta.17` builds directly on beta 16. Recording now shows a scrolling
-four-second waveform from captured microphone samples, with tap-to-stop preserved.
-Settings are grouped into Speech, Recording, Appearance, Support, Advanced, and
-About. Personal dictionary has its own page; language controls are under Languages.
-S1-mini runtime tuning is under Advanced. Reports, transcript capture, and ZIP
-export are under Support → Diagnostics, with the existing sharing consent intact.
-Audio history and all beta 16 backup and recovery behavior are retained.
+Stable **1.4.3** combines the history, Cohere, and popup betas, adds app-wide diagnostics, and fixes S1-mini's keep-warm behavior. See the [release notes](docs/releases/v1.4.3.md) for verification and limitations. Earlier changes remain in the [release archive](https://github.com/Today20092/voice-input/releases).
 
-## Diagnostics and bug reports
+## Choose a model
 
-Open **Settings → Support → Diagnostics → Export bug report** to prepare a ZIP for an agent or a GitHub issue. Add optional notes, review the summary, then use the Android share sheet. For a difficult-to-reproduce problem, first enable **detailed mode**, reproduce it, and export; detailed mode stops automatically after 30 minutes.
+These are the options exposed by this app, not every capability of the upstream models. The use cases describe intended trade-offs, not a measured ranking across Android devices.
 
-Standard collection is local and on by default, with an off switch and a clear-history action. The bounded history covers recording, all recognition models, loading, live/final recognition, cleanup, delivery, downloads, managed failures, and available Android process-exit reasons. Reports include device/settings information and standard S1-mini results, but exclude dictated text, audio, vocabulary, clipboard/surrounding text, raw Logcat, and exception messages. Transcript-inclusive exports remain separate and require explicit consent. Nothing uploads automatically.
+| Model | Languages in the app | Text appears | Purpose and trade-off | Model source |
+| --- | --- | --- | --- | --- |
+| **Orukeet · default** | 25 European languages | After Stop | Starting point for everyday dictation. A Parakeet-derived model with multilingual and accent-focused adaptation; no live partials. | [Oruk AI](https://huggingface.co/oruk/orukeet) |
+| **Moonshine Small** | English | Live | Lighter English streaming option when resource use matters. | [Moonshine AI](https://github.com/moonshine-ai/moonshine) |
+| **Moonshine Medium** | English | Live | Larger English streaming option intended to favor accuracy, with greater resource use than Small. | [Moonshine AI](https://github.com/moonshine-ai/moonshine) |
+| **Parakeet TDT 0.6B V3** | 25 European languages | After Stop | NVIDIA's multilingual alternative to Orukeet, useful for comparing results on your own speech. | [NVIDIA](https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3) · [INT8 export](https://huggingface.co/twmht/sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8) |
+| **Parakeet Unified EN 0.6B** | English | Buffered live | Recomputes recent context for live updates. More work per update than a recognizer that reuses cached streaming state. | [Sherpa-ONNX export](https://huggingface.co/csukuangfj2/sherpa-onnx-nemo-parakeet-unified-en-0.6b-int8-streaming-560ms) |
+| **Nemotron English** | English | Live | Choose Low latency, Balanced, or Accuracy profiles to trade update frequency against recognition context. | [NVIDIA](https://huggingface.co/nvidia/nemotron-speech-streaming-en-0.6b) · [Sherpa-ONNX packages](https://github.com/k2-fsa/sherpa-onnx/releases/tag/asr-models) |
+| **Nemotron 3.5 Multilingual** | 28 languages, with Auto-detect | Live | Multilingual streaming with explicit language selection or automatic detection. | [Sherpa-ONNX export](https://huggingface.co/csukuangfj2/sherpa-onnx-nemotron-3.5-asr-streaming-0.6b-560ms-int8-2026-06-11) |
+| **Cohere Transcribe · beta** | 14 languages, including Arabic and English | After Stop | Another multilingual option, particularly for Arabic. Explicit language selection; a large download and substantial memory use. | [Cohere Labs](https://huggingface.co/CohereLabs/cohere-transcribe-03-2026) · [INT8 export](https://huggingface.co/csukuangfj2/sherpa-onnx-cohere-transcribe-14-lang-int8-2026-04-01) |
+| **Whisper · legacy** | English and multilingual options | Final after Stop; legacy decode progress may show partials | Preserves FUTO's original Whisper/GGML path as a fallback and comparison option. | [FUTO source and model integration](https://github.com/futo-org/voice-input) |
+| **S1-mini by Superwhisper** | English text | After recognition | Optional transcript cleanup, not speech recognition. Adds processing time to improve the presentation of dictated text. | [Superwhisper GGUF](https://huggingface.co/superwhisper/s1-mini-GGUF) |
 
-Retention, archive contents, and crash/delivery limitations are documented in [docs/diagnostics.md](docs/diagnostics.md).
+Nemotron English's 80, 160, and 560 ms profile values describe audio chunks, not guaranteed end-to-end latency. Phone hardware, recording length, language, and model all affect results. Publisher benchmarks are not measurements of this Android app.
 
-## Audio history
+Cohere download and recognition, history improvements, and the popup were manually tried on a Samsung Galaxy S25 Ultra. No comparative speed, memory, or accuracy benchmark was collected. Cohere remains labeled Beta; it has no automatic language detection, and mixed-language dictation can be inaccurate.
 
-Added in `v1.4.2-beta.16`, based on beta 15. Open **Audio history** from the main settings page to
-view saved recordings, retranscribe them with the currently selected recognition
-model, and copy the resulting text. Existing successful transcripts are saved too.
+### Model downloads
 
-History rows show a short transcript preview so you can find an entry before
-opening it. **Clear history** asks for confirmation, then removes saved audio and
-text. It preserves entries currently recording or transcribing and reports deleted,
-in-use, and failed counts. New recordings still save while backups are enabled.
+Models download separately into app-private storage. The normal APK does not bundle weights. Network access is needed for the initial download; recognition then works offline. S1-mini is a separate optional download.
 
-Backups are enabled by default and kept for 24 hours. Set retention to any value
-from 1 to 720 hours, for example 2 hours or 72 hours for three days. Turning backups
-off stops new saves; existing recordings keep their expiry. Each recording can also
-be deleted with its transcript. Shortening retention deletes older recordings.
+- **Orukeet:** about 487 MB to download and 672 MB installed. Allow about 1.16 GB free during installation for the archive and extracted files. Interrupted downloads can resume when the server supports byte ranges.
+- **Cohere:** about 2.89 GB of model files, plus working memory during recognition. Longer recordings use chunks of up to 35 seconds; words near boundaries may need checking.
+- **S1-mini:** about 484.2 MB for the pinned Q4_K_M model.
+- **Moonshine:** quantized assets come directly from Moonshine AI's [Small](https://download.moonshine.ai/model/small-streaming-en/quantized/streaming_config.json) and [Medium](https://download.moonshine.ai/model/medium-streaming-en/quantized/streaming_config.json) download service.
 
-The app writes 16 kHz mono PCM into private, Android-backup-excluded storage during
-capture, including canceled and failed attempts. Interrupted files remain readable
-up to the last complete sample written. Storage failures show a warning and do not
-prevent ordinary transcription. Uninstalling the app or clearing its data removes
-the recordings. Recordings use about 1.9 MB per minute.
+The [model catalog](app/src/main/java/org/futo/voiceinput/recognition/RecognitionModelCatalog.kt) records the app's selected packages and revisions. Linked model pages may describe newer upstream versions than the app downloads.
 
-Expiry is checked on launch, capture, history access, and by a periodic Android job.
-Android can delay background deletion while the app or device is stopped. Active
-capture and retranscription are protected from deletion until they finish.
-Retranscription stays on-device and uses current language, model, vocabulary, and
-cleanup settings. Keep the history screen open until it finishes.
+## Personal dictionary and cleanup
 
-## Screenshots
+Use **Personal Dictionary** for predictable corrections, such as `heard phrase => preferred phrase`. Bulk paste and UTF-8 imports up to 1 MiB let you preview additions, skip duplicates, and fix invalid mappings. These are text corrections; they do not train Orukeet or supply it with recognition hints. The optional [Arabic transliteration example](docs/examples/arabic-transliteration.txt) is an editable starting point, not enabled automatically.
 
-### Model Options
+Enable **S1-mini by Superwhisper** under **Transcript Cleanup** for local English rewriting after Stop. It is off by default. Choose style, structure, context, and how long to keep the model warm. If cleanup times out or fails, the app keeps the raw transcript. Final dictionary corrections run after cleanup.
 
-<img src="docs/screenshots/model-options.png" alt="Model Options screen" width="360">
+Known non-English input bypasses cleanup. For recognizers that cannot report a language, enabled cleanup assumes English; turn it off for non-English dictation on those paths.
 
-Orukeet is selected by default. This screenshot may show fewer options than the current release.
+The first cleanup run benchmarks CPU configurations and experimental OpenCL. Auto chooses OpenCL only when its output passes validation and it is at least 15% faster than the best CPU result. Runtime controls and content-free S1 diagnostics are available in settings.
 
-## Project branches
+## Audio history and recovery
 
-- Release tags identify the exact source used for each APK; see [GitHub Releases](#github-releases).
-- `codex/orukeet-beta` contains the Orukeet releases and the latest S1-mini compatibility fix.
-- `codex/s1-mini-beta` preserves the S1-mini development and release-validation history.
+Open **Audio history** to find recordings by transcript preview, view and copy full text, or retranscribe with the current model, language, dictionary, and cleanup settings. Keep the history screen open while retranscription runs.
 
-## Available models
+Recording backups are on by default with 24-hour retention, adjustable from 1 to 720 hours. Saved audio includes canceled and failed attempts so it can be recovered. Storage failures show a warning without blocking ordinary dictation. Audio uses about 1.9 MB per minute in private storage excluded from Android backup.
 
-| Model | Languages | Transcription behavior |
-| --- | --- | --- |
-| **Moonshine Small** | English | Live partial transcripts; lighter resource use than Medium. |
-| **Moonshine Medium** | English | Live partial transcripts; higher-accuracy option with greater resource use. |
-| **Parakeet TDT 0.6B V3** | 25 European languages | Final transcript after Stop. |
-| **Orukeet** (default) | 25 European languages | Final transcript after Stop; uses the same Sherpa-ONNX runtime as Parakeet TDT. |
-| **Parakeet Unified EN 0.6B** | English | Buffered live updates that recompute recent context. |
-| **Nemotron** | English | Live transcription with Low latency (80 ms), Balanced (160 ms), or Accuracy (560 ms) profiles. |
-| **Nemotron 3.5 Multilingual** | 28 languages | Live transcription; choose a language or Auto-detect. |
-| **Whisper (legacy)** | English and multilingual model options | Legacy FUTO Whisper/GGML recognition. |
+Delete individual entries or confirm **Clear history** to remove inactive recordings and transcripts. Active recordings and retranscriptions are protected. Turning backups off stops new saves; shortening retention removes older entries. Uninstalling the app or clearing its data removes recordings.
 
-Nemotron profile times describe processing chunks, not guaranteed end-to-end latency. Speed and memory use depend on the phone and selected model.
+Expiry is checked during app use and by a periodic Android job. Android may delay background deletion while the app or device is stopped.
 
-**S1-mini is a separate cleanup model**, not a speech recognizer. It edits the final English transcript from the selected recognizer; see [Transcript Cleanup](#optional-s1-mini-transcript-cleanup).
+## Popup and recording UI
 
-## Downloading models
+The recognition UI shows the selected model and a scrolling waveform driven directly by microphone amplitude. Under **Advanced**, enable **Unobtrusive recognizer popup (beta)** to move the speech-recognition activity near the bottom and remove background dimming. It does not change the voice keyboard layout or recognition engine.
 
-Orukeet is selected by default and downloaded on first use. Moonshine Small and
-Medium remain available, with quantized assets downloaded from:
+<img src="docs/screenshots/model-options.png" alt="Model Options screen with Orukeet selected" width="360">
 
-```text
-https://download.moonshine.ai/model/small-streaming-en/quantized/
-https://download.moonshine.ai/model/medium-streaming-en/quantized/
-```
+This screenshot predates some current model options.
 
-Model files are downloaded on first use rather than packaged into the APK.
+## Diagnostics and privacy
 
-After installing the APK, the model is downloaded by the app:
+Open **Settings → Support → Diagnostics → Export bug report**, add optional notes, review the summary, and share the ZIP yourself. For intermittent issues, enable detailed mode before reproducing the problem; it stops automatically after 30 minutes.
 
-1. Open FUTO Voice Input Moonshine Settings.
-2. Open **Model Options**.
-3. Select a recognizer and, where available, its model or profile.
-4. Confirm the download.
+Standard diagnostics stay local and are on by default, with an off switch and a Clear action. They cover recording, model loading, recognition, cleanup, delivery, downloads, managed failures, and available Android process-exit reasons. Retained standard evidence, including prepared reports, is bounded to seven days and 10 MB.
 
-If you try voice input before downloading the model, the app prompts for the download. Transcription runs offline after installation.
+Standard reports exclude audio, dictated text, personal vocabulary, clipboard or surrounding text, receiving-app names, raw Logcat, URLs, and exception messages. Notes you type into a report are included as entered. Transcript-inclusive exports are separate and require explicit consent. Nothing uploads automatically.
 
-Downloaded model files are stored in app-private storage:
+Crash evidence is best effort, and delivery records cannot prove how another app displayed the text. Diagnostics recording and sharing still need a device smoke test. See [the diagnostics guide](docs/diagnostics.md) for archive contents, retention details, and verification.
 
-```text
-filesDir/moonshine-small-streaming-en/
-filesDir/moonshine-medium-streaming-en/
-```
+## Build locally
 
-All recognizers store their downloaded files in app-private storage and run offline after download. Only the selected recognizer needs to be downloaded; S1-mini is an additional optional download.
+Install JDK 17 or newer, Android SDK platform 35, NDK `28.2.13676358`, and CMake `3.22.1`. Initialize the repository's submodules. Point `local.properties` at your Android SDK, or set `ANDROID_HOME`.
 
-Orukeet's pinned INT8 package downloads about **487 MB** and installs about **672 MB** of files. Installation needs about **1.16 GB** free for the saved archive and extracted model. Interrupted transfers resume on retry when the server supports byte ranges. Installation verifies the archive and extracted resources before marking the model ready, then removes the saved archive.
-
-## Optional S1-mini transcript cleanup
-
-Open **Transcript Cleanup** from the main settings screen to download and enable **S1-mini by Superwhisper**.
-The pinned Q4_K_M model is approximately 484.2 MB. It is English-only, disabled by default, and
-runs only after recording stops. If cleanup times out or fails, the app keeps the raw transcript.
-Personal Vocabulary corrections run after cleanup.
-
-Starting with **v1.4.2-beta.14**, enabled cleanup also assumes English when the recognizer cannot
-report a language. This fixes cleanup being skipped with Orukeet and covers the other English
-recognizer paths. Known non-English input is still bypassed. This assumption is intended for English
-dictation; turn cleanup off when dictating another language with a recognizer that cannot identify it.
-The current stable release, **v1.4.2-beta.13**, predates this fix.
-
-The first run benchmarks validated CPU configurations and experimental OpenCL on the phone. The
-Auto setting selects OpenCL only when it produces the expected output and is at least 15% faster than
-the best CPU result. Standard diagnostics contain timing, runtime, memory, and thermal data without
-audio, transcripts, prompts, or vocabulary, and can be exported as a ZIP for bug reports.
-Separate, explicitly enabled transcript diagnostics can capture and export transcription text.
-
-## Building Locally
-
-Required tools:
-
-- Android Studio or Android SDK command line tools
-- JDK 17 or newer
-- Android SDK platform 35
-- Android NDK `28.2.13676358`
-
-Create `local.properties` if Android Studio has not already created it:
-
-```properties
-sdk.dir=C\:\\Users\\User\\AppData\\Local\\Android\\Sdk
-```
-
-Build the debug APK:
-
-```powershell
-.\gradlew.bat :app:assembleDevDebug
-```
-
-If you need a development build that packages the Parakeet model into the APK, enable the bundled-model Gradle property:
-
-```powershell
-.\gradlew.bat :app:assembleDevDebug -PbundleParakeetModel=true
-```
-
-Debug APKs are written under:
-
-```text
-app/build/outputs/apk/dev/debug/
-```
-
-Standalone release builds use `:app:assembleStandaloneRelease` and write APKs under
-`app/build/outputs/apk/standalone/release/`. GitHub Actions supplies the release signing configuration.
-
-## GitHub Releases
-
-- **Stable:** [v1.4.2 — Orukeet](https://github.com/Today20092/voice-input/releases/latest), the tested `v1.4.2-beta.13` build promoted unchanged. Its tag and APK filename retain the beta suffix.
-- **Beta:** [v1.4.2-beta.15](https://github.com/Today20092/voice-input/releases/tag/v1.4.2-beta.15), which adds resumable archive downloads and reduces download-processing overhead while retaining beta 14's S1-mini fix. Existing downloaded models can be reused after updating.
-
-This repository includes a GitHub Actions workflow that builds and verifies an APK when a `v*` tag is pushed.
-
-To create a new release:
+On macOS or Linux:
 
 ```bash
-git tag v1.4.3
-git push origin HEAD
-git push origin v1.4.3
+git submodule update --init --recursive
+./gradlew :app:assembleDevDebug
+./gradlew :app:testDevDebugUnitTest :app:lintDevDebug
 ```
 
-GitHub Actions will:
+On Windows, use `.\gradlew.bat` in place of `./gradlew`.
 
-- install Android build components
-- build `:app:assembleStandaloneRelease`
-- create a GitHub Release for the pushed tag
-- attach the APK to that GitHub Release
+Debug APKs are written to `app/build/outputs/apk/dev/debug/`. For a development build with bundled Parakeet assets, add `-PbundleParakeetModel=true`.
 
-You can also run the workflow manually from the Actions tab. Manual runs upload the APK as a workflow artifact but do not create a GitHub Release unless the run is for a tag.
+Standalone builds use `:app:assembleStandaloneRelease` and write to `app/build/outputs/apk/standalone/release/`. GitHub Actions supplies the release signing configuration, runs release unit tests, and verifies the APK signature and ARM64 native libraries.
 
-## Notes
+## Releases and repository
 
-- First supported ABI is `arm64-v8a`.
-- This is intended for sideloading and personal testing.
-- The normal APK does not include speech model files.
-- Live updates depend on the selected recognizer; Parakeet TDT and Orukeet return their final transcript after Stop.
-- The app requires network access to download the selected backend's model the first time, then transcription runs offline.
+[`master`](https://github.com/Today20092/voice-input/tree/master) contains the combined work. Release tags preserve the source for published APKs; merged beta branches and worktrees have been removed. Historical downloads remain in [GitHub Releases](https://github.com/Today20092/voice-input/releases).
 
-## Attribution And License
+The [release workflow](.github/workflows/release-apk.yml) builds on configured branch pushes and `v*` tags. A tag run publishes an APK; a branch run uploads an artifact. Before a new release, update the app version, release notes, and workflow's release-note path. Do not reuse an existing release tag.
 
-This fork is based on FUTO Voice Input and keeps FUTO's license and notices. FUTO Voice Input is licensed under the FUTO Source First License. Review [LICENSE.md](LICENSE.md) before distributing modified builds.
+The 1.4.3 combined suite contained 127 tests: no failures, one skipped. Lint had no errors, and the signed release build passed. See [1.4.3 release notes](docs/releases/v1.4.3.md) for the scope of device testing.
 
-Parakeet TDT model assets come from `twmht/sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8`, a Sherpa-ONNX export of NVIDIA Parakeet TDT 0.6B V3, licensed CC-BY-4.0. Parakeet Unified and Nemotron English use the NVIDIA Open Model License; Nemotron 3.5 Multilingual uses OpenMDW-1.1. Moonshine model metadata lists the MIT license. Model Options includes attribution for the selected model.
+## Attribution and licenses
 
-The optional downloaded cleanup model is **S1-mini by Superwhisper**, licensed under Apache License
-2.0 with the publisher's required naming condition. See
-[the model notice](docs/third-party/S1-mini-NOTICE.md). llama.cpp is included as a pinned submodule
-under its MIT license; Khronos OpenCL headers and loader are included as pinned submodules under
-their respective upstream licenses.
+This fork preserves FUTO Voice Input's license and notices. See [LICENSE.md](LICENSE.md), the [GitHub mirror](https://github.com/futo-org/voice-input), and the [original GitLab repository](https://gitlab.futo.org/keyboard/voiceinput). This fork is not affiliated with or endorsed by FUTO.
 
-Orukeet weights are licensed CC BY-SA 4.0 by Oruk AI and retain NVIDIA Parakeet attribution. The installer verifies and preserves the package's `LICENSE-WEIGHTS` and `NOTICE.md`. See the [model card](https://huggingface.co/oruk/orukeet) and [pinned package manifest](https://huggingface.co/oruk/orukeet/blob/55a984d46f68323301837194ce647c702f55facc/onnx/manifest.json). The authors report lower WER than Parakeet on many evaluated splits; these are not Android benchmarks, and LibriSpeech test-other was used for adaptation and checkpoint selection.
+Model weights have their own terms, separate from the app:
 
-This fork is not affiliated with or endorsed by FUTO.
+- Orukeet: CC BY-SA 4.0, with Oruk AI and NVIDIA Parakeet attribution. The installer preserves `LICENSE-WEIGHTS` and `NOTICE.md` from the pinned package.
+- Parakeet TDT: CC BY 4.0. Parakeet Unified and Nemotron English: NVIDIA Open Model License. Nemotron 3.5 Multilingual: OpenMDW-1.1.
+- Moonshine: model metadata lists MIT. Cohere Transcribe: Apache 2.0.
+- **S1-mini by Superwhisper:** Apache 2.0 with the publisher's naming condition. See the [model notice](docs/third-party/S1-mini-NOTICE.md).
+
+[Sherpa-ONNX](https://github.com/k2-fsa/sherpa-onnx) supplies the runtime and many converted speech-model packages. S1-mini uses pinned [llama.cpp](https://github.com/ggml-org/llama.cpp) code under MIT, with Khronos OpenCL headers and loader under their upstream licenses. Model source links and attribution are also available in the app.
