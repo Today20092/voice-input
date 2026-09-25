@@ -60,6 +60,11 @@ Added in `v1.4.2-beta.16`, based on beta 15. Open **Audio history** from the mai
 view saved recordings, retranscribe them with the currently selected recognition
 model, and copy the resulting text. Existing successful transcripts are saved too.
 
+History rows show a short transcript preview so you can find an entry before
+opening it. **Clear history** asks for confirmation, then removes saved audio and
+text. It preserves entries currently recording or transcribing and reports deleted,
+in-use, and failed counts. New recordings still save while backups are enabled.
+
 Backups are enabled by default and kept for 24 hours. Set retention to any value
 from 1 to 720 hours, for example 2 hours or 72 hours for three days. Turning backups
 off stops new saves; existing recordings keep their expiry. Each recording can also
