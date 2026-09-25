@@ -30,6 +30,11 @@
     <string name="audio_history_delete_question">Delete this recording?</string>
     <string name="audio_history_delete_info">This permanently deletes the saved audio and transcript.</string>
     <string name="audio_history_delete_failed">Could not delete this recording. It may still be in use.</string>
+    <string name="audio_history_clear">Clear history</string>
+    <string name="audio_history_clear_question">Clear saved history?</string>
+    <string name="audio_history_clear_info">Permanently delete saved recordings and their transcripts. Recordings currently being captured or transcribed will be kept. New recordings will still be saved while backups are enabled.</string>
+    <string name="audio_history_clear_result">Deleted: %1$d. Kept because they are in use: %2$d. Could not delete: %3$d.</string>
+    <string name="audio_history_clear_failed">Could not clear history. Try again.</string>
     <string name="audio_history_save_failed">Could not save the audio backup or transcript. Check available storage.</string>
     <string name="audio_history_read_failed">Could not read audio history. Try reopening this screen.</string>
     <string name="audio_history_memory_failed">Not enough memory to transcribe this recording. The saved audio is unchanged. Try a smaller model.</string>

@@ -14,6 +14,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.NavHostController
@@ -47,6 +48,9 @@ fun AudioHistoryScreen(navController: NavHostController) {
     var reading by remember { mutableStateOf(false) }
     var running by remember { mutableStateOf<String?>(null) }
     var deleteId by remember { mutableStateOf<String?>(null) }
+    var confirmClear by remember { mutableStateOf(false) }
+    var clearing by remember { mutableStateOf(false) }
+    var clearResult by remember { mutableStateOf<AudioHistoryStore.ClearResult?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     var revision by remember { mutableIntStateOf(0) }
     val requestedHours = hours.toIntOrNull()?.takeIf { it in 1..720 }
@@ -99,6 +103,17 @@ fun AudioHistoryScreen(navController: NavHostController) {
                     style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 if (!loaded) LinearProgressIndicator(Modifier.fillMaxWidth())
                 if (loaded && entries.isEmpty()) Text(stringResource(R.string.audio_history_empty))
+                if (entries.isNotEmpty()) TextButton(
+                    enabled = !clearing,
+                    onClick = { confirmClear = true },
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                ) { Text(stringResource(R.string.audio_history_clear)) }
+                if (clearing) LinearProgressIndicator(Modifier.fillMaxWidth())
+                clearResult?.let { result ->
+                    Text(stringResource(R.string.audio_history_clear_result,
+                        result.deleted, result.inUse, result.failed),
+                        style = MaterialTheme.typography.bodyMedium)
+                }
                 if (selected == null) error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             }
         }
@@ -111,7 +126,11 @@ fun AudioHistoryScreen(navController: NavHostController) {
                         String.format(Locale.getDefault(), "%.1f", entry.durationSeconds)))
                     if (entry.busy || running == entry.id) Text(stringResource(
                         if (running == entry.id) R.string.audio_history_transcribing else R.string.audio_history_recording))
-                    TextButton(enabled = running == null, onClick = {
+                    if (selected != entry.id) entry.preview?.let { preview ->
+                        Text(preview, style = MaterialTheme.typography.bodyMedium,
+                            maxLines = 3, overflow = TextOverflow.Ellipsis)
+                    }
+                    TextButton(enabled = running == null && !clearing, onClick = {
                         selected = if (selected == entry.id) null else entry.id
                         error = null
                     }) { Text(stringResource(if (selected == entry.id) R.string.audio_history_hide else R.string.audio_history_open)) }
@@ -121,7 +140,7 @@ fun AudioHistoryScreen(navController: NavHostController) {
                         if (!reading) SelectionContainer {
                             Text(transcript?.takeIf { it.isNotBlank() } ?: stringResource(R.string.audio_history_no_text))
                         }
-                        Button(enabled = !entry.busy && running == null && !reading, onClick = {
+                        Button(enabled = !entry.busy && running == null && !reading && !clearing, onClick = {
                             running = entry.id
                             error = null
                             scope.launch {
@@ -133,18 +152,45 @@ fun AudioHistoryScreen(navController: NavHostController) {
                             }
                         }) { Text(stringResource(R.string.audio_history_retranscribe)) }
                         Row {
-                            TextButton(enabled = !transcript.isNullOrEmpty() && running == null && !reading,
+                            TextButton(enabled = !transcript.isNullOrEmpty() && running == null && !reading && !clearing,
                                 onClick = {
                                     clipboard.setText(AnnotatedString(transcript.orEmpty()))
                                     Toast.makeText(context, R.string.audio_history_copied, Toast.LENGTH_SHORT).show()
                                 }) { Text(stringResource(R.string.audio_history_copy)) }
-                            TextButton(enabled = !entry.busy && running == null,
+                            TextButton(enabled = !entry.busy && running == null && !clearing,
                                 onClick = { deleteId = entry.id }) { Text(stringResource(R.string.audio_history_delete)) }
                         }
                     }
                 }
             }
         }
+    }
+    if (confirmClear) {
+        AlertDialog(onDismissRequest = { confirmClear = false },
+            title = { Text(stringResource(R.string.audio_history_clear_question)) },
+            text = { Text(stringResource(R.string.audio_history_clear_info)) },
+            dismissButton = {
+                TextButton(onClick = { confirmClear = false }) { Text(stringResource(android.R.string.cancel)) }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmClear = false
+                    clearing = true
+                    clearResult = null
+                    error = null
+                    scope.launch {
+                        try {
+                            clearResult = withContext(Dispatchers.IO) { store.clear() }
+                            // A running retranscription is protected and keeps its detail view.
+                            if (running == null) selected = null
+                        } catch (failure: CancellationException) { throw failure
+                        } catch (failure: Exception) { error = context.getString(R.string.audio_history_clear_failed)
+                        } finally { clearing = false; revision++ }
+                    }
+                }, colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) {
+                    Text(stringResource(R.string.audio_history_clear))
+                }
+            })
     }
     deleteId?.let { id ->
         AlertDialog(onDismissRequest = { deleteId = null },

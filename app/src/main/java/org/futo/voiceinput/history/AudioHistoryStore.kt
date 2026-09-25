@@ -5,6 +5,7 @@ import kotlinx.coroutines.ensureActive
 import java.io.Closeable
 import java.io.File
 import java.io.FileOutputStream
+import java.io.IOException
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.file.Files
@@ -13,9 +14,17 @@ import java.util.UUID
 
 /** App-private, unbuffered 16 kHz mono PCM. Even an interrupted file can be read. */
 class AudioHistoryStore(private val root: File) {
-    data class Entry(val id: String, val createdAt: Long, val samples: Long, val busy: Boolean) {
+    data class Entry(
+        val id: String,
+        val createdAt: Long,
+        val samples: Long,
+        val busy: Boolean,
+        val preview: String? = null
+    ) {
         val durationSeconds get() = samples / 16000.0
     }
+
+    data class ClearResult(val deleted: Int, val inUse: Int, val failed: Int)
 
     fun begin(now: Long = System.currentTimeMillis()): Capture = synchronized(lock) {
         check(root.isDirectory || root.mkdirs()) { "Cannot create audio history" }
@@ -65,8 +74,43 @@ class AudioHistoryStore(private val root: File) {
             if (file.extension != "pcm") return@mapNotNull null
             val createdAt = file.name.substringBefore('-').toLongOrNull() ?: return@mapNotNull null
             if (file.length() < 2L) return@mapNotNull null
-            Entry(file.nameWithoutExtension, createdAt, file.length() / 2, file.absolutePath in active)
+            Entry(file.nameWithoutExtension, createdAt, file.length() / 2,
+                file.absolutePath in active, preview(file.nameWithoutExtension))
         }.sortedByDescending { it.createdAt }
+    }
+
+    private fun preview(id: String): String? = try {
+        transcriptFile(id).takeIf { it.isFile }?.bufferedReader()?.use { reader ->
+            // List rows never need to load a complete, potentially long transcript.
+            val buffer = CharArray(241)
+            val count = reader.read(buffer)
+            when {
+                count <= 0 -> null
+                count > 240 -> String(buffer, 0, 240) + "…"
+                else -> String(buffer, 0, count)
+            }?.takeIf { it.isNotBlank() }
+        }
+    } catch (_: IOException) {
+        // A failed preview must not hide the rest of the history. Opening the entry
+        // still reports transcript read errors through the normal detail flow.
+        null
+    }
+
+    /** Clear a snapshot of saved recordings, preserving active capture and replay. */
+    fun clear(): ClearResult = synchronized(lock) {
+        var deleted = 0
+        var inUse = 0
+        var failed = 0
+        val files = if (root.exists()) checkNotNull(root.listFiles()) { "Cannot read audio history" }
+            else emptyArray()
+        files.filter { it.extension == "pcm" }.forEach { file ->
+            try {
+                if (delete(file.nameWithoutExtension)) deleted++ else inUse++
+            } catch (_: Exception) {
+                failed++
+            }
+        }
+        ClearResult(deleted, inUse, failed)
     }
 
     fun purge(retentionHours: Int, now: Long = System.currentTimeMillis()) = synchronized(lock) {

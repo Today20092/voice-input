@@ -13,6 +13,52 @@ import java.io.File
 class AudioHistoryStoreTest {
     @get:Rule val temporary = TemporaryFolder()
 
+    @Test fun previewIsBoundedWithoutTruncatingTheSavedTranscript() {
+        val store = AudioHistoryStore(temporary.newFolder())
+        val capture = store.begin().apply { append(shortArrayOf(1), 1); close() }
+        assertNull(store.entries().single().preview)
+        val text = "A long transcript. ".repeat(1000)
+        store.saveTranscript(capture.id, text)
+        assertEquals(text.take(240) + "…", store.entries().single().preview)
+        assertEquals(text, store.transcript(capture.id))
+        store.saveTranscript(capture.id, "Short transcript")
+        assertEquals("Short transcript", store.entries().single().preview)
+    }
+
+    @Test fun clearPreservesCaptureAndReplayAndDoesNotResurrectDeletedText() = runBlocking {
+        val store = AudioHistoryStore(temporary.newFolder())
+        val saved = store.begin().apply { append(shortArrayOf(1), 1); close() }
+        store.saveTranscript(saved.id, "Saved text")
+        val replay = store.begin().apply { append(shortArrayOf(2), 1); close() }
+        val recording = store.begin().apply { append(shortArrayOf(3), 1) }
+        try {
+            store.retranscribe(replay.id) {
+                assertEquals(AudioHistoryStore.ClearResult(1, 2, 0), store.clear())
+                assertEquals(setOf(recording.id, replay.id), store.entries().map { it.id }.toSet())
+                store.saveTranscript(saved.id, "A late write must not restore a cleared entry")
+                assertNull(store.transcript(saved.id))
+                "Replayed text"
+            }
+        } finally { recording.close() }
+        assertEquals("Replayed text", store.transcript(replay.id))
+        assertEquals(AudioHistoryStore.ClearResult(2, 0, 0), store.clear())
+        assertTrue(store.entries().isEmpty())
+    }
+
+    @Test fun clearReportsFailuresAndContinuesDeletingOtherEntries() {
+        val root = temporary.newFolder()
+        val store = AudioHistoryStore(root)
+        val blocked = store.begin().apply { append(shortArrayOf(1), 1); close() }
+        val removable = store.begin().apply { append(shortArrayOf(2), 1); close() }
+        store.saveTranscript(removable.id, "Remove this text")
+        // A nonempty directory at the temporary-file path simulates a deletion failure.
+        val obstacle = File(root, "${blocked.id}.txt.tmp").apply { mkdir() }
+        File(obstacle, "child").writeText("Keep the directory nonempty")
+        assertEquals(AudioHistoryStore.ClearResult(1, 0, 1), store.clear())
+        assertEquals(blocked.id, store.entries().single().id)
+        assertNull(store.transcript(removable.id))
+    }
+
     @Test fun repeatedCloseCannotReleaseANewerReplayPin() = runBlocking {
         val store = AudioHistoryStore(temporary.newFolder())
         val capture = store.begin(1000).apply { append(shortArrayOf(1), 1); close() }
