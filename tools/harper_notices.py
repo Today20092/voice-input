@@ -65,7 +65,7 @@ for package in sorted(packages, key=lambda item: (item["name"], item["version"])
                         raise
         if not fetched:
             if package.get("license") == "CC0-1.0":
-                url = "https://creativecommons.org/publicdomain/zero/1.0/legalcode.txt"
+                url = "https://raw.githubusercontent.com/spdx/license-list-data/v3.27.0/text/CC0-1.0.txt"
                 with urllib.request.urlopen(url, timeout=30) as response:
                     sections.append(f"\n--- {url} ---\n{response.read().decode('utf-8')}\n")
             else:
