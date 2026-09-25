@@ -98,7 +98,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           name: FUTO Voice Input ${{ github.ref_name }}
-          body_path: docs/releases/v1.4.3.md
+          body_path: docs/releases/${{ github.ref_name }}.md
           files: |
             release/*.apk
             docs/examples/arabic-transliteration.txt
