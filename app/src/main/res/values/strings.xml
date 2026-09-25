@@ -20,8 +20,8 @@
     <string name="audio_history_duration">%1$s seconds</string>
     <string name="audio_history_recording">Recording or processing in progress</string>
     <string name="audio_history_transcribing">Transcribing… Keep this screen open.</string>
-    <string name="audio_history_open">View recording</string>
-    <string name="audio_history_hide">Hide transcript</string>
+    <string name="audio_history_open">Show full transcript</string>
+    <string name="audio_history_hide">Show less</string>
     <string name="audio_history_no_text">No saved transcript. Retranscribe this audio to recover the text.</string>
     <string name="audio_history_retranscribe">Retranscribe</string>
     <string name="audio_history_copy">Copy text</string>

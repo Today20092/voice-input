@@ -115,6 +115,8 @@ The first cleanup run benchmarks CPU configurations and experimental OpenCL. Aut
 
 Open **Audio history** to find recordings by transcript preview, view and copy full text, or retranscribe with the current model, language, dictionary, and cleanup settings. Keep the history screen open while retranscription runs.
 
+Each recording has direct Retranscribe, Copy text, and Delete controls. **Show full transcript** appears when the preview is cut off; Copy text always copies the complete saved transcript.
+
 Recording backups are on by default with 24-hour retention, adjustable from 1 to 720 hours. Saved audio includes canceled and failed attempts so it can be recovered. Storage failures show a warning without blocking ordinary dictation. Audio uses about 1.9 MB per minute in private storage excluded from Android backup.
 
 Delete individual entries or confirm **Clear history** to remove inactive recordings and transcripts. Active recordings and retranscriptions are protected. Turning backups off stops new saves; shortening retention removes older entries. Uninstalling the app or clearing its data removes recordings.
@@ -138,6 +140,8 @@ Standard diagnostics stay local and are on by default, with an off switch and a 
 Standard reports exclude audio, dictated text, personal vocabulary, clipboard or surrounding text, receiving-app names, raw Logcat, URLs, and exception messages. Notes you type into a report are included as entered. Transcript-inclusive exports are separate and require explicit consent. Nothing uploads automatically.
 
 Crash evidence is best effort, and delivery records cannot prove how another app displayed the text. Diagnostics recording and sharing still need a device smoke test. See [the diagnostics guide](docs/diagnostics.md) for archive contents, retention details, and verification.
+
+To collect comparable measurements on your phone, follow the [phone dictation test](docs/phone-performance-test.md). It includes three passages, cold and warm run instructions, and the diagnostic export procedure. Measured results will be added after the reports are reviewed.
 
 ## Build locally
 

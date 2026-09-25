@@ -32,6 +32,7 @@ import java.text.DateFormat
 import java.util.Date
 import java.util.Locale
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun AudioHistoryScreen(navController: NavHostController) {
     val context = LocalContext.current
@@ -118,29 +119,43 @@ fun AudioHistoryScreen(navController: NavHostController) {
             }
         }
         items(entries, key = { it.id }) { entry ->
+            var previewOverflows by remember(entry.preview) { mutableStateOf(false) }
             Card(Modifier.fillMaxWidth().padding(16.dp, 8.dp)) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(DateFormat.getDateTimeInstance().format(Date(entry.createdAt)),
                         style = MaterialTheme.typography.titleMedium)
                     Text(stringResource(R.string.audio_history_duration,
-                        String.format(Locale.getDefault(), "%.1f", entry.durationSeconds)))
+                        String.format(Locale.getDefault(), "%.1f", entry.durationSeconds)),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
                     if (entry.busy || running == entry.id) Text(stringResource(
                         if (running == entry.id) R.string.audio_history_transcribing else R.string.audio_history_recording))
-                    if (selected != entry.id) entry.preview?.let { preview ->
-                        Text(preview, style = MaterialTheme.typography.bodyMedium,
-                            maxLines = 3, overflow = TextOverflow.Ellipsis)
+                    if (selected != entry.id) {
+                        Text(entry.preview ?: stringResource(R.string.audio_history_no_text),
+                            style = MaterialTheme.typography.bodyMedium,
+                            maxLines = if (entry.preview == null) Int.MAX_VALUE else 3,
+                            overflow = TextOverflow.Ellipsis,
+                            onTextLayout = { previewOverflows = it.hasVisualOverflow })
                     }
-                    TextButton(enabled = running == null && !clearing, onClick = {
-                        selected = if (selected == entry.id) null else entry.id
-                        error = null
-                    }) { Text(stringResource(if (selected == entry.id) R.string.audio_history_hide else R.string.audio_history_open)) }
                     if (selected == entry.id) {
                         error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                         if (reading || running == entry.id) LinearProgressIndicator(Modifier.fillMaxWidth())
                         if (!reading) SelectionContainer {
-                            Text(transcript?.takeIf { it.isNotBlank() } ?: stringResource(R.string.audio_history_no_text))
+                            Text(transcript?.takeIf { it.isNotBlank() } ?: stringResource(R.string.audio_history_no_text),
+                                style = MaterialTheme.typography.bodyMedium)
                         }
+                    }
+                    // The store caps previews at 240 characters and appends an ellipsis.
+                    if (selected == entry.id || (entry.preview != null &&
+                        (previewOverflows || entry.preview.length > 240))) {
+                        TextButton(enabled = running == null && !clearing, onClick = {
+                            selected = if (selected == entry.id) null else entry.id
+                            error = null
+                        }) { Text(stringResource(if (selected == entry.id) R.string.audio_history_hide else R.string.audio_history_open)) }
+                    }
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(enabled = !entry.busy && running == null && !reading && !clearing, onClick = {
+                            selected = entry.id
                             running = entry.id
                             error = null
                             scope.launch {
@@ -151,15 +166,25 @@ fun AudioHistoryScreen(navController: NavHostController) {
                                 } finally { running = null; revision++ }
                             }
                         }) { Text(stringResource(R.string.audio_history_retranscribe)) }
-                        Row {
-                            TextButton(enabled = !transcript.isNullOrEmpty() && running == null && !reading && !clearing,
-                                onClick = {
-                                    clipboard.setText(AnnotatedString(transcript.orEmpty()))
-                                    Toast.makeText(context, R.string.audio_history_copied, Toast.LENGTH_SHORT).show()
-                                }) { Text(stringResource(R.string.audio_history_copy)) }
-                            TextButton(enabled = !entry.busy && running == null && !clearing,
-                                onClick = { deleteId = entry.id }) { Text(stringResource(R.string.audio_history_delete)) }
-                        }
+                        TextButton(enabled = !entry.preview.isNullOrEmpty() && running == null && !clearing,
+                            onClick = {
+                                scope.launch(Dispatchers.Main) {
+                                    try {
+                                        val text = withContext(Dispatchers.IO) { store.transcript(entry.id) }
+                                        if (!text.isNullOrEmpty()) {
+                                            clipboard.setText(AnnotatedString(text))
+                                            Toast.makeText(context, R.string.audio_history_copied, Toast.LENGTH_SHORT).show()
+                                        } else {
+                                            Toast.makeText(context, R.string.audio_history_no_text, Toast.LENGTH_SHORT).show()
+                                        }
+                                    } catch (failure: CancellationException) { throw failure
+                                    } catch (failure: Exception) {
+                                        Toast.makeText(context, R.string.audio_history_read_failed, Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            }) { Text(stringResource(R.string.audio_history_copy)) }
+                        TextButton(enabled = !entry.busy && running == null && !clearing,
+                            onClick = { deleteId = entry.id }) { Text(stringResource(R.string.audio_history_delete)) }
                     }
                 }
             }

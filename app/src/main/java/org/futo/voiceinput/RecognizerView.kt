@@ -582,6 +582,7 @@ abstract class RecognizerView {
         }
 
         override fun updateWaveform(bars: List<Pair<Float, Float>>, state: MagnitudeState) {
+            val report = diagnostics
             setContent {
                 this@RecognizerView.Window(
                     onClose = { cancelRecognizer() },
@@ -593,9 +594,10 @@ abstract class RecognizerView {
                         bars = bars,
                         state = state,
                         onDrawn = {
-                            if (BuildConfig.DEBUG && firstWaveformFrame && bars.isNotEmpty()) {
+                            if (firstWaveformFrame && bars.isNotEmpty()) {
                                 firstWaveformFrame = false
-                                Log.d("WaveformTiming", "first_frame t=${SystemClock.elapsedRealtime()}")
+                                report?.event(org.futo.voiceinput.diagnostics.DiagnosticEvent.WAVEFORM_FIRST_FRAME)
+                                if (BuildConfig.DEBUG) Log.d("WaveformTiming", "first_frame t=${SystemClock.elapsedRealtime()}")
                             }
                         }
                     )

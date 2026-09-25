@@ -403,3 +403,19 @@ Implemented by `44fb6fe`, `5ab3750`, and `bef4320`.
 - [ ] Focused tests cover model-presentation metadata and the settings navigation/placement behavior at stable public seams.
 - [ ] Relevant unit tests, instrumentation tests, assembly, and lint pass.
 - [ ] Whisper native-runtime modernization and Whisper large-v3-turbo Q5/Q8 models remain out of scope.
+
+## Diagnose intermittent waveform behavior when opening voice input
+
+**Triage:** needs-info
+
+**What to build:** Reproduce and fix the reported intermittent waveform behavior when opening voice input. The user suspects the beta speech-recognition popup change, but the visible symptom and affected entry point are not yet specified.
+
+**Blocked by:** Description of the waveform behavior, entry point, selected model, and a reproduction or detailed diagnostic report.
+
+- [ ] Establish whether the waveform appears late, stays flat, disappears, or is clipped, and whether the issue occurs in the IME, speech activity, or Test dictation.
+- [ ] Compare the same scenario with the unobtrusive popup enabled and disabled before attributing the problem to that feature.
+- [x] Add a first waveform frame timing event and the popup setting/build revision to diagnostic exports without collecting audio or transcript text.
+- [ ] Reproduce the failure, add a focused regression check, and fix its cause.
+- [ ] Verify the reported phone scenario. Static waveform layout checks alone do not resolve this ticket.
+
+Use [the phone test guide](docs/phone-performance-test.md) for reproduction notes and export instructions.
