@@ -16,6 +16,10 @@ _Avoid_: Live transcription, replay
 Recognition text that is updated while the speaker is still talking and finalized when the utterance ends.
 _Avoid_: Real-time transcription, responsive transcription
 
+**Buffered live transcription**:
+Live transcription that recomputes earlier audio context when producing an update instead of retaining reusable streaming state.
+_Avoid_: Native streaming, cache-aware streaming
+
 **Streaming profile**:
 A user-selected balance between how quickly live transcription updates and how accurately it recognizes speech.
 _Avoid_: Latency, chunk size
