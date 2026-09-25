@@ -39,6 +39,8 @@ class S1MiniServiceException(val category: String) : Exception("S1-mini service 
 
 object S1MiniClient {
     private val nextRequestId = AtomicLong(1L)
+    private val warmLease = S1MiniWarmBindingLease()
+    private val mainHandler by lazy { Handler(Looper.getMainLooper()) }
 
     suspend fun normalize(
         context: Context,
@@ -56,14 +58,15 @@ object S1MiniClient {
 
         lateinit var connection: ServiceConnection
         fun finish(block: () -> Unit) {
-            runCatching { appContext.unbindService(connection) }
             if (continuation.isActive) block()
+            runCatching { appContext.unbindService(connection) }
         }
 
         val replies = Messenger(Handler(Looper.getMainLooper()) { message ->
             if (message.data.getLong(S1MiniProtocol.KEY_REQUEST_ID) != requestId) return@Handler true
             when (message.what) {
                 S1MiniProtocol.MSG_RESULT -> finish {
+                    retainWarmBinding(appContext, warmTimeoutMs)
                     continuation.resume(
                         S1MiniServiceResult(
                             text = message.data.getString(S1MiniProtocol.KEY_TEXT).orEmpty(),
@@ -96,7 +99,6 @@ object S1MiniClient {
                             putInt(S1MiniProtocol.KEY_MAX_NEW_TOKENS, maxNewTokens)
                             putInt(S1MiniProtocol.KEY_THREADS, threads)
                             putString(S1MiniProtocol.KEY_RUNTIME, runtime)
-                            putLong(S1MiniProtocol.KEY_WARM_TIMEOUT_MS, warmTimeoutMs)
                         }
                     })
                 } catch (error: RemoteException) {
@@ -125,7 +127,10 @@ object S1MiniClient {
         if (!bound) finish { continuation.resumeWithException(S1MiniServiceException("bind_failed")) }
     }
 
-    suspend fun unload(context: Context) = sendOneWay(context, S1MiniProtocol.MSG_UNLOAD)
+    suspend fun unload(context: Context) {
+        warmLease.release()
+        sendOneWay(context, S1MiniProtocol.MSG_UNLOAD)
+    }
 
     suspend fun discoverBackends(context: Context): S1MiniBackendDiscovery =
         suspendCancellableCoroutine { continuation ->
@@ -172,6 +177,37 @@ object S1MiniClient {
 
     suspend fun availableBackends(context: Context): List<String> = discoverBackends(context).devices
 
+    private fun retainWarmBinding(context: Context, timeoutMs: Long) {
+        warmLease.retain(
+            timeoutMs = timeoutMs,
+            bind = { bindWarmService(context) },
+            scheduleRelease = { delayMs, release ->
+                val runnable = Runnable(release)
+                val cancellation: () -> Unit = { mainHandler.removeCallbacks(runnable) }
+                mainHandler.postDelayed(runnable, delayMs)
+                cancellation
+            }
+        )
+    }
+
+    private fun bindWarmService(context: Context): (() -> Unit)? {
+        lateinit var connection: ServiceConnection
+        connection = object : ServiceConnection {
+            override fun onServiceConnected(name: ComponentName?, service: IBinder?) = Unit
+            override fun onServiceDisconnected(name: ComponentName?) = warmLease.release()
+            override fun onBindingDied(name: ComponentName?) = warmLease.release()
+            override fun onNullBinding(name: ComponentName?) = warmLease.release()
+        }
+        return if (context.bindService(
+                Intent(context, S1MiniService::class.java),
+                connection,
+                Context.BIND_AUTO_CREATE
+            )
+        ) {
+            { runCatching { context.unbindService(connection) } }
+        } else null
+    }
+
     private suspend fun sendOneWay(context: Context, what: Int) =
         suspendCancellableCoroutine<Unit> { continuation ->
             val appContext = context.applicationContext
@@ -194,4 +230,35 @@ object S1MiniClient {
                 continuation.resume(Unit)
             }
         }
+}
+
+internal class S1MiniWarmBindingLease {
+    private var releaseBinding: (() -> Unit)? = null
+    private var cancelScheduledRelease: (() -> Unit)? = null
+
+    @Synchronized
+    fun retain(
+        timeoutMs: Long,
+        bind: () -> (() -> Unit)?,
+        scheduleRelease: (Long, () -> Unit) -> (() -> Unit)
+    ) {
+        cancelScheduledRelease?.invoke()
+        cancelScheduledRelease = null
+        if (timeoutMs == 0L) {
+            release()
+            return
+        }
+        if (releaseBinding == null) releaseBinding = bind()
+        if (releaseBinding != null && timeoutMs > 0L) {
+            cancelScheduledRelease = scheduleRelease(timeoutMs, ::release)
+        }
+    }
+
+    @Synchronized
+    fun release() {
+        cancelScheduledRelease?.invoke()
+        cancelScheduledRelease = null
+        releaseBinding?.invoke()
+        releaseBinding = null
+    }
 }

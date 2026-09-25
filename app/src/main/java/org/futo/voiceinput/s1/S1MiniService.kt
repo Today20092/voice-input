@@ -21,7 +21,6 @@ import java.util.concurrent.atomic.AtomicReference
 
 class S1MiniService : Service() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-    private val mainHandler = Handler(Looper.getMainLooper())
     private val activeJob = AtomicReference<Job?>(null)
     private val unloadRunnable = Runnable {
         runCatching { S1MiniNative.unload() }
@@ -38,7 +37,6 @@ class S1MiniService : Service() {
             S1MiniProtocol.MSG_UNLOAD -> {
                 S1MiniNative.cancel()
                 activeJob.getAndSet(null)?.cancel()
-                mainHandler.removeCallbacks(unloadRunnable)
                 scope.launch { unloadRunnable.run() }
             }
             S1MiniProtocol.MSG_BACKENDS -> replyBackends(message)
@@ -52,7 +50,6 @@ class S1MiniService : Service() {
         val replyTo = message.replyTo ?: return
         val data = message.data
         val requestId = data.getLong(S1MiniProtocol.KEY_REQUEST_ID)
-        mainHandler.removeCallbacks(unloadRunnable)
         S1MiniNative.cancel()
         activeJob.getAndSet(null)?.cancel()
 
@@ -98,7 +95,6 @@ class S1MiniService : Service() {
                 }
             } finally {
                 activeJob.compareAndSet(this.coroutineContext[Job], null)
-                scheduleUnload(data.getLong(S1MiniProtocol.KEY_WARM_TIMEOUT_MS))
             }
         }
         activeJob.set(job)
@@ -117,27 +113,16 @@ class S1MiniService : Service() {
         }
     }
 
-    private fun scheduleUnload(timeoutMs: Long) {
-        mainHandler.removeCallbacks(unloadRunnable)
-        when {
-            timeoutMs < 0L -> Unit
-            timeoutMs == 0L -> mainHandler.post(unloadRunnable)
-            else -> mainHandler.postDelayed(unloadRunnable, timeoutMs)
-        }
-    }
-
     override fun onTrimMemory(level: Int) {
         super.onTrimMemory(level)
         if (level >= TRIM_MEMORY_RUNNING_LOW) {
             S1MiniNative.cancel()
             activeJob.getAndSet(null)?.cancel()
-            mainHandler.removeCallbacks(unloadRunnable)
             scope.launch { unloadRunnable.run() }
         }
     }
 
     override fun onDestroy() {
-        mainHandler.removeCallbacks(unloadRunnable)
         S1MiniNative.cancel()
         activeJob.getAndSet(null)?.cancel()
         S1MiniNative.unload()
