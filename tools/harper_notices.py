@@ -2,6 +2,8 @@
 import json
 import pathlib
 import subprocess
+import urllib.error
+import urllib.request
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 CRATE = ROOT / "app/src/main/rust/harper_android"
@@ -38,7 +40,26 @@ for package in sorted(packages, key=lambda item: (item["name"], item["version"])
     if package["name"].startswith("harper-"):
         files.update(p for p in directory.parent.glob("LICENSE*") if p.is_file())
     if not files:
-        raise SystemExit(f"No bundled license text found for {package['name']}")
+        # Some published workspace crates omit their repository-root license texts.
+        # Retrieve those from the exact publisher revision embedded in the locked crate,
+        # never from a moving default branch or an unrelated crate's license.
+        vcs_file = directory / ".cargo_vcs_info.json"
+        repository = (package.get("repository") or "").removesuffix(".git").rstrip("/")
+        revision = json.loads(vcs_file.read_text()).get("git", {}).get("sha1", "") if vcs_file.is_file() else ""
+        fetched = 0
+        if repository.startswith("https://github.com/") and len(revision) == 40:
+            for name in ["LICENSE-APACHE", "LICENSE-MIT", "LICENSE", "LICENSE.md", "LICENSE.txt", "COPYING"]:
+                url = f"https://raw.githubusercontent.com/{repository.removeprefix('https://github.com/')}/{revision}/{name}"
+                try:
+                    with urllib.request.urlopen(url, timeout=30) as response:
+                        contents = response.read().decode("utf-8")
+                    sections.append(f"\n--- {url} ---\n{contents}\n")
+                    fetched += 1
+                except urllib.error.HTTPError as error:
+                    if error.code != 404:
+                        raise
+        if not fetched:
+            raise SystemExit(f"No license text found for {package['name']} at its pinned publisher revision")
     for path in sorted(files):
         sections.append(f"\n--- {path.name} ---\n{path.read_text(errors='replace')}\n")
 target = ROOT / "app/src/main/assets/HARPER-NOTICES.txt"
