@@ -58,7 +58,11 @@ fn protected_ranges(chars: &[char], terms: &[String]) -> Vec<(usize, usize)> {
         let needle: Vec<char> = term.chars().collect();
         if needle.is_empty() || needle.len() > chars.len() { continue; }
         for (index, window) in chars.windows(needle.len()).enumerate() {
-            if window.iter().zip(&needle).all(|(a, b)| a.to_lowercase().eq(b.to_lowercase())) {
+            let end = index + needle.len();
+            let word_char = |c: char| c.is_alphanumeric() || c == '\'' || c == '’';
+            if (index == 0 || !word_char(chars[index - 1]))
+                && (end == chars.len() || !word_char(chars[end]))
+                && window.iter().zip(&needle).all(|(a, b)| a.to_lowercase().eq(b.to_lowercase())) {
                 ranges.push((index, index + needle.len()));
             }
         }
@@ -190,6 +194,12 @@ mod tests {
             "iFixit is a company that repairs phones.", "Try foo_bar and eBay today."] {
             assert_eq!(clean(input, "iFixit, eBay").text, input);
         }
+    }
+
+    #[test]
+    fn short_personal_terms_do_not_protect_unrelated_words() {
+        assert_eq!(clean("the kettle hissed on the stove.", "he").text,
+            "The kettle hissed on the stove.");
     }
 
     #[test]

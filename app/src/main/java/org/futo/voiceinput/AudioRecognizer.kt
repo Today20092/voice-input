@@ -1090,7 +1090,8 @@ abstract class RecordingSession {
             )
             report?.event(DiagnosticEvent.HARPER_FINISHED, mapOf(
                 DiagnosticMetric.DURATION_MS to SystemClock.elapsedRealtime() - harperStarted,
-                DiagnosticMetric.APPLIED to harperResult.edits.toLong(),
+                DiagnosticMetric.APPLIED to if (harperResult.edits > 0) 1L else 0L,
+                DiagnosticMetric.HARPER_EDITS to harperResult.edits.toLong(),
                 DiagnosticMetric.HARPER_OUTCOME to harperResult.outcome.toLong()))
             val finalDeliveredText = PersonalVocabulary.apply(harperResult.text, personalVocabulary)
             if (

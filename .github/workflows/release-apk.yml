@@ -54,8 +54,8 @@ jobs:
 
       - name: Set up pinned Rust toolchain
         run: |
-          rustup toolchain install 1.94.0 --profile minimal
-          rustup target add --toolchain 1.94.0 aarch64-linux-android
+          rustup toolchain install 1.98.1 --profile minimal
+          rustup target add --toolchain 1.98.1 aarch64-linux-android
 
       - name: Verify Harper rules and bundle native licenses
         run: |
