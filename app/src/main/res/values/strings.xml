@@ -328,4 +328,7 @@
     <string name="download_retry">Retry download</string>
     <string name="download_verifying">Download received. Verifying and installing model files…</string>
     <string name="download_archive_failed">Model archive download or installation failed: %1$s</string>
+    <string name="unobtrusive_recognizer">Unobtrusive recognizer popup (beta)</string>
+    <string name="unobtrusive_recognizer_subtitle">Move the speech recognition popup near the bottom without dimming the app behind it. Does not change the voice keyboard layout.</string>
+    <string name="recognizer_model_caption">Model: %1$s</string>
 </resources>

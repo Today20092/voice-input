@@ -201,6 +201,8 @@ abstract class RecordingSession {
     }
     private val streamingAudio = StreamingAudioReplay()
     private var selectedManagedModel: RecognitionModel? = null
+    var selectedModelName: String? = null
+        private set
     private val modelLifecycle by lazy {
         RecognitionModelLifecycle.create(context.filesDir, BuildConfig.BUNDLE_PARAKEET_MODEL)
     }
@@ -490,6 +492,7 @@ abstract class RecordingSession {
     }
 
     fun create() {
+        selectedModelName = null
         loading()
 
         lifecycleScope.launch {
@@ -506,6 +509,13 @@ abstract class RecordingSession {
                 )
             )
             selectedManagedModel = readiness?.model
+            selectedModelName = readiness?.model?.displayName?.let { name ->
+                if (backendType == SpeechBackendType.Nemotron && !name.startsWith("Nemotron")) {
+                    "Nemotron $name"
+                } else {
+                    name
+                }
+            }
             if (readiness != null && !readiness.isReady) {
                 needRecognitionModelDownload(readiness.model)
                 return@launch
@@ -517,6 +527,9 @@ abstract class RecordingSession {
             )
             if (backendType == SpeechBackendType.WhisperGGML) {
                     val requiredModels = context.selectedWhisperModelsForCurrentSettings(forcedLanguage)
+                    selectedModelName = requiredModels.joinToString(" / ") {
+                        it.name.substringBefore(" (")
+                    }
                     if (requiredModels.any { context.modelNeedsDownloading(it) }) {
                         needWhisperModelDownload(requiredModels)
                         return@launch

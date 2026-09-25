@@ -6,6 +6,7 @@ on:
       - "master"
       - "codex/moonshine-vocabulary-beta"
       - "codex/s1-mini-beta"
+      - "codex/recognizer-popup-beta"
     tags:
       - "v*"
   workflow_dispatch:

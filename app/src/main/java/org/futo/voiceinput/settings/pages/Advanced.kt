@@ -20,6 +20,7 @@ import org.futo.voiceinput.settings.ScreenTitle
 import org.futo.voiceinput.settings.ScrollableList
 import org.futo.voiceinput.settings.SettingToggleDataStore
 import org.futo.voiceinput.settings.SettingsViewModel
+import org.futo.voiceinput.settings.UNOBTRUSIVE_RECOGNIZER
 import org.futo.voiceinput.settings.isParakeetSelected
 import org.futo.voiceinput.settings.openImeOptions
 import org.futo.voiceinput.settings.useDataStore
@@ -39,6 +40,12 @@ fun AdvancedScreen(
 
     ScrollableList {
         ScreenTitle(title = stringResource(id = R.string.advanced_settings), showBack = true, navController = navController)
+
+        SettingToggleDataStore(
+            stringResource(R.string.unobtrusive_recognizer),
+            UNOBTRUSIVE_RECOGNIZER,
+            subtitle = stringResource(R.string.unobtrusive_recognizer_subtitle)
+        )
 
         if (!parakeetSelected) {
             SettingToggleDataStore(

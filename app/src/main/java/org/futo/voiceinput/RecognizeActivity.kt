@@ -7,6 +7,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.speech.RecognizerIntent
+import android.view.Gravity
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -43,6 +44,8 @@ import org.futo.voiceinput.parakeet.parakeetModelDownloadIntent
 import org.futo.voiceinput.moonshine.moonshineModelDownloadIntent
 import org.futo.voiceinput.downloader.recognitionModelDownloadIntent
 import org.futo.voiceinput.recognition.RecognitionModel
+import org.futo.voiceinput.settings.UNOBTRUSIVE_RECOGNIZER
+import org.futo.voiceinput.settings.deferGetSetting
 import org.futo.voiceinput.settings.pages.ConditionalUnpaidNoticeInVoiceInputWindow
 import org.futo.voiceinput.theme.UixThemeAuto
 import org.futo.voiceinput.updates.scheduleUpdateCheckingJob
@@ -216,6 +219,16 @@ class RecognizeActivity : ComponentActivity() {
         scheduleUpdateCheckingJob(applicationContext)
         scheduleModelMigrationJob(applicationContext)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        deferGetSetting(UNOBTRUSIVE_RECOGNIZER) { unobtrusive ->
+            if (unobtrusive) {
+                // Keep focus and result delivery unchanged; only move the dialog and remove dimming.
+                window.clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
+                window.attributes = window.attributes.apply {
+                    gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
+                    y = (24 * resources.displayMetrics.density).toInt()
+                }
+            }
+        }
     }
 
     override fun onDestroy() {
