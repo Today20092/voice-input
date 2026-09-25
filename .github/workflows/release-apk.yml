@@ -7,6 +7,7 @@ on:
       - "codex/moonshine-vocabulary-beta"
       - "codex/s1-mini-beta"
       - "codex/cohere-transcribe-option"
+      - "codex/recognizer-popup-beta"
     tags:
       - "v*"
   workflow_dispatch:

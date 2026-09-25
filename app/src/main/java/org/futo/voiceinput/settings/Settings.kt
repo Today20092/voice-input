@@ -114,6 +114,7 @@ fun <T> LifecycleOwner.deferSetSetting(key: SettingsKey<T>, value: T): Job {
 
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
 val ENABLE_SOUND = SettingsKey(booleanPreferencesKey("enable_sounds"), true)
+val UNOBTRUSIVE_RECOGNIZER = SettingsKey(booleanPreferencesKey("unobtrusive_recognizer"), false)
 val ENABLE_ANIMATIONS = SettingsKey(booleanPreferencesKey("enable_animations"), true)
 val VERBOSE_PROGRESS = SettingsKey(booleanPreferencesKey("verbose_progress"), false)
 val ENABLE_MULTILINGUAL = SettingsKey(booleanPreferencesKey("enable_multilingual"), false)

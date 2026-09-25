@@ -145,6 +145,19 @@ fun InnerRecognize(
 }
 
 @Composable
+private fun RecognitionModelCaption(modelName: String?) {
+    if (!modelName.isNullOrBlank()) {
+        Text(
+            text = stringResource(R.string.recognizer_model_caption, modelName),
+            modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
+            textAlign = TextAlign.Center,
+            style = Typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+@Composable
 fun SelectLanguage(languages: Set<String>, onSelected: (String) -> Unit) {
     val languageItems = LANGUAGE_LIST.filter { languages.contains(it.id) }
 
@@ -410,6 +423,7 @@ abstract class RecognizerView {
                             allowClick = false
                         ) {
                             PartialDecodingResult(text = result)
+                            RecognitionModelCaption(selectedModelName)
                         }
                     }
                 }
@@ -574,6 +588,7 @@ abstract class RecognizerView {
                             }
                         }
                     )
+                    RecognitionModelCaption(selectedModelName)
                 }
             }
         }
