@@ -366,6 +366,8 @@ private fun TranscriptStage(
 fun TranscriptCleanupScreen(navController: NavHostController = rememberNavController()) {
     ScrollableList {
         ScreenTitle("Transcript Cleanup", showBack = true, navController = navController)
+        HarperOptions()
+        SettingsSeparator("S1-mini rewrite")
         S1MiniOptions(showTitle = false)
     }
 }

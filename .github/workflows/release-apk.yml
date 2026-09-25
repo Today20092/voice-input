@@ -5,6 +5,7 @@ on:
     branches:
       - "master"
       - "codex/combined-release"
+      - "codex/harper-english-beta"
     tags:
       - "v*"
   workflow_dispatch:
@@ -51,6 +52,18 @@ jobs:
           sdkmanager "platforms;android-35" "build-tools;35.0.0" "ndk;28.2.13676358" "cmake;3.22.1"
           yes | sdkmanager --licenses >/dev/null
 
+      - name: Set up pinned Rust toolchain
+        run: |
+          rustup toolchain install 1.94.0 --profile minimal
+          rustup target add --toolchain 1.94.0 aarch64-linux-android
+
+      - name: Verify Harper rules and bundle native licenses
+        run: |
+          cd app/src/main/rust/harper_android
+          cargo test --locked
+          cd "$GITHUB_WORKSPACE"
+          python3 tools/harper_notices.py
+
       - name: Build APK
         run: |
           ./gradlew :app:testStandaloneReleaseUnitTest :app:assembleStandaloneRelease
@@ -63,6 +76,8 @@ jobs:
           test -n "$APK_PATH"
           APK_LISTING="$(unzip -Z1 "$APK_PATH")"
           printf '%s\n' "$APK_LISTING" | grep -Fx 'lib/arm64-v8a/libs1mini.so'
+          printf '%s\n' "$APK_LISTING" | grep -Fx 'lib/arm64-v8a/libharper.so'
+          printf '%s\n' "$APK_LISTING" | grep -Fx 'assets/HARPER-NOTICES.txt'
           printf '%s\n' "$APK_LISTING" | grep -Fx 'lib/arm64-v8a/libllama.so'
           printf '%s\n' "$APK_LISTING" | grep -Fx 'lib/arm64-v8a/libggml-opencl.so'
           printf '%s\n' "$APK_LISTING" | grep -Fx 'lib/arm64-v8a/libOpenCL.so'

@@ -139,7 +139,7 @@ fun HomeScreen(
 
         NavigationItem(
             title = "Transcript Cleanup",
-            subtitle = "Optional S1-mini cleanup after final recognition",
+            subtitle = "Harper English rules and optional S1-mini rewrite",
             style = NavigationItemStyle.Misc,
             navigate = { navController.navigate(SettingsDestination.TranscriptCleanup.route) },
             icon = painterResource(R.drawable.edit)

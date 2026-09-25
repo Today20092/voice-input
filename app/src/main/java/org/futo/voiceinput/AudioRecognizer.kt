@@ -38,6 +38,7 @@ import org.futo.voiceinput.diagnostics.DiagnosticEvent
 import org.futo.voiceinput.diagnostics.DiagnosticMetric
 import org.futo.voiceinput.diagnostics.DiagnosticSession
 import org.futo.voiceinput.history.AudioHistoryStore
+import org.futo.voiceinput.harper.HarperTranscriptCleaner
 import org.futo.voiceinput.history.audioHistory
 import org.futo.voiceinput.settings.AUDIO_HISTORY_ENABLED
 import org.futo.voiceinput.settings.AUDIO_HISTORY_RETENTION_HOURS
@@ -1082,7 +1083,16 @@ abstract class RecordingSession {
             report?.event(DiagnosticEvent.CLEANUP_FINISHED, mapOf(
                 DiagnosticMetric.DURATION_MS to SystemClock.elapsedRealtime() - cleanupStarted,
                 DiagnosticMetric.APPLIED to if (cleanupResult.applied) 1L else 0L))
-            val finalDeliveredText = PersonalVocabulary.apply(cleanupResult.text, personalVocabulary)
+            val harperStarted = SystemClock.elapsedRealtime()
+            val harperResult = HarperTranscriptCleaner.clean(
+                context, cleanupResult.text, personalVocabulary, backendType,
+                runBackend.detectedLanguage, forcedLanguage
+            )
+            report?.event(DiagnosticEvent.HARPER_FINISHED, mapOf(
+                DiagnosticMetric.DURATION_MS to SystemClock.elapsedRealtime() - harperStarted,
+                DiagnosticMetric.APPLIED to harperResult.edits.toLong(),
+                DiagnosticMetric.HARPER_OUTCOME to harperResult.outcome.toLong()))
+            val finalDeliveredText = PersonalVocabulary.apply(harperResult.text, personalVocabulary)
             if (
                 cleanupResult.diagnosticReportId != null &&
                 context.getSetting(S1_MINI_TRANSCRIPT_DIAGNOSTICS)

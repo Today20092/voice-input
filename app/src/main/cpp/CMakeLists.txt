@@ -83,3 +83,31 @@ target_include_directories(s1mini PRIVATE
     "${S1_THIRD_PARTY}/llama.cpp/include"
     "${S1_THIRD_PARTY}/llama.cpp/ggml/include")
 target_link_libraries(s1mini PRIVATE llama ggml android log dl)
+
+# Harper 2.11.0: pinned Rust static library and a UTF-8 JNI boundary.
+find_program(HARPER_CARGO cargo HINTS "$ENV{HOME}/.cargo/bin" REQUIRED)
+set(HARPER_CRATE "${CMAKE_CURRENT_SOURCE_DIR}/../rust/harper_android")
+set(HARPER_TARGET "${CMAKE_CURRENT_BINARY_DIR}/harper-cargo")
+set(HARPER_ARCHIVE "${HARPER_TARGET}/aarch64-linux-android/release/libharper_android.a")
+get_filename_component(HARPER_NDK_BIN "${CMAKE_C_COMPILER}" DIRECTORY)
+add_custom_command(
+    OUTPUT "${HARPER_ARCHIVE}"
+    COMMAND ${CMAKE_COMMAND} -E env
+        "CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER=${HARPER_NDK_BIN}/aarch64-linux-android26-clang"
+        "CC_aarch64_linux_android=${HARPER_NDK_BIN}/aarch64-linux-android26-clang"
+        "AR_aarch64_linux_android=${CMAKE_AR}"
+        "CARGO_TARGET_DIR=${HARPER_TARGET}"
+        ${HARPER_CARGO} build --locked --release --target aarch64-linux-android
+        --manifest-path "${HARPER_CRATE}/Cargo.toml"
+    WORKING_DIRECTORY "${HARPER_CRATE}"
+    DEPENDS "${HARPER_CRATE}/src/lib.rs" "${HARPER_CRATE}/Cargo.toml"
+        "${HARPER_CRATE}/Cargo.lock" "${HARPER_CRATE}/rust-toolchain.toml"
+    VERBATIM)
+add_custom_target(harper_rust DEPENDS "${HARPER_ARCHIVE}")
+add_library(harper_core_android STATIC IMPORTED)
+set_target_properties(harper_core_android PROPERTIES IMPORTED_LOCATION "${HARPER_ARCHIVE}")
+add_dependencies(harper_core_android harper_rust)
+add_library(harper SHARED harper_jni.cpp)
+target_link_libraries(harper PRIVATE harper_core_android android log dl m)
+# Support Android's 16 KiB page-size devices.
+target_link_options(harper PRIVATE "-Wl,-z,max-page-size=16384")

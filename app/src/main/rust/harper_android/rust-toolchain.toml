@@ -1,0 +1,5 @@
+[toolchain]
+channel = "1.94.0"
+profile = "minimal"
+targets = ["aarch64-linux-android"]
+
