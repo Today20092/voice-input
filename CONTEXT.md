@@ -65,8 +65,16 @@ The exact text Voice Input commits through the IME or returns to a recognition-a
 _Avoid_: Inserted transcript, displayed transcript
 
 **Standard diagnostics**:
-Technical cleanup metadata that never includes transcript or audio content. Standard diagnostics remain separately exportable even when transcript-inclusive diagnostics have been captured.
+Technical information about dictation, recognition models, downloads, transcript cleanup, text delivery, failures, and device performance that excludes audio, transcripts, vocabulary entries, clipboard contents, and surrounding text. Standard diagnostics remain separately exportable even when transcript-inclusive diagnostics have been captured.
 _Avoid_: Redacted diagnostics
+
+**Bug report**:
+A user-reviewed, manually shared archive containing a readable diagnostic summary and structured standard diagnostics, optionally accompanied by the user's description of the problem and expected behavior.
+_Avoid_: Automatic upload, transcript-inclusive diagnostic export
+
+**Detailed diagnostic mode**:
+A temporary increase in locally collected technical detail for reproducing a problem, with the same content exclusions as standard diagnostics.
+_Avoid_: Transcript capture, audio history
 
 **Transcript-inclusive diagnostic export**:
 An explicitly confirmed, plainly readable ZIP named to include `WITH-TRANSCRIPTS`, containing transcript-inclusive captures and technical cleanup metadata. Before export, the app reports how many captured runs will be included. The archive and its README visibly distinguish it from standard diagnostics and warn that it contains dictated text. It never includes audio, clipboard contents, surrounding text from another app, or application names. An unreadable capture is skipped and reported rather than aborting the export.

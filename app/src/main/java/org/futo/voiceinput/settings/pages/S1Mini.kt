@@ -237,11 +237,7 @@ private fun DiagnosticOptions() {
             val copied = S1MiniDiagnostics.copyLatest(context)
             Toast.makeText(context, if (copied) "Report copied" else "No report yet", Toast.LENGTH_SHORT).show()
         }) { }
-        SettingItem("Export standard diagnostics ZIP", onClick = {
-            if (!S1MiniDiagnostics.shareZip(context)) {
-                Toast.makeText(context, "No diagnostics to export", Toast.LENGTH_SHORT).show()
-            }
-        }) { }
+        Tip("Use Export bug report above to share standard app and S1-mini diagnostics together.")
         SettingItem(
             title = "Export diagnostics WITH TRANSCRIPTS",
             subtitle = buildString {
@@ -268,7 +264,7 @@ private fun DiagnosticOptions() {
                 Toast.makeText(context, "Captured transcripts cleared", Toast.LENGTH_SHORT).show()
             }) { }
         }
-        SettingItem("Clear diagnostic history", onClick = {
+        SettingItem("Clear S1-mini reports and transcript captures", onClick = {
             S1MiniDiagnostics.clear(context)
             Toast.makeText(context, "Diagnostics cleared", Toast.LENGTH_SHORT).show()
         }) { }
@@ -378,6 +374,7 @@ fun TranscriptCleanupScreen(navController: NavHostController = rememberNavContro
 fun DiagnosticsScreen(navController: NavHostController = rememberNavController()) {
     ScrollableList {
         ScreenTitle(stringResource(R.string.diagnostics), showBack = true, navController = navController)
+        AppDiagnosticOptions()
         DiagnosticOptions()
     }
 }
