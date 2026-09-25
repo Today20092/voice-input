@@ -8,6 +8,16 @@ import org.junit.Test
 
 class RecordingSessionPolicyTest {
     @Test
+    fun recorderShutdownDoesNotLookLikeReadFailure() {
+        // The phone report contains zero-byte reads immediately after reset/cancel.
+        assertFalse(RecordingSessionPolicy.shouldReportRecorderReadFailure(0, stopping = true))
+        assertFalse(RecordingSessionPolicy.shouldReportRecorderReadFailure(-3, stopping = true))
+        assertTrue(RecordingSessionPolicy.shouldReportRecorderReadFailure(0, stopping = false))
+        assertTrue(RecordingSessionPolicy.shouldReportRecorderReadFailure(-3, stopping = false))
+        assertFalse(RecordingSessionPolicy.shouldReportRecorderReadFailure(480, stopping = false))
+    }
+
+    @Test
     fun recorderInitializationRetriesAreBounded() {
         assertTrue(RecordingSessionPolicy.shouldRetryRecorderInitialization(32))
         assertFalse(RecordingSessionPolicy.shouldRetryRecorderInitialization(33))

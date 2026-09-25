@@ -106,6 +106,7 @@ private enum class AppendResult {
 
 internal object RecordingSessionPolicy {
     fun shouldRetryRecorderInitialization(failedAttempt: Int) = failedAttempt <= 32
+    fun shouldReportRecorderReadFailure(readCount: Int, stopping: Boolean) = readCount <= 0 && !stopping
     fun shouldAcceptSamples(stopReason: StopReason?, captureGeneration: Long, currentGeneration: Long) =
         stopReason != StopReason.Cancel && captureGeneration == currentGeneration
 
@@ -701,8 +702,11 @@ abstract class RecordingSession {
                             val nRead = activeRecorder.read(samples, 0, AUDIO_READ_SIZE, AudioRecord.READ_BLOCKING)
 
                             if(nRead <= 0) {
-                                report?.event(DiagnosticEvent.RECORDER_READ_FAILED,
-                                    mapOf(DiagnosticMetric.ERROR_CODE to nRead.toLong()))
+                                if (RecordingSessionPolicy.shouldReportRecorderReadFailure(nRead,
+                                    stopReason != null || captureGeneration != recognitionGeneration || report?.terminal == true)) {
+                                    report?.event(DiagnosticEvent.RECORDER_READ_FAILED,
+                                        mapOf(DiagnosticMetric.ERROR_CODE to nRead.toLong()))
+                                }
                                 break
                             }
                             if (firstRead) {

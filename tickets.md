@@ -410,7 +410,7 @@ Implemented by `44fb6fe`, `5ab3750`, and `bef4320`.
 
 **What to build:** Reproduce and fix the reported intermittent waveform behavior when opening voice input. The user suspects the beta speech-recognition popup change, but the visible symptom and affected entry point are not yet specified.
 
-**Blocked by:** Description of the waveform behavior, entry point, selected model, and a reproduction or detailed diagnostic report.
+**Blocked by:** Description of the waveform behavior, affected entry point, and a reproducible case. The supplied 1.4.3 archive identifies Orukeet but lacks waveform draw timing and popup state.
 
 - [ ] Establish whether the waveform appears late, stays flat, disappears, or is clipped, and whether the issue occurs in the IME, speech activity, or Test dictation.
 - [ ] Compare the same scenario with the unobtrusive popup enabled and disabled before attributing the problem to that feature.
@@ -419,3 +419,5 @@ Implemented by `44fb6fe`, `5ab3750`, and `bef4320`.
 - [ ] Verify the reported phone scenario. Static waveform layout checks alone do not resolve this ticket.
 
 Use [the phone test guide](docs/phone-performance-test.md) for reproduction notes and export instructions.
+
+The [pre-change diagnostic baseline](docs/research/phone-diagnostics-baseline-2026-09-25.md) shows prompt audio arrival and two misleading read-failure events after shutdown. Correcting those events does not resolve the visual report.

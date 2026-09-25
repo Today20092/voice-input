@@ -141,7 +141,9 @@ Standard reports exclude audio, dictated text, personal vocabulary, clipboard or
 
 Crash evidence is best effort, and delivery records cannot prove how another app displayed the text. Diagnostics recording and sharing still need a device smoke test. See [the diagnostics guide](docs/diagnostics.md) for archive contents, retention details, and verification.
 
-To collect comparable measurements on your phone, follow the [phone dictation test](docs/phone-performance-test.md). It includes three passages, cold and warm run instructions, and the diagnostic export procedure. Measured results will be added after the reports are reviewed.
+To collect comparable measurements on your phone, follow the [phone dictation test](docs/phone-performance-test.md). It includes three passages, cold and warm run instructions, and the diagnostic export procedure. Controlled model comparisons will be added after those reports are reviewed.
+
+An [initial S25 Ultra diagnostic baseline](docs/research/phone-diagnostics-baseline-2026-09-25.md) contains 27 completed Orukeet dictations on 1.4.3. The median wait from Stop to result-ready was **0.85 seconds**, ranging from **0.59 to 2.32 seconds** for recordings of 2.88 to 47.88 seconds. These are ordinary-use observations, with no controlled cold/warm split or accuracy assessment.
 
 ## Build locally
 
