@@ -8,7 +8,15 @@ CRATE = ROOT / "app/src/main/rust/harper_android"
 metadata = json.loads(subprocess.check_output(
     ["cargo", "metadata", "--locked", "--format-version", "1", "--filter-platform", "aarch64-linux-android"], cwd=CRATE
 ))
-resolved_ids = {node["id"] for node in metadata["resolve"]["nodes"]}
+nodes = {node["id"]: node for node in metadata["resolve"]["nodes"]}
+resolved_ids = set()
+pending = [metadata["resolve"]["root"]]
+while pending:
+    package_id = pending.pop()
+    if package_id in resolved_ids:
+        continue
+    resolved_ids.add(package_id)
+    pending.extend(dependency["pkg"] for dependency in nodes[package_id]["deps"])
 packages = [package for package in metadata["packages"] if package["id"] in resolved_ids]
 sections = ["Harper Android beta and locked Rust dependencies\n"
             "Harper 2.11.0, Apache-2.0\nhttps://github.com/Automattic/harper\n"
