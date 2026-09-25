@@ -4,6 +4,7 @@ import pathlib
 import subprocess
 import urllib.error
 import urllib.request
+import urllib.parse
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 CRATE = ROOT / "app/src/main/rust/harper_android"
@@ -48,8 +49,11 @@ for package in sorted(packages, key=lambda item: (item["name"], item["version"])
         revision = json.loads(vcs_file.read_text()).get("git", {}).get("sha1", "") if vcs_file.is_file() else ""
         fetched = 0
         if repository.startswith("https://github.com/") and len(revision) == 40:
+            # Crate metadata may point to a workspace subdirectory via /tree/main/...
+            # Licenses are at the repository root, not below that web UI path.
+            repo_path = "/".join(urllib.parse.urlparse(repository).path.strip("/").split("/")[:2]).removesuffix(".git")
             for name in ["LICENSE-APACHE", "LICENSE-MIT", "LICENSE", "LICENSE.md", "LICENSE.txt", "COPYING"]:
-                url = f"https://raw.githubusercontent.com/{repository.removeprefix('https://github.com/')}/{revision}/{name}"
+                url = f"https://raw.githubusercontent.com/{repo_path}/{revision}/{name}"
                 try:
                     with urllib.request.urlopen(url, timeout=30) as response:
                         contents = response.read().decode("utf-8")
