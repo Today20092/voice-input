@@ -53,7 +53,7 @@ for package in sorted(packages, key=lambda item: (item["name"], item["version"])
             # Crate metadata may point to a workspace subdirectory via /tree/main/...
             # Licenses are at the repository root, not below that web UI path.
             repo_path = "/".join(urllib.parse.urlparse(repository).path.strip("/").split("/")[:2]).removesuffix(".git")
-            for name in ["LICENSE-APACHE", "LICENSE-MIT", "LICENSE", "LICENSE.md", "LICENSE.txt", "COPYING"]:
+            for name in ["LICENSE-APACHE", "LICENSE-MIT", "LICENSE.APACHE", "LICENSE.MIT", "LICENSE", "LICENSE.md", "LICENSE.txt", "COPYING"]:
                 url = f"https://raw.githubusercontent.com/{repo_path}/{revision}/{name}"
                 try:
                     with urllib.request.urlopen(url, timeout=30) as response:
