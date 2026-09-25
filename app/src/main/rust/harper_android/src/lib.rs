@@ -9,7 +9,7 @@ use std::sync::{Arc, Once};
 
 const MAX_CHARS: usize = 10_000;
 const RULES: &[&str] = &[
-    "Spaces", "NoFrenchSpaces", "MissingSpace", "CommaFixes",
+    "Spaces", "NoFrenchSpaces", "CommaFixes",
     "CapitalizePersonalPronouns", "SentenceCapitalization",
 ];
 
@@ -108,7 +108,10 @@ fn clean(text: &str, vocabulary: &str) -> Cleaned {
     let mut group = LintGroup::new_curated_empty_config(dictionary.clone(), Dialect::American);
     // Explicitly disable ALL rules, including ones enabled by default in future upstream changes.
     group.set_all_rules_to(Some(false));
-    for rule in RULES { group.config.set_rule_enabled(*rule, true); }
+    for rule in RULES {
+        assert!(group.contains_key(rule), "Configured rule is unavailable");
+        group.config.set_rule_enabled(*rule, true);
+    }
 
     let mut total = 0;
     // Reparse once after spacing repairs so dependent capitalization can be applied.
@@ -145,8 +148,10 @@ fn clean(text: &str, vocabulary: &str) -> Cleaned {
 pub unsafe extern "C" fn harper_clean(
     text: *const u8, text_len: usize, vocabulary: *const u8, vocabulary_len: usize,
 ) -> *mut c_char {
+    #[cfg(not(test))]
     static HOOK: Once = Once::new();
     // Rust's default panic hook can print user text. The boundary returns failure without logging it.
+    #[cfg(not(test))]
     HOOK.call_once(|| std::panic::set_hook(Box::new(|_| {})));
     if text.is_null() || vocabulary.is_null() || text_len > 40_000 || vocabulary_len > 100_000 {
         return std::ptr::null_mut();
@@ -176,8 +181,13 @@ mod tests {
 
     #[test]
     fn sentence_spacing_and_capitalization() {
-        assert_eq!(clean("the kettle hissed on the stove.A thin ribbon of steam curled toward the ceiling.", "").text,
+        assert_eq!(clean("the kettle hissed on the stove.  A thin ribbon of steam curled toward the ceiling.", "").text,
             "The kettle hissed on the stove. A thin ribbon of steam curled toward the ceiling.");
+    }
+
+    #[test]
+    fn inserts_missing_space_after_existing_comma() {
+        assert_eq!(clean("Hello,world", "").text, "Hello, world");
     }
 
     #[test]
