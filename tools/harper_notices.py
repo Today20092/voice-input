@@ -6,12 +6,14 @@ import subprocess
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 CRATE = ROOT / "app/src/main/rust/harper_android"
 metadata = json.loads(subprocess.check_output(
-    ["cargo", "metadata", "--locked", "--format-version", "1"], cwd=CRATE
+    ["cargo", "metadata", "--locked", "--format-version", "1", "--filter-platform", "aarch64-linux-android"], cwd=CRATE
 ))
+resolved_ids = {node["id"] for node in metadata["resolve"]["nodes"]}
+packages = [package for package in metadata["packages"] if package["id"] in resolved_ids]
 sections = ["Harper Android beta and locked Rust dependencies\n"
             "Harper 2.11.0, Apache-2.0\nhttps://github.com/Automattic/harper\n"
             "Only the dependencies linked into the Android library apply at runtime.\n"]
-for package in sorted(metadata["packages"], key=lambda item: (item["name"], item["version"])):
+for package in sorted(packages, key=lambda item: (item["name"], item["version"])):
     if package["name"] == "harper_android":
         continue
     directory = pathlib.Path(package["manifest_path"]).parent
@@ -34,4 +36,4 @@ for package in sorted(metadata["packages"], key=lambda item: (item["name"], item
 target = ROOT / "app/src/main/assets/HARPER-NOTICES.txt"
 target.parent.mkdir(parents=True, exist_ok=True)
 target.write_text("\n".join(sections))
-print(f"Bundled license texts for {len(metadata['packages']) - 1} Rust packages")
+print(f"Bundled license texts for {len(packages) - 1} Rust packages")
