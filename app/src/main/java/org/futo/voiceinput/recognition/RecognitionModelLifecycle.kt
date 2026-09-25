@@ -8,6 +8,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import org.futo.voiceinput.WhisperGGMLBackend
 import org.futo.voiceinput.backend.SpeechBackend
+import org.futo.voiceinput.cohere.CohereBackend
 import org.futo.voiceinput.ml.RunState
 import org.futo.voiceinput.moonshine.MoonshineBackend
 import org.futo.voiceinput.moonshine.getSelectedMoonshineModelVariant
@@ -117,6 +118,7 @@ class RecognitionModelLifecycle(
             SpeechBackendType.Orukeet -> orukeetBackend()
             SpeechBackendType.ParakeetUnified -> parakeetUnifiedBackend()
             SpeechBackendType.Nemotron -> SherpaStreamingBackend()
+            SpeechBackendType.Cohere -> CohereBackend()
             SpeechBackendType.Moonshine -> MoonshineBackend(context.getSelectedMoonshineModelVariant())
             SpeechBackendType.WhisperGGML -> WhisperGGMLBackend(
                 callbacks.onStatusUpdate,
