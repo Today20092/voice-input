@@ -18,12 +18,19 @@ class S1MiniEnglishGateTest {
     )
 
     @Test
-    fun allBackendsAllowEnglishDictationWithoutLanguageMetadata() {
-        SpeechBackendType.entries.forEach { backend ->
+    fun legacyBackendsAllowEnglishDictationWithoutLanguageMetadata() {
+        SpeechBackendType.entries.filter { it != SpeechBackendType.Cohere }.forEach { backend ->
             assertTrue(backend.id, established(backend))
             assertTrue(backend.id, established(backend, detected = ""))
             assertTrue(backend.id, established(backend, detected = "EN"))
         }
+    }
+
+    @Test
+    fun cohereRequiresAnExplicitEnglishLanguage() {
+        assertTrue(established(SpeechBackendType.Cohere, detected = "en"))
+        assertFalse(established(SpeechBackendType.Cohere, detected = "ar"))
+        assertFalse(established(SpeechBackendType.Cohere))
     }
 
     @Test

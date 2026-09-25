@@ -36,6 +36,7 @@ class RecognitionModelLifecycleTest {
             model("nemotron", "balanced"),
             model("parakeet", null),
             model("orukeet", null),
+            model("cohere", null),
             model("parakeet_unified", null)
         )
         val lifecycle = RecognitionModelLifecycle(
@@ -47,6 +48,7 @@ class RecognitionModelLifecycleTest {
             RecognitionModelSelection("nemotron", nemotronVariantId = "balanced"),
             RecognitionModelSelection("parakeet"),
             RecognitionModelSelection("orukeet"),
+            RecognitionModelSelection("cohere"),
             RecognitionModelSelection("parakeet_unified")
         )
 

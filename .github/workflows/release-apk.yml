@@ -6,6 +6,7 @@ on:
       - "master"
       - "codex/moonshine-vocabulary-beta"
       - "codex/s1-mini-beta"
+      - "codex/cohere-transcribe-option"
     tags:
       - "v*"
   workflow_dispatch:
@@ -99,9 +100,10 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           name: FUTO Voice Input ${{ github.ref_name }}
-          body_path: docs/releases/v1.4.2.md
+          body_path: ${{ contains(github.ref_name, 'cohere-beta') && 'docs/releases/cohere-beta.md' || 'docs/releases/v1.4.2.md' }}
           files: |
             release/*.apk
             docs/examples/arabic-transliteration.txt
           generate_release_notes: true
           prerelease: ${{ contains(github.ref_name, '-beta') }}
+          make_latest: ${{ !contains(github.ref_name, '-beta') }}

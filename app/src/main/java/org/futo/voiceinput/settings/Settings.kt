@@ -125,6 +125,7 @@ enum class SpeechBackendType(val id: String) {
     Orukeet("orukeet"),
     ParakeetUnified("parakeet_unified"),
     Nemotron("nemotron"),
+    Cohere("cohere"),
     Moonshine("moonshine"),
     WhisperGGML("whisper_ggml")
 }
@@ -140,6 +141,7 @@ val NEMOTRON_PROFILE =
     SettingsKey(stringPreferencesKey("nemotron_profile"), NemotronProfile.Balanced.id)
 val NEMOTRON_MULTILINGUAL_LANGUAGE =
     SettingsKey(stringPreferencesKey("nemotron_multilingual_language"), "en")
+val COHERE_LANGUAGE = SettingsKey(stringPreferencesKey("cohere_language"), "en")
 val PARAKEET_KEEP_WARM = SettingsKey(booleanPreferencesKey("parakeet_keep_warm"), true)
 val PARAKEET_KEEP_WARM_TIMEOUT_MS =
     SettingsKey(longPreferencesKey("parakeet_keep_warm_timeout_ms"), 5 * 60 * 1000L)

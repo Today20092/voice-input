@@ -28,6 +28,10 @@ import org.futo.voiceinput.settings.SettingListLazy
 import org.futo.voiceinput.settings.SettingToggleRaw
 import org.futo.voiceinput.settings.SettingsViewModel
 import org.futo.voiceinput.settings.Tip
+import org.futo.voiceinput.settings.SPEECH_BACKEND
+import org.futo.voiceinput.settings.ScrollableList
+import org.futo.voiceinput.settings.SpeechBackendType
+import org.futo.voiceinput.settings.toSpeechBackendType
 import org.futo.voiceinput.settings.isParakeetSelected
 import org.futo.voiceinput.settings.useDataStore
 import org.futo.voiceinput.startModelDownloadActivity
@@ -64,6 +68,14 @@ fun LanguagesScreen(
     settingsViewModel: SettingsViewModel = viewModel(),
     navController: NavHostController = rememberNavController()
 ) {
+    val backend = useDataStore(SPEECH_BACKEND).value.toSpeechBackendType()
+    if (backend == SpeechBackendType.Cohere) {
+        ScrollableList {
+            ScreenTitle(stringResource(R.string.languages_title), showBack = true, navController = navController)
+            CohereLanguageOptions()
+        }
+        return
+    }
     val (multilingual, setMultilingual) = useDataStore(ENABLE_MULTILINGUAL)
     val (multilingualModelIndex, _) = useDataStore(MULTILINGUAL_MODEL_INDEX)
     val (languages, setLanguages) = useDataStore(LANGUAGE_TOGGLES)

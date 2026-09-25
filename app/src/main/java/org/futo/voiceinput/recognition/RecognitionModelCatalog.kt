@@ -186,6 +186,40 @@ object RecognitionModelCatalog {
 
     val nemotronMultilingual = nemotronMultilingualPackage()
 
+    private const val COHERE_REVISION = "156a470cf08eefe706a0004f3c52d9ee567ca7a0"
+    private const val COHERE_DIRECTORY = "sherpa-onnx-cohere-transcribe-14-lang-int8-2026-04-01"
+
+    val cohereTranscribe = RecognitionModel(
+        id = "cohere-transcribe-03-2026-int8",
+        version = COHERE_REVISION,
+        runtimeId = "cohere",
+        variantId = null,
+        directoryName = COHERE_DIRECTORY,
+        source = "Cohere Labs, Sherpa-ONNX INT8 export by k2-fsa",
+        licenseAttribution = "Apache 2.0",
+        displayName = "Cohere Transcribe (Beta)",
+        description = "Experimental final-only transcription in 14 languages, including Arabic. " +
+            "Requires about 2.89 GB of storage and substantial memory. Phone performance is unverified. " +
+            "Choose one recognition language; automatic detection and reliable mixed-language dictation are not supported.",
+        transcription = TranscriptionBehavior.FINAL_ONLY,
+        recognitionLanguages = "14 languages, including Arabic and English",
+        performanceClass = PerformanceClass.DEMANDING,
+        artifacts = listOf(
+            cohereArtifact("encoder.int8.onnx", 3_090_822, "cf704f8cfa90e3f0a76f9ffc05998bdf00ba9ae983192c14a85a3a5eb008b367"),
+            cohereArtifact("encoder.int8.onnx.data", 2_731_503_072, "bcf1b7148c8518ae52df1ad2d2fc2b4e89261ea23e6c874eef1d9f55bcbaa4a3"),
+            cohereArtifact("decoder.int8.onnx", 153_250_705, "8372ca6c8ff4db8b916ca3592f5c757a715e691b9edec751ba19b29fc854baf9"),
+            cohereArtifact("tokens.txt", 207_437, "013ede043ae2480e3a9205cc34550d9686100cc682bacc90f702facdfbb93035")
+        )
+    )
+
+    private fun cohereArtifact(name: String, sizeBytes: Long, sha256: String) =
+        RecognitionModelArtifact(
+            name,
+            "https://huggingface.co/csukuangfj2/$COHERE_DIRECTORY/resolve/$COHERE_REVISION/$name?download=true",
+            sizeBytes,
+            sha256
+        )
+
     val cards = listOf(
         RecognitionModelCard(
             id = "moonshine",
@@ -246,6 +280,16 @@ object RecognitionModelCatalog {
             recognitionLanguages = "English",
             performanceClasses = setOf(PerformanceClass.DEMANDING),
             models = listOf(parakeetUnified)
+        ),
+        RecognitionModelCard(
+            id = "cohere",
+            runtimeId = "cohere",
+            displayName = cohereTranscribe.displayName,
+            description = cohereTranscribe.description,
+            transcription = TranscriptionBehavior.FINAL_ONLY,
+            recognitionLanguages = cohereTranscribe.recognitionLanguages,
+            performanceClasses = setOf(PerformanceClass.DEMANDING),
+            models = listOf(cohereTranscribe)
         ),
         RecognitionModelCard(
             id = "whisper",

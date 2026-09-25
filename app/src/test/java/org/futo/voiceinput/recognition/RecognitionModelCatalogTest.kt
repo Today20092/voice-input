@@ -18,7 +18,7 @@ class RecognitionModelCatalogTest {
     fun catalogHasCompleteImmutableManifests() {
         val models = RecognitionModelCatalog.models
 
-        assertEquals(7, RecognitionModelCatalog.cards.size)
+        assertEquals(8, RecognitionModelCatalog.cards.size)
         assertEquals("orukeet-v0.1.0", RecognitionModelCatalog.defaultModel.id)
         assertTrue(models.isNotEmpty())
         models.forEach { model ->
@@ -73,6 +73,19 @@ class RecognitionModelCatalogTest {
         assertTrue(multilingual.artifacts.all { it.url.contains("ab43d895f5985b1bbab8b6eac8607fcdc05343f3") })
         assertTrue(multilingual.source.contains("OpenMDW 1.1"))
         assertEquals(listOf(multilingual), multilingualCard.models)
+    }
+
+    @Test
+    fun cohereIncludesExternalWeightsAndRemainsAnOptionalBeta() {
+        val model = RecognitionModelCatalog.cohereTranscribe
+        assertEquals("cohere", model.runtimeId)
+        assertEquals(TranscriptionBehavior.FINAL_ONLY, model.transcription)
+        assertTrue(model.displayName.contains("Beta"))
+        assertEquals(2_888_052_036L, model.transferBytes)
+        assertTrue(model.artifacts.all { it.url.contains(model.version) })
+        assertEquals(2_731_503_072L, model.artifacts.single { it.name == "encoder.int8.onnx.data" }.sizeBytes)
+        assertEquals(listOf(model), RecognitionModelCatalog.cards.single { it.id == "cohere" }.models)
+        assertEquals("orukeet", RecognitionModelCatalog.defaultModel.runtimeId)
     }
 
     @Test

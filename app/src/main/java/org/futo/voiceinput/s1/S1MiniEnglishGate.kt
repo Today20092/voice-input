@@ -24,6 +24,9 @@ object S1MiniEnglishGate {
             SpeechBackendType.Nemotron -> nemotronProfile != "multilingual" ||
                 nemotronLanguage == "auto" || nemotronLanguage.equals("en", ignoreCase = true)
 
+            // Cohere always supplies its selected language. Do not assume English if absent.
+            SpeechBackendType.Cohere -> false
+
             SpeechBackendType.WhisperGGML ->
                 enabledWhisperLanguages.isEmpty() || "en" in enabledWhisperLanguages
         }
