@@ -17,6 +17,7 @@ import org.futo.voiceinput.s1.S1MiniDiagnostics
 class CrashLoggingApplication : Application() {
     override fun onCreate() {
         super.onCreate()
+        org.futo.voiceinput.diagnostics.AppDiagnostics.initialize(this)
         runCatching { S1MiniDiagnostics.purgeTranscriptCaptures(this) }
         runCatching { AudioHistoryCleanupService.schedule(this) }
         CoroutineScope(Dispatchers.IO).launch { runCatching { purgeAudioHistory() } }

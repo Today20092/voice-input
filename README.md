@@ -70,6 +70,14 @@ S1-mini runtime tuning is under Advanced. Reports, transcript capture, and ZIP
 export are under Support → Diagnostics, with the existing sharing consent intact.
 Audio history and all beta 16 backup and recovery behavior are retained.
 
+## Diagnostics and bug reports
+
+Open **Settings → Support → Diagnostics → Export bug report** to prepare a ZIP for an agent or a GitHub issue. Add optional notes, review the summary, then use the Android share sheet. For a difficult-to-reproduce problem, first enable **detailed mode**, reproduce it, and export; detailed mode stops automatically after 30 minutes.
+
+Standard collection is local and on by default, with an off switch and a clear-history action. The bounded history covers recording, all recognition models, loading, live/final recognition, cleanup, delivery, downloads, managed failures, and available Android process-exit reasons. Reports include device/settings information and standard S1-mini results, but exclude dictated text, audio, vocabulary, clipboard/surrounding text, raw Logcat, and exception messages. Transcript-inclusive exports remain separate and require explicit consent. Nothing uploads automatically.
+
+Retention, archive contents, and crash/delivery limitations are documented in [docs/diagnostics.md](docs/diagnostics.md).
+
 ## Audio history
 
 Added in `v1.4.2-beta.16`, based on beta 15. Open **Audio history** from the main settings page to

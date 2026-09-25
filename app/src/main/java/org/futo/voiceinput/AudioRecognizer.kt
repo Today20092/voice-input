@@ -33,6 +33,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.yield
 import org.futo.voiceinput.ml.RunState
+import org.futo.voiceinput.diagnostics.AppDiagnostics
+import org.futo.voiceinput.diagnostics.DiagnosticEvent
+import org.futo.voiceinput.diagnostics.DiagnosticMetric
+import org.futo.voiceinput.diagnostics.DiagnosticSession
 import org.futo.voiceinput.history.AudioHistoryStore
 import org.futo.voiceinput.history.audioHistory
 import org.futo.voiceinput.settings.AUDIO_HISTORY_ENABLED
@@ -157,6 +161,9 @@ internal class StreamingAudioReplay {
 }
 
 abstract class RecordingSession {
+    protected var diagnostics: DiagnosticSession? = null
+        private set
+    private var diagnosticSamplingJob: Job? = null
     private data class OwnedParakeetLease(
         val generation: Long,
         val lease: ParakeetEngineLease
@@ -274,6 +281,7 @@ abstract class RecordingSession {
 
     fun cancelRecognizer() {
         println("Cancelling recognition")
+        diagnostics?.end(DiagnosticEvent.SESSION_CANCELLED)
         reset()
 
         cancelled()
@@ -306,6 +314,8 @@ abstract class RecordingSession {
     }
 
     fun reset() {
+        diagnostics?.end(DiagnosticEvent.SESSION_RESET)
+        diagnosticSamplingJob?.cancel()
         isVADPaused = false
         cancelCapture()
         stopAndReleaseRecorder()
@@ -400,6 +410,9 @@ abstract class RecordingSession {
 
     private suspend fun loadModelInner(retryAfterOom: Boolean = true) {
         val loadGeneration = recognitionGeneration
+        val report = diagnostics
+        val loadStarted = SystemClock.elapsedRealtime()
+        report?.event(DiagnosticEvent.MODEL_LOAD_STARTED)
         try {
             val selection = RecognitionModelSelection(
                 runtimeId = context.getSetting(SPEECH_BACKEND),
@@ -412,6 +425,7 @@ abstract class RecordingSession {
                 RecognitionRuntimeCallbacks(
                     onStatusUpdate = { decodingStatus(it) },
                     onPartialDecode = {
+                        report?.partial(it.length)
                         lifecycleScope.launch {
                             withContext(Dispatchers.Main) {
                                 partialResult(it)
@@ -440,9 +454,12 @@ abstract class RecordingSession {
                 throw CancellationException("Recognition was reset while the model loaded")
             }
             (loadedBackend as? StreamingSpeechBackend)?.let(::startStreaming)
+            report?.event(DiagnosticEvent.MODEL_LOAD_FINISHED,
+                mapOf(DiagnosticMetric.DURATION_MS to SystemClock.elapsedRealtime() - loadStarted))
         } catch (error: CancellationException) {
             throw error
         } catch(e: OutOfMemoryError) {
+            report?.event(DiagnosticEvent.MODEL_LOAD_FAILED, error = e)
             if (loadGeneration != recognitionGeneration) {
                 throw CancellationException("Recognition was reset while loading the model")
             }
@@ -467,6 +484,7 @@ abstract class RecordingSession {
             }
             withContext(Dispatchers.Main) { failed(e) }
         } catch (error: Exception) {
+            report?.event(DiagnosticEvent.MODEL_LOAD_FAILED, error = error)
             if (loadGeneration == recognitionGeneration) {
                 selectedManagedModel?.let {
                     RecognitionModelStore(context.filesDir).invalidate(it)
@@ -497,6 +515,8 @@ abstract class RecordingSession {
 
         lifecycleScope.launch {
             val backendType = context.getSetting(SPEECH_BACKEND).toSpeechBackendType()
+            diagnostics?.end(DiagnosticEvent.SESSION_RESET)
+            diagnosticSamplingJob?.cancel()
             personalVocabulary = context.getSetting(PERSONAL_DICTIONARY)
             val readiness = RecognitionModelLifecycle.create(
                 context.filesDir,
@@ -516,7 +536,18 @@ abstract class RecordingSession {
                     name
                 }
             }
+            val report = AppDiagnostics.session(readiness?.model?.id ?: backendType.id)
+            diagnostics = report
+            report.event(DiagnosticEvent.SESSION_STARTED)
+            AppDiagnostics.sample(report.id, report.model)
+            diagnosticSamplingJob = lifecycleScope.launch {
+                while (!report.terminal) {
+                    delay(5_000L)
+                    if (!report.terminal) AppDiagnostics.sample(report.id, report.model, detailed = true)
+                }
+            }
             if (readiness != null && !readiness.isReady) {
+                report.event(DiagnosticEvent.MODEL_REQUIRED)
                 needRecognitionModelDownload(readiness.model)
                 return@launch
             }
@@ -531,12 +562,14 @@ abstract class RecordingSession {
                         it.name.substringBefore(" (")
                     }
                     if (requiredModels.any { context.modelNeedsDownloading(it) }) {
+                        report.event(DiagnosticEvent.MODEL_REQUIRED)
                         needWhisperModelDownload(requiredModels)
                         return@launch
                     }
             }
 
             if (context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+                report.event(DiagnosticEvent.PERMISSION_REQUIRED)
                 needPermission()
             } else {
                 startRecording()
@@ -549,10 +582,12 @@ abstract class RecordingSession {
     }
 
     fun permissionResultRejected() {
+        diagnostics?.event(DiagnosticEvent.PERMISSION_REJECTED)
         permissionRejected()
     }
 
     private fun startRecording(numTries: Int = 0) {
+        val report = diagnostics
         if (BuildConfig.DEBUG) Log.d("WaveformTiming", "recorder_requested t=${SystemClock.elapsedRealtime()}")
         if (isRecording) {
             throw IllegalStateException("Start recording when already recording")
@@ -577,6 +612,8 @@ abstract class RecordingSession {
                 recorder = null
 
                 println("Failed to initialize AudioRecord, retrying")
+                report?.event(DiagnosticEvent.RECORDER_RETRY,
+                    mapOf(DiagnosticMetric.ATTEMPT to numTries.toLong()))
 
                 if(!RecordingSessionPolicy.shouldRetryRecorderInitialization(numTries)) {
                     throw IllegalStateException("AudioRecord could not be initialized in 32 tries")
@@ -595,6 +632,7 @@ abstract class RecordingSession {
             }
 
             recorder!!.startRecording()
+            report?.event(DiagnosticEvent.RECORDER_STARTED)
             if (BuildConfig.DEBUG) Log.d("WaveformTiming", "recorder_started t=${SystemClock.elapsedRealtime()}")
             val activeRecorder = recorder!!
             val captureGeneration = recognitionGeneration
@@ -662,9 +700,14 @@ abstract class RecordingSession {
                             yield()
                             val nRead = activeRecorder.read(samples, 0, AUDIO_READ_SIZE, AudioRecord.READ_BLOCKING)
 
-                            if(nRead <= 0) break
+                            if(nRead <= 0) {
+                                report?.event(DiagnosticEvent.RECORDER_READ_FAILED,
+                                    mapOf(DiagnosticMetric.ERROR_CODE to nRead.toLong()))
+                                break
+                            }
                             if (firstRead) {
                                 firstRead = false
+                                report?.event(DiagnosticEvent.FIRST_AUDIO)
                                 if (BuildConfig.DEBUG) Log.d("WaveformTiming", "first_samples t=${SystemClock.elapsedRealtime()}")
                             }
                             yield()
@@ -798,6 +841,11 @@ abstract class RecordingSession {
                             drainRecorderTail(activeRecorder, reason, samples, captureGeneration)
                             appendFinalSilence(captureGeneration)
                         }
+                    } catch (error: CancellationException) {
+                        throw error
+                    } catch (error: Exception) {
+                        report?.event(DiagnosticEvent.RECORDER_FAILED, error = error)
+                        throw error
                     } finally {
                         try {
                             capture?.finishWriting()
@@ -819,10 +867,12 @@ abstract class RecordingSession {
 
             recordingStarted()
         } catch(e: SecurityException){
+            report?.event(DiagnosticEvent.RECORDER_FAILED, error = e)
             stopAndReleaseRecorder()
             // It's possible we may have lost permission, so let's just ask for permission again
             needPermission()
         } catch(e: Exception) {
+            report?.event(DiagnosticEvent.RECORDER_FAILED, error = e)
             stopAndReleaseRecorder()
             throw e
         }
@@ -862,9 +912,11 @@ abstract class RecordingSession {
     }
 
     private fun startStreaming(backend: StreamingSpeechBackend) {
+        val report = diagnostics
         streamingAudio.start(
             backend = backend,
             onPartial = { result ->
+                report?.partial(result.length)
                 lifecycleScope.launch {
                     withContext(Dispatchers.Main) {
                         partialResult(PersonalVocabulary.apply(result, personalVocabulary))
@@ -872,6 +924,8 @@ abstract class RecordingSession {
                 }
             },
             onCatchingUp = { catchingUp ->
+                report?.event(DiagnosticEvent.CATCHING_UP,
+                    mapOf(DiagnosticMetric.CATCHING_UP to if (catchingUp) 1L else 0L), detailed = true)
                 lifecycleScope.launch(Dispatchers.Main) {
                     decodingStatus(if (catchingUp) RunState.CatchingUp else RunState.Streaming)
                 }
@@ -922,6 +976,7 @@ abstract class RecordingSession {
 
     private suspend fun runModel() {
         val runGeneration = recognitionGeneration
+        val report = diagnostics
         val runLoadModelJob = synchronized(this) {
             if (runGeneration == recognitionGeneration) loadModelJob else null
         }
@@ -934,6 +989,7 @@ abstract class RecordingSession {
                 return
             }
             Log.e("AudioRecognizer", "Speech recognition failed", error)
+            report?.end(DiagnosticEvent.SESSION_FAILED, error)
             try {
                 closeFailedBackend(runGeneration)
             } catch (closeError: Exception) {
@@ -957,6 +1013,7 @@ abstract class RecordingSession {
     }
 
     private suspend fun runModelInner(runGeneration: Long, runLoadModelJob: Job?) {
+        val report = diagnostics
         val savedAudioId = synchronized(this) { backupId?.takeIf { it.first == runGeneration }?.second }
         if(runLoadModelJob != null && runLoadModelJob.isActive) {
             println("Model was not finished loading...")
@@ -999,9 +1056,17 @@ abstract class RecordingSession {
         yield()
         var cleanupResult = S1MiniCleanupResult("", applied = false)
         val text = try {
+            val recognitionStarted = SystemClock.elapsedRealtime()
+            report?.event(DiagnosticEvent.RECOGNITION_STARTED,
+                mapOf(DiagnosticMetric.AUDIO_MS to floatArray.size.toLong() * 1000 / AUDIO_SAMPLE_RATE))
             val rawText = (runBackend as? StreamingSpeechBackend)?.finishStreaming()
                 ?: runBackend.transcribe(floatArray)
+            report?.event(DiagnosticEvent.RECOGNITION_FINISHED, mapOf(
+                DiagnosticMetric.DURATION_MS to SystemClock.elapsedRealtime() - recognitionStarted,
+                DiagnosticMetric.CHARACTERS to rawText.length.toLong()))
             saveBackupTranscript(savedAudioId, rawText)
+            val cleanupStarted = SystemClock.elapsedRealtime()
+            report?.event(DiagnosticEvent.CLEANUP_STARTED)
             cleanupResult = S1MiniTranscriptCleaner.clean(
                 context = context,
                 rawTranscript = rawText,
@@ -1010,6 +1075,9 @@ abstract class RecordingSession {
                 forcedLanguage = forcedLanguage,
                 onCleaning = { withContext(Dispatchers.Main) { cleaning() } }
             )
+            report?.event(DiagnosticEvent.CLEANUP_FINISHED, mapOf(
+                DiagnosticMetric.DURATION_MS to SystemClock.elapsedRealtime() - cleanupStarted,
+                DiagnosticMetric.APPLIED to if (cleanupResult.applied) 1L else 0L))
             val finalDeliveredText = PersonalVocabulary.apply(cleanupResult.text, personalVocabulary)
             if (
                 cleanupResult.diagnosticReportId != null &&
@@ -1028,6 +1096,7 @@ abstract class RecordingSession {
             }
             finalDeliveredText
         } catch(e: OutOfMemoryError) {
+            report?.event(DiagnosticEvent.SESSION_FAILED, error = e)
             decodingStatus(RunState.OOMError)
             closeFailedBackend(runGeneration)
 
@@ -1060,6 +1129,8 @@ abstract class RecordingSession {
             if (text.isBlank() && !cleanupResult.validEmpty) {
                 failed(NoSpeechRecognizedException())
             } else {
+                report?.event(DiagnosticEvent.RESULT_READY,
+                    mapOf(DiagnosticMetric.CHARACTERS to text.length.toLong()))
                 finished(text)
             }
         }
@@ -1111,6 +1182,8 @@ abstract class RecordingSession {
         if(stopReason == null) {
             stopReason = StopReason.Manual
         }
+        diagnostics?.event(DiagnosticEvent.RECORDING_STOPPED, mapOf(
+            DiagnosticMetric.STOP_REASON to (stopReason?.ordinal ?: -1).toLong()))
 
         processing()
 

@@ -12,7 +12,13 @@ import androidx.core.content.FileProvider
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonObject
 import org.futo.voiceinput.BuildConfig
+import org.futo.voiceinput.diagnostics.AppDiagnostics
+import org.futo.voiceinput.diagnostics.DiagnosticStore
+import org.futo.voiceinput.diagnostics.StandardS1Reports
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -22,6 +28,7 @@ import java.util.UUID
 @Serializable
 data class S1MiniDiagnosticRun(
     val schemaVersion: Int = 4,
+    val capturedAtEpochMs: Long = System.currentTimeMillis(),
     val reportId: String = UUID.randomUUID().toString(),
     val recordedAtEpochMs: Long = System.currentTimeMillis(),
     val appVersion: String = BuildConfig.VERSION_NAME,
@@ -98,9 +105,12 @@ object S1MiniDiagnostics {
 
     @Synchronized
     fun record(context: Context, run: S1MiniDiagnosticRun) {
+        if (!AppDiagnostics.collectionEnabled()) return
+        purgeStandard(context)
         val existing = runsFile(context).takeIf { it.isFile }?.readLines().orEmpty()
             .filter { it.isNotBlank() }
-        val retained = (existing + json.encodeToString(run)).takeLast(MAX_RUNS)
+        val retained = (existing + json.encodeToString(run)).takeLast(MAX_RUNS).toMutableList()
+        while (retained.sumOf { it.toByteArray().size + 1 } > 768 * 1024) retained.removeAt(0)
         val target = runsFile(context)
         val temporary = File(target.parentFile, "${target.name}.tmp")
         temporary.writeText(retained.joinToString("\n", postfix = if (retained.isEmpty()) "" else "\n"))
@@ -111,6 +121,7 @@ object S1MiniDiagnostics {
     }
 
     fun latestText(context: Context): String? {
+        purgeStandard(context)
         val line = runsFile(context).takeIf { it.isFile }?.readLines()?.lastOrNull { it.isNotBlank() }
             ?: return null
         return buildString {
@@ -129,6 +140,7 @@ object S1MiniDiagnostics {
     }
 
     fun exportZip(context: Context, includeTranscripts: Boolean = false): File? {
+        purgeStandard(context)
         val runs = runsFile(context).takeIf { it.isFile }?.readText().orEmpty()
         val transcriptResult = if (includeTranscripts) transcriptCaptures(context) else null
         if (includeTranscripts && transcriptResult?.hasExportableEvidence != true) return null
@@ -177,6 +189,54 @@ object S1MiniDiagnostics {
         File(context.cacheDir, "s1-diagnostics-export").deleteRecursively()
     }
 
+    @Synchronized
+    fun clearStandard(context: Context) {
+        directory(context).deleteRecursively()
+        File(context.cacheDir, "s1-diagnostics-export").deleteRecursively()
+    }
+
+    @Synchronized
+    fun standardReportEntries(context: Context): Map<String, String> {
+        purgeStandard(context)
+        return buildMap {
+            runsFile(context).takeIf { it.isFile && it.length() <= 768 * 1024 }?.let { file ->
+                put("runs.jsonl", file.readLines().mapNotNull(StandardS1Reports::project).joinToString("\n"))
+            }
+            benchmarkFile(context).takeIf { it.isFile && it.length() <= 256 * 1024 }?.let { file ->
+                StandardS1Reports.project(file.readText())?.let { put("benchmark.json", it) }
+            }
+        }
+    }
+
+    @Synchronized
+    fun purgeStandard(context: Context) {
+        val cutoff = System.currentTimeMillis() - DiagnosticStore.RETENTION_MS
+        val runs = runsFile(context)
+        if (runs.isFile) {
+            if (runs.lastModified() < cutoff || runs.length() > 768 * 1024) runs.delete()
+            else {
+                val legacyTimestamp = runs.lastModified()
+                val retained = runs.readLines().mapNotNull { line ->
+                    runCatching {
+                        val original = json.parseToJsonElement(line).jsonObject
+                        val dated = if ("capturedAtEpochMs" in original) original else
+                            JsonObject(original + ("capturedAtEpochMs" to JsonPrimitive(legacyTimestamp)))
+                        dated.toString().takeIf {
+                            json.decodeFromString<S1MiniDiagnosticRun>(it).capturedAtEpochMs >= cutoff
+                        }
+                    }.getOrNull()
+                }
+                if (retained.isEmpty()) runs.delete()
+                else {
+                    val temporary = File(runs.parentFile, "runs.jsonl.tmp")
+                    temporary.writeText(retained.joinToString("\n", postfix = "\n"))
+                    check(temporary.renameTo(runs)) { "Unable to purge diagnostics" }
+                }
+            }
+        }
+        benchmarkFile(context).takeIf { it.isFile && (it.lastModified() < cutoff || it.length() > 256 * 1024) }?.delete()
+    }
+
     fun recordTranscript(
         context: Context,
         reportId: String,
@@ -202,9 +262,13 @@ object S1MiniDiagnostics {
 
     @Synchronized
     fun recordBenchmark(context: Context, diagnostic: S1MiniBenchmarkDiagnostic) {
+        if (!AppDiagnostics.collectionEnabled()) return
+        purgeStandard(context)
         val target = benchmarkFile(context)
         val temporary = File(target.parentFile, "${target.name}.tmp")
-        temporary.writeText(json.encodeToString(diagnostic))
+        val encoded = json.encodeToString(diagnostic)
+        if (encoded.toByteArray().size > 256 * 1024) return
+        temporary.writeText(encoded)
         if (!temporary.renameTo(target)) {
             target.delete()
             check(temporary.renameTo(target)) { "Unable to replace S1-mini benchmark diagnostics" }

@@ -49,6 +49,10 @@ import okhttp3.Request
 import okhttp3.Response
 import org.futo.voiceinput.R
 import org.futo.voiceinput.BuildConfig
+import org.futo.voiceinput.diagnostics.AppDiagnostics
+import org.futo.voiceinput.diagnostics.DiagnosticEvent
+import org.futo.voiceinput.diagnostics.DiagnosticMetric
+import org.futo.voiceinput.diagnostics.DiagnosticSession
 import org.futo.voiceinput.sha256
 import org.futo.voiceinput.recognition.RecognitionModel
 import org.futo.voiceinput.recognition.RecognitionModelCatalog
@@ -384,6 +388,8 @@ fun DownloadScreen(models: List<ModelInfo> = EXAMPLE_MODELS, onRetry: (() -> Uni
 }
 
 class DownloadActivity : ComponentActivity() {
+    private var diagnosticDownload: DiagnosticSession? = null
+    private var downloadStartedMs = 0L
     private val managedModel by lazy {
         intent.getStringExtra(EXTRA_MODEL_ID)?.let { id ->
             RecognitionModelCatalog.models.firstOrNull { it.id == id }
@@ -434,6 +440,12 @@ class DownloadActivity : ComponentActivity() {
     }
 
     private fun startDownloadAfterRuntimeRelease() {
+        diagnosticDownload?.end(DiagnosticEvent.DOWNLOAD_CANCELLED)
+        diagnosticDownload = AppDiagnostics.session(managedModel?.id ?: if (
+            intent.getBooleanExtra(EXTRA_ENABLE_S1_MINI_AFTER_DOWNLOAD, false)) "s1_mini" else "whisper_ggml")
+        downloadStartedMs = SystemClock.elapsedRealtime()
+        diagnosticDownload?.event(DiagnosticEvent.DOWNLOAD_STARTED,
+            mapOf(DiagnosticMetric.FILE_COUNT to allRequestedFiles.size.toLong()))
         completionMarker?.delete()
         isDownloading = true
 
@@ -547,20 +559,20 @@ class DownloadActivity : ComponentActivity() {
             markFinished(model)
         } catch (error: Exception) {
             error.printStackTrace()
-            markError(model)
+            markError(model, error = error)
         }
     }
 
     private fun downloadSingle(model: ModelInfo) {
         val request = Request.Builder().get().url(model.url).build()
         httpClient.newCall(request).enqueue(object : Callback {
-            override fun onFailure(call: Call, e: IOException) = markError(model)
+            override fun onFailure(call: Call, e: IOException) = markError(model, error = e)
 
             override fun onResponse(call: Call, response: Response) {
                 response.use {
                     val body = response.body
                     if (!response.isSuccessful || body == null) {
-                        markError(model)
+                        markError(model, code = response.code)
                         return
                     }
                     val file = File.createTempFile(model.name + ".download", null, cacheDir)
@@ -581,7 +593,7 @@ class DownloadActivity : ComponentActivity() {
                     } catch (error: Exception) {
                         error.printStackTrace()
                         file.delete()
-                        markError(model)
+                        markError(model, error = error)
                     }
                 }
             }
@@ -631,7 +643,7 @@ class DownloadActivity : ComponentActivity() {
             } catch (error: Exception) {
                 error.printStackTrace()
                 markError(model, getString(R.string.download_archive_failed,
-                    error.message ?: error.javaClass.simpleName))
+                    error.message ?: error.javaClass.simpleName), error = error)
             }
         }
     }
@@ -644,7 +656,11 @@ class DownloadActivity : ComponentActivity() {
         }
     }
 
-    private fun markError(model: ModelInfo, message: String? = null) {
+    private fun markError(model: ModelInfo, message: String? = null, error: Throwable? = null, code: Int = 0) {
+        // The UI's message can contain URLs or file paths; never include it in a standard report.
+        diagnosticDownload?.event(DiagnosticEvent.DOWNLOAD_FAILED,
+            mapOf(DiagnosticMetric.BYTES to (model.expectedSize ?: 0L),
+                DiagnosticMetric.ERROR_CODE to code.toLong()), error = error)
         updateModelOnMain {
             model.errorMessage = message
             model.error = true
@@ -672,6 +688,7 @@ class DownloadActivity : ComponentActivity() {
     }
 
     private fun cancel() {
+        diagnosticDownload?.end(DiagnosticEvent.DOWNLOAD_CANCELLED)
         val returnIntent = Intent()
         setResult(RESULT_CANCELED, returnIntent)
         finish()
@@ -704,6 +721,7 @@ class DownloadActivity : ComponentActivity() {
                 if (modelsToDownload.isEmpty()) {
                     modelsToDownload = archiveToDownload?.let { listOf(it) } ?: allRequestedFiles
                 }
+                diagnosticDownload?.event(DiagnosticEvent.DOWNLOAD_FAILED, error = error)
                 modelsToDownload.forEach {
                     it.finished = false
                     it.error = true
@@ -716,6 +734,9 @@ class DownloadActivity : ComponentActivity() {
     }
 
     private fun finishSuccessfulDownload() {
+        diagnosticDownload?.event(DiagnosticEvent.DOWNLOAD_FINISHED, mapOf(
+            DiagnosticMetric.DURATION_MS to SystemClock.elapsedRealtime() - downloadStartedMs,
+            DiagnosticMetric.BYTES to allRequestedFiles.sumOf { it.expectedSize ?: 0L }))
         if (intent.getBooleanExtra(EXTRA_ENABLE_S1_MINI_AFTER_DOWNLOAD, false)) {
             setSettingBlocking(S1_MINI_ENABLED.key, true)
         }

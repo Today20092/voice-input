@@ -356,6 +356,7 @@ abstract class RecognizerView {
         }
 
         override fun finished(result: String) {
+            val report = diagnostics
             val manager = context.getSystemService(Context.ACCESSIBILITY_SERVICE) as AccessibilityManager
             if(manager.isEnabled) {
                 val event = AccessibilityEvent.obtain();
@@ -371,12 +372,22 @@ abstract class RecognizerView {
                 manager.sendAccessibilityEvent(event)
 
             }
-            if (!sendResult(result, detectedLanguage)) {
+            val accepted = try {
+                sendResult(result, detectedLanguage)
+            } catch (error: Exception) {
+                report?.event(org.futo.voiceinput.diagnostics.DiagnosticEvent.DELIVERY_REJECTED, error = error)
+                throw error
+            }
+            // sendResult may synchronously reset the recognizer while returning to the previous IME.
+            report?.end(if (accepted) org.futo.voiceinput.diagnostics.DiagnosticEvent.DELIVERY_ACCEPTED
+                else org.futo.voiceinput.diagnostics.DiagnosticEvent.DELIVERY_REJECTED)
+            if (!accepted) {
                 failed(IllegalStateException("The active input connection is unavailable"))
             }
         }
 
         override fun failed(error: Throwable) {
+            diagnostics?.end(org.futo.voiceinput.diagnostics.DiagnosticEvent.SESSION_FAILED, error)
             Log.e("RecognizerView", "Recognition did not produce a result", error)
             val message = if (error is NoSpeechRecognizedException) {
                 context.getString(R.string.no_speech_recognized)

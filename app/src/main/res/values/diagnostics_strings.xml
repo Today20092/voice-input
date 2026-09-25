@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_diagnostics_heading">App diagnostics</string>
+    <string name="app_diagnostics_collect">Collect technical diagnostics</string>
+    <string name="app_diagnostics_collect_description">Keep local performance and error records for up to 7 days, within 10 MB. Nothing uploads automatically.</string>
+    <string name="app_diagnostics_privacy">Standard reports exclude dictated text, audio, vocabulary, clipboard contents, and text from other apps. Transcript capture below is a separate option.</string>
+    <string name="app_diagnostics_start_detailed">Start detailed mode for 30 minutes</string>
+    <string name="app_diagnostics_stop_detailed">Stop detailed mode</string>
+    <string name="app_diagnostics_countdown">Detailed collection ends in %1$d:%2$02d</string>
+    <string name="app_diagnostics_detailed_description">Add live recognition events and resource samples while reproducing a problem. Uses the same privacy exclusions.</string>
+    <string name="app_diagnostics_export">Export bug report</string>
+    <string name="app_diagnostics_export_description">Review a technical summary, add optional notes, then share a ZIP with an agent or on GitHub.</string>
+    <string name="app_diagnostics_export_contents">Includes device and app information, recognition settings, recent technical events, and available standard S1-mini performance reports. Excludes recordings and captured transcripts.</string>
+    <string name="app_diagnostics_happened">What happened? (optional)</string>
+    <string name="app_diagnostics_expected">What did you expect? (optional)</string>
+    <string name="app_diagnostics_notes_warning">Your notes are included exactly as entered. Avoid private information when posting publicly.</string>
+    <string name="app_diagnostics_review">Review bug report</string>
+    <string name="app_diagnostics_share">Share ZIP</string>
+    <string name="app_diagnostics_cancel">Cancel</string>
+    <string name="app_diagnostics_working">Preparing diagnostics…</string>
+    <string name="app_diagnostics_failed">Unable to complete this diagnostic action. Please try again.</string>
+    <string name="app_diagnostics_limits">Crash evidence is best effort. An unfinished session does not prove a crash. Accepted delivery means Android accepted the text handoff, not that another app displayed it.</string>
+    <string name="app_diagnostics_clear">Clear diagnostic history</string>
+    <string name="app_diagnostics_clear_description">Delete standard app and S1-mini reports and prepared exports, and stop detailed mode. Saved recordings and separately captured transcripts remain available.</string>
+    <string name="app_diagnostics_cleared">Diagnostic history cleared</string>
+</resources>

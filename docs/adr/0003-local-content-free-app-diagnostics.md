@@ -1,0 +1,5 @@
+# Keep app-wide diagnostics local and content-free
+
+Collect lightweight standard diagnostics locally by default across the dictation flow and all selectable recognition models so a manually exported bug report can explain failures that occurred before reporting was enabled. Keep up to seven days within a 10 MB cap, offer temporary detailed collection and history deletion, and export a user-reviewed ZIP with a readable summary and structured records instead of uploading automatically. Exclude dictated audio and text, vocabulary entries, clipboard contents, and surrounding text from standard diagnostics; preserve transcript-inclusive diagnostics as a separate explicit option, accepting less debugging context to make ordinary bug reports suitable for sharing without exposing dictated content.
+
+Users can disable collection without deleting retained evidence. Detailed mode expires after 30 minutes and can be stopped early; the combined standard export includes content-free S1-mini reports and benchmarks.
