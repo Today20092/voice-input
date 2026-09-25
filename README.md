@@ -19,7 +19,23 @@ The goal is straightforward: keep the FUTO UI and recording flow while adding re
 - The stable app uses the distinct `org.futo.voiceinput.moonshine` package ID.
 - Only the selected backend's model files are required before voice input starts.
 
-## Stable 1.4.2
+## Stable 1.4.3
+
+Version 1.4.3 combines the tested history, Cohere, and recognizer-popup betas,
+adds app-wide local diagnostics, and fixes S1-mini's keep-warm behavior.
+Audio history has transcript previews and confirmed bulk clearing. Cohere Transcribe
+is an optional on-device model with an explicit language selector. The recognition
+popup shows the selected model and provides the new layout option.
+
+Under **Support → Diagnostics**, review local technical evidence and manually share
+a bug-report ZIP. Standard reports exclude dictated text and audio. Collection can
+be disabled, and detailed mode stops automatically after 30 minutes.
+
+Orukeet remains the default, and saved model selections are preserved. See the
+[1.4.3 release notes](docs/releases/v1.4.3.md) for downloads, limitations, and
+verification details.
+
+## Previous stable 1.4.2
 
 Version 1.4.2 includes the beta 18 features, defaults new installations to Orukeet,
 and routes issue reports and feedback to this fork on GitHub. The waveform now
