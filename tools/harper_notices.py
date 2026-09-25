@@ -24,6 +24,7 @@ packages = [package for package in metadata["packages"] if package["id"] in reso
 sections = ["Harper Android beta and locked Rust dependencies\n"
             "Harper 2.11.0, Apache-2.0\nhttps://github.com/Automattic/harper\n"
             "Only the dependencies linked into the Android library apply at runtime.\n"]
+missing = []
 for package in sorted(packages, key=lambda item: (item["name"], item["version"])):
     if package["name"] == "harper_android":
         continue
@@ -63,9 +64,16 @@ for package in sorted(packages, key=lambda item: (item["name"], item["version"])
                     if error.code != 404:
                         raise
         if not fetched:
-            raise SystemExit(f"No license text found for {package['name']} at its pinned publisher revision")
+            if package.get("license") == "CC0-1.0":
+                url = "https://creativecommons.org/publicdomain/zero/1.0/legalcode.txt"
+                with urllib.request.urlopen(url, timeout=30) as response:
+                    sections.append(f"\n--- {url} ---\n{response.read().decode('utf-8')}\n")
+            else:
+                missing.append(f"{package['name']} {package['version']}: {repository} @ {revision}")
     for path in sorted(files):
         sections.append(f"\n--- {path.name} ---\n{path.read_text(errors='replace')}\n")
+if missing:
+    raise SystemExit("Missing publisher license texts:\n" + "\n".join(missing))
 target = ROOT / "app/src/main/assets/HARPER-NOTICES.txt"
 target.parent.mkdir(parents=True, exist_ok=True)
 target.write_text("\n".join(sections))

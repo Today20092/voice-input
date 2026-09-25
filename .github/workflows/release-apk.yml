@@ -59,10 +59,9 @@ jobs:
 
       - name: Verify Harper rules and bundle native licenses
         run: |
+          python3 tools/harper_notices.py
           cd app/src/main/rust/harper_android
           cargo test --locked
-          cd "$GITHUB_WORKSPACE"
-          python3 tools/harper_notices.py
 
       - name: Build APK
         run: |
