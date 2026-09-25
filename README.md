@@ -10,7 +10,7 @@ Offline voice typing for Android, with a choice of speech models, recoverable re
 
 This personal fork keeps the [FUTO Voice Input](https://github.com/futo-org/voice-input) keyboard and speech-recognition activity experience. Orukeet is the default recognizer; Moonshine, NVIDIA Parakeet and Nemotron, Cohere Transcribe, and legacy Whisper remain selectable. Speech recognition and cleanup run on your phone after their models are downloaded.
 
-[Download the APK](https://github.com/Today20092/voice-input/releases/latest) · [Model guide](#choose-a-model) · [Release notes](docs/releases/v1.4.3.md) · [Report a problem](https://github.com/Today20092/voice-input/issues)
+[Download the APK](https://github.com/Today20092/voice-input/releases/latest) · [What differs from FUTO](#compared-with-original-futo-voice-input) · [Model guide](#choose-a-model) · [Release notes](docs/releases/v1.4.3.md) · [Report a problem](https://github.com/Today20092/voice-input/issues)
 
 ## Why this fork exists
 
@@ -22,7 +22,15 @@ The goal is to make local dictation useful in everyday Android apps while keepin
 
 If another open-source app has a feature you think would improve this one, please [open an issue](https://github.com/Today20092/voice-input/issues) with a link to the project and a description of what you find useful. Suggestions can help guide new features or compatible integrations, with credit to the original authors and respect for their licenses.
 
-Development is AI-assisted through Codex, originally with GPT-5 and now with **GPT-6 Astra**. Those models help develop the app; they are not used to process your voice input.
+## AI development disclosure
+
+**The code changes made for this fork are written by AI agents, directed by me.** I choose what to build, describe requirements, test the app on my phone, and provide feedback. I am not presenting these changes as code I individually wrote by hand. FUTO's original code and the third-party projects and models retain their own authorship and attribution.
+
+Development uses Codex, originally with GPT-5 and now with **GPT-6 Astra**, following [Matt Pocock's AI coding workflow and skills](https://github.com/mattpocock/skills). I use that approach for planning and implementation, writing and running tests, investigating bugs, and reviewing fixes. I also use AI to research other open-source apps, identify useful features, and assess how they could fit here with appropriate attribution and license compliance.
+
+AI-generated code can contain mistakes. Automated checks and my device testing help catch them, but do not establish that every feature works on every phone. The release notes document what was actually checked, and bug reports are welcome.
+
+Codex and GPT models are development tools only. The app's speech recognition and optional cleanup use the downloaded on-device models described below.
 
 ## Get started
 
@@ -33,20 +41,33 @@ Development is AI-assisted through Codex, originally with GPT-5 and now with **G
 
 The stable app uses `org.futo.voiceinput.moonshine`, a separate package from upstream FUTO Voice Input. Stable 1.4.3 updates this fork's earlier releases and tested betas while retaining settings and downloaded models. Existing model selections are preserved.
 
-## What the app offers
+## Compared with original FUTO Voice Input
 
-| Feature | What it does |
-| --- | --- |
-| Multiple offline recognizers | Choose a model for your language, phone, and preferred transcription behavior. Only the selected recognizer needs downloading. |
-| Live transcription | Moonshine and Nemotron show partial text while you speak; Parakeet Unified provides buffered live updates. |
-| Personal dictionary | Correct names and recurring phrases with `heard phrase => preferred phrase`. Paste multiple entries or import a UTF-8 file, with a preview before saving. |
-| Audio history | Save recordings and transcripts, preview entries, retranscribe with another model, and copy the result. Confirmed bulk clearing preserves entries in use. |
-| S1-mini cleanup | Optionally rewrite final English transcripts locally, with style, structure, and context controls. |
-| Recording feedback | A scrolling waveform displays captured microphone amplitude; tap to stop recording. |
-| Recognizer popup | See the selected model. An optional bottom-positioned popup removes background dimming. |
-| Local diagnostics | Review technical events and manually share a bug-report ZIP. Detailed collection expires after 30 minutes. |
+FUTO provides the foundation: local speech recognition, the Android voice-keyboard integration, the floating recognition activity, and the settings interface. This fork keeps that foundation and extends the model choices and dictation workflow.
 
-Stable **1.4.3** combines the history, Cohere, and popup betas, adds app-wide diagnostics, and fixes S1-mini's keep-warm behavior. See the [release notes](docs/releases/v1.4.3.md) for verification and limitations. Earlier changes remain in the [release archive](https://github.com/Today20092/voice-input/releases).
+The comparison below covers the **standalone FUTO Voice Input app**, using [upstream revision `d6e1eb2`](https://github.com/futo-org/voice-input/tree/d6e1eb2d139dc1a6342a4681c283686cca4bfceb) checked on September 25, 2026. It does not compare against the separate FUTO Keyboard app or unmerged upstream proposals.
+
+| Area | Original FUTO Voice Input | This fork | Change |
+| --- | --- | --- | --- |
+| Android integration | Voice IME and floating activity for compatible keyboards and apps. | Keeps those entry points and the familiar recording flow. | Retained |
+| Offline recognition | Local Whisper-based recognition with downloadable English and multilingual models. | Keeps Whisper and adds Orukeet, Moonshine, Parakeet, Nemotron, and Cohere. Orukeet is the default for new installs. | Expanded |
+| Text while speaking | Existing Whisper partial-decode output. | Adds Moonshine and Nemotron streaming, plus Parakeet Unified buffered live updates. Final-only models remain available. | Expanded |
+| Model and language selection | Whisper model sizes and language settings. | Adds model-family choices, streaming profiles, Cohere's explicit language selector, and Nemotron multilingual options. | Expanded |
+| Personal dictionary | A text field for personal vocabulary in Model Options. | Adds a dedicated page, explicit `heard => preferred` corrections, bulk paste, UTF-8 import, duplicate checks, and previews. | Expanded |
+| Recording history | No dedicated saved-recording history page in the reviewed upstream settings. | Adds local audio backups, transcript previews, retranscription, copying, retention controls, and safe bulk clearing. | Added |
+| Transcript cleanup | No S1-mini cleanup stage. | Adds optional local English rewriting with S1-mini by Superwhisper, style controls, CPU/OpenCL selection, and keep-warm settings. | Added |
+| Recording display | Original recording and progress UI. | Adds a scrolling microphone waveform and selected-model caption. | Expanded |
+| Floating popup | Centered speech-recognition window. | Adds an opt-in bottom-positioned popup without background dimming; the voice keyboard layout stays the same. | Optional addition |
+| Troubleshooting | Existing crash-logging and feedback support. | Adds bounded app-wide diagnostic history, a timed detailed mode, and a reviewed, manually shared bug-report ZIP. | Expanded |
+| Installation | Upstream FUTO application package. | Uses the separate `org.futo.voiceinput.moonshine` package and publishes signed ARM64 APKs through this repository. | Separate distribution |
+
+### Work combined in 1.4.3
+
+The stable release merges our **history usability**, **Cohere Transcribe**, and **recognizer popup** beta work, along with reviewed **app-wide diagnostics** and the **S1-mini keep-warm fix**. Earlier additions, including the other recognition backends, waveform, dictionary imports, and audio recovery, remain included.
+
+The popup positioning was adapted from the idea in [upstream proposal #172](https://github.com/futo-org/voice-input/pull/172), with this fork's model caption added alongside it. These are additions integrated into this fork; this does not mean the beta work was merged into upstream FUTO.
+
+See the [1.4.3 release notes](docs/releases/v1.4.3.md) for verification and limitations and the [release archive](https://github.com/Today20092/voice-input/releases) for earlier changes. More model choices do not establish a universal speed or accuracy advantage over the original app; that depends on the selected model, language, and phone.
 
 ## Choose a model
 
