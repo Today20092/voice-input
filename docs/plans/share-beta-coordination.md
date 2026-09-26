@@ -51,7 +51,24 @@ Each task owns only its ticket changes and feature files in its own worktree. Be
 
 ## Integration and release gate
 
+## Runtime coordination status
+
+Heartbeat automation `voice-input-ticket-coordination` checks progress every ten minutes in the coordinator chat. Creation was confirmed active.
+
+Confirmed real task IDs from child messages:
+
+- SHARE-02: `01a0df6d-6c8e-7973-9def-e478a790a2bd`, worktree `a44e`, implementation active; editor-contract TDD seam confirmed.
+- SHARE-05: `01a0df6d-7306-7ea1-a675-a0f15aab1ca2`, worktree `96da`, implementation active; language/navigation/settings-effect seams confirmed.
+- SHARE-04: `01a0df6d-a8b0-74f0-8c10-fb16e0b5739d`, worktree `c425`, preparation complete, awaiting SHARE-03.
+
+SHARE-04 requests this contract from SHARE-03: usable installed version, missing/incompatible state, optional pinned successor, explicit update-confirmation entry point, observable invalidation across lifecycle instances after installation/deletion/activation/failure. Relay to SHARE-03 before implementation.
+
+The user confirmed Android Studio's emulated Pixel is available. Verified `Pixel_10` with `%LOCALAPPDATA%/Android/Sdk/emulator/emulator.exe -list-avds`; adb showed no running device. Allocate the emulator exclusively, verify its ABI/API before using it for this arm64 app, and use it for UI/navigation/lifecycle/instrumentation where supported. It does not replace phone-specific performance/thermal measurements. No full-build or emulator slot is currently allocated.
+
+All 19 ticket worktrees were observed in `git worktree list` at the baseline. Initial `list_threads` snapshots omitted the newly created chats despite valid child messages; use those messages as authoritative real IDs and recheck listing later. Do not duplicate the creation requests.
+
+## Final gate
+
 Read child reports and verify their commits and checks. After all tickets have verified outcomes, merge their commits into the integration branch, resolving overlapping ticket metadata by preserving both outcomes. Before dependent implementation, supply prerequisite commits to the relevant child and have it incorporate them into its own branch. Run the combined unit, instrumentation, assembly and lint checks; keep missing device measurements open. Review signing, versioning and existing release automation before producing a beta. Do not tag, publish, or describe the beta as ready while required acceptance criteria remain unverified. Research may conclude no-go where the ticket permits it; record that decision explicitly rather than pretending an integration shipped.
 
 This file is the coordinator's durable ledger. Update real thread IDs, commit SHAs, build-slot owner, outcomes and blockers as they become available.
-
