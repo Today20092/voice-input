@@ -10,7 +10,7 @@ Offline voice typing for Android, with a choice of speech models, recoverable re
 
 This personal fork keeps the [FUTO Voice Input](https://github.com/futo-org/voice-input) keyboard and speech-recognition activity experience. Orukeet is the default recognizer; Moonshine, NVIDIA Parakeet and Nemotron, Cohere Transcribe, and legacy Whisper remain selectable. Speech recognition and cleanup run on your phone after their models are downloaded.
 
-[Download the APK](https://github.com/Today20092/voice-input/releases/latest) · [What differs from FUTO](#compared-with-original-futo-voice-input) · [Model guide](#choose-a-model) · [Release notes](docs/releases/v1.4.4.md) · [Report a problem](https://github.com/Today20092/voice-input/issues)
+[Download the APK](https://github.com/Today20092/voice-input/releases/latest) · [What differs from FUTO](#compared-with-original-futo-voice-input) · [Model guide](#choose-a-model) · [Release notes](docs/releases/v1.4.5.md) · [Report a problem](https://github.com/Today20092/voice-input/issues)
 
 ## Why this fork exists
 
@@ -42,6 +42,16 @@ Codex and GPT models are development tools only. The app's speech recognition an
 The stable app uses `org.futo.voiceinput.moonshine`, a separate package from upstream FUTO Voice Input. Stable 1.4.4 updates this fork's earlier releases and tested betas while retaining settings and downloaded models. Existing model selections are preserved.
 
 Harper English cleanup is optional and off by default. Turn off **Enable Harper cleanup** in the cleanup settings to bypass it; existing beta preferences are preserved. It requires no model download. See the [Harper removal guide](docs/harper-removal.md) for removing its code and native dependency from a future release.
+
+### App updates and Obtainium
+
+In builds containing the GitHub updater, **Check for updates** in settings checks this fork's latest stable GitHub release and reports whether an update is available. The update link opens the signed APK in your browser; Android asks you to approve installation. Failed checks do not mean the app is up to date. Beta releases are excluded. Older APKs must be updated manually once to receive this updater.
+
+For update notifications and downloads through [Obtainium](https://obtainium.imranr.dev/), add `https://github.com/Today20092/voice-input` as an app source. Leave prereleases disabled for stable updates. The repository publishes one signed ARM64 APK per release, so no APK filter is needed. See [Obtainium's source documentation](https://wiki.obtainium.imranr.dev/sources/).
+
+This app is not listed in F-Droid's main repository. Its [inclusion policy](https://f-droid.org/docs/Inclusion_Policy/) requires free-software licensing; this project's [FUTO Source First license](LICENSE.md) restricts commercial use. A separate F-Droid-compatible repository would need its own hosting, signing, and index maintenance. GitHub Releases and Obtainium are the supported download paths for now.
+
+Release maintainers: stable tags must use `vMAJOR.MINOR.PATCH`, with an asset named `futo-voice-input-moonshine-vMAJOR.MINOR.PATCH.apk`. Increment both `versionName` and Android `versionCode` for each stable release, and keep the existing signing key and application ID. The updater compares numeric version-name components because GitHub does not expose APK version codes.
 
 ## Compared with original FUTO Voice Input
 
