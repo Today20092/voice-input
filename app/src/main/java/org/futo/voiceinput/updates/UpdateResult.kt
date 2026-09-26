@@ -9,10 +9,11 @@ import org.futo.voiceinput.BuildConfig
 data class UpdateResult(
     val nextVersion: Int,
     val apkUrl: String,
-    val nextVersionString: String
+    val nextVersionString: String,
+    val githubRelease: Boolean = false
 ) {
     fun isNewer(): Boolean {
-        return nextVersion > currentVersion()
+        return githubRelease && isNewerRelease(nextVersionString, currentVersionString())
     }
 
     companion object {
@@ -30,7 +31,9 @@ data class UpdateResult(
             }
 
             try {
-                return Json.decodeFromString<UpdateResult>(value)
+                return Json.decodeFromString<UpdateResult>(value).takeIf {
+                    it.githubRelease && it.apkUrl.startsWith("$FORK_RELEASES_URL/download/")
+                }
             } catch(e: SerializationException) {
                 return null
             } catch(e: IllegalArgumentException) {

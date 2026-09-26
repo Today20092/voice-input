@@ -43,6 +43,16 @@ The stable app uses `org.futo.voiceinput.moonshine`, a separate package from ups
 
 Harper English cleanup is optional and off by default. Turn off **Enable Harper cleanup** in the cleanup settings to bypass it; existing beta preferences are preserved. It requires no model download. See the [Harper removal guide](docs/harper-removal.md) for removing its code and native dependency from a future release.
 
+### App updates and Obtainium
+
+In builds containing the GitHub updater, **Check for updates** in settings checks this fork's latest stable GitHub release and reports whether an update is available. The update link opens the signed APK in your browser; Android asks you to approve installation. Failed checks do not mean the app is up to date. Beta releases are excluded. Older APKs must be updated manually once to receive this updater.
+
+For update notifications and downloads through [Obtainium](https://obtainium.imranr.dev/), add `https://github.com/Today20092/voice-input` as an app source. Leave prereleases disabled for stable updates. The repository publishes one signed ARM64 APK per release, so no APK filter is needed. See [Obtainium's source documentation](https://wiki.obtainium.imranr.dev/sources/).
+
+This app is not listed in F-Droid's main repository. Its [inclusion policy](https://f-droid.org/docs/Inclusion_Policy/) requires free-software licensing; this project's [FUTO Source First license](LICENSE.md) restricts commercial use. A separate F-Droid-compatible repository would need its own hosting, signing, and index maintenance. GitHub Releases and Obtainium are the supported download paths for now.
+
+Release maintainers: stable tags must use `vMAJOR.MINOR.PATCH`, with an asset named `futo-voice-input-moonshine-vMAJOR.MINOR.PATCH.apk`. Increment both `versionName` and Android `versionCode` for each stable release, and keep the existing signing key and application ID. The updater compares numeric version-name components because GitHub does not expose APK version codes.
+
 ## Compared with original FUTO Voice Input
 
 FUTO provides the foundation: local speech recognition, the Android voice-keyboard integration, the floating recognition activity, and the settings interface. This fork keeps that foundation and extends the model choices and dictation workflow.
