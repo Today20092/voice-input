@@ -35,6 +35,8 @@ app/src/main/assets/parakeet-tdt-0.6b-v3-int8/
 
 # Rust local caches and editor state
 **/*.rs.bk
+**/target/
+app/src/main/assets/HARPER-NOTICES.txt
 
 # Logs / profiling / OS files
 *.log

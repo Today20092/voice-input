@@ -114,6 +114,18 @@ object DiagnosticArchive {
                 "last=${records.last().event} terminal=${records.any { it.event in terminal }}")
             records.filter { it.metrics.containsKey(DiagnosticMetric.DURATION_MS) }.forEach {
                 appendLine("    ${it.event}: ${it.metrics[DiagnosticMetric.DURATION_MS]} ms")
+                if (it.event == DiagnosticEvent.HARPER_FINISHED) {
+                    val outcome = when (it.metrics[DiagnosticMetric.HARPER_OUTCOME]) {
+                        0L -> "applied"
+                        1L -> "disabled"
+                        2L -> "language bypass"
+                        3L -> "input too long"
+                        4L -> "unavailable; original text retained"
+                        5L -> "unchanged"
+                        else -> "unknown"
+                    }
+                    appendLine("      Harper: $outcome; edits=${it.metrics[DiagnosticMetric.HARPER_EDITS] ?: 0}")
+                }
             }
             val stop = records.firstOrNull { it.event == DiagnosticEvent.RECORDING_STOPPED }
                 ?.metrics?.get(DiagnosticMetric.ELAPSED_MS)
