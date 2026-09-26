@@ -179,6 +179,7 @@ object AppDiagnostics {
         put("schemaVersion", 1)
         put("appVersion", BuildConfig.VERSION_NAME)
         put("versionCode", BuildConfig.VERSION_CODE)
+        put("gitRevision", BuildConfig.GIT_REVISION)
         put("buildFlavor", BuildConfig.FLAVOR)
         put("debug", BuildConfig.DEBUG)
         put("manufacturer", Build.MANUFACTURER)
@@ -212,6 +213,7 @@ object AppDiagnostics {
             put("cleanupEnabled", context.getSetting(S1_MINI_ENABLED))
             put("cleanupRuntime", context.getSetting(S1_MINI_RUNTIME).toS1MiniRuntime().id)
             put("audioHistoryEnabled", context.getSetting(AUDIO_HISTORY_ENABLED))
+            put("unobtrusiveRecognizer", context.getSetting(UNOBTRUSIVE_RECOGNIZER))
         }
     }
 

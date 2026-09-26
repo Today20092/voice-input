@@ -104,11 +104,13 @@ object DiagnosticArchive {
         val sessions = snapshot.records.filter { it.sessionId != null }.groupBy { it.sessionId }
         val terminal = setOf(DiagnosticEvent.SESSION_CANCELLED, DiagnosticEvent.SESSION_RESET,
             DiagnosticEvent.SESSION_FAILED, DiagnosticEvent.DELIVERY_ACCEPTED, DiagnosticEvent.DELIVERY_REJECTED,
-            DiagnosticEvent.DOWNLOAD_FINISHED, DiagnosticEvent.DOWNLOAD_CANCELLED)
+            DiagnosticEvent.DOWNLOAD_FINISHED, DiagnosticEvent.DOWNLOAD_CANCELLED,
+            DiagnosticEvent.RETRANSCRIPTION_FINISHED)
         appendLine()
         appendLine("Recent sessions (up to 25; incomplete history can reflect retention or interruption):")
         sessions.entries.toList().takeLast(25).forEach { (id, records) ->
             appendLine("  $id model=${records.firstNotNullOfOrNull { it.model } ?: "unknown"} " +
+                "source=${if (records.any { it.metrics[DiagnosticMetric.RETRANSCRIPTION] == 1L }) "history" else "other"} " +
                 "last=${records.last().event} terminal=${records.any { it.event in terminal }}")
             records.filter { it.metrics.containsKey(DiagnosticMetric.DURATION_MS) }.forEach {
                 appendLine("    ${it.event}: ${it.metrics[DiagnosticMetric.DURATION_MS]} ms")

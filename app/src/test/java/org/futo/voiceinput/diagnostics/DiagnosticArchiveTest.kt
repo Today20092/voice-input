@@ -9,6 +9,27 @@ import java.util.zip.ZipFile
 class DiagnosticArchiveTest {
     @get:Rule val temporary = TemporaryFolder()
 
+    @Test fun `history completion is terminal and distinct from live dictation`() {
+        val output = temporary.newFile("history.zip")
+        val snapshot = DiagnosticSnapshot(listOf(
+            DiagnosticRecord(timestampMs = 1000, event = DiagnosticEvent.SESSION_STARTED,
+                sessionId = "history-session", metrics = mapOf(DiagnosticMetric.RETRANSCRIPTION to 1L)),
+            DiagnosticRecord(timestampMs = 1200, event = DiagnosticEvent.RECOGNITION_FINISHED,
+                sessionId = "history-session", metrics = mapOf(DiagnosticMetric.DURATION_MS to 200L)),
+            DiagnosticRecord(timestampMs = 1300, event = DiagnosticEvent.RETRANSCRIPTION_FINISHED,
+                sessionId = "history-session"),
+            DiagnosticRecord(timestampMs = 1400, event = DiagnosticEvent.WAVEFORM_FIRST_FRAME,
+                sessionId = "live-session")
+        ), 0)
+        DiagnosticArchive.write(output, snapshot, "{}", "{}", "", "", emptyMap(), 0)
+        ZipFile(output).use { zip ->
+            val summary = zip.getInputStream(zip.getEntry("summary.txt")).bufferedReader().readText()
+            assertTrue(summary.contains("source=history last=RETRANSCRIPTION_FINISHED terminal=true"))
+            assertTrue(summary.contains("RECOGNITION_FINISHED: 200 ms"))
+            assertTrue(summary.contains("source=other last=WAVEFORM_FIRST_FRAME terminal=false"))
+        }
+    }
+
     @Test fun `bug report contains readable summary and structured records without private files`() {
         val output = temporary.newFile("report.zip")
         val snapshot = DiagnosticSnapshot(listOf(
