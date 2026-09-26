@@ -10,7 +10,7 @@ Offline voice typing for Android, with a choice of speech models, recoverable re
 
 This personal fork keeps the [FUTO Voice Input](https://github.com/futo-org/voice-input) keyboard and speech-recognition activity experience. Orukeet is the default recognizer; Moonshine, NVIDIA Parakeet and Nemotron, Cohere Transcribe, and legacy Whisper remain selectable. Speech recognition and cleanup run on your phone after their models are downloaded.
 
-[Download the APK](https://github.com/Today20092/voice-input/releases/latest) · [What differs from FUTO](#compared-with-original-futo-voice-input) · [Model guide](#choose-a-model) · [Release notes](docs/releases/v1.4.4.md) · [Report a problem](https://github.com/Today20092/voice-input/issues)
+[Download the APK](https://github.com/Today20092/voice-input/releases/latest) · [What differs from FUTO](#compared-with-original-futo-voice-input) · [Model guide](#choose-a-model) · [Release notes](docs/releases/v1.4.5.md) · [Report a problem](https://github.com/Today20092/voice-input/issues)
 
 ## Why this fork exists
 
