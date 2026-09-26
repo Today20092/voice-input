@@ -169,7 +169,6 @@ fun PreviewRecognizeViewNoMicIME() {
 }
 
 
-val punctuationChars = setOf('!', '?', '.', ',')
 class VoiceInputMethodService : InputMethodService(), LifecycleOwner, ViewModelStoreOwner,
     SavedStateRegistryOwner {
     private val mSavedStateRegistryController = SavedStateRegistryController.create(this)
@@ -218,8 +217,7 @@ class VoiceInputMethodService : InputMethodService(), LifecycleOwner, ViewModelS
         }
 
         override fun onCancel() {
-            needsInitialization = true
-            reset()
+            inputSession.cancel()
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                 switchToPreviousInputMethod()
             } else {
@@ -227,54 +225,17 @@ class VoiceInputMethodService : InputMethodService(), LifecycleOwner, ViewModelS
             }
         }
 
-        var prevText: CharSequence? = null
-        var nextText: CharSequence? = null
-        override fun decodingStarted() {
-            this@VoiceInputMethodService.currentInputConnection.also {
-                prevText = it.getTextBeforeCursor(1, 0)
-                nextText = it.getTextAfterCursor(1, 0)
-            }
-        }
-
         override fun sendResult(result: String, detectedLanguage: String?): Boolean {
-            val inputConnection = this@VoiceInputMethodService.currentInputConnection ?: return false
-            var modifiedResult = result
-
-            // Insert space automatically if ended at punctuation
-            // TODO: Could send text before cursor as whisper prompt
-
-            if(!prevText.isNullOrBlank()) {
-                val lastChar = prevText?.last()
-
-                if (punctuationChars.contains(lastChar)) {
-                    modifiedResult = " $result"
-                }
-            }
-
-            /*
-            if(!nextText.isNullOrBlank()) {
-                val oldPunctuation = nextText?.first()
-                val newPunctuation = result.last()
-
-                if (punctuationChars.contains(oldPunctuation) && punctuationChars.contains(newPunctuation)) {
-                    inputConnection.deleteSurroundingText(0, 1)
-                }
-            }
-            */
-
-            if (!inputConnection.commitText(modifiedResult, 1)) return false
+            if (inputSession.insertion?.finish(result, detectedLanguage) != true) return false
             onCancel()
             return true
         }
 
         override fun sendPartialResult(result: String): Boolean {
-            if(this@VoiceInputMethodService.currentInputConnection != null) {
-                this@VoiceInputMethodService.currentInputConnection.setComposingText(result, 1)
-                return true
-            } else {
-                return false
-            }
+            return inputSession.insertion?.partial(result) ?: false
         }
+
+        override fun decodingStarted() = Unit
 
         override fun requestPermission() {
             // We can't ask for permission from a service
@@ -356,7 +317,15 @@ class VoiceInputMethodService : InputMethodService(), LifecycleOwner, ViewModelS
         }
     }
 
-    private var needsInitialization = true
+    private val inputSession: ImeInputSessionLifecycle = ImeInputSessionLifecycle { recognizer.reset() }
+    private var changingConfiguration = false
+
+    override fun onStartInput(info: EditorInfo, restarting: Boolean) {
+        super.onStartInput(info, restarting)
+        inputSession.startInput(ImeEditorKey(info.packageName, info.fieldId, info.inputType),
+            currentInputConnection, restarting)
+    }
+
     override fun onStartInputView(info: EditorInfo, restarting: Boolean) {
         super.onStartInputView(info, restarting)
 
@@ -379,22 +348,36 @@ class VoiceInputMethodService : InputMethodService(), LifecycleOwner, ViewModelS
             }
         }
 
-        if(needsInitialization) {
-            needsInitialization = false
+        val connection = currentInputConnection
+        val editor = connection?.let { InputConnectionInsertionEditor(it) { currentInputConnection === it } }
+        val textClass = info.inputType and InputType.TYPE_MASK_CLASS == InputType.TYPE_CLASS_TEXT
+        val variation = info.inputType and InputType.TYPE_MASK_VARIATION
+        val prose = variation in setOf(InputType.TYPE_TEXT_VARIATION_NORMAL,
+            InputType.TYPE_TEXT_VARIATION_SHORT_MESSAGE, InputType.TYPE_TEXT_VARIATION_LONG_MESSAGE,
+            InputType.TYPE_TEXT_VARIATION_WEB_EDIT_TEXT)
+        if (inputSession.startView(connection, editor, automaticSpacing = textClass && prose)) {
             recognizer.reset()
             recognizer.init()
         } else {
-            println("Continuing recording, likely due to landscape/portrait switch")
             recognizer.refreshContent()
         }
         // TODO: Idle state
     }
 
     override fun onFinishInputView(finishingInput: Boolean) {
-        println("Finish input view")
-        recognizer.reset()
+        // super would finish composition even while the same session's view is being recreated.
+        inputSession.finishView(recreating = changingConfiguration)
+    }
 
-        needsInitialization = true
+    override fun onFinishInput() {
+        inputSession.finishInput()
+        super.onFinishInput()
+    }
+
+    override fun onUpdateSelection(oldSelStart: Int, oldSelEnd: Int, newSelStart: Int,
+        newSelEnd: Int, candidatesStart: Int, candidatesEnd: Int) {
+        super.onUpdateSelection(oldSelStart, oldSelEnd, newSelStart, newSelEnd, candidatesStart, candidatesEnd)
+        inputSession.insertion?.selectionChanged(newSelStart, newSelEnd, candidatesStart, candidatesEnd)
     }
 
     override fun onCurrentInputMethodSubtypeChanged(newSubtype: InputMethodSubtype) {
@@ -402,14 +385,18 @@ class VoiceInputMethodService : InputMethodService(), LifecycleOwner, ViewModelS
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
-        super.onConfigurationChanged(newConfig)
+        changingConfiguration = true
+        try {
+            super.onConfigurationChanged(newConfig)
+        } finally {
+            changingConfiguration = false
+        }
         updateNavigationBarVisibility()
     }
 
     override fun onDestroy() {
+        inputSession.cancel()
         super.onDestroy()
-
-        println("Destroy")
         handleLifecycleEvent(Lifecycle.Event.ON_DESTROY)
     }
 }
