@@ -8,7 +8,7 @@ import org.futo.voiceinput.settings.Tip
 
 @Composable
 fun HarperOptions() {
-    SettingsSeparator("Harper English cleanup • beta")
+    SettingsSeparator("Harper English cleanup")
     SettingToggleDataStore(
         title = "Enable Harper cleanup",
         subtitle = "Fast, offline rules. No model download. Works without S1-mini; runs after it if both are enabled.",
@@ -23,7 +23,7 @@ fun HarperOptions() {
             "Known non-English results are still skipped.",
         setting = HARPER_EXPLICIT_ENGLISH
     )
-    Tip("Harper is off by default for this beta. When enabled, it requires established English or the declaration above. " +
+    Tip("Harper is optional and off by default. When enabled, it requires established English or the declaration above. " +
         "Mixed text containing non-Latin letters is skipped. Turn Harper off to compare results. " +
         "Personal vocabulary corrections are applied last.")
 }
