@@ -10,7 +10,7 @@ Offline voice typing for Android, with a choice of speech models, recoverable re
 
 This personal fork keeps the [FUTO Voice Input](https://github.com/futo-org/voice-input) keyboard and speech-recognition activity experience. Orukeet is the default recognizer; Moonshine, NVIDIA Parakeet and Nemotron, Cohere Transcribe, and legacy Whisper remain selectable. Speech recognition and cleanup run on your phone after their models are downloaded.
 
-[Download the APK](https://github.com/Today20092/voice-input/releases/latest) · [What differs from FUTO](#compared-with-original-futo-voice-input) · [Model guide](#choose-a-model) · [Release notes](docs/releases/v1.4.3.md) · [Report a problem](https://github.com/Today20092/voice-input/issues)
+[Download the APK](https://github.com/Today20092/voice-input/releases/latest) · [What differs from FUTO](#compared-with-original-futo-voice-input) · [Model guide](#choose-a-model) · [Release notes](docs/releases/v1.4.4.md) · [Report a problem](https://github.com/Today20092/voice-input/issues)
 
 ## Why this fork exists
 
@@ -39,7 +39,9 @@ Codex and GPT models are development tools only. The app's speech recognition an
 3. Open **Model Options**, keep Orukeet or select another recognizer, and confirm its download.
 4. Start dictating. Live text depends on the model; the final result is delivered after recording stops.
 
-The stable app uses `org.futo.voiceinput.moonshine`, a separate package from upstream FUTO Voice Input. Stable 1.4.3 updates this fork's earlier releases and tested betas while retaining settings and downloaded models. Existing model selections are preserved.
+The stable app uses `org.futo.voiceinput.moonshine`, a separate package from upstream FUTO Voice Input. Stable 1.4.4 updates this fork's earlier releases and tested betas while retaining settings and downloaded models. Existing model selections are preserved.
+
+Harper English cleanup is optional and off by default. Turn off **Enable Harper cleanup** in the cleanup settings to bypass it; existing beta preferences are preserved. It requires no model download. See the [Harper removal guide](docs/harper-removal.md) for removing its code and native dependency from a future release.
 
 ## Compared with original FUTO Voice Input
 
