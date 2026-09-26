@@ -1,10 +1,13 @@
 # FUTO Voice Input Moonshine
 
-[![Latest release](https://img.shields.io/github/v/release/Today20092/voice-input)](https://github.com/Today20092/voice-input/releases/latest)
-[![APK build](https://github.com/Today20092/voice-input/actions/workflows/release-apk.yml/badge.svg?branch=master)](https://github.com/Today20092/voice-input/actions/workflows/release-apk.yml)
-![Android 8.0+](https://img.shields.io/badge/Android-8.0%2B-3DDC84)
-![ARM64](https://img.shields.io/badge/ABI-arm64--v8a-blue)
-[![License](https://img.shields.io/badge/License-FUTO%20Source%20First-blue)](LICENSE.md)
+<p align="center">
+  <a href="https://github.com/Today20092/voice-input/releases/latest"><img alt="Latest stable release" src="https://img.shields.io/github/v/release/Today20092/voice-input?style=for-the-badge&amp;logo=github&amp;labelColor=493267&amp;color=C4A7E7"></a>
+  <a href="https://github.com/Today20092/voice-input/actions/workflows/release-apk.yml"><img alt="APK build" src="https://img.shields.io/github/actions/workflow/status/Today20092/voice-input/release-apk.yml?branch=master&amp;style=for-the-badge&amp;logo=githubactions&amp;logoColor=white&amp;label=APK%20build&amp;labelColor=245968"></a>
+  <br>
+  <img alt="Android 8.0 or newer" src="https://img.shields.io/badge/Android-8.0%2B-A2FFB0?style=for-the-badge&amp;logo=android&amp;logoColor=A2FFB0&amp;labelColor=246732">
+  <img alt="ARM64 architecture" src="https://img.shields.io/badge/ABI-arm64--v8a-B5DFE8?style=for-the-badge&amp;labelColor=29626B">
+  <a href="LICENSE.md"><img alt="License: FUTO Source First" src="https://img.shields.io/badge/License-FUTO%20Source%20First-F4C98B?style=for-the-badge&amp;labelColor=75512B"></a>
+</p>
 
 Offline voice typing for Android, with a choice of speech models, recoverable recordings, personal dictionary corrections, and optional local transcript cleanup.
 
@@ -45,9 +48,14 @@ Harper English cleanup is optional and off by default. Turn off **Enable Harper 
 
 ### App updates and Obtainium
 
+<p align="center">
+  <a href="https://github.com/Today20092/voice-input/releases/latest"><img alt="Download APK from GitHub" src="https://img.shields.io/badge/GitHub-Download%20APK-B5DFE8?style=for-the-badge&amp;logo=github&amp;logoColor=B5DFE8&amp;labelColor=29626B"></a>
+  <a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium://app/%7B%22id%22%3A%22org.futo.voiceinput.moonshine%22%2C%22url%22%3A%22https%3A%2F%2Fgithub.com%2FToday20092%2Fvoice-input%22%2C%22author%22%3A%22Today20092%22%2C%22name%22%3A%22FUTO%20Voice%20Input%20Moonshine%22%7D"><img alt="Add this app to Obtainium" src="https://img.shields.io/badge/Obtainium-Add%20app-C4A7E7?style=for-the-badge&amp;labelColor=493267"></a>
+</p>
+
 In builds containing the GitHub updater, **Check for updates** in settings checks this fork's latest stable GitHub release and reports whether an update is available. The update link opens the signed APK in your browser; Android asks you to approve installation. Failed checks do not mean the app is up to date. Beta releases are excluded. Older APKs must be updated manually once to receive this updater.
 
-For update notifications and downloads through [Obtainium](https://obtainium.imranr.dev/), add `https://github.com/Today20092/voice-input` as an app source. Leave prereleases disabled for stable updates. The repository publishes one signed ARM64 APK per release, so no APK filter is needed. See [Obtainium's source documentation](https://wiki.obtainium.imranr.dev/sources/).
+For update notifications and downloads through [Obtainium](https://obtainium.imranr.dev/), tap **Obtainium · Add app** above, or add `https://github.com/Today20092/voice-input` as an app source manually. Leave prereleases disabled for stable updates. The repository publishes one signed ARM64 APK per release, so no APK filter is needed. See [Obtainium's source documentation](https://wiki.obtainium.imranr.dev/sources/).
 
 This app is not listed in F-Droid's main repository. Its [inclusion policy](https://f-droid.org/docs/Inclusion_Policy/) requires free-software licensing; this project's [FUTO Source First license](LICENSE.md) restricts commercial use. A separate F-Droid-compatible repository would need its own hosting, signing, and index maintenance. GitHub Releases and Obtainium are the supported download paths for now.
 
