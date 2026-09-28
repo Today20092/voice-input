@@ -69,18 +69,26 @@ class AndroidMicrophonePlatform(
 
     override fun devices(): List<MicrophoneDevice> = try {
         val inputs = inputs()
-        inputs.filter {
-            kind(it) == MicrophoneKind.Phone || (kind(it) == MicrophoneKind.Bluetooth &&
-                if (Build.VERSION.SDK_INT >= 31) communicationDevice(it) != null
-                else it.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO && audio.isBluetoothScoAvailableOffCall &&
-                    inputs.count { device -> device.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO } == 1)
-        }.map { MicrophoneDevice(it.id, kind(it)) }
+        val phones = inputs.filter { kind(it) == MicrophoneKind.Phone }
+        val bluetooth = if (Build.VERSION.SDK_INT >= 31) {
+            // A connected headset's input may not be published until communication routing starts.
+            audio.availableCommunicationDevices.filter { kind(it) == MicrophoneKind.Bluetooth }
+        } else {
+            inputs.filter { it.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO }
+                .takeIf { it.size == 1 && audio.isBluetoothScoAvailableOffCall }.orEmpty()
+        }
+        (phones + bluetooth).map { MicrophoneDevice(it.id, kind(it)) }
     } catch (_: RuntimeException) {
         emptyList()
     }
 
     override fun activeDevice(): MicrophoneDevice? = try {
-        recorder.routedDevice?.let { MicrophoneDevice(it.id, kind(it)) }
+        recorder.routedDevice?.let { input ->
+            val device = if (Build.VERSION.SDK_INT >= 31 && kind(input) == MicrophoneKind.Bluetooth) {
+                communicationDevice(input) ?: input
+            } else input
+            MicrophoneDevice(device.id, kind(input))
+        }
     } catch (_: RuntimeException) {
         null
     }
@@ -88,7 +96,6 @@ class AndroidMicrophonePlatform(
     override fun select(device: MicrophoneDevice): Boolean {
         if (closed) return false
         return try {
-            val input = inputs().firstOrNull { it.id == device.id } ?: return false
             owner?.takeIf { it !== this }?.clear()
             clear()
             owner = this
@@ -96,13 +103,15 @@ class AndroidMicrophonePlatform(
                 previousMode = audio.mode
                 audio.mode = AudioManager.MODE_IN_COMMUNICATION
                 if (Build.VERSION.SDK_INT >= 31) {
-                    val output = communicationDevice(input) ?: return false
-                    if (!audio.setCommunicationDevice(output)) return false
+                    val output = audio.availableCommunicationDevices.firstOrNull { it.id == device.id }
+                        ?: return false
+                    return audio.setCommunicationDevice(output)
                 } else {
                     scoRequested = true
                     audio.startBluetoothSco()
                 }
             }
+            val input = inputs().firstOrNull { it.id == device.id } ?: return false
             recorder.setPreferredDevice(input)
         } catch (_: RuntimeException) {
             // Includes denied/revoked permissions. Do not log exception/device descriptions.

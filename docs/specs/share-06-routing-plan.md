@@ -2,6 +2,18 @@
 
 Prepared 2026-09-26 on `codex/share-06`, baseline `eb5e1dadfd9d6ceb2ebb78ca4f403d2718bddcf8`. Implementation is queued behind the first wave. No acceptance criteria are verified by this preparation.
 
+## Implementation checkpoint, 2026-09-28
+
+Implementation was dispatched and SHARE-02 incorporated as `35de433`. The routing controller and Android adapter are session-owned. Modern Bluetooth choices come from available communication outputs even when their input endpoint has not appeared yet; confirmation still uses the running recorder's routed input. Legacy selection is offered only when one SCO input is exposed and off-call SCO is supported. Unsupported or ambiguous legacy combinations retain default capture.
+
+Route requests never restart the recorder or reset captured samples. Rejected, disconnected or timed-out requests release app-owned routing and display the observed system fallback. A generation-checked failure path stops capture without clearing retained audio. A shared wrapper adds the control to Activity and IME content. SHARE-07 must preserve that wrapper when integrating its common presentation state.
+
+The adapter uses audio routing APIs, not Bluetooth profile/scanning APIs, and adds only MODIFY_AUDIO_SETTINGS. It catches permission rejection without exporting platform exception messages. Standard diagnostics contain route category, pending category and failure category only. Category codes follow MicrophoneKind and MicrophoneRouteFailure declaration order; -1 means unknown/none. No device IDs, addresses or names are exported.
+
+Six focused JUnit tests pass, and the Android adapter compiles against API 35. Reproduce from PowerShell with a JDK compatible with Kotlin 2.1 on PATH using `./tools/test-microphone-routing.ps1 -CompileAndroid`. The runner uses cached project dependencies and the installed Android 35 SDK, without configuring native builds. This host's default JDK 25 is incompatible with that compiler; Android Studio's bundled JBR passed. The runner does not compile the Compose UI or the whole app.
+
+Full unit suite, assembly, lint, UI/device checks and physical headset evidence remain pending. No headset test has been performed, and no legacy or BLE compatibility claim is made. The build slot is after SHARE-07, followed by SHARE-09. A premature workspace cleanup was recovered from snapshot `465020e`; no source files were lost.
+
 ## Existing flow
 
 Activity and IME both use RecognizerView and the RecordingSession in AudioRecognizer.kt. Capture uses VOICE_RECOGNITION, mono PCM at 16 kHz. There is no explicit Bluetooth selection. startRecording clears captured samples, so restarting it to change routes would lose the current utterance. reset invalidates the recognition generation and cancels work. Recorder release is centralized, but its early return when no recorder exists cannot own cleanup of a route acquired before recorder creation.
