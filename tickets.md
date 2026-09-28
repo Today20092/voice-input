@@ -379,17 +379,25 @@ Implemented by `44fb6fe`, `5ab3750`, and `bef4320`.
 
 **Triage:** ready-for-agent
 
+**Working branch:** `codex/moonshine-long`
+
 **What to build:** Establish whether Moonshine's existing streaming segmentation adequately handles longer dictation, and make the smallest demonstrated improvement only if it does not. Short-message dictation must retain its current stopping behavior. Do not add a separate VAD model or a new recording mode merely because recordings can exceed 30 seconds; a documented finding that no change is needed is a valid resolution.
 
 **Blocked by:** None — can start immediately.
 
-- [ ] Inspect the installed Moonshine runtime and current recording flow to distinguish built-in speech segmentation from app-level silence auto-stop and duration limits; document which behavior is already available.
+**Claimed by:** Moonshine research chat `01a0df6e-1dc8-7681-bf3e-d6f700140855`.
+
+- [x] Inspect the installed Moonshine runtime and current recording flow to distinguish built-in speech segmentation from app-level silence auto-stop and duration limits; document which behavior is already available.
 - [ ] Establish a baseline with short messages, approximately 30-second recordings, and recordings of at least two minutes, including natural pauses, extended thinking pauses, and uninterrupted speech. Use existing manual-stop controls where available and record the settings used.
 - [ ] Check partial and final transcript continuity, missing or repeated words at segment boundaries, premature stopping, and whether processing falls behind recording. Measure processing overhead, memory growth, and time from Stop to the final speech-recognition transcript on the user's phone; report S1 rewriting separately. Do not infer audio/VAD performance from the existing S1 diagnostic archive.
 - [ ] Record an evidence-based decision. If existing behavior is adequate, close with the results and no production changes. If a problem is demonstrated, implement only the necessary correction, preferring Moonshine's existing VAD, segment completion, and configuration over an additional detector.
 - [ ] Any changed long-recording path continues capture across segment boundaries until manual Stop, preserves boundary audio and transcript ordering, and handles uninterrupted speech without unbounded segments. Preserve current short-message behavior and defaults in both Activity and IME entry points; elapsed duration alone must not silently change stop behavior.
 - [ ] If evidence requires a new user-facing long-dictation mode or a separate VAD model, document the concrete need and proposed behavior for user agreement before expanding scope. Neither is pre-authorized by this ticket. Leave other recognition backends and S1 rewriting unchanged.
 - [ ] For production changes, add focused runnable regression checks for the demonstrated failure and short-message behavior, run relevant build/test/lint checks, and repeat the affected device scenarios. If device measurements are unavailable, document that validation gap rather than claiming a benefit or completing unverified criteria.
+
+### Investigation status
+
+The [2026-09-28 investigation](docs/research/moonshine-long-dictation-2026-09-28.md) documents the existing recording controls, a physical-phone baseline procedure, demonstrated worker error loss/rejected-feed/cancellation cleanup defects, and focused regression checks. The [runtime research](docs/research/moonshine-runtime-segmentation-sources-2026-09-28.md) verifies segmentation and native release behavior against pinned 0.0.68 source and cached Java bytecode. Segmentation and defaults remain unchanged. Physical-phone accuracy, continuity, latency and memory criteria remain open; only an emulator was attached. SHARE-08 owns bounded replay recovery.
 
 ---
 
