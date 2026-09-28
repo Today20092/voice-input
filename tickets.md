@@ -522,6 +522,10 @@ Implementation and review complete; ticket remains open for end-to-end device ev
 
 **Blocked by:** None.
 
+**Working branch:** `codex/share-06`
+
+**Claimed by:** SHARE-06 chat `01a0df6d-b800-7a42-bb07-d8851c9d7fac`
+
 - [ ] Show the route control only when meaningful and report the actual active route; an unavailable or rejected Bluetooth route must not appear active.
 - [ ] Use supported Android routing behavior with the required version/permission handling. Keep current default capture behavior until the user makes an explicit choice.
 - [ ] Release routing on finish, cancel, reset, failure, and destruction; handle disconnects and failed route changes with a clear fallback.

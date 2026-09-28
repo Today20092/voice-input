@@ -38,6 +38,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -328,12 +329,27 @@ abstract class RecognizerView {
     abstract fun Window(onClose: () -> Unit, allowClick: Boolean, onPauseVAD: (Boolean) -> Unit, onFinish: () -> Unit, content: @Composable ColumnScope.() -> Unit)
 
     private var detectedLanguage: String? = null
+    private val microphoneState = mutableStateOf(MicrophoneRouteState())
+
+    @Composable
+    private fun RoutingWindow(onClose: () -> Unit, allowClick: Boolean,
+        onPauseVAD: (Boolean) -> Unit, onFinish: () -> Unit,
+        content: @Composable ColumnScope.() -> Unit) {
+        Window(onClose, allowClick, onPauseVAD, onFinish) {
+            content()
+            MicrophoneRouteControl(microphoneState.value, recognizer::selectMicrophone)
+        }
+    }
 
     private val recognizer = object : AudioRecognizer() {
         override val context: Context
             get() = this@RecognizerView.context
         override val lifecycleScope: LifecycleCoroutineScope
             get() = this@RecognizerView.lifecycleScope
+
+        override fun microphoneRouteChanged(state: MicrophoneRouteState) {
+            microphoneState.value = state
+        }
 
         // Tries to play a sound. If it's not yet ready, plays it when it's ready
         private fun playSound(id: Int) {
@@ -387,6 +403,7 @@ abstract class RecognizerView {
         }
 
         override fun failed(error: Throwable) {
+            releaseMicrophoneRouting()
             diagnostics?.end(org.futo.voiceinput.diagnostics.DiagnosticEvent.SESSION_FAILED, error)
             Log.e("RecognizerView", "Recognition did not produce a result", error)
             val message = if (error is NoSpeechRecognizedException) {
@@ -395,7 +412,7 @@ abstract class RecognizerView {
                 context.getString(R.string.recognition_failed)
             }
             setContent {
-                this@RecognizerView.Window(
+                this@RecognizerView.RoutingWindow(
                     onClose = { cancelRecognizer() },
                     onFinish = { cancelRecognizer() },
                     onPauseVAD = { },
@@ -427,7 +444,7 @@ abstract class RecognizerView {
             if (!sendPartialResult(result)) {
                 if (result.isNotBlank()) {
                     setContent {
-                        this@RecognizerView.Window(
+                        this@RecognizerView.RoutingWindow(
                             onClose = { cancelRecognizer() },
                             onFinish = { finishRecognizerIfRecording() },
                             onPauseVAD = { v -> pauseVAD(v) },
@@ -469,7 +486,7 @@ abstract class RecognizerView {
             }
 
             setContent {
-                this@RecognizerView.Window(
+                this@RecognizerView.RoutingWindow(
                     onClose = { cancelRecognizer() },
                     onFinish = { finishRecognizerIfRecording() },
                     onPauseVAD = { v -> pauseVAD(v) },
@@ -482,7 +499,7 @@ abstract class RecognizerView {
 
         override fun loading() {
             setContent {
-                this@RecognizerView.Window(
+                this@RecognizerView.RoutingWindow(
                     onClose = { cancelRecognizer() },
                     onFinish = { },
                     onPauseVAD = { },
@@ -495,7 +512,7 @@ abstract class RecognizerView {
 
         override fun needParakeetModelDownload() {
             setContent {
-                this@RecognizerView.Window(
+                this@RecognizerView.RoutingWindow(
                     onClose = { cancelRecognizer() },
                     onFinish = { requestParakeetModelDownload() },
                     onPauseVAD = { },
@@ -511,7 +528,7 @@ abstract class RecognizerView {
 
         override fun needRecognitionModelDownload(model: RecognitionModel) {
             setContent {
-                this@RecognizerView.Window(
+                this@RecognizerView.RoutingWindow(
                     onClose = { cancelRecognizer() },
                     onFinish = { requestRecognitionModelDownload(model) },
                     onPauseVAD = { },
@@ -527,7 +544,7 @@ abstract class RecognizerView {
 
         override fun needMoonshineModelDownload() {
             setContent {
-                this@RecognizerView.Window(
+                this@RecognizerView.RoutingWindow(
                     onClose = { cancelRecognizer() },
                     onFinish = { requestMoonshineModelDownload() },
                     onPauseVAD = { },
@@ -543,7 +560,7 @@ abstract class RecognizerView {
 
         override fun needWhisperModelDownload(models: List<ModelData>) {
             setContent {
-                this@RecognizerView.Window(
+                this@RecognizerView.RoutingWindow(
                     onClose = { cancelRecognizer() },
                     onFinish = { requestWhisperModelDownload(models) },
                     onPauseVAD = { },
@@ -563,7 +580,7 @@ abstract class RecognizerView {
 
         override fun permissionRejected() {
             setContent {
-                this@RecognizerView.Window(
+                this@RecognizerView.RoutingWindow(
                     onClose = { cancelRecognizer() },
                     onFinish = { openPermissionSettings() },
                     onPauseVAD = { },
@@ -584,7 +601,7 @@ abstract class RecognizerView {
         override fun updateWaveform(bars: List<Pair<Float, Float>>, state: MagnitudeState) {
             val report = diagnostics
             setContent {
-                this@RecognizerView.Window(
+                this@RecognizerView.RoutingWindow(
                     onClose = { cancelRecognizer() },
                     onFinish = { finishRecognizerIfRecording() },
                     onPauseVAD = { v -> pauseVAD(v) },
@@ -608,7 +625,7 @@ abstract class RecognizerView {
 
         override fun processing() {
             setContent {
-                this@RecognizerView.Window(
+                this@RecognizerView.RoutingWindow(
                     onClose = { cancelRecognizer() },
                     onFinish = { },
                     onPauseVAD = { },
@@ -621,7 +638,7 @@ abstract class RecognizerView {
 
         override fun cleaning() {
             setContent {
-                this@RecognizerView.Window(
+                this@RecognizerView.RoutingWindow(
                     onClose = { cancelRecognizer() },
                     onFinish = { },
                     onPauseVAD = { },
@@ -655,7 +672,7 @@ abstract class RecognizerView {
 
             if(shouldRequestLanguage && (languages.size > 1)) {
                 setContent {
-                    this@RecognizerView.Window(
+                    this@RecognizerView.RoutingWindow(
                         onClose = { recognizer.cancelRecognizer() },
                         onFinish = { },
                         onPauseVAD = { },

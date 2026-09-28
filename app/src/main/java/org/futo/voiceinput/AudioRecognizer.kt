@@ -173,6 +173,54 @@ abstract class RecordingSession {
 
     private var isRecording = false
     private var recorder: AudioRecord? = null
+    private val routingHandler = Handler(Looper.getMainLooper())
+    private var microphoneRouting: Pair<AudioRecord, MicrophoneRouting>? = null
+
+    protected open fun microphoneRouteChanged(state: MicrophoneRouteState) {}
+
+    fun selectMicrophone(device: MicrophoneDevice) {
+        if (isRecording) microphoneRouting?.second?.select(device)
+    }
+
+    protected fun releaseMicrophoneRouting() {
+        microphoneRouting?.second?.close()
+        microphoneRouting = null
+    }
+
+    private fun observeMicrophone(activeRecorder: AudioRecord, generation: Long) {
+        routingHandler.post {
+            if (generation != recognitionGeneration || recorder !== activeRecorder || !isRecording) return@post
+            microphoneRouting?.second?.close()
+            var lastCategories: List<Long>? = null
+            val routing = MicrophoneRouting(AndroidMicrophonePlatform(context, activeRecorder)) { state ->
+                if (generation == recognitionGeneration) {
+                    // Categories only: no device IDs, names, addresses or platform exception text.
+                    val categories = listOf(state.active?.kind?.ordinal?.toLong() ?: -1L,
+                        state.pending?.kind?.ordinal?.toLong() ?: -1L,
+                        state.failure?.ordinal?.toLong() ?: -1L)
+                    if (state.recording && categories != lastCategories) {
+                        diagnostics?.event(DiagnosticEvent.MICROPHONE_ROUTE_CHANGED, mapOf(
+                            DiagnosticMetric.MICROPHONE_ACTIVE to categories[0],
+                            DiagnosticMetric.MICROPHONE_PENDING to categories[1],
+                            DiagnosticMetric.MICROPHONE_FAILURE to categories[2]))
+                        lastCategories = categories
+                    }
+                    microphoneRouteChanged(state)
+                }
+            }
+            microphoneRouting = activeRecorder to routing
+            routing.start()
+        }
+    }
+
+    private fun releaseMicrophone(activeRecorder: AudioRecord) {
+        routingHandler.post {
+            microphoneRouting?.takeIf { it.first === activeRecorder }?.let {
+                it.second.close()
+                microphoneRouting = null
+            }
+        }
+    }
     @Volatile private var stopReason: StopReason? = null
 
     fun isCurrentlyRecording(): Boolean {
@@ -296,6 +344,8 @@ abstract class RecordingSession {
             return
         }
 
+        releaseMicrophone(current)
+
         try {
             if (current.recordingState == AudioRecord.RECORDSTATE_RECORDING) {
                 current.stop()
@@ -351,6 +401,8 @@ abstract class RecordingSession {
         isRecording = false
 
         clearCapturedSamples()
+
+        microphoneRouteChanged(MicrophoneRouteState())
 
         unfocusAudio()
 
@@ -641,6 +693,7 @@ abstract class RecordingSession {
 
             focusAudio()
             isRecording = true
+            observeMicrophone(activeRecorder, captureGeneration)
 
             (backend as? StreamingSpeechBackend)?.let(::startStreaming)
 
