@@ -578,6 +578,10 @@ All five `LanguagesScreenTest` cases passed on Pixel_10, Android 37, emulator-55
 
 **Blocked by:** None.
 
+**Working branch:** `codex/share-06`
+
+**Claimed by:** SHARE-06 chat `01a0df6d-b800-7a42-bb07-d8851c9d7fac`
+
 - [ ] Show the route control only when meaningful and report the actual active route; an unavailable or rejected Bluetooth route must not appear active.
 - [ ] Use supported Android routing behavior with the required version/permission handling. Keep current default capture behavior until the user makes an explicit choice.
 - [ ] Release routing on finish, cancel, reset, failure, and destruction; handle disconnects and failed route changes with a clear fallback.
@@ -585,6 +589,10 @@ All five `LanguagesScreenTest` cases passed on Pixel_10, Android 37, emulator-55
 - [ ] Device names and other private surrounding information do not enter standard diagnostic exports; record only useful permitted route/state categories.
 - [ ] Focused state tests and real phone/headset tests cover route selection, denied/unavailable routing, disconnect, repeated sessions, Activity, and IME. Record Android/headset details and any unsupported combinations.
 - [ ] Relevant tests, assembly, and lint pass; do not mark hardware validation complete without a real headset test.
+
+### Implementation checkpoint
+
+Implemented on `codex/share-06`, with SHARE-02 generation guards incorporated. See [routing plan and validation gaps](docs/specs/share-06-routing-plan.md). Full unit suite: 160 tests, 159 passed, one skipped. Lint, app assembly and test APK assembly passed. Standards review passed; Spec findings for active-device labels and interrupted capture were corrected and re-reviewed. Four new Android/UI tests have not run because emulator APK installation failed for insufficient storage, including restoration of the backed-up prior APK after a data-preserving uninstall. Retained data was not cleared; coordinator owns recovery. Android ownership/mode restoration and physical phone/headset compatibility remain unverified. No acceptance checkbox is marked complete from JVM tests alone.
 
 
 ## SHARE-07: Keep waveform and live transcript visible together

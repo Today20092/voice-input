@@ -88,7 +88,8 @@ internal enum class StopReason {
     Manual,
     Vad,
     DurationLimit,
-    Cancel
+    Cancel,
+    CaptureFailed
 }
 
 private enum class AppendResult {
@@ -107,7 +108,7 @@ internal object RecordingSessionPolicy {
         StopReason.Manual -> manualDrainMs.coerceIn(0L, 1500L)
         StopReason.Vad -> if (backendType == SpeechBackendType.Parakeet) PARAKEET_AUTO_STOP_DRAIN_MS else AUTO_STOP_DRAIN_MS
         StopReason.DurationLimit -> AUTO_STOP_DRAIN_MS
-        StopReason.Cancel -> 0L
+        StopReason.Cancel, StopReason.CaptureFailed -> 0L
     }
 }
 
@@ -165,6 +166,61 @@ abstract class RecordingSession {
 
     private var isRecording = false
     private var recorder: AudioRecord? = null
+    private val routingHandler = Handler(Looper.getMainLooper())
+    private var microphoneRouting: Pair<AudioRecord, MicrophoneRouting>? = null
+
+    protected open fun microphoneRouteChanged(state: MicrophoneRouteState) {}
+
+    fun selectMicrophone(device: MicrophoneDevice) {
+        if (isRecording) microphoneRouting?.second?.select(device)
+    }
+
+    private fun failRecognition(error: Throwable, generation: Long) {
+        if (generation != recognitionGeneration) return
+        // End capture without clearing retained samples/history or restarting the utterance.
+        cancelCapture()
+        stopAndReleaseRecorder()
+        isRecording = false
+        unfocusAudio()
+        microphoneRouting?.second?.close()
+        microphoneRouting = null
+        failed(error)
+    }
+
+    private fun observeMicrophone(activeRecorder: AudioRecord, generation: Long) {
+        routingHandler.post {
+            if (generation != recognitionGeneration || recorder !== activeRecorder || !isRecording) return@post
+            microphoneRouting?.second?.close()
+            var lastCategories: List<Long>? = null
+            val routing = MicrophoneRouting(AndroidMicrophonePlatform(context, activeRecorder)) { state ->
+                if (generation == recognitionGeneration) {
+                    // Categories only: no device IDs, names, addresses or platform exception text.
+                    val categories = listOf(state.active?.kind?.ordinal?.toLong() ?: -1L,
+                        state.pending?.kind?.ordinal?.toLong() ?: -1L,
+                        state.failure?.ordinal?.toLong() ?: -1L)
+                    if (state.recording && categories != lastCategories) {
+                        diagnostics?.event(DiagnosticEvent.MICROPHONE_ROUTE_CHANGED, mapOf(
+                            DiagnosticMetric.MICROPHONE_ACTIVE to categories[0],
+                            DiagnosticMetric.MICROPHONE_PENDING to categories[1],
+                            DiagnosticMetric.MICROPHONE_FAILURE to categories[2]))
+                        lastCategories = categories
+                    }
+                    microphoneRouteChanged(state)
+                }
+            }
+            microphoneRouting = activeRecorder to routing
+            routing.start()
+        }
+    }
+
+    private fun releaseMicrophone(activeRecorder: AudioRecord) {
+        routingHandler.post {
+            microphoneRouting?.takeIf { it.first === activeRecorder }?.let {
+                it.second.close()
+                microphoneRouting = null
+            }
+        }
+    }
     @Volatile private var stopReason: StopReason? = null
 
     fun isCurrentlyRecording(): Boolean {
@@ -252,6 +308,7 @@ abstract class RecordingSession {
     protected abstract fun permissionRejected()
 
     protected abstract fun recordingStarted()
+    protected open fun recordingInterrupted() {}
     protected abstract fun updateWaveform(bars: List<Pair<Float, Float>>, state: MagnitudeState)
 
     protected abstract fun processing()
@@ -287,6 +344,8 @@ abstract class RecordingSession {
         if (recorder !== current) {
             return
         }
+
+        releaseMicrophone(current)
 
         try {
             if (current.recordingState == AudioRecord.RECORDSTATE_RECORDING) {
@@ -343,6 +402,8 @@ abstract class RecordingSession {
         isRecording = false
 
         clearCapturedSamples()
+
+        microphoneRouteChanged(MicrophoneRouteState())
 
         unfocusAudio()
 
@@ -480,14 +541,14 @@ abstract class RecordingSession {
             if (retryAfterOom) {
                 return loadModelInner(retryAfterOom = false)
             }
-            withContext(Dispatchers.Main) { failed(e) }
+            withContext(Dispatchers.Main) { failRecognition(e, loadGeneration) }
         } catch (error: Exception) {
             report?.event(DiagnosticEvent.MODEL_LOAD_FAILED, error = error)
             if (loadGeneration == recognitionGeneration) {
                 selectedManagedModel?.let {
                     RecognitionModelStore(context.filesDir).invalidate(it)
                 }
-                withContext(Dispatchers.Main) { failed(error) }
+                withContext(Dispatchers.Main) { failRecognition(error, loadGeneration) }
             }
         }
     }
@@ -584,6 +645,12 @@ abstract class RecordingSession {
         permissionRejected()
     }
 
+    private fun readRecorder(activeRecorder: AudioRecord, samples: ShortArray, mode: Int): Int = try {
+        activeRecorder.read(samples, 0, AUDIO_READ_SIZE, mode)
+    } catch (_: RuntimeException) {
+        AudioRecord.ERROR_INVALID_OPERATION
+    }
+
     private fun startRecording(numTries: Int = 0) {
         val report = diagnostics
         if (BuildConfig.DEBUG) Log.d("WaveformTiming", "recorder_requested t=${SystemClock.elapsedRealtime()}")
@@ -637,6 +704,7 @@ abstract class RecordingSession {
 
             focusAudio()
             isRecording = true
+            observeMicrophone(activeRecorder, captureGeneration)
 
             (backend as? StreamingSpeechBackend)?.let(::startStreaming)
 
@@ -696,7 +764,7 @@ abstract class RecordingSession {
                         }
                         captureLoop@ while(stopReason == null && activeRecorder.recordingState == AudioRecord.RECORDSTATE_RECORDING){
                             yield()
-                            val nRead = activeRecorder.read(samples, 0, AUDIO_READ_SIZE, AudioRecord.READ_BLOCKING)
+                            val nRead = readRecorder(activeRecorder, samples, AudioRecord.READ_BLOCKING)
 
                             if(nRead <= 0) {
                                 if (RecordingSessionPolicy.shouldReportRecorderReadFailure(nRead,
@@ -816,7 +884,7 @@ abstract class RecordingSession {
                             // 100ms to process 100ms)
                             while(stopReason == null){
                                 yield()
-                                val nRead2 = activeRecorder.read(samples, 0, AUDIO_READ_SIZE, AudioRecord.READ_NON_BLOCKING)
+                                val nRead2 = readRecorder(activeRecorder, samples, AudioRecord.READ_NON_BLOCKING)
                                 if(nRead2 > 0) {
                                     when (appendSamples(samples, nRead2, captureGeneration)) {
                                         AppendResult.Accepted -> Unit
@@ -837,8 +905,16 @@ abstract class RecordingSession {
                             }
                         }
 
+                        withContext(Dispatchers.Main) {
+                            if (stopReason == null && captureGeneration == recognitionGeneration && isRecording) {
+                                stopReason = StopReason.CaptureFailed
+                                recordingInterrupted()
+                                finishRecognizer()
+                            }
+                        }
                         val reason = stopReason
-                        if(reason != null && reason != StopReason.Cancel && activeRecorder.recordingState == AudioRecord.RECORDSTATE_RECORDING) {
+                        if(reason != null && reason != StopReason.Cancel && reason != StopReason.CaptureFailed &&
+                            activeRecorder.recordingState == AudioRecord.RECORDSTATE_RECORDING) {
                             drainRecorderTail(activeRecorder, reason, samples, captureGeneration)
                             appendFinalSilence(captureGeneration)
                         }
@@ -1002,7 +1078,7 @@ abstract class RecordingSession {
                 error.addSuppressed(closeError)
             }
             withContext(Dispatchers.Main) {
-                failed(error)
+                failRecognition(error, runGeneration)
             }
         } finally {
             withContext(NonCancellable) {
@@ -1144,7 +1220,7 @@ abstract class RecordingSession {
             if (runGeneration != recognitionGeneration) return@withContext
             runBackend.detectedLanguage?.let(::languageDetected)
             if (text.isBlank() && !cleanupResult.validEmpty) {
-                failed(NoSpeechRecognizedException())
+                failRecognition(NoSpeechRecognizedException(), runGeneration)
             } else {
                 report?.event(DiagnosticEvent.RESULT_READY,
                     mapOf(DiagnosticMetric.CHARACTERS to text.length.toLong()))

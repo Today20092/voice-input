@@ -10,6 +10,7 @@ import android.os.SystemClock
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityManager
+import android.widget.Toast
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.indication
@@ -356,11 +357,22 @@ abstract class RecognizerView {
 
     private var detectedLanguage: String? = null
     private var presentation by mutableStateOf(RecognitionUiState())
+    private val microphoneState = mutableStateOf(MicrophoneRouteState())
+
+    @Composable
+    private fun RoutingWindow(onClose: () -> Unit, allowClick: Boolean,
+        onPauseVAD: (Boolean) -> Unit, onFinish: () -> Unit,
+        content: @Composable ColumnScope.() -> Unit) {
+        Window(onClose, allowClick, onPauseVAD, onFinish) {
+            content()
+            MicrophoneRouteControl(microphoneState.value, recognizer::selectMicrophone)
+        }
+    }
 
     private fun showRecognition() {
         setContent {
             val state = presentation
-            Window(
+            RoutingWindow(
                 onClose = { recognizer.cancelRecognizer() },
                 onFinish = { finishRecognizerIfRecording() },
                 onPauseVAD = { if (state.isRecording) recognizer.pauseVAD(it) },
@@ -381,6 +393,14 @@ abstract class RecognizerView {
             get() = this@RecognizerView.context
         override val lifecycleScope: LifecycleCoroutineScope
             get() = this@RecognizerView.lifecycleScope
+
+        override fun microphoneRouteChanged(state: MicrophoneRouteState) {
+            microphoneState.value = state
+        }
+
+        override fun recordingInterrupted() {
+            Toast.makeText(context, R.string.microphone_interrupted, Toast.LENGTH_LONG).show()
+        }
 
         // Tries to play a sound. If it's not yet ready, plays it when it's ready
         private fun playSound(id: Int) {
@@ -445,7 +465,7 @@ abstract class RecognizerView {
                 context.getString(R.string.recognition_failed)
             }
             setContent {
-                this@RecognizerView.Window(
+                this@RecognizerView.RoutingWindow(
                     onClose = { cancelRecognizer() },
                     onFinish = { cancelRecognizer() },
                     onPauseVAD = { },
@@ -518,7 +538,7 @@ abstract class RecognizerView {
 
         override fun needParakeetModelDownload() {
             setContent {
-                this@RecognizerView.Window(
+                this@RecognizerView.RoutingWindow(
                     onClose = { cancelRecognizer() },
                     onFinish = { requestParakeetModelDownload() },
                     onPauseVAD = { },
@@ -534,7 +554,7 @@ abstract class RecognizerView {
 
         override fun needRecognitionModelDownload(model: RecognitionModel) {
             setContent {
-                this@RecognizerView.Window(
+                this@RecognizerView.RoutingWindow(
                     onClose = { cancelRecognizer() },
                     onFinish = { requestRecognitionModelDownload(model) },
                     onPauseVAD = { },
@@ -550,7 +570,7 @@ abstract class RecognizerView {
 
         override fun needMoonshineModelDownload() {
             setContent {
-                this@RecognizerView.Window(
+                this@RecognizerView.RoutingWindow(
                     onClose = { cancelRecognizer() },
                     onFinish = { requestMoonshineModelDownload() },
                     onPauseVAD = { },
@@ -566,7 +586,7 @@ abstract class RecognizerView {
 
         override fun needWhisperModelDownload(models: List<ModelData>) {
             setContent {
-                this@RecognizerView.Window(
+                this@RecognizerView.RoutingWindow(
                     onClose = { cancelRecognizer() },
                     onFinish = { requestWhisperModelDownload(models) },
                     onPauseVAD = { },
@@ -586,7 +606,7 @@ abstract class RecognizerView {
 
         override fun permissionRejected() {
             setContent {
-                this@RecognizerView.Window(
+                this@RecognizerView.RoutingWindow(
                     onClose = { cancelRecognizer() },
                     onFinish = { openPermissionSettings() },
                     onPauseVAD = { },
@@ -646,7 +666,7 @@ abstract class RecognizerView {
 
             if(shouldRequestLanguage && (languages.size > 1)) {
                 setContent {
-                    this@RecognizerView.Window(
+                    this@RecognizerView.RoutingWindow(
                         onClose = { recognizer.cancelRecognizer() },
                         onFinish = { },
                         onPauseVAD = { },
