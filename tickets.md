@@ -456,6 +456,10 @@ Validation at `4a12bba`: the 9 Moonshine Gradle tests passed; the full suite rep
 
 **Triage:** needs-info
 
+**Working branch:** `codex/waveform-bug`
+
+**Claimed by:** Waveform diagnosis chat, worktree `0245`
+
 **What to build:** Reproduce and fix the reported intermittent waveform behavior when opening voice input. The user suspects the beta speech-recognition popup change, but the visible symptom and affected entry point are not yet specified.
 
 **Blocked by:** Description of the waveform behavior, affected entry point, and a reproducible case. The supplied 1.4.3 archive identifies Orukeet but lacks waveform draw timing and popup state.
@@ -469,6 +473,8 @@ Validation at `4a12bba`: the 9 Moonshine Gradle tests passed; the full suite rep
 Use [the phone test guide](docs/phone-performance-test.md) for reproduction notes and export instructions.
 
 The [pre-change diagnostic baseline](docs/research/phone-diagnostics-baseline-2026-09-25.md) shows prompt audio arrival and two misleading read-failure events after shutdown. Correcting those events does not resolve the visual report.
+
+The [source and reproduction review](docs/research/waveform-diagnosis-2026-09-28.md) records current evidence, missing information, and the next phone checks. This defect remains separate from SHARE-07 layout work.
 
 ---
 
