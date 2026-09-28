@@ -124,7 +124,7 @@ class LanguagesScreenTest {
             .assertIsDisplayed()
         compose.onNodeWithText("Auto-detect").assertDoesNotExist()
         write(NEMOTRON_PROFILE, "multilingual")
-        compose.onAllNodes(isSelected() and hasAnyAncestor(hasText("Auto-detect")), useUnmergedTree = true)
+        compose.onAllNodes(isSelected() and hasAnyAncestor(hasText("Auto-detect")))
             .assertCountEquals(1)
 
         write(COHERE_LANGUAGE, "auto")
@@ -178,7 +178,7 @@ class LanguagesScreenTest {
     }
 
     private fun assertEnglishSelected() {
-        compose.onAllNodes(isSelected() and hasAnyAncestor(hasText("English")), useUnmergedTree = true)
+        compose.onAllNodes(isSelected() and hasAnyAncestor(hasText("English")))
             .assertCountEquals(1)
     }
 
