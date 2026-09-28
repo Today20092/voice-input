@@ -497,12 +497,22 @@ The [pre-change diagnostic baseline](docs/research/phone-diagnostics-baseline-20
 
 **Blocked by:** None.
 
+**Working branch:** codex/share-05
+
+**Claimed by:** SHARE-05 chat (96da worktree)
+
 - [ ] Selecting each shipped model exposes only its supported language controls and accurate automatic-detection behavior. Preserve Nemotron multilingual Auto-detect and Cohere's explicit selector; keep saved Whisper preferences when switching away and back.
 - [ ] Whisper training-hour descriptions, language-specific-model controls, and download effects run only for Whisper. Visiting or changing language settings for another model never starts an unrelated Whisper download.
-- [ ] Share capability/presentation data between Languages and Model Options where it actually varies; avoid a second conflicting list of model capabilities.
-- [ ] Distinguish inference vocabulary hints from app-level personal vocabulary corrections. Do not disable the existing correction stage merely because a model cannot accept hints.
+- [x] Share capability/presentation data between Languages and Model Options where it actually varies; avoid a second conflicting list of model capabilities.
+- [x] Distinguish inference vocabulary hints from app-level personal vocabulary corrections. Do not disable the existing correction stage merely because a model cannot accept hints.
 - [ ] Tests cover navigation and settings effects for every runtime family, switching variants, invalid/stale saved language choices, and no unrelated downloads. Keep currently supported recognition-language behavior.
 - [ ] Relevant unit/UI, assembly, and lint checks pass. Verify at least an English-only model, Nemotron multilingual, Cohere, and Whisper on-device.
+
+### Implementation checkpoint (2026-09-28)
+
+Whisper controls and download effects now live in a Whisper-only composition and wait for saved preferences. Managed models share language guidance and selectors with Model Options. Nemotron keeps Auto-detect; Cohere keeps explicit selection. Invalid saved selector values display the runtime's English fallback. Stale Whisper language IDs recover to English. Parakeet TDT v3's card now uses its existing 25-language model metadata instead of the stale English-only label. Recognition and personal vocabulary processing are unchanged.
+
+Verification: focused presentation tests exercised red/green; the full `:app:testDevDebugUnitTest` result was 142 passed, one skipped, zero failures. `:app:compileDevDebugAndroidTestKotlin` and `git diff --check` passed. Separate Standards and Spec reviews found no actionable issues. Five new UI tests cover model navigation, variants, language selection, saved preferences, stale values, and Whisper download launches, but have not run yet. Assembly, lint, emulator checks, and physical-device checks remain pending the shared slot. The ticket is not complete.
 
 
 ## SHARE-06: Add explicit Bluetooth microphone selection

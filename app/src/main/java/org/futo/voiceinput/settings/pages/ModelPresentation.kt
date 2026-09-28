@@ -10,6 +10,19 @@ data class ModelPresentation(
     val details: String
 )
 
+fun recognitionLanguageGuidance(model: RecognitionModel): String = when {
+    model.runtimeId == "cohere" ->
+        "${model.recognitionLanguages}. Choose the language before dictating. " +
+            "Automatic language detection is not available, and mixed-language speech may be inaccurate."
+    model.runtimeId == "nemotron" && model.variantId == "multilingual" ->
+        "${model.recognitionLanguages}. Choose a recognition language or Auto-detect."
+    model.runtimeId == "parakeet" || model.runtimeId == "orukeet" ->
+        "${model.recognitionLanguages}. The model recognizes the spoken language automatically; " +
+            "no manual language selector is available."
+    else -> "${model.recognitionLanguages} only. " +
+        "Language selection and automatic language detection are not available."
+}
+
 fun presentRecognitionModel(
     model: RecognitionModel,
     installed: Boolean,

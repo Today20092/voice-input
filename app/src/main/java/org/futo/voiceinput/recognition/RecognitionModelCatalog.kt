@@ -255,9 +255,9 @@ object RecognitionModelCatalog {
             id = "parakeet",
             runtimeId = "parakeet",
             displayName = "Parakeet TDT",
-            description = "Final-only NVIDIA recognition focused on accuracy.",
+            description = "Final-only multilingual NVIDIA recognition focused on accuracy.",
             transcription = TranscriptionBehavior.FINAL_ONLY,
-            recognitionLanguages = "English",
+            recognitionLanguages = ParakeetModel.recognitionModel.recognitionLanguages,
             performanceClasses = setOf(PerformanceClass.DEMANDING),
             models = listOf(ParakeetModel.recognitionModel)
         ),
