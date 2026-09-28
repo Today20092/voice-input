@@ -31,6 +31,16 @@ Emulator installation failed with `INSTALL_FAILED_INSUFFICIENT_STORAGE: Failed t
 
 The build/native slot was released to SHARE-09, explicitly excluding emulator control pending coordinator recovery. Physical headset validation, Android ownership transfer, UI runtime/accessibility checks and compatibility results remain open. SHARE-06 is not complete.
 
+## Safe pause checkpoint, 2026-09-28
+
+Coordination requested a safe pause for serial beta integration. Source/tests/evidence were committed as `03325d5` before this checkpoint. No disk resize, AVD migration, wipe, reboot, snapshot deletion or model/settings/history deletion was attempted. Original Pixel_10 userdata and snapshots remain in place. The emulator is running as `emulator-5554`; the app package remains uninstalled with retained data following `pm uninstall -k`. Latest `/data` free space was 739 MiB. The temporary storage threshold is verified `null`.
+
+The durable prior-APK backup is 156,900,214 bytes, SHA-256 `031e2ba9cf2bff2ff6b30d109c6b502a16d3b9a90c5a43eea64423dd39c72e9c`, at the visualization path above. A second copy remains at `build/share07-prior.apk`, which is ignored and must not be relied on after worktree cleanup. No AVD disk backup has been created because no disk changes were started.
+
+Read-only recovery inspection found Pixel_10 uses API 37, configured userdata size 6G, and a userdata QCOW2 overlay. Configured RAM remains 2048; the existing launcher uses `-memory 4096 -no-window -no-audio -no-snapshot-load`. The [official emulator documentation](https://developer.android.com/studio/run/emulator-commandline) documents data images and partition size, but does not establish a safe overlay-preserving resize procedure for this AVD. [Emulator source](https://android.googlesource.com/platform/external/qemu/+/emu-master-dev/android-qemu2-glue/main.cpp) includes a resize path that deletes the QCOW2 overlay, so changing partition size blindly would risk retained data. No such change was made.
+
+No SHARE-06 Gradle build, native build, installation or recovery process is active. The emulator and shared background daemons remain running. Further recovery, builds and slot handoffs are paused pending coordination. The next owner must restore the app without discarding retained data before claiming emulator validation; four new instrumented/UI tests remain unrun, and physical headset criteria remain open.
+
 ## Existing flow
 
 Activity and IME both use RecognizerView and the RecordingSession in AudioRecognizer.kt. Capture uses VOICE_RECOGNITION, mono PCM at 16 kHz. There is no explicit Bluetooth selection. startRecording clears captured samples, so restarting it to change routes would lose the current utterance. reset invalidates the recognition generation and cancels work. Recorder release is centralized, but its early return when no recorder exists cannot own cleanup of a route acquired before recorder creation.
