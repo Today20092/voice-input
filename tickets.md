@@ -222,12 +222,24 @@ Confirmed in the signed `v1.4.2-beta.5` prerelease: start on Input, swipe from t
 
 **Blocked by:** None — can start immediately.
 
+**Working branch:** codex/nemotron-assets
+
+**Claimed by:** Nemotron assets chat (01a0df6d-fbe4-76f0-b278-331242777e01)
+
 **Triage:** ready-for-agent
 
-- [ ] Starting a Nemotron 3.5 Multilingual download does not request `test_wavs/en.wav` or `test_wavs/ja.wav`.
-- [ ] The model becomes installed after its runtime model and token files download and validate.
+- [x] Starting a Nemotron 3.5 Multilingual download does not request `test_wavs/en.wav` or `test_wavs/ja.wav`.
+- [x] The model becomes installed after its runtime model and token files download and validate.
 - [ ] Existing incomplete installations that are waiting on test recordings can recover without downloading completed runtime files again.
-- [ ] A focused catalog check prevents non-runtime test assets from returning to the installation manifest.
+- [x] A focused catalog check prevents non-runtime test assets from returning to the installation manifest.
+
+### Implementation and verification
+
+Removed only the two test recordings from the manifest, retaining runtime identity, pinned URLs, sizes, hashes, and storage directory. Restored managed download requests refresh from the current catalog before parsing; unmanaged requests retain their supplied metadata. Existing validated runtime files are reused. Native multilingual smoke tests now explicitly require separately supplied test WAVs.
+
+Verified the catalog regression fails against the old six-file manifest and passes after removal. Catalog and retry JVM tests cover completion without WAVs and rejection of invalid runtime sizes/hashes using small fixture files. `:app:testDevDebugUnitTest --max-workers=2` passed with 143 tests, zero failures, and one skipped test. `:app:compileDevDebugAndroidTestKotlin --max-workers=2` passed. Standards and spec reviews found no issues.
+
+Pending: execute `RecognitionModelRequestTest` on Android to verify restored-intent handling. The recovery criterion remains open until that check runs; no model downloads or native inference tests were performed.
 
 ### Beta observation
 

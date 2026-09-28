@@ -419,9 +419,7 @@ object RecognitionModelCatalog {
                 artifact("encoder.int8.onnx", 657_601_403, "012e9321373af99021415e0b0eb3ec827b4be3153be6f30d9b448fe65e896e68"),
                 artifact("decoder.int8.onnx", 14_978_075, "19f9c98fc6d0a2c33a65a43b36fdb2e914c26c0aa9764be3aebc502a1e982fb0"),
                 artifact("joiner.int8.onnx", 9_504_438, "4101c7c679a0bc30483794b27a059e34e79232aa2068d78d51231a22c8b0d7ce"),
-                artifact("tokens.txt", 131_440, "729cc103155bafa785f9cd45746cd41cabe97eab7182fc04d594129587958f8a"),
-                artifact("test_wavs/en.wav", 228_908, "eb1eb008904465b74c304aad8342e8c7d3c6e61ffe9f66adcaca9cf0f76a93f4"),
-                artifact("test_wavs/ja.wav", 719_916, "780f95a86ba6cc33a4431fcafeacd213417dfa0a6613f93e4400c18f4dd467b0")
+                artifact("tokens.txt", 131_440, "729cc103155bafa785f9cd45746cd41cabe97eab7182fc04d594129587958f8a")
             )
         )
     }
