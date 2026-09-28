@@ -399,6 +399,8 @@ Implemented by `44fb6fe`, `5ab3750`, and `bef4320`.
 
 The [2026-09-28 investigation](docs/research/moonshine-long-dictation-2026-09-28.md) documents the existing recording controls, a physical-phone baseline procedure, demonstrated worker error loss/rejected-feed/cancellation cleanup defects, and focused regression checks. The [runtime research](docs/research/moonshine-runtime-segmentation-sources-2026-09-28.md) verifies segmentation and native release behavior against pinned 0.0.68 source and cached Java bytecode. Segmentation and defaults remain unchanged. Physical-phone accuracy, continuity, latency and memory criteria remain open; only an emulator was attached. SHARE-08 owns bounded replay recovery.
 
+Validation at `4a12bba`: the 9 Moonshine Gradle tests passed; the full suite reported 147 passes and one skipped optional Orukeet archive test. Dev debug assembly and lint passed with zero lint errors. Loaded-model release/reload and affected physical-phone scenarios remain unverified, so the combined production-change acceptance criterion remains open.
+
 ---
 
 ## Clarify and reorganize Model Options
