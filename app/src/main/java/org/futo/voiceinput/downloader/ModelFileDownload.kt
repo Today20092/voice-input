@@ -46,7 +46,7 @@ internal suspend fun downloadModelFile(
     hash: String,
     onRestart: () -> Unit = {},
     onProgress: (Long) -> Unit = {}
-) = modelDownloadMutex.withLock {
+): Unit = modelDownloadMutex.withLock {
     require(size > 0 && hash.isNotBlank())
     coroutineContext.ensureActive()
     if (validModelFile(target, size, hash)) return@withLock
@@ -147,6 +147,7 @@ internal suspend fun downloadModelFile(
         throw IOException("Downloaded file failed size or checksum validation")
     }
     // Adjacent staging allows rename without a partial copy over an installed file.
+    coroutineContext.ensureActive()
     if (!file.renameTo(target)) throw IOException("Failed to install downloaded file")
     checkpoints.forEach { it.delete() }
     identity.delete()
