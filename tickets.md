@@ -536,7 +536,7 @@ Implementation and review complete; ticket remains open for end-to-end device ev
 
 ### Implementation checkpoint
 
-Implemented on `codex/share-06`, with SHARE-02 generation guards incorporated. See [routing plan and validation gaps](docs/specs/share-06-routing-plan.md). Six focused routing-controller tests pass and the Android adapter compiles against API 35. Standards review passed; Spec findings for active-device labels and interrupted capture were corrected and re-reviewed. Full app/unit/lint/assembly and UI checks await the shared build slot. Android ownership/mode restoration and physical phone/headset compatibility remain unverified. No acceptance checkbox is marked complete from JVM tests alone.
+Implemented on `codex/share-06`, with SHARE-02 generation guards incorporated. See [routing plan and validation gaps](docs/specs/share-06-routing-plan.md). Full unit suite: 160 tests, 159 passed, one skipped. Lint, app assembly and test APK assembly passed. Standards review passed; Spec findings for active-device labels and interrupted capture were corrected and re-reviewed. Four new Android/UI tests have not run because emulator APK installation failed for insufficient storage, including restoration of the backed-up prior APK after a data-preserving uninstall. Retained data was not cleared; coordinator owns recovery. Android ownership/mode restoration and physical phone/headset compatibility remain unverified. No acceptance checkbox is marked complete from JVM tests alone.
 
 
 ## SHARE-07: Keep waveform and live transcript visible together

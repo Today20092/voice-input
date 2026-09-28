@@ -18,6 +18,19 @@ Standards review found no violations. Spec review identified two corrected issue
 
 The controller test for stale callbacks uses a fake platform. It does not validate process-wide Android ownership transfer, audio-mode restoration, or recorder/history integration. Those checks, the new CaptureFailed policy assertion, whole-app compilation and Compose UI checks remain on the queued validation list.
 
+## Build verification, 2026-09-28
+
+After SHARE-07 released the exclusive slot, Gradle validation ran with Android Studio JBR, Android SDK 35, NDK 28.2.13676358, `--max-workers=2`, and `CMAKE_BUILD_PARALLEL_LEVEL=2`.
+
+- `:app:testDevDebugUnitTest`: 160 tests, 159 passed, one skipped, no failures. Includes the CaptureFailed tail-policy assertion and six routing-controller tests.
+- `:app:lintDevDebug`: passed.
+- `:app:assembleDevDebug` and `:app:assembleDevDebugAndroidTest`: passed. Full Kotlin/Compose compilation passed. Native submodules missing after worktree recovery were initialized at their pinned revisions; llama.cpp required Git long-path handling. No tracked native source was changed.
+- Added three Compose route-control tests and one Android phone-preference lifecycle test. Test APK compilation passed; a subsequent review tightened the recorder-release `finally` block. These tests have NOT run on the emulator. They do not claim Bluetooth or actual input-audio verification.
+
+Emulator installation failed with `INSTALL_FAILED_INSUFFICIENT_STORAGE: Failed to override installation location`. A prior APK was backed up before using `pm uninstall -k`; app data was retained. Reinstallation of both the new APK and the backed-up prior APK failed, including with a temporary 64 MiB storage threshold and an explicit internal-volume request. The threshold was restored and verified `null`. At handoff, `/data` had 735 MiB free, host C had about 107 GB free, no active install sessions existed, and no disposable temporary APKs were found. No models, settings or recordings were deleted. The package remained uninstalled with retained data, and restoration was escalated to the coordinator. The prior APK is preserved outside the worktree at `C:/Users/User/.codex/visualizations/2026/09/26/01a0df6d-b800-7a42-bb07-d8851c9d7fac/share07-prior.apk`.
+
+The build/native slot was released to SHARE-09, explicitly excluding emulator control pending coordinator recovery. Physical headset validation, Android ownership transfer, UI runtime/accessibility checks and compatibility results remain open. SHARE-06 is not complete.
+
 ## Existing flow
 
 Activity and IME both use RecognizerView and the RecordingSession in AudioRecognizer.kt. Capture uses VOICE_RECOGNITION, mono PCM at 16 kHz. There is no explicit Bluetooth selection. startRecording clears captured samples, so restarting it to change routes would lose the current utterance. reset invalidates the recognition generation and cancels work. Recorder release is centralized, but its early return when no recorder exists cannot own cleanup of a route acquired before recorder creation.
