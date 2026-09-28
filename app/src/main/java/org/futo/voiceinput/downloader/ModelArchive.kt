@@ -9,8 +9,6 @@ import java.io.InputStream
 import java.security.DigestInputStream
 import java.security.MessageDigest
 import okhttp3.OkHttpClient
-import okhttp3.Request
-import java.io.IOException
 
 internal fun downloadModelArchive(
     client: OkHttpClient,
@@ -19,58 +17,12 @@ internal fun downloadModelArchive(
     targetDirectory: File,
     archiveRoot: String,
     artifacts: List<RecognitionModelArtifact>,
+    onRestart: () -> Unit = {},
     onProgress: (Long) -> Unit = {}
 ) {
     require(archive.sizeBytes > 0)
-    savedArchive.parentFile?.mkdirs()
-    if (savedArchive.length() > archive.sizeBytes) {
-        check(savedArchive.delete()) { "Failed to discard oversized archive" }
-    }
-    var downloaded = savedArchive.length()
-    onProgress(downloaded)
-    if (downloaded < archive.sizeBytes) {
-        val request = Request.Builder().url(archive.url).header("Accept-Encoding", "identity")
-        if (downloaded > 0) request.header("Range", "bytes=$downloaded-")
-        client.newCall(request.build()).execute().use { response ->
-            val append = response.code == 206
-            if (append) {
-                val expectedRange = "bytes $downloaded-${archive.sizeBytes - 1}/${archive.sizeBytes}"
-                if (response.header("Content-Range") != expectedRange) {
-                    throw IOException("Server returned an unexpected download range")
-                }
-            } else if (response.code == 200) {
-                // Servers may ignore Range. Replace the partial file rather than append a full response.
-                downloaded = 0
-            } else {
-                throw IOException("HTTP ${response.code}")
-            }
-            val body = response.body ?: throw IOException("Empty response")
-            val expectedBytes = archive.sizeBytes - downloaded
-            if (body.contentLength() >= 0 && body.contentLength() != expectedBytes) {
-                throw IOException("Downloaded archive size mismatch")
-            }
-            body.byteStream().use { input ->
-                java.io.FileOutputStream(savedArchive, append).use { output ->
-                    val buffer = ByteArray(128 * 1024)
-                    while (true) {
-                        val read = input.read(buffer)
-                        if (read == -1) break
-                        if (read > archive.sizeBytes - downloaded) {
-                            throw IOException("Downloaded archive exceeds expected size")
-                        }
-                        output.write(buffer, 0, read)
-                        downloaded += read
-                        onProgress(downloaded)
-                    }
-                }
-            }
-        }
-    }
-    if (savedArchive.length() != archive.sizeBytes) throw IOException("Archive download ended early")
-    if (sha256(savedArchive) != archive.sha256) {
-        check(savedArchive.delete()) { "Failed to discard corrupt archive" }
-        throw IOException("Downloaded archive checksum mismatch; retry to download a fresh copy")
-    }
+    downloadSequentialFile(client, archive.url, savedArchive, archive.sizeBytes, archive.sha256,
+        onRestart, onProgress)
     savedArchive.inputStream().use { input ->
         extractModelArchive(input, targetDirectory, archiveRoot, artifacts, archive.sha256)
     }

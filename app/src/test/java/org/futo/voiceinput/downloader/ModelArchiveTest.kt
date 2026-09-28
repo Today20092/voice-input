@@ -80,26 +80,24 @@ class ModelArchiveTest {
     fun rejectsWrongRangesAndSafelyRestartsWhenRangeIsIgnored() {
         val bytes = archive("model/model.bin", "valid".toByteArray())
         val saved = temporaryFolder.root.resolve("archive.download")
-        saved.writeBytes(bytes.copyOfRange(0, 10))
         val artifact = RecognitionModelArtifact("model.bin", "https://example.com/model", 5, sha256("valid".toByteArray()))
         val archive = artifact.copy(name = "model.tar.bz2", sizeBytes = bytes.size.toLong(), sha256 = sha256(bytes))
         val target = temporaryFolder.root.resolve("model")
         for (code in listOf(206, 200)) {
+            saved.writeBytes(bytes.copyOfRange(0, 10))
+            val requests = mutableListOf<String?>()
             val client = OkHttpClient.Builder().addInterceptor { chain ->
-                assertEquals("bytes=10-", chain.request().header("Range"))
+                requests += chain.request().header("Range")
                 Response.Builder().request(chain.request()).protocol(Protocol.HTTP_1_1)
-                    .code(code).message("OK").body(bytes.toResponseBody())
+                    .code(if (requests.size == 1) code else 200).message("OK").body(bytes.toResponseBody())
                     .header("Content-Range", "bytes 0-${bytes.lastIndex}/${bytes.size}").build()
             }.build()
-            if (code == 206) {
-                assertThrows(IOException::class.java) {
-                    downloadModelArchive(client, archive, saved, target, "model", listOf(artifact))
-                }
-                assertEquals(10L, saved.length())
-            } else {
-                downloadModelArchive(client, archive, saved, target, "model", listOf(artifact))
-                assertEquals("valid", target.resolve("model.bin").readText())
-            }
+            var restarts = 0
+            downloadModelArchive(client, archive, saved, target, "model", listOf(artifact),
+                onRestart = { restarts++ })
+            assertEquals(1, restarts)
+            assertEquals(if (code == 206) listOf("bytes=10-", null) else listOf("bytes=10-"), requests)
+            assertEquals("valid", target.resolve("model.bin").readText())
         }
     }
 

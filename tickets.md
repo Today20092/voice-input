@@ -247,6 +247,10 @@ In the signed `v1.4.2-beta.5` prerelease, Download Progress remained at 4 of 6 f
 
 ## Resume interrupted model downloads across retries
 
+**Working branch:** codex/resume-downloads
+
+**Claimed by:** Codex download-resumption chat
+
 **What to build:** Preserve validated files and partial transfer progress when a large recognition-model download stalls or is retried, avoiding another full transfer of completed data.
 
 **Blocked by:** None — can start immediately.
@@ -257,7 +261,11 @@ In the signed `v1.4.2-beta.5` prerelease, Download Progress remained at 4 of 6 f
 - [ ] Retrying a partially downloaded file continues from its saved byte position when the server supports range requests.
 - [ ] If a server cannot resume safely, the UI explains that the affected file must restart instead of silently presenting it as resumed.
 - [ ] A failed retry cannot replace a previously validated file or mark an incomplete model as installed.
-- [ ] A focused download check covers interruption and retry of a large model artifact.
+- [x] A focused download check covers interruption and retry of a large model artifact.
+
+### Implementation checkpoint
+
+Implemented on `codex/resume-downloads` after the verified Nemotron prerequisite. Eight standalone Kotlin/JUnit transfer tests pass, including an interrupted 33 MiB artifact. Standards and specification reviews are clear after correcting refused-range recovery. App Gradle, archive integration tests, and Android UI checks await the shared build slot; the ticket remains open. See [verification evidence](docs/download-resumption-verification.md).
 
 ### Beta observation
 
