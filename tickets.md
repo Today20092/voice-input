@@ -230,7 +230,7 @@ Confirmed in the signed `v1.4.2-beta.5` prerelease: start on Input, swipe from t
 
 - [x] Starting a Nemotron 3.5 Multilingual download does not request `test_wavs/en.wav` or `test_wavs/ja.wav`.
 - [x] The model becomes installed after its runtime model and token files download and validate.
-- [ ] Existing incomplete installations that are waiting on test recordings can recover without downloading completed runtime files again.
+- [x] Existing incomplete installations that are waiting on test recordings can recover without downloading completed runtime files again.
 - [x] A focused catalog check prevents non-runtime test assets from returning to the installation manifest.
 
 ### Implementation and verification
@@ -239,7 +239,7 @@ Removed only the two test recordings from the manifest, retaining runtime identi
 
 Verified the catalog regression fails against the old six-file manifest and passes after removal. Catalog and retry JVM tests cover completion without WAVs and rejection of invalid runtime sizes/hashes using small fixture files. `:app:testDevDebugUnitTest --max-workers=2` passed with 143 tests, zero failures, and one skipped test. `:app:compileDevDebugAndroidTestKotlin --max-workers=2` passed. Standards and spec reviews found no issues.
 
-Pending: execute `RecognitionModelRequestTest` on Android to verify restored-intent handling. The recovery criterion remains open until that check runs; no model downloads or native inference tests were performed.
+Final verification on 2026-09-28: `:app:assembleDevDebug :app:assembleDevDebugAndroidTest --max-workers=2` passed with `CMAKE_BUILD_PARALLEL_LEVEL=2`. On Pixel_10 (`emulator-5554`, Android 37), `adb -s emulator-5554 shell am instrument -w -r -e class org.futo.voiceinput.downloader.RecognitionModelRequestTest org.futo.voiceinput.dev.test/androidx.test.runner.AndroidJUnitRunner` passed both tests. Restored managed requests use the current four-file manifest; unmanaged requests stay unchanged. App data was preserved and the temporary emulator storage threshold was restored. All acceptance criteria are verified; no model downloads or native inference tests were performed.
 
 ### Beta observation
 
