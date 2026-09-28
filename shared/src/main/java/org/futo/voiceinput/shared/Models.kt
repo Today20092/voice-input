@@ -59,9 +59,10 @@ private val Nemotron600M = ModelDownloadable(
 )
 
 val ENGLISH_MODELS: List<ModelLoader> = listOf(
-    ModelBuiltInAsset(
+    ModelDownloadable(
         name = R.string.tiny_en_name,
-        ggmlFile = "tiny_en_acft_q8_0.bin.not.tflite",
+        ggmlFile = "tiny_en_acft_q8_0.bin",
+        checksum = "4b5480aa1b14a7efc5b578ef176510970a898049671c3cd237285b3e3f6bfbfc",
         caps = WhisperEnCapabilities,
     ),
     ModelDownloadable(
@@ -83,12 +84,10 @@ val ENGLISH_MODELS: List<ModelLoader> = listOf(
         caps = Asr4AllCapabilities,
         backwardsCompatFiles = listOf("asr4all-s-Q8_0.gguf"),
     ),
-    ModelDownloadable(
+    ModelBuiltInAsset(
         name = R.string.asr4all_m_name,
         ggmlFile = "asr4all-m-Q8_0-v2.gguf",
-        checksum = "3894142e1dbea2e47a88decc8c3c022d1eb1b1d650792d00e2dce5cf1867b055",
         caps = Asr4AllCapabilities,
-        backwardsCompatFiles = listOf("asr4all-m-Q8_0.gguf"),
     ),
     ModelDownloadable(
         name = R.string.asr4all_l_name,
@@ -142,6 +141,8 @@ val ENGLISH_MODELS: List<ModelLoader> = listOf(
         )
     ),
 )
+
+val DEFAULT_ENGLISH_MODEL_IDX = ENGLISH_MODELS.indexOfFirst { it is ModelBuiltInAsset }
 
 val MULTILINGUAL_MODELS: List<ModelLoader> = listOf(
     ModelDownloadable(

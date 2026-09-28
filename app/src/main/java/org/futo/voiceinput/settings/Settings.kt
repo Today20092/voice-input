@@ -11,21 +11,16 @@ import androidx.datastore.preferences.core.preferencesOf
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
-import androidx.lifecycle.LifecycleOwner
-import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.DelicateCoroutinesApi
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withContext
 import org.futo.voiceinput.BuildConfig
+import org.futo.voiceinput.shared.DEFAULT_ENGLISH_MODEL_IDX
 import org.futo.voiceinput.theme.presets.DevThemeYellow
 import org.futo.voiceinput.theme.presets.VoiceInputTheme
 
@@ -107,7 +102,7 @@ val ENABLE_MULTILINGUAL = SettingsKey(booleanPreferencesKey("enable_multilingual
 val DISALLOW_SYMBOLS = SettingsKey(booleanPreferencesKey("disallow_symbols"), true)
 val ENABLE_30S_LIMIT = SettingsKey(booleanPreferencesKey("enable_30s_limit"), false)
 
-val ENGLISH_MODEL_INDEX = SettingsKey(intPreferencesKey("english_model_index"), 0)
+val ENGLISH_MODEL_INDEX = SettingsKey(intPreferencesKey("english_model_index"), DEFAULT_ENGLISH_MODEL_IDX)
 
 val MULTILINGUAL_MODEL_INDEX = SettingsKey(intPreferencesKey("multilingual_model_index"), 1)
 
@@ -141,4 +136,4 @@ val THEME_KEY = SettingsKey(
 )
 
 val BEAM_SEARCH = SettingsKey(key = booleanPreferencesKey("use_beam_search"), default = true)
-val STREAMING_TIER = SettingsKey(intPreferencesKey("streaming_tier"), 3)
+val STREAMING_TIER = SettingsKey(intPreferencesKey("streaming_tier"), 1)

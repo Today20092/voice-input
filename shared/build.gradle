@@ -1,3 +1,5 @@
+import java.security.MessageDigest
+
 plugins {
     id 'com.android.library' version '9.2.1'
     id 'org.jetbrains.kotlin.android' version '2.2.10'
@@ -68,6 +70,51 @@ final def translationsWithoutEngValues = { final String path ->
 
     destDir
 }
+
+def assetsDir = "$projectDir/src/main/assets"
+def modelFile = new File("$assetsDir/asr4all-m-Q8_0-v2.gguf")
+def expectedModelChecksum = "3894142e1dbea2e47a88decc8c3c022d1eb1b1d650792d00e2dce5cf1867b055"
+
+def calculateSha256(File file) {
+    def digest = MessageDigest.getInstance("SHA-256")
+    file.withInputStream { input ->
+        def buffer = new byte[8192]
+        int bytesRead
+        while ((bytesRead = input.read(buffer)) != -1) {
+            digest.update(buffer, 0, bytesRead)
+        }
+    }
+    return digest.digest().collect { String.format("%02x", it) }.join()
+}
+
+tasks.register("downloadModel") {
+    def sourceUrl = "https://dl.voiceinput.futo.org/VoiceInput/asr4all-m-Q8_0-v2.gguf"
+
+    outputs.file(modelFile)
+
+    doLast {
+        if (!modelFile.exists()) {
+            modelFile.parentFile.mkdirs()
+            println "Downloading model..."
+            new URL(sourceUrl).withInputStream { i ->
+                modelFile.withOutputStream { it << i }
+            }
+            println "Download complete: ${modelFile.length()} bytes"
+
+            def actualChecksum = calculateSha256(modelFile)
+            if(actualChecksum.equalsIgnoreCase(expectedModelChecksum)) {
+                println "Checksum verified: $actualChecksum"
+            } else {
+                modelFile.delete()
+                throw new GradleException("Model file checksum mismatch: expected $expectedModelChecksum, got $actualChecksum")
+            }
+        } else {
+            println "Model already exists, skipping download"
+        }
+    }
+}
+
+preBuild.dependsOn("downloadModel")
 
 android {
     namespace 'org.futo.voiceinput.shared'
