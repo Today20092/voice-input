@@ -336,4 +336,5 @@
     <string name="unobtrusive_recognizer">Unobtrusive recognizer popup (beta)</string>
     <string name="unobtrusive_recognizer_subtitle">Move the speech recognition popup near the bottom without dimming the app behind it. Does not change the voice keyboard layout.</string>
     <string name="recognizer_model_caption">Model: %1$s</string>
+    <string name="download_restarted">This file must restart because the server or saved download cannot be resumed safely. Validated files are kept.</string>
 </resources>

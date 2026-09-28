@@ -247,6 +247,10 @@ In the signed `v1.4.2-beta.5` prerelease, Download Progress remained at 4 of 6 f
 
 ## Resume interrupted model downloads across retries
 
+**Working branch:** codex/resume-downloads
+
+**Claimed by:** Codex download-resumption chat
+
 **What to build:** Preserve validated files and partial transfer progress when a large recognition-model download stalls or is retried, avoiding another full transfer of completed data.
 
 **Blocked by:** None — can start immediately.
