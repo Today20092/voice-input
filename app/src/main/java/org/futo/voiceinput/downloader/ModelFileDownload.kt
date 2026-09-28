@@ -21,6 +21,19 @@ internal val modelDownloadMutex = Mutex()
 
 private class RangeUnsupported : IOException("Server does not support download ranges")
 
+internal fun retainedDownloadBytes(target: File, size: Long): Long {
+    val file = File(target.path + ".download")
+    val sequential = File(file.path + ".sequential")
+    if (sequential.exists()) return sequential.length().coerceAtMost(size)
+    if (!file.exists()) return 0
+    // A ranged file can be sparse: its apparent length is not its saved byte count.
+    return downloadRanges(size, if (size >= 32L * 1024 * 1024) 4 else 1).mapIndexed { index, range ->
+        val checkpoint = File(file.path + ".range$index")
+        val count = if (checkpoint.isFile) checkpoint.readText().toLongOrNull() ?: 0L else 0L
+        count.takeIf { it in 0..range.size && (it == 0L || range.start + it <= file.length()) } ?: 0L
+    }.sum()
+}
+
 internal fun validModelFile(file: File, size: Long?, hash: String?): Boolean =
     file.isFile && file.length() > 0 && (size == null || file.length() == size) &&
         (hash == null || sha256(file) == hash)
@@ -74,11 +87,11 @@ internal suspend fun downloadModelFile(
                 val request = Request.Builder().url(url).header("Accept-Encoding", "identity")
                     .header("Range", "bytes=$start-${range.endInclusive}").build()
                 client.newCall(request).execute().use { response ->
-                    if (response.code == 200) throw RangeUnsupported()
-                    if (response.code != 206 ||
-                        response.header("Content-Range") != "bytes $start-${range.endInclusive}/$size") {
-                        throw IOException("Server returned an unexpected download range")
+                    if (response.code == 200 || response.code == 416 ||
+                        response.code == 206 && response.header("Content-Range") != "bytes $start-${range.endInclusive}/$size") {
+                        throw RangeUnsupported()
                     }
+                    if (response.code != 206) throw IOException("HTTP ${response.code}")
                     val body = response.body ?: throw IOException("Empty download response")
                     val remaining = range.size - downloaded
                     if (body.contentLength() >= 0 && body.contentLength() != remaining) {
@@ -117,6 +130,9 @@ internal suspend fun downloadModelFile(
     } catch (_: RangeUnsupported) {
         coroutineContext.ensureActive()
         if (!sequential.exists()) onRestart()
+        // The server cannot reuse these ranges. Free their space before the full transfer.
+        if (file.exists() && !file.delete()) throw IOException("Cannot restart partial download")
+        checkpoints.forEach { if (it.exists() && !it.delete()) throw IOException("Cannot reset download progress") }
         val context = coroutineContext
         downloadSequentialFile(client, url, sequential, size, hash, onRestart) {
             context.ensureActive()
@@ -155,10 +171,16 @@ internal fun downloadSequentialFile(
     var downloaded = file.length()
     onProgress(downloaded)
     if (size == null || downloaded < size) {
+        var restart = false
         val request = Request.Builder().url(url).header("Accept-Encoding", "identity")
         if (downloaded > 0) request.header("Range", "bytes=$downloaded-")
         client.newCall(request.build()).execute().use { response ->
             val append = response.code == 206
+            if (downloaded > 0 && (response.code == 416 || append &&
+                response.header("Content-Range") != "bytes $downloaded-${size?.minus(1)}/$size")) {
+                restart = true
+                return@use
+            }
             if (append) {
                 if (size == null || response.header("Content-Range") != "bytes $downloaded-${size - 1}/$size") {
                     throw IOException("Server returned an unexpected download range")
@@ -187,6 +209,13 @@ internal fun downloadSequentialFile(
                 }
             }
             if (total != null && downloaded != total) throw IOException("Download ended early")
+        }
+        if (restart) {
+            onRestart()
+            if (!file.delete()) throw IOException("Cannot restart partial download")
+            // A fresh request has offset zero, so a second invalid response fails instead of looping.
+            downloadSequentialFile(client, url, file, size, hash, onRestart, onProgress)
+            return
         }
     }
     if (size != null && file.length() != size) throw IOException("Download ended early")

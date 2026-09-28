@@ -192,6 +192,35 @@ class ModelFileDownloadTest {
         assertEquals("good", target.readText())
     }
 
+    @Test fun rejectedResumeFallsBackToOneFreshRequest() = runBlocking {
+        for (responseCode in listOf(206, 416)) {
+            val target = temporary.root.resolve("model$responseCode.bin")
+            temporary.root.resolve("model$responseCode.bin.download.sequential").writeText("go")
+            val requests = mutableListOf<String?>()
+            val client = OkHttpClient.Builder().addInterceptor { chain ->
+                val range = chain.request().header("Range")
+                requests += range
+                Response.Builder().request(chain.request()).protocol(Protocol.HTTP_1_1).message("OK")
+                    .code(if (range == null) 200 else responseCode)
+                    .header("Content-Range", "bytes 0-3/4").body("good".toResponseBody()).build()
+            }.build()
+            var restarts = 0
+            downloadModelFile(client, "https://example.com/model", target, 4, hash("good".toByteArray()),
+                onRestart = { restarts++ })
+            assertEquals(listOf("bytes=2-", null), requests)
+            assertEquals(1, restarts)
+            assertEquals("good", target.readText())
+        }
+    }
+
+    @Test fun freeSpaceEstimateUsesSavedBytesRatherThanSparseFileLength() {
+        val target = temporary.root.resolve("large.bin")
+        val size = 40L * 1024 * 1024
+        java.io.RandomAccessFile(temporary.root.resolve("large.bin.download"), "rw").use { it.setLength(size) }
+        temporary.root.resolve("large.bin.download.range3").writeText("4096")
+        assertEquals(4096L, retainedDownloadBytes(target, size))
+    }
+
     private fun hash(bytes: ByteArray) = MessageDigest.getInstance("SHA-256")
         .digest(bytes).joinToString("") { "%02x".format(it) }
 }

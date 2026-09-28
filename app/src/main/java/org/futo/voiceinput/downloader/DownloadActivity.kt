@@ -784,6 +784,16 @@ class DownloadActivity : ComponentActivity() {
         lifecycleScope.launch {
             modelsToDownload = withContext(Dispatchers.IO) {
                 val incomplete = incompleteDownloads(allRequestedFiles, ::isValidTargetFile)
+                if (archiveToDownload == null) {
+                    val retained = allRequestedFiles.sumOf { model ->
+                        if (model !in incomplete) model.expectedSize ?: model.targetFile.length()
+                        else model.expectedSize?.let { retainedDownloadBytes(model.targetFile, it) } ?: 0L
+                    }
+                    confirmation = confirmation?.let {
+                        it.copy(requiredFreeSpaceBytes = (it.requiredFreeSpaceBytes - retained).coerceAtLeast(0L),
+                            availableBytes = filesDir.usableSpace)
+                    }
+                }
                 if (archiveToDownload != null && incomplete.isNotEmpty()) {
                     listOf(requireNotNull(archiveToDownload))
                 } else {
