@@ -1,5 +1,9 @@
 # SHARE adoption and beta coordination
 
+> Historical coordination log. Superseded on 2026-09-28 by
+> [the serial beta finish plan](share-beta-finish.md). The old heartbeat was deleted;
+> dispatch instructions and active-status statements below are historical.
+
 Baseline: `eb5e1dadfd9d6ceb2ebb78ca4f403d2718bddcf8` from `origin/master`.
 Coordinator chat: `01a0df68-5245-78d1-9e16-f31f778c85fb`.
 Integration branch: `codex/share-beta-integration`.

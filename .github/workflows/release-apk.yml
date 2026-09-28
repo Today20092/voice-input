@@ -65,7 +65,7 @@ jobs:
 
       - name: Build APK
         run: |
-          ./gradlew :app:testStandaloneReleaseUnitTest :app:assembleStandaloneRelease
+          ./gradlew :app:testStandaloneReleaseUnitTest :app:lintStandaloneRelease :app:compileDevDebugAndroidTestKotlin :app:assembleStandaloneRelease
           echo "APK_DIR=app/build/outputs/apk/standalone/release" >> "$GITHUB_ENV"
           echo "APK_NAME=futo-voice-input-moonshine" >> "$GITHUB_ENV"
 
