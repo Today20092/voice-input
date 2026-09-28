@@ -1,0 +1,16 @@
+plugins { id 'org.jetbrains.kotlin.jvm' version '2.1.0' }
+
+def sdk = System.getenv('ANDROID_HOME') ?: "${System.getenv('LOCALAPPDATA')}/Android/Sdk"
+dependencies {
+    compileOnly files("${sdk}/platforms/android-35/android.jar")
+    testImplementation files("${sdk}/platforms/android-35/android.jar")
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0'
+    testImplementation 'junit:junit:4.13.2'
+}
+kotlin.compilerOptions.jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
+java { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
+sourceSets.main.kotlin {
+    srcDirs 'src/main/kotlin', '../../app/src/main/java'
+    include 'org/futo/voiceinput/experiment/**', 'org/futo/voiceinput/backend/SpeechBackend.kt'
+}
+test { maxParallelForks = 1 }
