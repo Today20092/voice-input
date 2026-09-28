@@ -434,7 +434,7 @@ The [pre-change diagnostic baseline](docs/research/phone-diagnostics-baseline-20
 
 ## SHARE-01: Integrate FUTO Keyboard external-provider setup
 
-**Triage:** ready-for-agent
+**Triage:** ready-for-human
 
 **Priority:** P1
 
@@ -442,12 +442,20 @@ The [pre-change diagnostic baseline](docs/research/phone-diagnostics-baseline-20
 
 **Blocked by:** None.
 
-- [ ] Detect the supported stable/unstable FUTO Keyboard package and use the actual installed application ID, including the .moonshine and development flavors, as targetPackage.
-- [ ] Read-only checks do not change keyboard preferences. An explicit user choice invokes supported switching/confirmation behavior; success, cancellation, unknown results, and missing activities are handled separately.
-- [ ] Do not infer that external input is enabled solely because check mode returns the remembered target package. Re-check after returning from setup, ignore stale responses, and avoid repeated setup loops.
-- [ ] Add necessary package visibility and resilient keyboard-settings launching. If unsupported or unavailable, show specific manual instructions without crashing or claiming success.
+**Working branch:** codex/share-01
+
+**Claimed by:** SHARE-01 chat in worktree 2e21
+
+- [x] Detect the supported stable/unstable FUTO Keyboard package and use the actual installed application ID, including the .moonshine and development flavors, as targetPackage.
+- [x] Read-only checks do not change keyboard preferences. An explicit user choice invokes supported switching/confirmation behavior; success, cancellation, unknown results, and missing activities are handled separately.
+- [x] Do not infer that external input is enabled solely because check mode returns the remembered target package. Re-check after returning from setup, ignore stale responses, and avoid repeated setup loops.
+- [x] Add necessary package visibility and resilient keyboard-settings launching. If unsupported or unavailable, show specific manual instructions without crashing or claiming success.
 - [ ] Test protocol arguments and lifecycle/result handling. On a device with FUTO Keyboard, verify microphone launch reaches this fork, dictation returns correctly, and cancellation returns to typing; record the keyboard version and test both supported and fallback paths.
-- [ ] Relevant unit/UI, assembly, and lint checks pass. Preserve existing generic recognition-activity and IME integration.
+- [x] Relevant unit/UI, assembly, and lint checks pass. Preserve existing generic recognition-activity and IME integration.
+
+### Resolution
+
+Implementation and review are complete; the ticket remains open for real dictation interoperability and TalkBack checks. Validation on 2026-09-28 passed 148 JVM tests, five Android provider tests, dev APK/test-APK assembly, and lint. Verified the unavailable-protocol/manual settings path against official FUTO Keyboard 0.1.30, version code 11751, on the Android 37 Pixel_10 emulator, including settings return and landscape at 1.5 font scale. The initial instrumentation run was killed by the emulator's low-memory killer; the isolated test and full rerun passed without code changes. See [validation details and remaining device checks](docs/testing/share-01-keyboard-provider.md). No recognition or IME delivery code changed.
 
 
 ## SHARE-02: Make IME text insertion session-safe

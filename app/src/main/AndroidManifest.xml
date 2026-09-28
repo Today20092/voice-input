@@ -10,13 +10,10 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
-    <!--
     <queries>
-        <intent>
-            <action android:name="android.speech.RecognitionService" />
-        </intent>
+        <package android:name="org.futo.inputmethod.latin" />
+        <package android:name="org.futo.inputmethod.latin.unstable" />
     </queries>
-    -->
 
     <application
         android:allowBackup="false"
