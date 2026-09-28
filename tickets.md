@@ -628,8 +628,18 @@ The [pre-change diagnostic baseline](docs/research/phone-diagnostics-baseline-20
 
 **Blocked by:** None for factual corrections; descriptions of new behavior wait until that behavior ships.
 
+**Working branch:** codex/share-12
+
+**Claimed by:** SHARE-12 documentation chat
+
 - [ ] Name and date the upstream branch/revision used for comparisons. Acknowledge its multi-model/streaming work without implying this fork lacks equivalent capabilities or claiming unmeasured performance wins.
 - [ ] Explain that FUTO Keyboard's built-in recognizer and the external fork are separate choices. Provide the supported switching path and manual fallback appropriate to the shipped app.
 - [ ] Keep this fork's package identity, GitHub update source, Orukeet default, retained models, and cleanup/history features accurate. Link source attribution and actual feature availability.
 - [ ] Describe any SwiftKey text-loss warning as an upstream report unless reproduced on our build; do not add a blanket incompatibility claim or disable unrelated keyboards without evidence.
 - [ ] Document SHARE-03's reopened status accurately and update the product comparison as accepted features ship. Validate links and ensure UI help does not promise unfinished ticket work.
+
+### Partial implementation, 2026-09-28
+
+Factual README and Help corrections are ready for integration. The README distinguishes the older comparison from the September 26 `share` review, records SHARE-03's reopened status, and attributes the SwiftKey report. Help distinguishes the built-in recognizer from this app and describes the existing Android voice-keyboard fallback. New SHARE-01 switching instructions and SHARE-03/04 availability claims remain pending verified implementations.
+
+Validation: XML parsing and uniqueness of the three new string resources, README relative-link file existence, pinned upstream link availability, and `git diff --check` passed. Standards and specification reviews found no actionable issues. No Gradle build, emulator, or device checks ran; Help rendering and accessibility remain unverified. Acceptance remains open for the integrated documentation pass.

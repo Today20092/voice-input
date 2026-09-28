@@ -108,6 +108,9 @@ fun HelpScreen(navController: NavHostController = rememberNavController()) {
         }
         Spacer(modifier = Modifier.height(16.dp))
 
+        textItem(stringResource(R.string.help_futo_keyboard_external))
+        textItem(stringResource(R.string.help_voice_keyboard_picker))
+
         textItem(stringResource(R.string.help_paragraph_3))
         Column(modifier = Modifier.padding(16.dp, 0.dp)) {
             textItem(stringResource(R.string.aosp_keyboard_included_in_aosp_based_roms))
@@ -127,6 +130,7 @@ fun HelpScreen(navController: NavHostController = rememberNavController()) {
             textItem(stringResource(R.string.grammarly_keyboard))
             textItem(stringResource(R.string.microsoft_swiftkey))
         }
+        textItem(stringResource(R.string.help_swiftkey_upstream_report))
 
         Spacer(modifier = Modifier.height(24.dp))
 
