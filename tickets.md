@@ -545,12 +545,24 @@ Implementation and review complete; ticket remains open for end-to-end device ev
 
 **Blocked by:** None.
 
-- [ ] During Activity dictation, live text updates coexist with recording feedback and do not replace the waveform view on every callback.
-- [ ] During processing or Catching up, preserve the latest relevant partial text without presenting it as the final delivered transcript. Clear it for a new session or cancellation.
+- [x] During Activity dictation, live text updates coexist with recording feedback and do not replace the waveform view on every callback.
+- [x] During processing or Catching up, preserve the latest relevant partial text without presenting it as the final delivered transcript. Clear it for a new session or cancellation.
 - [ ] IME composition and Activity results remain correct, and Stop, Cancel, language selection, download/error actions, and the optional popup keep working.
 - [ ] Use accessible text semantics; do not copy the Canvas-only transcript rendering as a requirement. Check font scaling, TalkBack, orientation, long text, and existing safe-area padding.
 - [ ] UI/state tests cover interleaved waveform, partial, status, and completion events without stale-session updates. Relevant tests, assembly, and lint pass.
 - [ ] Verify on-device. Keep the separate intermittent-waveform report open unless its specific symptom is reproduced and resolved; this ticket alone does not establish its cause.
+
+### Implementation and verification
+
+Source commit `cbaa04e` keeps one observable recognition presentation state, with the existing waveform and a bounded, scrollable provisional transcript. Processing and cleanup retain provisional text; reset, cancellation and completion clear it. The IME content slot reserves its existing bottom padding. Runtime status and Catching up callbacks check their generation on Main delivery, alongside the inherited SHARE-02 partial/final guards. Standards and Spec reviews found no actionable issues.
+
+Automated verification on 2026-09-28 used Android Studio JDK 21, Gradle `--max-workers=2`, and `CMAKE_BUILD_PARALLEL_LEVEL=2`:
+
+- `:app:testDevDebugUnitTest :app:assembleDevDebug :app:lintDevDebug :app:assembleDevDebugAndroidTest` passed. JVM results: 157 tests, 156 passed, one existing skip. Lint: zero errors, 82 warnings, 11 informational findings.
+- Pixel_10 emulator: all three `RecognitionContentTest` checks and all five inherited `ImeInsertionEditorTest` checks passed. The UI checks exercise interleaved waveform/text/status, provisional semantics, processing/completion/reset, 2x font with constrained height, scrolling without Stop, Stop/Cancel behavior, and IME bottom-padding reservation. Four captured images were inspected. The first two criteria above are verified through these state/Compose checks, not a physical-phone dictation run.
+- Local logs, screenshots and the prior emulator APK backup are retained under `app/build/share07-verification/`, outside version control. Installation required a data-preserving `pm uninstall -k`/reinstall and a temporary storage threshold; the original absent threshold was restored and verified. No app/model data was cleared.
+
+Still open: physical-phone dictation, TalkBack, actual orientation changes, optional popup and language/download/error flows. The state tests reject events after ending, but do not inject an old backend callback after a new recording starts through the actual private runtime dispatch boundary. These gaps keep the remaining criteria and this ticket open. The intermittent-waveform ticket is unchanged.
 
 
 ## SHARE-08: Recover once from a recoverable streaming failure
