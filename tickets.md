@@ -651,3 +651,7 @@ Implementation and review are complete; the ticket remains open for real dictati
 Factual README and Help corrections are ready for integration. The README distinguishes the older comparison from the September 26 `share` review, records SHARE-03's reopened status, and attributes the SwiftKey report. Help distinguishes the built-in recognizer from this app and describes the existing Android voice-keyboard fallback. New SHARE-01 switching instructions and SHARE-03/04 availability claims remain pending verified implementations.
 
 Validation: XML parsing and uniqueness of the three new string resources, README relative-link file existence, pinned upstream link availability, and `git diff --check` passed. Standards and specification reviews found no actionable issues. No Gradle build, emulator, or device checks ran; Help rendering and accessibility remain unverified. Acceptance remains open for the integrated documentation pass.
+
+### SHARE-01 documentation follow-up
+
+Integrated SHARE-01 at `5351c2e` and added its exact Support / FUTO Keyboard setup labels, read-only status limitation, and manual fallback to README and Help. The [verification record](docs/testing/share-01-keyboard-provider.md) distinguishes automated checks and the official 0.1.30 settings-return fallback from still-unverified dictation interoperability and TalkBack. SHARE-03/04 availability and the final integrated documentation pass remain pending; this follow-up does not close acceptance.

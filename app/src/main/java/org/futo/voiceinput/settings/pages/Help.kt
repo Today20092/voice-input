@@ -109,6 +109,7 @@ fun HelpScreen(navController: NavHostController = rememberNavController()) {
         Spacer(modifier = Modifier.height(16.dp))
 
         textItem(stringResource(R.string.help_futo_keyboard_external))
+        textItem(stringResource(R.string.help_futo_keyboard_setup))
         textItem(stringResource(R.string.help_voice_keyboard_picker))
 
         textItem(stringResource(R.string.help_paragraph_3))
