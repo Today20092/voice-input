@@ -96,7 +96,8 @@ internal enum class StopReason {
     Manual,
     Vad,
     DurationLimit,
-    Cancel
+    Cancel,
+    CaptureFailed
 }
 
 private enum class AppendResult {
@@ -115,7 +116,7 @@ internal object RecordingSessionPolicy {
         StopReason.Manual -> manualDrainMs.coerceIn(0L, 1500L)
         StopReason.Vad -> if (backendType == SpeechBackendType.Parakeet) PARAKEET_AUTO_STOP_DRAIN_MS else AUTO_STOP_DRAIN_MS
         StopReason.DurationLimit -> AUTO_STOP_DRAIN_MS
-        StopReason.Cancel -> 0L
+        StopReason.Cancel, StopReason.CaptureFailed -> 0L
     }
 }
 
@@ -315,6 +316,7 @@ abstract class RecordingSession {
     protected abstract fun permissionRejected()
 
     protected abstract fun recordingStarted()
+    protected open fun recordingInterrupted() {}
     protected abstract fun updateWaveform(bars: List<Pair<Float, Float>>, state: MagnitudeState)
 
     protected abstract fun processing()
@@ -647,6 +649,12 @@ abstract class RecordingSession {
         permissionRejected()
     }
 
+    private fun readRecorder(activeRecorder: AudioRecord, samples: ShortArray, mode: Int): Int = try {
+        activeRecorder.read(samples, 0, AUDIO_READ_SIZE, mode)
+    } catch (_: RuntimeException) {
+        AudioRecord.ERROR_INVALID_OPERATION
+    }
+
     private fun startRecording(numTries: Int = 0) {
         val report = diagnostics
         if (BuildConfig.DEBUG) Log.d("WaveformTiming", "recorder_requested t=${SystemClock.elapsedRealtime()}")
@@ -760,7 +768,7 @@ abstract class RecordingSession {
                         }
                         captureLoop@ while(stopReason == null && activeRecorder.recordingState == AudioRecord.RECORDSTATE_RECORDING){
                             yield()
-                            val nRead = activeRecorder.read(samples, 0, AUDIO_READ_SIZE, AudioRecord.READ_BLOCKING)
+                            val nRead = readRecorder(activeRecorder, samples, AudioRecord.READ_BLOCKING)
 
                             if(nRead <= 0) {
                                 if (RecordingSessionPolicy.shouldReportRecorderReadFailure(nRead,
@@ -880,7 +888,7 @@ abstract class RecordingSession {
                             // 100ms to process 100ms)
                             while(stopReason == null){
                                 yield()
-                                val nRead2 = activeRecorder.read(samples, 0, AUDIO_READ_SIZE, AudioRecord.READ_NON_BLOCKING)
+                                val nRead2 = readRecorder(activeRecorder, samples, AudioRecord.READ_NON_BLOCKING)
                                 if(nRead2 > 0) {
                                     when (appendSamples(samples, nRead2, captureGeneration)) {
                                         AppendResult.Accepted -> Unit
@@ -901,8 +909,16 @@ abstract class RecordingSession {
                             }
                         }
 
+                        withContext(Dispatchers.Main) {
+                            if (stopReason == null && captureGeneration == recognitionGeneration && isRecording) {
+                                stopReason = StopReason.CaptureFailed
+                                recordingInterrupted()
+                                finishRecognizer()
+                            }
+                        }
                         val reason = stopReason
-                        if(reason != null && reason != StopReason.Cancel && activeRecorder.recordingState == AudioRecord.RECORDSTATE_RECORDING) {
+                        if(reason != null && reason != StopReason.Cancel && reason != StopReason.CaptureFailed &&
+                            activeRecorder.recordingState == AudioRecord.RECORDSTATE_RECORDING) {
                             drainRecorderTail(activeRecorder, reason, samples, captureGeneration)
                             appendFinalSilence(captureGeneration)
                         }

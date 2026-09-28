@@ -10,6 +10,7 @@ import android.os.SystemClock
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityManager
+import android.widget.Toast
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.indication
@@ -349,6 +350,10 @@ abstract class RecognizerView {
 
         override fun microphoneRouteChanged(state: MicrophoneRouteState) {
             microphoneState.value = state
+        }
+
+        override fun recordingInterrupted() {
+            Toast.makeText(context, R.string.microphone_interrupted, Toast.LENGTH_LONG).show()
         }
 
         // Tries to play a sound. If it's not yet ready, plays it when it's ready

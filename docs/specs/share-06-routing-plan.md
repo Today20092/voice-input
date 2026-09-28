@@ -14,6 +14,10 @@ Six focused JUnit tests pass, and the Android adapter compiles against API 35. R
 
 Full unit suite, assembly, lint, UI/device checks and physical headset evidence remain pending. No headset test has been performed, and no legacy or BLE compatibility claim is made. The build slot is after SHARE-07, followed by SHARE-09. A premature workspace cleanup was recovered from snapshot `465020e`; no source files were lost.
 
+Standards review found no violations. Spec review identified two corrected issues: active labels now use the same numbering as the picker, and unexpected recorder termination now completes the retained utterance with an interruption notice instead of leaving the session appearing to record. Both blocking and nonblocking recorder read exceptions reach that terminal path. CaptureFailed skips tail reads; cancellation and stale generations are excluded. The Spec re-review found both issues addressed and no new deadlock/cancellation issue.
+
+The controller test for stale callbacks uses a fake platform. It does not validate process-wide Android ownership transfer, audio-mode restoration, or recorder/history integration. Those checks, the new CaptureFailed policy assertion, whole-app compilation and Compose UI checks remain on the queued validation list.
+
 ## Existing flow
 
 Activity and IME both use RecognizerView and the RecordingSession in AudioRecognizer.kt. Capture uses VOICE_RECOGNITION, mono PCM at 16 kHz. There is no explicit Bluetooth selection. startRecording clears captured samples, so restarting it to change routes would lose the current utterance. reset invalidates the recognition generation and cancels work. Recorder release is centralized, but its early return when no recorder exists cannot own cleanup of a route acquired before recorder creation.

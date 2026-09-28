@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="microphone_phone">Phone microphone</string>
+    <string name="microphone_interrupted">The microphone stopped. Transcribing the audio already recorded. Start a new recording to continue.</string>
     <string name="microphone_bluetooth">Bluetooth microphone</string>
     <string name="microphone_other">Other microphone</string>
     <string name="microphone_unknown">Microphone route not confirmed</string>

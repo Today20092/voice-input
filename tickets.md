@@ -534,6 +534,10 @@ Implementation and review complete; ticket remains open for end-to-end device ev
 - [ ] Focused state tests and real phone/headset tests cover route selection, denied/unavailable routing, disconnect, repeated sessions, Activity, and IME. Record Android/headset details and any unsupported combinations.
 - [ ] Relevant tests, assembly, and lint pass; do not mark hardware validation complete without a real headset test.
 
+### Implementation checkpoint
+
+Implemented on `codex/share-06`, with SHARE-02 generation guards incorporated. See [routing plan and validation gaps](docs/specs/share-06-routing-plan.md). Six focused routing-controller tests pass and the Android adapter compiles against API 35. Standards review passed; Spec findings for active-device labels and interrupted capture were corrected and re-reviewed. Full app/unit/lint/assembly and UI checks await the shared build slot. Android ownership/mode restoration and physical phone/headset compatibility remain unverified. No acceptance checkbox is marked complete from JVM tests alone.
+
 
 ## SHARE-07: Keep waveform and live transcript visible together
 

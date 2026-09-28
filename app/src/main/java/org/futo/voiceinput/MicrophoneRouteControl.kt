@@ -25,10 +25,18 @@ private fun microphoneLabel(kind: MicrophoneKind?) = stringResource(when (kind) 
 })
 
 @Composable
+private fun deviceLabel(device: MicrophoneDevice?, devices: List<MicrophoneDevice>): String {
+    val label = microphoneLabel(device?.kind)
+    val peers = devices.filter { it.kind == device?.kind }
+    val index = peers.indexOf(device)
+    return if (peers.size > 1 && index >= 0) "$label ${index + 1}" else label
+}
+
+@Composable
 fun MicrophoneRouteControl(state: MicrophoneRouteState, select: (MicrophoneDevice) -> Unit) {
     if (!state.visible) return
     var expanded by remember { mutableStateOf(false) }
-    val active = microphoneLabel(state.active?.kind)
+    val active = deviceLabel(state.active, state.devices)
     val status = when {
         state.pending != null -> stringResource(R.string.microphone_connecting, active)
         state.failure != null -> stringResource(R.string.microphone_fallback, active)
@@ -41,10 +49,9 @@ fun MicrophoneRouteControl(state: MicrophoneRouteState, select: (MicrophoneDevic
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             state.devices.forEach { device ->
-                val peers = state.devices.filter { it.kind == device.kind }
-                val label = microphoneLabel(device.kind)
+                val label = deviceLabel(device, state.devices)
                 DropdownMenuItem(text = {
-                    Text(if (peers.size > 1) "$label ${peers.indexOf(device) + 1}" else label)
+                    Text(label)
                 }, onClick = { expanded = false; select(device) })
             }
         }
