@@ -13,6 +13,8 @@ data class ModelCapabilities(
     val supportsPersonalDict: Boolean,
     val supportsStreaming: Boolean,
     val isWhisper: Boolean = false,
+    val paramCount: Int = 0,
+    val banishedToOther: Boolean = false,
 )
 
 enum class ModelPresence {

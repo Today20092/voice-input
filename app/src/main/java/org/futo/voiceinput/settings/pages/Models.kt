@@ -1,26 +1,35 @@
 package org.futo.voiceinput.settings.pages
 
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import org.futo.voiceinput.R
 import org.futo.voiceinput.loadCurrentModelList
+import org.futo.voiceinput.settings.DataStoreItem
 import org.futo.voiceinput.settings.ENABLE_MULTILINGUAL
 import org.futo.voiceinput.settings.ENGLISH_MODEL_INDEX
 import org.futo.voiceinput.settings.LANGUAGE_TOGGLES
@@ -29,6 +38,7 @@ import org.futo.voiceinput.settings.MULTILINGUAL_MODEL_INDEX
 import org.futo.voiceinput.settings.PERSONAL_DICTIONARY
 import org.futo.voiceinput.settings.STREAMING_TIER
 import org.futo.voiceinput.settings.ScreenTitle
+import org.futo.voiceinput.settings.SettingItem
 import org.futo.voiceinput.settings.SettingRadio
 import org.futo.voiceinput.settings.SettingToggleDataStore
 import org.futo.voiceinput.settings.SettingsRootList
@@ -38,8 +48,10 @@ import org.futo.voiceinput.settings.USE_LANGUAGE_SPECIFIC_MODELS
 import org.futo.voiceinput.settings.useDataStore
 import org.futo.voiceinput.shared.ENGLISH_MODELS
 import org.futo.voiceinput.shared.MULTILINGUAL_MODELS
+import org.futo.voiceinput.shared.types.ModelLoader
 import org.futo.voiceinput.shared.types.getLanguageFromWhisperString
 import org.futo.voiceinput.startModelDownloadActivity
+import org.futo.voiceinput.theme.Typography
 
 @Composable
 fun modelsSubtitle(): String? {
@@ -136,6 +148,21 @@ fun ModelsScreen(
 
         Spacer(modifier = Modifier.height(32.dp))
 
+        val modelItems = @Composable { title: Int, setting: DataStoreItem<Int>, list: List<Pair<Int, ModelLoader>> ->
+            Text(stringResource(title), style = Typography.Heading.Medium.copy(fontSize = 16.sp), modifier = Modifier
+                .padding(24.dp, 4.dp).alpha(0.8f))
+            list.forEach {
+                SettingItem(
+                    title = stringResource(it.second.name),
+                    onClick = {
+                        setting.setValue(it.first)
+                    },
+                    disabled = false,
+                    icon = { RadioButton(selected = setting.value == it.first, onClick = { setting.setValue(it.first) }) }
+                ) { }
+            }
+        }
+
         if (useMultilingual) {
             if(!model.caps.supportsLanguageDetection) {
                 Tip(stringResource(R.string.model_settings_model_doesnt_support_detection))
@@ -150,21 +177,51 @@ fun ModelsScreen(
                 ))
             }
 
-            SettingRadio(
-                stringResource(R.string.multilingual_model),
-                MULTILINGUAL_MODELS.indices.toList(),
-                MULTILINGUAL_MODELS.map { stringResource(it.name) },
-                MULTILINGUAL_MODEL_INDEX
-            )
+            Surface(color = MaterialTheme.colorScheme.surfaceContainerHigh, shape = RoundedCornerShape(24.dp), modifier = Modifier.padding(16.dp)) {
+                Column(Modifier.padding(0.dp, 8.dp)) {
+                    Text(stringResource(R.string.multilingual_model), style = Typography.Heading.Medium,
+                        modifier = Modifier.align(Alignment.CenterHorizontally).padding(0.dp, 16.dp))
+
+                    val sortedModels = MULTILINGUAL_MODELS.mapIndexed { idx, it -> idx to it }
+                        .sortedBy { it.second.caps.paramCount }
+
+                    modelItems(
+                        R.string.streaming_models, multilingualModelIndex,
+                        sortedModels.filter { it.second.caps.supportsStreaming })
+
+                    modelItems(
+                        R.string.nonstreaming_models, multilingualModelIndex,
+                        sortedModels.filter { !it.second.caps.supportsStreaming })
+                }
+            }
+            Spacer(Modifier.height(16.dp))
         }
 
+
         if((!useMultilingual) || (languages.contains("en") && useLanguageSpecificModels)) {
-            SettingRadio(
-                stringResource(R.string.english_model),
-                ENGLISH_MODELS.indices.toList(),
-                ENGLISH_MODELS.map { stringResource(it.name) },
-                ENGLISH_MODEL_INDEX
-            )
+            Surface(color = MaterialTheme.colorScheme.surfaceContainerHigh, shape = RoundedCornerShape(24.dp), modifier = Modifier.padding(16.dp)) {
+                Column(Modifier.padding(0.dp, 8.dp)) {
+                    Text(stringResource(R.string.english_model), style = Typography.Heading.Medium,
+                        modifier = Modifier.align(Alignment.CenterHorizontally).padding(0.dp, 16.dp))
+
+                    val sortedModels = ENGLISH_MODELS.mapIndexed { idx, it -> idx to it }
+                        .sortedBy { it.second.caps.paramCount }
+
+                    modelItems(
+                        R.string.streaming_models, englishModelIndex,
+                        sortedModels.filter { it.second.caps.supportsStreaming && !it.second.caps.banishedToOther })
+
+                    modelItems(
+                        R.string.nonstreaming_models, englishModelIndex,
+                        sortedModels.filter { !it.second.caps.supportsStreaming && !it.second.caps.banishedToOther })
+
+                    modelItems(
+                        R.string.other_models, englishModelIndex,
+                        sortedModels.filter { it.second.caps.banishedToOther })
+                }
+            }
+
+            Spacer(Modifier.height(16.dp))
         }
 
         if(model.caps.supportsStreaming || modelEn.caps.supportsStreaming) {

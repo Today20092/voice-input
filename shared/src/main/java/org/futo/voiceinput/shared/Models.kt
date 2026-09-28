@@ -55,6 +55,7 @@ private val Nemotron600M = ModelDownloadable(
         supportsLanguageDetection = false,
         supportsPersonalDict = false,
         supportsStreaming = true,
+        paramCount = 600,
     )
 )
 
@@ -63,37 +64,37 @@ val ENGLISH_MODELS: List<ModelLoader> = listOf(
         name = R.string.tiny_en_name,
         ggmlFile = "tiny_en_acft_q8_0.bin",
         checksum = "4b5480aa1b14a7efc5b578ef176510970a898049671c3cd237285b3e3f6bfbfc",
-        caps = WhisperEnCapabilities,
+        caps = WhisperEnCapabilities.copy(paramCount = 39),
     ),
     ModelDownloadable(
         name = R.string.base_en_name,
         ggmlFile = "base_en_acft_q8_0.bin",
         checksum = "e9b4b7b81b8a28769e8aa9962aa39bb9f21b622cf6a63982e93f065ed5caf1c8",
-        caps = WhisperEnCapabilities,
+        caps = WhisperEnCapabilities.copy(paramCount = 74),
     ),
     ModelDownloadable(
         name = R.string.small_en_name,
         ggmlFile = "small_en_acft_q8_0.bin",
         checksum = "58fbe949992dafed917590d58bc12ca577b08b9957f0b3e0d7ee71b64bed3aa8",
-        caps = WhisperEnCapabilities,
+        caps = WhisperEnCapabilities.copy(paramCount = 244),
     ),
     ModelDownloadable(
         name = R.string.asr4all_s_name,
         ggmlFile = "asr4all-s-Q8_0-v2.gguf",
         checksum = "9c9cd8f8510a15f676df35f864009970ba073a0aa6d68caa36129c8b928dcb0c",
-        caps = Asr4AllCapabilities,
+        caps = Asr4AllCapabilities.copy(paramCount = 28),
         backwardsCompatFiles = listOf("asr4all-s-Q8_0.gguf"),
     ),
     ModelBuiltInAsset(
         name = R.string.asr4all_m_name,
         ggmlFile = "asr4all-m-Q8_0-v2.gguf",
-        caps = Asr4AllCapabilities,
+        caps = Asr4AllCapabilities.copy(paramCount = 56),
     ),
     ModelDownloadable(
         name = R.string.asr4all_l_name,
         ggmlFile = "asr4all-l-Q8_0.gguf",
         checksum = "bf42ca622c611ec6bf98d59c03011ce9f62552b7faa5b3f7741d4fcc4de569e5",
-        caps = Asr4AllCapabilities,
+        caps = Asr4AllCapabilities.copy(paramCount = 97),
     ),
     ModelDownloadable(
         name = R.string.parakeet_110m_name,
@@ -103,7 +104,8 @@ val ENGLISH_MODELS: List<ModelLoader> = listOf(
             supportedLanguages = setOf(Language.English),
             supportsLanguageDetection = false,
             supportsPersonalDict = false,
-            supportsStreaming = false
+            supportsStreaming = false,
+            paramCount = 110,
         )
     ),
     ModelDownloadable(
@@ -114,7 +116,9 @@ val ENGLISH_MODELS: List<ModelLoader> = listOf(
             supportedLanguages = setOf(Language.English),
             supportsLanguageDetection = false,
             supportsPersonalDict = false,
-            supportsStreaming = false // technically true but no chance it runs fast enough
+            supportsStreaming = false, // technically true but no chance it runs fast enough
+            paramCount = 600,
+            banishedToOther = true // should use nemotron instead
         )
     ),
     Nemotron600M,
@@ -127,6 +131,7 @@ val ENGLISH_MODELS: List<ModelLoader> = listOf(
             supportsLanguageDetection = false,
             supportsPersonalDict = false,
             supportsStreaming = true,
+            paramCount = 600,
         )
     ),
     ModelDownloadable(
@@ -137,7 +142,9 @@ val ENGLISH_MODELS: List<ModelLoader> = listOf(
             supportedLanguages = setOf(Language.English),
             supportsLanguageDetection = false,
             supportsPersonalDict = false, // TODO: double check
-            supportsStreaming = true
+            supportsStreaming = true,
+            paramCount = 100,
+            banishedToOther = true // seems to struggle streaming
         )
     ),
 )
@@ -149,19 +156,19 @@ val MULTILINGUAL_MODELS: List<ModelLoader> = listOf(
         name = R.string.tiny_name,
         ggmlFile = "tiny_acft_q8_0.bin",
         checksum = "07aa4d514144deacf5ffec5cacb36c93dee272fda9e64ac33a801f8cd5cbd953",
-        caps = WhisperMultiCapabilities,
+        caps = WhisperMultiCapabilities.copy(paramCount = 39),
     ),
     ModelDownloadable(
         name = R.string.base_name,
         ggmlFile = "base_acft_q8_0.bin",
         checksum = "e44f352c9aa2c3609dece20c733c4ad4a75c28cd9ab07d005383df55fa96efc4",
-        caps = WhisperMultiCapabilities,
+        caps = WhisperMultiCapabilities.copy(paramCount = 74),
     ),
     ModelDownloadable(
         name = R.string.small_name,
         ggmlFile = "small_acft_q8_0.bin",
         checksum = "15ef255465a6dc582ecf1ec651a4618c7ee2c18c05570bbe46493d248d465ac4",
-        caps = WhisperMultiCapabilities,
+        caps = WhisperMultiCapabilities.copy(paramCount = 244),
     ),
     Nemotron600M,
 )
