@@ -75,6 +75,10 @@ Implemented by `1aa54e6` (`feat: add Nemotron latency profiles`).
 
 **Plan ID:** SHARE-03
 
+**Working branch:** `codex/share-03`
+
+**Claimed by:** SHARE-03 chat `01a0df6d-a4d3-7b23-aff9-326ddb941334`
+
 **Triage:** ready-for-agent
 
 **Priority:** P2

@@ -45,6 +45,25 @@ Stage and validate a candidate without destroying the working installation. Coor
 
 The former implementation in 683be27 was intentionally removed by 47566e2. Use it as evidence and a test reference, not as a patch to restore wholesale. Test with two pinned fixtures; show a real update only when the production catalog contains a genuine supported successor.
 
+#### SHARE-03 readiness contract for SHARE-04
+
+This is the agreed behavior contract; concrete Kotlin names remain part of implementation. SHARE-03 implementation waits for the Nemotron runtime-assets correction and download-resumption handoff. SHARE-04 consumes lifecycle state rather than reconstructing installation status in its UI.
+
+| Lifecycle information | Consumer behavior |
+| --- | --- |
+| Usable installed version, including a supported older version | Permit selection and dictation; a newer catalog version alone never requires repair. |
+| Missing installation or incompatible/invalid assets, with a reason | Offer the existing explicit download or repair confirmation. Do not open it automatically. |
+| Optional successor with an immutable manifest explicitly known to the app | Offer an optional update independently of installed readiness. No real supported successor means no update notice. |
+| Candidate staged or awaiting safe activation | Keep the installed version usable. Do not report the candidate as active or clear its update notice prematurely. |
+
+An update action goes through the existing source, size, free-space, and cellular confirmation before any transfer. Space accounting includes the retained working installation and staging needs. Cancellation and failure preserve the previous selection and valid installation; dismissing an optional notice does not change readiness.
+
+The lifecycle exposes observable invalidation shared across its instances. Selection, successful installation, deletion, activation, and failed operations publish after the resulting state is settled. Observers recompute cheap readiness even when a failed operation leaves the installed version unchanged. Returning to the app refreshes from persisted metadata, so a missed event or process restart cannot leave a stale notice. Compose and startup perform no full-model hashing or network discovery. SHARE-04 owns presentation and optional-notice dismissal; SHARE-03 owns version identity, readiness, and invalidation.
+
+Stage and validate separately, then serialize activation against session/runtime acquisition. An active dictation retains its version through completion or cancellation; a new session cannot acquire assets midway through replacement. The next load resolves the activated version. Keep recovery metadata and the previous valid files until activation succeeds; interrupted or failed activation restores the usable installation before publishing state. Runtime-load failures must not invalidate an unrelated working version.
+
+Verify this contract using two explicit pinned fixtures: old-version readiness with an optional successor, no-successor silence, confirmation gating, interrupted/canceled/corrupt downloads, insufficient space, activation failure and recovery, session acquisition races, successful reload, and superseded-file cleanup. Verify invalidation after install, delete, activation, and failure, including failure with unchanged readiness. Download UI checks and real-device interrupted-update/reload checks remain required before release.
+
 ### Capabilities and presentation
 
 Distinguish inference-time vocabulary hints from our app's post-recognition vocabulary corrections. A model that lacks hinting still supports our correction stage. Do not import upstream's blanket personal-dictionary warning.
