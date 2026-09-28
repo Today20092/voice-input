@@ -25,26 +25,21 @@ import org.futo.voiceinput.BuildConfig
 import org.futo.voiceinput.MULTILINGUAL_MODELS
 import org.futo.voiceinput.ModelData
 import org.futo.voiceinput.R
-import org.futo.voiceinput.cohere.CohereLanguage
 import org.futo.voiceinput.modelNeedsDownloading
 import org.futo.voiceinput.downloader.startRecognitionModelDownloadActivity
 import org.futo.voiceinput.migration.ConditionalModelUpdate
 import org.futo.voiceinput.migration.NeedsMigration
-import org.futo.voiceinput.nemotron.NEMOTRON_MULTILINGUAL_LANGUAGES
 import org.futo.voiceinput.settings.DISMISS_MIGRATION_TIP
-import org.futo.voiceinput.settings.COHERE_LANGUAGE
 import org.futo.voiceinput.settings.ENABLE_MULTILINGUAL
 import org.futo.voiceinput.settings.ENGLISH_MODEL_INDEX
 import org.futo.voiceinput.settings.MODELS_MIGRATED
 import org.futo.voiceinput.settings.MOONSHINE_MODEL_VARIANT
 import org.futo.voiceinput.settings.NEMOTRON_PROFILE
-import org.futo.voiceinput.settings.NEMOTRON_MULTILINGUAL_LANGUAGE
 import org.futo.voiceinput.settings.MULTILINGUAL_MODEL_INDEX
 import org.futo.voiceinput.settings.SPEECH_BACKEND
 import org.futo.voiceinput.settings.ScreenTitle
 import org.futo.voiceinput.settings.ScrollableList
 import org.futo.voiceinput.settings.SettingItem
-import org.futo.voiceinput.settings.SettingRadio
 import org.futo.voiceinput.settings.SettingsViewModel
 import org.futo.voiceinput.settings.SpeechBackendType
 import org.futo.voiceinput.settings.Tip
@@ -131,32 +126,11 @@ fun ManagedRecognitionModelCatalog() {
                     onDeleted = { refresh.value += 1 }
                 )
             }
-            if (card.id == "nemotron-multilingual" &&
-                selectedModelId == RecognitionModelCatalog.nemotronMultilingual.id
-            ) {
-                SettingRadio(
-                    title = "Recognition language",
-                    options = NEMOTRON_MULTILINGUAL_LANGUAGES.map { it.id },
-                    optionNames = NEMOTRON_MULTILINGUAL_LANGUAGES.map { it.displayName },
-                    setting = NEMOTRON_MULTILINGUAL_LANGUAGE
-                )
-            }
-            if (card.id == "cohere" && selectedModelId == RecognitionModelCatalog.cohereTranscribe.id) {
-                CohereLanguageOptions()
+            card.models.firstOrNull { it.id == selectedModelId }?.let {
+                RecognitionModelLanguageOptions(it)
             }
         }
     }
-}
-
-@Composable
-fun CohereLanguageOptions() {
-    SettingRadio(
-        title = "Recognition language",
-        options = CohereLanguage.entries.map { it.id },
-        optionNames = CohereLanguage.entries.map { it.displayName },
-        setting = COHERE_LANGUAGE
-    )
-    Tip("Choose the language before dictating. Cohere does not auto-detect languages, and mixed-language speech may be inaccurate.")
 }
 
 @Composable

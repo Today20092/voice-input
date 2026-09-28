@@ -16,6 +16,20 @@ import kotlinx.coroutines.Job
 import org.futo.voiceinput.LANGUAGE_LIST
 import org.futo.voiceinput.MULTILINGUAL_MODELS
 import org.futo.voiceinput.R
+import org.futo.voiceinput.cohere.CohereLanguage
+import org.futo.voiceinput.cohere.toCohereLanguage
+import org.futo.voiceinput.moonshine.toMoonshineModelVariant
+import org.futo.voiceinput.nemotron.NEMOTRON_MULTILINGUAL_LANGUAGES
+import org.futo.voiceinput.nemotron.toNemotronLanguageCode
+import org.futo.voiceinput.nemotron.toNemotronProfile
+import org.futo.voiceinput.recognition.RecognitionModel
+import org.futo.voiceinput.recognition.RecognitionModelCatalog
+import org.futo.voiceinput.settings.COHERE_LANGUAGE
+import org.futo.voiceinput.settings.MOONSHINE_MODEL_VARIANT
+import org.futo.voiceinput.settings.NEMOTRON_PROFILE
+import org.futo.voiceinput.settings.NEMOTRON_MULTILINGUAL_LANGUAGE
+import org.futo.voiceinput.settings.SettingRadio
+import org.futo.voiceinput.settings.useDataStoreValueNullable
 import org.futo.voiceinput.settings.ALLOW_UNDERTRAINED_LANGUAGES
 import org.futo.voiceinput.settings.ENABLE_MULTILINGUAL
 import org.futo.voiceinput.settings.LANGUAGE_TOGGLES
@@ -32,7 +46,6 @@ import org.futo.voiceinput.settings.SPEECH_BACKEND
 import org.futo.voiceinput.settings.ScrollableList
 import org.futo.voiceinput.settings.SpeechBackendType
 import org.futo.voiceinput.settings.toSpeechBackendType
-import org.futo.voiceinput.settings.isParakeetSelected
 import org.futo.voiceinput.settings.useDataStore
 import org.futo.voiceinput.startModelDownloadActivity
 
@@ -69,45 +82,73 @@ fun LanguagesScreen(
     navController: NavHostController = rememberNavController()
 ) {
     val backend = useDataStore(SPEECH_BACKEND).value.toSpeechBackendType()
-    if (backend == SpeechBackendType.Cohere) {
+    if (backend == SpeechBackendType.WhisperGGML) {
+        WhisperLanguagesScreen(navController)
+    } else {
+        val variant = when (backend) {
+            SpeechBackendType.Moonshine -> useDataStore(MOONSHINE_MODEL_VARIANT).value.toMoonshineModelVariant().id
+            SpeechBackendType.Nemotron -> useDataStore(NEMOTRON_PROFILE).value.toNemotronProfile().id
+            else -> null
+        }
+        val model = requireNotNull(RecognitionModelCatalog.modelFor(backend.id, variant))
         ScrollableList {
             ScreenTitle(stringResource(R.string.languages_title), showBack = true, navController = navController)
-            CohereLanguageOptions()
+            ScreenTitle(model.displayName)
+            RecognitionModelLanguageOptions(model)
         }
-        return
     }
-    val (multilingual, setMultilingual) = useDataStore(ENABLE_MULTILINGUAL)
-    val (multilingualModelIndex, _) = useDataStore(MULTILINGUAL_MODEL_INDEX)
-    val (languages, setLanguages) = useDataStore(LANGUAGE_TOGGLES)
+}
+
+@Composable
+fun RecognitionModelLanguageOptions(model: RecognitionModel) {
+    Tip(recognitionLanguageGuidance(model))
+    Tip("Personal vocabulary corrections still apply after recognition. They are separate from vocabulary hints sent to a model during recognition.")
+    if (model.runtimeId == "cohere") {
+        SettingRadio(
+            title = "Recognition language",
+            options = CohereLanguage.entries.map { it.id },
+            optionNames = CohereLanguage.entries.map { it.displayName },
+            setting = COHERE_LANGUAGE,
+            normalizeValue = { it.toCohereLanguage().id }
+        )
+    } else if (model.runtimeId == "nemotron" && model.variantId == "multilingual") {
+        SettingRadio(
+            title = "Recognition language",
+            options = NEMOTRON_MULTILINGUAL_LANGUAGES.map { it.id },
+            optionNames = NEMOTRON_MULTILINGUAL_LANGUAGES.map { it.displayName },
+            setting = NEMOTRON_MULTILINGUAL_LANGUAGE,
+            normalizeValue = { it.toNemotronLanguageCode() }
+        )
+    }
+}
+
+@Composable
+private fun WhisperLanguagesScreen(navController: NavHostController) {
+    // Do not run effects against temporary defaults before saved preferences arrive.
+    val multilingual = useDataStoreValueNullable(ENABLE_MULTILINGUAL.key, ENABLE_MULTILINGUAL.default) ?: return
+    val multilingualModelIndex = useDataStoreValueNullable(MULTILINGUAL_MODEL_INDEX.key, MULTILINGUAL_MODEL_INDEX.default) ?: return
+    val savedLanguages = useDataStoreValueNullable(LANGUAGE_TOGGLES.key, LANGUAGE_TOGGLES.default) ?: return
+    val languages = savedLanguages.filter { id -> LANGUAGE_LIST.any { it.id == id } }
+        .toSet().ifEmpty { setOf("en") }
+    val setMultilingual = useDataStore(ENABLE_MULTILINGUAL).setValue
+    val setLanguages = useDataStore(LANGUAGE_TOGGLES).setValue
     val context = LocalContext.current
 
     val (allowUndertrainedLanguages, _) = useDataStore(ALLOW_UNDERTRAINED_LANGUAGES)
-    val parakeetSelected = isParakeetSelected()
-
-
-    LaunchedEffect(listOf(multilingualModelIndex, multilingual, parakeetSelected)) {
-        if (!parakeetSelected && multilingual) {
-            context.startModelDownloadActivity(listOf(MULTILINGUAL_MODELS[multilingualModelIndex]))
-        }
+    val needsMultilingual = languages.any { it != "en" }
+    LaunchedEffect(savedLanguages, multilingual) {
+        if (savedLanguages != languages) setLanguages(languages).join()
+        if (multilingual != needsMultilingual) setMultilingual(needsMultilingual).join()
     }
-
-    LaunchedEffect(languages, parakeetSelected) {
-        if (parakeetSelected) return@LaunchedEffect
-
-        val newMultilingual = languages.count { it != "en" } > 0
-        if (multilingual != newMultilingual) setMultilingual(newMultilingual)
+    LaunchedEffect(multilingualModelIndex, needsMultilingual) {
+        if (needsMultilingual) {
+            context.startModelDownloadActivity(listOf(MULTILINGUAL_MODELS[multilingualModelIndex.coerceIn(MULTILINGUAL_MODELS.indices)]))
+        }
     }
 
     SettingListLazy {
         item {
             ScreenTitle(stringResource(R.string.languages_title), showBack = true, navController = navController)
-        }
-
-        if (parakeetSelected) {
-            item {
-                Tip(stringResource(R.string.parakeet_english_only_tip))
-            }
-            return@SettingListLazy
         }
 
         item {
