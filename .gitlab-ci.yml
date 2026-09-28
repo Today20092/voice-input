@@ -59,9 +59,9 @@ buildRelease:
   tags:
     - docker
   before_script:
-    - git fetch origin master:master
+    - git fetch origin $CI_COMMIT_BRANCH:$CI_COMMIT_BRANCH
     - export VERSION_NAME=`git describe --tags --dirty`
-    - export VERSION_CODE=`git rev-list --first-parent --count master`
+    - export VERSION_CODE=`git rev-list --first-parent --count $CI_COMMIT_BRANCH`
     - echo $VERSION_CODE $VERSION_NAME
     - ./setUpPropertiesCI.sh
   script:
@@ -76,8 +76,4 @@ buildRelease:
     paths: 
       - ./*.aab
       - ./*.apk
-  only:
-    - tags
-  except:
-    - branches
   when: manual
