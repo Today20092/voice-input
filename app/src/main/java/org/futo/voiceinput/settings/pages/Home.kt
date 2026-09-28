@@ -178,6 +178,13 @@ fun HomeScreen(
 
         SettingsSeparator(stringResource(R.string.settings_support))
         NavigationItem(
+            title = stringResource(R.string.keyboard_provider_title),
+            subtitle = stringResource(R.string.keyboard_provider_intro),
+            style = NavigationItemStyle.Misc,
+            navigate = { navController.navigate(SettingsDestination.KeyboardProvider.route) },
+            icon = painterResource(R.drawable.mic_2_)
+        )
+        NavigationItem(
             title = stringResource(R.string.diagnostics),
             subtitle = stringResource(R.string.diagnostics_subtitle),
             style = NavigationItemStyle.Misc,

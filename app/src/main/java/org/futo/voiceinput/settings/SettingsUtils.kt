@@ -45,6 +45,7 @@ import org.futo.voiceinput.settings.pages.DiagnosticsScreen
 import org.futo.voiceinput.settings.pages.PersonalDictionaryScreen
 import org.futo.voiceinput.settings.pages.HelpScreen
 import org.futo.voiceinput.settings.pages.HomeScreen
+import org.futo.voiceinput.settings.pages.KeyboardProviderScreen
 import org.futo.voiceinput.settings.pages.InputScreen
 import org.futo.voiceinput.settings.pages.LanguagesScreen
 import org.futo.voiceinput.settings.pages.ModelsScreen
@@ -147,6 +148,7 @@ fun SettingsMain(
         startDestination = initialDestination
     ) {
         composable(SettingsDestination.Home.route) { HomeScreen(settingsViewModel, navController) }
+        composable(SettingsDestination.KeyboardProvider.route) { KeyboardProviderScreen(navController, settingsViewModel) }
         composable(SettingsDestination.AudioHistory.route) { AudioHistoryScreen(navController) }
         composable(SettingsDestination.Advanced.route) { AdvancedScreen(settingsViewModel, navController) }
         composable(SettingsDestination.Help.route) { HelpScreen(navController) }
