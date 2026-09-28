@@ -137,7 +137,7 @@ fun RecognizerInputMethodWindow(switchBack: (() -> Unit)? = null, allowClick: Bo
                     
                 }
 
-                content()
+                Column(Modifier.weight(1f, fill = false)) { content() }
                 Spacer(Modifier.height(navBarHeight()))
             }
         }
