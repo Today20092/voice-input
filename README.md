@@ -67,7 +67,9 @@ Release maintainers: stable tags must use `vMAJOR.MINOR.PATCH`, with an asset na
 
 FUTO provides the foundation: local speech recognition, the Android voice-keyboard integration, the floating recognition activity, and the settings interface. This fork keeps that foundation and extends the model choices and dictation workflow.
 
-The comparison below covers the **standalone FUTO Voice Input app**, using [upstream revision `d6e1eb2`](https://github.com/futo-org/voice-input/tree/d6e1eb2d139dc1a6342a4681c283686cca4bfceb) checked on September 25, 2026. It does not compare against the separate FUTO Keyboard app or unmerged upstream proposals.
+Upstream development includes multi-model recognition and streaming. The September 26, 2026 [source comparison](docs/research/upstream-share-comparison-2026-09-26.md) reviewed FUTO's **`share` branch at [`95e82ada`](https://github.com/futo-org/voice-input/tree/95e82ada5e2513484dccf68295a5ddde6d223730)** against this fork at `c7a28c4`. That branch includes Moonshine, Parakeet, Nemotron, ASR4ALL, streaming profiles, and a transcribe.cpp integration. Several model families and live-transcription capabilities overlap with this fork; different runtimes and model formats do not establish a speed or accuracy advantage. The review inspected source, not an upstream release or a comparative phone benchmark.
+
+The table below is a **historical comparison with the older standalone app**, at [upstream revision `d6e1eb2`](https://github.com/futo-org/voice-input/tree/d6e1eb2d139dc1a6342a4681c283686cca4bfceb), checked on September 25, 2026. Its Whisper-only descriptions do not describe the newer `share` branch or the separate FUTO Keyboard app. See the [commit-by-commit adoption review](docs/research/upstream-share-adoption-review-2026-09-26.md) for branch-specific differences and attribution.
 
 | Area | Original FUTO Voice Input | This fork | Change |
 | --- | --- | --- | --- |
@@ -82,6 +84,20 @@ The comparison below covers the **standalone FUTO Voice Input app**, using [upst
 | Floating popup | Centered speech-recognition window. | Adds an opt-in bottom-positioned popup without background dimming; the voice keyboard layout stays the same. | Optional addition |
 | Troubleshooting | Existing crash-logging and feedback support. | Adds bounded app-wide diagnostic history, a timed detailed mode, and a reviewed, manually shared bug-report ZIP. | Expanded |
 | Installation | Upstream FUTO application package. | Uses the separate `org.futo.voiceinput.moonshine` package and publishes signed ARM64 APKs through this repository. | Separate distribution |
+
+The [adoption plan](docs/specs/upstream-share-adoption.md) and [SHARE tickets](tickets.md) describe proposed work, not released features. In particular, SHARE-03 reopens manual model updates: implementation `683be27` was deliberately removed by `47566e2`. The reviewed baseline has model installation and integrity checks, but no versioned manual-upgrade workflow. New setup, update, and model-experiment features must be verified before they are documented as available.
+
+### FUTO Keyboard and this fork
+
+FUTO Keyboard's built-in recognizer and this separately installed app are different choices. Installing this fork does not by itself select it inside FUTO Keyboard. In this build, open this app's settings and choose **FUTO Keyboard** under **Support**. Select the installed stable or unstable keyboard, then tap **Use this app in FUTO Keyboard**. Opening the page or tapping **Refresh provider status** only checks status; it does not change the provider. A remembered-provider result cannot establish whether external voice input is enabled.
+
+If automatic setup is unsupported, tap **Open keyboard settings**, or open FUTO Keyboard from its app icon. In its Voice Input settings, enable external or system voice input and choose this app. Labels vary by keyboard version. If there is no provider picker, enable external input, tap the keyboard microphone, and choose this app in Android's app chooser. If another app opens automatically, clear that app's defaults in Android Settings. Return to refresh status, then test a short dictation and cancellation in a text field.
+
+The [SHARE-01 verification record](docs/testing/share-01-keyboard-provider.md) covers automated checks and detection/settings-return fallback with official FUTO Keyboard 0.1.30, which lacks automatic switching. Protocol-supporting keyboard microphone launch, returned text, cancellation, manual-path dictation, and TalkBack still need device verification. These instructions describe the implemented setup flow, not a claim of complete dictation interoperability or availability in an older release.
+
+For the existing Android voice-input method, enable Voice Input Moonshine in Android's input-method settings and select it using the system keyboard picker when available. This selects the fork's voice keyboard; it does not change FUTO Keyboard's built-in recognizer. The Help page's **Open input method settings** button opens those settings. Names and picker placement vary by device.
+
+Upstream's [help change `a15c965`](https://github.com/futo-org/voice-input/commit/a15c965) reports text loss with Microsoft SwiftKey. That is an upstream report, not a reproduced defect in this fork or a blanket incompatibility claim.
 
 ### Work combined in 1.4.3
 
