@@ -1,6 +1,8 @@
 package org.futo.voiceinput.settings.pages
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
@@ -9,6 +11,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
@@ -68,7 +71,7 @@ fun modelsSubtitle(): String? {
     )
     val selected = selectedRecognitionModelSummary(
         runtimeId = backend,
-        managedModelName = readiness?.model?.displayName,
+        managedModel = readiness?.model,
         englishModel = ENGLISH_MODELS[englishModelIndex.coerceIn(ENGLISH_MODELS.indices)],
         multilingualModel = MULTILINGUAL_MODELS[multilingualModelIndex.coerceIn(MULTILINGUAL_MODELS.indices)],
         multilingualEnabled = multilingualEnabled
@@ -278,7 +281,7 @@ private fun ModelDetailsDialog(presentation: ModelPresentation, onDismiss: () ->
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(presentation.title) },
-        text = { Text(presentation.details) },
+        text = { Text(presentation.details, modifier = Modifier.verticalScroll(rememberScrollState())) },
         confirmButton = { TextButton(onClick = onDismiss) { Text("Done") } }
     )
 }
