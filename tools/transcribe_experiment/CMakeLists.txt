@@ -16,6 +16,8 @@ foreach(flag TRANSCRIBE_BUILD_SHARED TRANSCRIBE_BUILD_TESTS TRANSCRIBE_BUILD_EXA
 endforeach()
 set(TRANSCRIBE_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/build/transcribe.cpp-4807edaf210d0d7e8a6f7fb2a44b65966a2797f0" CACHE PATH "Verified public source")
 add_subdirectory("${TRANSCRIBE_SOURCE}" "${CMAKE_CURRENT_BINARY_DIR}/engine")
+# Upstream uses CMAKE_SOURCE_DIR/include, which points at this wrapper when embedded.
+target_include_directories(transcribe PUBLIC "${TRANSCRIBE_SOURCE}/include")
 add_library(share09_parakeet SHARED parakeet_jni.cpp)
 target_link_libraries(share09_parakeet PRIVATE transcribe)
 target_link_options(share09_parakeet PRIVATE

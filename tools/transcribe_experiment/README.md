@@ -81,9 +81,11 @@ waits for loading to return, then frees the acquired session.
 Host tests cover cancellation versus release, suppression of canceled results,
 repeated successful and failed runs, full two-minute audio handoff, input
 validation and idempotent release. They do not measure native behavior.
-ARM64 compilation, actual JNI loading/inference, same-process legacy/S1
-coexistence, Android packaging/notices, failure injection and phone benchmarks
-remain pending until recorded in the research report. Do not mark SHARE-09 or
+ARM64 compilation and manual ELF export/dependency inspection passed at the
+[safe-pause checkpoint](../../docs/research/transcribe-cpp-source-feasibility-2026-09-26.md#native-build-and-safe-pause-2026-09-28).
+The full script has not been rerun after the include-path fix. Actual JNI
+loading/inference, same-process legacy/S1 coexistence, Android packaging/notices,
+failure injection and phone benchmarks remain pending. Do not mark SHARE-09 or
 its dependent model tickets complete from these host checks.
 
 Reference contracts used: [coroutine child lifetime](https://github.com/Kotlin/kotlinx.coroutines/blob/master/docs/topics/coroutine-context-and-dispatchers.md),
