@@ -4,6 +4,12 @@ Build the recognition model catalog and replace the custom NVIDIA runtime with S
 
 Work the **frontier**: any ticket whose blockers are all done.
 
+Current coordination: [serial beta finish plan](docs/plans/share-beta-finish.md).
+Existing source changes are consolidated on `codex/share-beta-integration` for
+`v1.4.6-share-beta.1`. Ticket branch/claim notes below record historical ownership;
+all prior workers are paused. Resume one ticket at a time from the current beta.
+Unchecked acceptance criteria remain open even when their source is integrated.
+
 The SHARE adoption plan is defined in [the upstream adoption specification](docs/specs/upstream-share-adoption.md), with [all 35 upstream commits reviewed](docs/research/upstream-share-adoption-review-2026-09-26.md). Prioritize SHARE-01, SHARE-02, and SHARE-05. Evaluation tickets do not authorize replacing the default recognizer or removing existing runtimes.
 
 ## Create the managed recognition model catalog

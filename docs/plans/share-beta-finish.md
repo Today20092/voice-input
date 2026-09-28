@@ -89,4 +89,12 @@ altering the retained-data AVD.
 
 ## Completion record
 
-Pending: integration commit, checks, prerelease URL and final cleanup inventory.
+- All ten feature branches merged with history preserved. Release source commit:
+  `76844dae593c68f4d9f620e0d4eb8de823f04147`.
+- Tag `v1.4.6-share-beta.1` pushed; publication is gated by
+  [release CI](https://github.com/Today20092/voice-input/actions/runs/36484940228).
+- SHARE-03, SHARE-08 and waveform investigation documentation subsequently merged
+  into the integration branch; no runtime changes were added after the release tag.
+- Deleted empty local preparation branches `codex/catalog-release`,
+  `codex/predictive-back`, `codex/share-04`, `codex/share-10`, `codex/share-11`.
+- Pending: CI result, prerelease URL and final managed-worktree cleanup inventory.
