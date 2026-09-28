@@ -403,7 +403,6 @@ abstract class RecognizerView {
         }
 
         override fun failed(error: Throwable) {
-            releaseMicrophoneRouting()
             diagnostics?.end(org.futo.voiceinput.diagnostics.DiagnosticEvent.SESSION_FAILED, error)
             Log.e("RecognizerView", "Recognition did not produce a result", error)
             val message = if (error is NoSpeechRecognizedException) {

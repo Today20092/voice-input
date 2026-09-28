@@ -182,9 +182,16 @@ abstract class RecordingSession {
         if (isRecording) microphoneRouting?.second?.select(device)
     }
 
-    protected fun releaseMicrophoneRouting() {
+    private fun failRecognition(error: Throwable, generation: Long) {
+        if (generation != recognitionGeneration) return
+        // End capture without clearing retained samples/history or restarting the utterance.
+        cancelCapture()
+        stopAndReleaseRecorder()
+        isRecording = false
+        unfocusAudio()
         microphoneRouting?.second?.close()
         microphoneRouting = null
+        failed(error)
     }
 
     private fun observeMicrophone(activeRecorder: AudioRecord, generation: Long) {
@@ -536,14 +543,14 @@ abstract class RecordingSession {
             if (retryAfterOom) {
                 return loadModelInner(retryAfterOom = false)
             }
-            withContext(Dispatchers.Main) { failed(e) }
+            withContext(Dispatchers.Main) { failRecognition(e, loadGeneration) }
         } catch (error: Exception) {
             report?.event(DiagnosticEvent.MODEL_LOAD_FAILED, error = error)
             if (loadGeneration == recognitionGeneration) {
                 selectedManagedModel?.let {
                     RecognitionModelStore(context.filesDir).invalidate(it)
                 }
-                withContext(Dispatchers.Main) { failed(error) }
+                withContext(Dispatchers.Main) { failRecognition(error, loadGeneration) }
             }
         }
     }
@@ -1057,7 +1064,7 @@ abstract class RecordingSession {
                 error.addSuppressed(closeError)
             }
             withContext(Dispatchers.Main) {
-                failed(error)
+                failRecognition(error, runGeneration)
             }
         } finally {
             withContext(NonCancellable) {
@@ -1199,7 +1206,7 @@ abstract class RecordingSession {
             if (runGeneration != recognitionGeneration) return@withContext
             runBackend.detectedLanguage?.let(::languageDetected)
             if (text.isBlank() && !cleanupResult.validEmpty) {
-                failed(NoSpeechRecognizedException())
+                failRecognition(NoSpeechRecognizedException(), runGeneration)
             } else {
                 report?.event(DiagnosticEvent.RESULT_READY,
                     mapOf(DiagnosticMetric.CHARACTERS to text.length.toLong()))
