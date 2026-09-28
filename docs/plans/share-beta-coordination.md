@@ -72,3 +72,37 @@ All 19 ticket worktrees were observed in `git worktree list` at the baseline. In
 Read child reports and verify their commits and checks. After all tickets have verified outcomes, merge their commits into the integration branch, resolving overlapping ticket metadata by preserving both outcomes. Before dependent implementation, supply prerequisite commits to the relevant child and have it incorporate them into its own branch. Run the combined unit, instrumentation, assembly and lint checks; keep missing device measurements open. Review signing, versioning and existing release automation before producing a beta. Do not tag, publish, or describe the beta as ready while required acceptance criteria remain unverified. Research may conclude no-go where the ticket permits it; record that decision explicitly rather than pretending an integration shipped.
 
 This file is the coordinator's durable ledger. Update real thread IDs, commit SHAs, build-slot owner, outcomes and blockers as they become available.
+
+## Current checkpoint — 2026-09-28
+
+This section supersedes the earlier creation-handle registry and runtime status above. All 19 chats and worktrees exist; do not recreate them. No ticket is yet fully verified and closed. No feature merge or beta publication has occurred. The prior coordinator turn was interrupted before permission refresh and ledger updates finished. The heartbeat is active with notifications enabled; bring missing user input and the eventual consolidated completion report to this chat.
+
+| Key | Actual thread ID | Worktree | Latest checkpoint |
+| --- | --- | --- | --- |
+| share-01 | 01a0df6d-6b0e-7ce0-9706-ea24fae95dde | 2e21 | Resumed Sep 28; code and focused tests exist, full validation and commit pending |
+| share-02 | 01a0df6d-6c8e-7973-9def-e478a790a2bd | a44e | Resumed Sep 28; implementation commit 98666a4, native dependency fetch/review/full validation pending |
+| share-05 | 01a0df6d-7306-7ea1-a675-a0f15aab1ca2 | 96da | Resumed Sep 28; JVM suite passed and expanded UI tests compile, review/device checks/commit pending |
+| share-09 | 01a0df6d-74af-78a2-851c-ff6880aa9a19 | 9e07 | Research commit fc4635e; adapter experiment and six acceptance criteria remain open |
+| share-03 | 01a0df6d-a4d3-7b23-aff9-326ddb941334 | e875 | Readiness contract committed as 4b60157; awaits download prerequisites |
+| share-04 | 01a0df6d-a8b0-74f0-8c10-fb16e0b5739d | c425 | Prepared; SHARE-03 contract relayed, production prerequisite pending |
+| share-06 | 01a0df6d-b800-7a42-bb07-d8851c9d7fac | 5abf | Routing plan committed as b3fa405; implementation queued |
+| share-07 | 01a0df6d-b8be-7343-839a-6b7221efc9c3 | 5220 | Prepared; reuse SHARE-02 generation guards before implementation |
+| share-08 | 01a0df6d-b8bd-7c93-8cef-6adf7cfa148e | 5db2 | Prepared; Moonshine failure propagation and recording boundaries need coordination |
+| share-10 | 01a0df6d-b8d7-7d90-9dea-ebe690f8057c | c72a | Prepared; compatible adapter and phone evidence still gated |
+| share-11 | 01a0df6d-db91-7253-94a6-033d8dd0fc7f | 7e06 | Source preparation; compatible adapter and phone evidence still gated |
+| share-12 | 01a0df6d-db72-7aa1-8cfb-13d7fa2c54fa | eb0e | Factual corrections authorized; interrupted; new behavior docs await verified features |
+| nemotron-assets | 01a0df6d-fbe4-76f0-b278-331242777e01 | 0b2b | Implementation authorized Sep 26 but interrupted near start |
+| model-options | 01a0df6e-16f5-7d22-b916-56c53222e516 | e80d | Prepared; awaits SHARE-05; permission refresh pending |
+| resume-downloads | 01a0df6e-1708-7302-93b9-d09642142788 | 8687 | Preparation; awaits Nemotron asset fix; permission refresh pending |
+| predictive-back | 01a0df6e-1d75-7371-b7fe-92ceaaebaf01 | 0d54 | Preparation; awaits Model Options; permission refresh pending |
+| moonshine-long | 01a0df6e-1dc8-7681-bf3e-d6f700140855 | 3f10 | Research checkpoint; permission refresh pending |
+| waveform-bug | 01a0df6e-2f09-7c73-9b43-80593221d7c4 | 0245 | Preparation; permission refresh pending |
+| catalog-release | 01a0df6e-3ed8-7622-b381-354cbe5dd4d6 | b6e6 | Final hardware/release gate; permission refresh pending |
+
+Permission audit of latest session turn contexts at 18:24 UTC Sep 28: first 13 rows use approval_policy=never and sandbox=danger-full-access. Last six still show on-request/workspace-write. The three resumed implementation turns were freshly verified as Full access. Do not claim all 19 refreshed yet. The proven refresh is a new continuation through the app's Full access composer; subsequent send_message_to_thread preserves that setting. Preserve existing checkpoints.
+
+Build/emulator queue: SHARE-02 owns the slot, then SHARE-01, then SHARE-05. Direct handoff instructions sent Sep 28. Only one expensive build/emulator driver, max two Gradle workers. SHARE-02 previously started Pixel_10 as emulator-5554 with ARM64 native bridge; recheck actual current device state before use. Both SHARE-01/02 encountered failed native submodule initialization; SHARE-02 is assigned diagnosis without changing pinned revisions.
+
+Additional contracts: SHARE-02 owns stale legacy/streaming partial and final Main dispatch generation guards. SHARE-07 reuses these and checks any remaining catch-up callback. SHARE-08 must suppress callbacks from failed runtimes within the same generation and coordinate Moonshine worker error propagation/native cleanup. SHARE-05 introduces shared RecognitionModelLanguageOptions(model) and ModelPresentation language guidance; Model Options should reuse these after handoff.
+
+Research gate: fc4635e documents inaccessible exact FUTO engine revision and a fetchable distinct public Parakeet candidate, not successful integration. ASR4ALL API compatibility is absent. SHARE-10/11 remain blocked on a working compatible adapter; source research completion alone is insufficient. Phone performance, thermals, real headset routing and other physical-device acceptance remain unverified.
