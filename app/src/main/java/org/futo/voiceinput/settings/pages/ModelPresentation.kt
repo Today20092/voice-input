@@ -64,7 +64,7 @@ fun presentWhisperModel(
 
 fun selectedRecognitionModelSummary(
     runtimeId: String,
-    managedModelName: String?,
+    managedModel: RecognitionModel?,
     englishModel: ModelData,
     multilingualModel: ModelData,
     multilingualEnabled: Boolean
@@ -78,7 +78,11 @@ fun selectedRecognitionModelSummary(
         }
     }
 } else {
-    managedModelName ?: runtimeId
+    if (managedModel?.runtimeId == "nemotron" && managedModel.variantId != "multilingual") {
+        "Nemotron • ${managedModel.displayName}"
+    } else {
+        managedModel?.displayName ?: runtimeId
+    }
 }
 
 private fun modelStatus(installed: Boolean, selected: Boolean): String = when {

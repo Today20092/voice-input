@@ -397,6 +397,12 @@ Implemented by `44fb6fe`, `5ab3750`, and `bef4320`.
 
 **Triage:** ready-for-agent
 
+**Working branch:** `codex/model-options`
+
+**Claimed by:** Model Options chat (`01a0df6e-16f5-7d22-b916-56c53222e516`)
+
+**Validation pending:** SHARE-05 prerequisites are incorporated. Standards and Spec source reviews passed after correcting asynchronous UI assertions and checking Details scroll reachability. `git diff --check` passed. Unit tests, instrumentation, assembly, and lint await the exclusive build/emulator slot; no physical-device or manual accessibility result is claimed.
+
 **What to build:** Make Model Options accurately explain recognition behavior and keep recognition-model selection separate from transcript cleanup. Present concise model choices first, with technical attribution and version details available on demand.
 
 **Blocked by:** None — can start immediately.

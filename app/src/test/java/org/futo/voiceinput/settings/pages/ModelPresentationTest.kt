@@ -76,12 +76,30 @@ class ModelPresentationTest {
     }
 
     @Test
+    fun selectedNemotronProfileKeepsItsFamilyNameOutsideTheCatalog() {
+        listOf(
+            RecognitionModelCatalog.nemotronEnglishLowLatency to "Nemotron • Low latency",
+            RecognitionModelCatalog.nemotronEnglishBalanced to "Nemotron • Balanced",
+            RecognitionModelCatalog.nemotronEnglishAccuracy to "Nemotron • Accuracy",
+            RecognitionModelCatalog.nemotronMultilingual to "Nemotron 3.5 Multilingual"
+        ).forEach { (model, expected) ->
+            assertEquals(expected, selectedRecognitionModelSummary(
+                runtimeId = "nemotron",
+                managedModel = model,
+                englishModel = ENGLISH_MODELS[0],
+                multilingualModel = MULTILINGUAL_MODELS[0],
+                multilingualEnabled = false
+            ))
+        }
+    }
+
+    @Test
     fun selectedVariantSummaryNamesEverySelectedWhisperVariant() {
         assertEquals(
             "Whisper • English-39 (default) + Multilingual-74 (default)",
             selectedRecognitionModelSummary(
                 runtimeId = "whisper_ggml",
-                managedModelName = null,
+                managedModel = null,
                 englishModel = ENGLISH_MODELS[0],
                 multilingualModel = MULTILINGUAL_MODELS[1],
                 multilingualEnabled = true
@@ -91,7 +109,7 @@ class ModelPresentationTest {
             "Moonshine Medium",
             selectedRecognitionModelSummary(
                 runtimeId = "moonshine",
-                managedModelName = "Moonshine Medium",
+                managedModel = RecognitionModelCatalog.moonshineMedium,
                 englishModel = ENGLISH_MODELS[0],
                 multilingualModel = MULTILINGUAL_MODELS[0],
                 multilingualEnabled = false
