@@ -552,6 +552,14 @@ The [pre-change diagnostic baseline](docs/research/phone-diagnostics-baseline-20
 
 **Blocked by:** None.
 
+**Working branch:** `codex/share-08`
+
+**Claimed by:** Codex chat `01a0df6d-b8bd-7c93-8cef-6adf7cfa148e`
+
+### Preparation boundaries
+
+The restored checkout retains baseline `eb5e1dad`. Its lost uncommitted preparation notes were reconstructed on 2026-09-28. The [typed recovery contract and test plan](docs/specs/share-08-recovery-contract.md) records integration prerequisites and failure exclusions. No production adapter has an evidenced recoverable category; Moonshine explicitly remains disabled for automatic replay. All acceptance criteria remain unverified.
+
 - [ ] Define and test which failures permit replay. Cancellation, model corruption, exhausted memory, and ordinary Catching up do not trigger automatic retries.
 - [ ] At most one recovery attempt reuses the complete retained audio, selected model/profile/language, and clean runtime state. No recursive retry, silent model switch, or partial-as-final delivery is introduced.
 - [ ] Preserve the recorder/session generation guards, audio history, one final result, cleanup ordering, and personal vocabulary. Canceling while recovery runs stops it.
