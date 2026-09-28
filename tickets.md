@@ -535,6 +535,10 @@ Implementation and review complete; ticket remains open for end-to-end device ev
 
 **Triage:** ready-for-agent
 
+**Working branch:** `codex/share-07`
+
+**Claimed by:** SHARE-07 chat, worktree `5220/futo-parakeet-voiceinput`.
+
 **Priority:** P2
 
 **What to build:** Keep waveform, current partial transcript, selected-model caption, and processing/catch-up status in one coherent recognition UI state. Retain our visual design and behavior rather than importing the upstream screen wholesale. Upstream reference: `53db738`. See [the adoption specification](docs/specs/upstream-share-adoption.md).

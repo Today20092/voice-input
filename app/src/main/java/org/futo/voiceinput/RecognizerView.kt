@@ -16,16 +16,20 @@ import androidx.compose.foundation.indication
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
@@ -39,6 +43,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
@@ -50,6 +57,8 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.LifecycleCoroutineScope
@@ -109,6 +118,7 @@ fun InnerRecognize(
     Canvas(
         modifier = Modifier
             .fillMaxWidth()
+            .testTag("recognition-waveform")
             .height(120.dp)
             .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
@@ -189,11 +199,8 @@ fun ColumnScope.RecognizeLoadingCircle(text: String = "Initializing...") {
 
 @Composable
 fun ColumnScope.PartialDecodingResult(text: String = "I am speaking [...]") {
-    CircularProgressIndicator(
-        modifier = Modifier.align(Alignment.CenterHorizontally),
-        color = MaterialTheme.colorScheme.primary
-    )
-    Spacer(modifier = Modifier.height(6.dp))
+    val provisionalLabel = stringResource(R.string.recognizer_provisional_transcript)
+    Text(provisionalLabel, style = Typography.labelSmall, modifier = Modifier.padding(horizontal = 8.dp))
     Surface(
         modifier = Modifier
             .padding(4.dp)
@@ -205,12 +212,32 @@ fun ColumnScope.PartialDecodingResult(text: String = "I am speaking [...]") {
             text,
             modifier = Modifier
                 .align(Alignment.Start)
+                .heightIn(max = 144.dp)
+                .verticalScroll(rememberScrollState())
+                .semantics { stateDescription = provisionalLabel }
                 .padding(8.dp)
                 .defaultMinSize(0.dp, 64.dp),
             textAlign = TextAlign.Start,
             style = Typography.bodyMedium,
             color = MaterialTheme.colorScheme.onPrimaryContainer
         )
+    }
+}
+
+@Composable
+fun RecognitionContent(state: RecognitionUiState, onWaveformDrawn: () -> Unit = {}) {
+    if (state.phase == RecognitionUiPhase.Inactive) return
+    Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
+        if (state.isRecording) {
+            InnerRecognize(state.bars, state.magnitude, onWaveformDrawn)
+            state.statusText?.let {
+                Text(it, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
+            }
+        } else {
+            RecognizeLoadingCircle(state.statusText ?: stringResource(R.string.initializing))
+        }
+        RecognitionModelCaption(state.modelName)
+        if (state.partialText.isNotBlank()) PartialDecodingResult(state.partialText)
     }
 }
 
@@ -328,6 +355,26 @@ abstract class RecognizerView {
     abstract fun Window(onClose: () -> Unit, allowClick: Boolean, onPauseVAD: (Boolean) -> Unit, onFinish: () -> Unit, content: @Composable ColumnScope.() -> Unit)
 
     private var detectedLanguage: String? = null
+    private var presentation by mutableStateOf(RecognitionUiState())
+
+    private fun showRecognition() {
+        setContent {
+            val state = presentation
+            Window(
+                onClose = { recognizer.cancelRecognizer() },
+                onFinish = { finishRecognizerIfRecording() },
+                onPauseVAD = { if (state.isRecording) recognizer.pauseVAD(it) },
+                allowClick = state.isRecording
+            ) {
+                RecognitionContent(state) {
+                    if (firstWaveformFrame && state.bars.isNotEmpty()) {
+                        firstWaveformFrame = false
+                        recognizer.waveformDrawn()
+                    }
+                }
+            }
+        }
+    }
 
     private val recognizer = object : AudioRecognizer() {
         override val context: Context
@@ -351,11 +398,13 @@ abstract class RecognizerView {
         }
 
         override fun cancelled() {
+            presentation = presentation.end()
             playSound(cancelSoundId)
             onCancel()
         }
 
         override fun finished(result: String) {
+            presentation = presentation.end()
             val report = diagnostics
             val manager = context.getSystemService(Context.ACCESSIBILITY_SERVICE) as AccessibilityManager
             if(manager.isEnabled) {
@@ -387,6 +436,7 @@ abstract class RecognizerView {
         }
 
         override fun failed(error: Throwable) {
+            presentation = presentation.end()
             diagnostics?.end(org.futo.voiceinput.diagnostics.DiagnosticEvent.SESSION_FAILED, error)
             Log.e("RecognizerView", "Recognition did not produce a result", error)
             val message = if (error is NoSpeechRecognizedException) {
@@ -424,21 +474,8 @@ abstract class RecognizerView {
         }
 
         override fun partialResult(result: String) {
-            if (!sendPartialResult(result)) {
-                if (result.isNotBlank()) {
-                    setContent {
-                        this@RecognizerView.Window(
-                            onClose = { cancelRecognizer() },
-                            onFinish = { finishRecognizerIfRecording() },
-                            onPauseVAD = { v -> pauseVAD(v) },
-                            allowClick = false
-                        ) {
-                            PartialDecodingResult(text = result)
-                            RecognitionModelCaption(selectedModelName)
-                        }
-                    }
-                }
-            }
+            sendPartialResult(result)
+            presentation = presentation.partial(result)
         }
 
         override fun decodingStatus(status: RunState) {
@@ -468,29 +505,15 @@ abstract class RecognizerView {
                 this@RecognizerView.decodingStarted()
             }
 
-            setContent {
-                this@RecognizerView.Window(
-                    onClose = { cancelRecognizer() },
-                    onFinish = { finishRecognizerIfRecording() },
-                    onPauseVAD = { v -> pauseVAD(v) },
-                    allowClick = false
-                ) {
-                    RecognizeLoadingCircle(text = text)
-                }
-            }
+            presentation = presentation.status(
+                if (status == RunState.Streaming) null else text,
+                streaming = status == RunState.Streaming || status == RunState.CatchingUp
+            )
         }
 
         override fun loading() {
-            setContent {
-                this@RecognizerView.Window(
-                    onClose = { cancelRecognizer() },
-                    onFinish = { },
-                    onPauseVAD = { },
-                    allowClick = false
-                ) {
-                    RecognizeLoadingCircle(text = context.getString(R.string.initializing))
-                }
-            }
+            presentation = presentation.start(selectedModelName)
+            showRecognition()
         }
 
         override fun needParakeetModelDownload() {
@@ -576,60 +599,26 @@ abstract class RecognizerView {
 
         override fun recordingStarted() {
             firstWaveformFrame = true
-            updateWaveform(emptyList(), MagnitudeState.NOT_TALKED_YET)
+            presentation = presentation.copy(modelName = selectedModelName).recording()
 
             playSound(startSoundId)
         }
 
         override fun updateWaveform(bars: List<Pair<Float, Float>>, state: MagnitudeState) {
-            val report = diagnostics
-            setContent {
-                this@RecognizerView.Window(
-                    onClose = { cancelRecognizer() },
-                    onFinish = { finishRecognizerIfRecording() },
-                    onPauseVAD = { v -> pauseVAD(v) },
-                    allowClick = true
-                ) {
-                    InnerRecognize(
-                        bars = bars,
-                        state = state,
-                        onDrawn = {
-                            if (firstWaveformFrame && bars.isNotEmpty()) {
-                                firstWaveformFrame = false
-                                report?.event(org.futo.voiceinput.diagnostics.DiagnosticEvent.WAVEFORM_FIRST_FRAME)
-                                if (BuildConfig.DEBUG) Log.d("WaveformTiming", "first_frame t=${SystemClock.elapsedRealtime()}")
-                            }
-                        }
-                    )
-                    RecognitionModelCaption(selectedModelName)
-                }
-            }
+            presentation = presentation.waveform(bars, state)
+        }
+
+        fun waveformDrawn() {
+            diagnostics?.event(org.futo.voiceinput.diagnostics.DiagnosticEvent.WAVEFORM_FIRST_FRAME)
+            if (BuildConfig.DEBUG) Log.d("WaveformTiming", "first_frame t=${SystemClock.elapsedRealtime()}")
         }
 
         override fun processing() {
-            setContent {
-                this@RecognizerView.Window(
-                    onClose = { cancelRecognizer() },
-                    onFinish = { },
-                    onPauseVAD = { },
-                    allowClick = false
-                ) {
-                    RecognizeLoadingCircle(text = stringResource(R.string.processing))
-                }
-            }
+            presentation = presentation.processing(context.getString(R.string.processing))
         }
 
         override fun cleaning() {
-            setContent {
-                this@RecognizerView.Window(
-                    onClose = { cancelRecognizer() },
-                    onFinish = { },
-                    onPauseVAD = { },
-                    allowClick = false
-                ) {
-                    RecognizeLoadingCircle(text = stringResource(R.string.s1_cleaning_transcript))
-                }
-            }
+            presentation = presentation.cleaning(context.getString(R.string.s1_cleaning_transcript))
         }
     }
 
@@ -642,11 +631,13 @@ abstract class RecognizerView {
     }
 
     fun reset() {
+        presentation = presentation.end()
         detectedLanguage = null
         recognizer.reset()
     }
 
     fun init() {
+        presentation = presentation.end()
         startSoundId = soundPool.load(this.context, R.raw.start, 0)
         cancelSoundId = soundPool.load(this.context, R.raw.cancel, 0)
 

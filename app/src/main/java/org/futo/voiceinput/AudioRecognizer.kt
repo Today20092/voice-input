@@ -84,14 +84,6 @@ private const val FINAL_SILENCE_PAD_MS = 200
 
 internal class NoSpeechRecognizedException : Exception("The recognizer returned no text")
 
-enum class MagnitudeState {
-    NOT_TALKED_YET,
-    MIC_MAY_BE_BLOCKED,
-    TALKING,
-    ENDING_SOON_VAD,
-    ENDING_SOON_30S
-}
-
 internal enum class StopReason {
     Manual,
     Vad,
@@ -425,7 +417,11 @@ abstract class RecordingSession {
                 context,
                 selection,
                 RecognitionRuntimeCallbacks(
-                    onStatusUpdate = { decodingStatus(it) },
+                    onStatusUpdate = { status ->
+                        lifecycleScope.launch(Dispatchers.Main) {
+                            if (loadGeneration == recognitionGeneration) decodingStatus(status)
+                        }
+                    },
                     onPartialDecode = {
                         report?.partial(it.length)
                         lifecycleScope.launch {
@@ -935,7 +931,9 @@ abstract class RecordingSession {
                 report?.event(DiagnosticEvent.CATCHING_UP,
                     mapOf(DiagnosticMetric.CATCHING_UP to if (catchingUp) 1L else 0L), detailed = true)
                 lifecycleScope.launch(Dispatchers.Main) {
-                    decodingStatus(if (catchingUp) RunState.CatchingUp else RunState.Streaming)
+                    if (streamGeneration == recognitionGeneration) {
+                        decodingStatus(if (catchingUp) RunState.CatchingUp else RunState.Streaming)
+                    }
                 }
             }
         )
