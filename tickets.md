@@ -468,13 +468,20 @@ Implementation and review are complete; the ticket remains open for real dictati
 
 **Blocked by:** None.
 
-- [ ] Reset insertion state on a genuinely new input session, editor change, cancellation, and completion; preserve it correctly across an input-view recreation for the same active session.
-- [ ] Suppress unchanged successful composing updates, but do not suppress an identical transcript in a later session or a retry after a failed editor operation. Return the real result of the input-connection operation.
-- [ ] Determine leading/trailing spacing from current valid context for both final-only and streaming paths. Cover whitespace, punctuation, text on either side, empty results, and language-appropriate behavior without indiscriminately adding spaces.
-- [ ] Preserve selected-text replacement and subsequent user edits. On lost composition ownership, use a documented non-destructive policy instead of cursor-forcing heuristics. Commit the final delivered transcript exactly once after cleanup and vocabulary corrections.
-- [ ] Handle a missing/replaced input connection and cancellation safely. Surrounding text never enters standard diagnostics or logs.
+**Working branch:** codex/share-02
+**Claimed by:** SHARE-02 chat (a44e worktree)
+
+- [x] Reset insertion state on a genuinely new input session, editor change, cancellation, and completion; preserve it correctly across an input-view recreation for the same active session.
+- [x] Suppress unchanged successful composing updates, but do not suppress an identical transcript in a later session or a retry after a failed editor operation. Return the real result of the input-connection operation.
+- [x] Determine leading/trailing spacing from current valid context for both final-only and streaming paths. Cover whitespace, punctuation, text on either side, empty results, and language-appropriate behavior without indiscriminately adding spaces.
+- [x] Preserve selected-text replacement and subsequent user edits. On lost composition ownership, use a documented non-destructive policy instead of cursor-forcing heuristics. Commit the final delivered transcript exactly once after cleanup and vocabulary corrections.
+- [x] Handle a missing/replaced input connection and cancellation safely. Surrounding text never enters standard diagnostics or logs.
 - [ ] Focused editor-contract tests cover repeated partials, final replacement, selection/cursor movement, rejected operations, recreation, and two identical consecutive utterances. Verify real editors and FUTO Keyboard on-device.
-- [ ] Relevant tests, assembly, and lint pass; preserve Activity result behavior.
+- [x] Relevant tests, assembly, and lint pass; preserve Activity result behavior.
+
+### Resolution
+
+Implementation and review complete; ticket remains open for end-to-end device evidence. [Insertion policy and verification](docs/specs/ime-insertion-safety.md) document the non-destructive ownership-loss policy and remaining checks. The full JVM suite passed with 154 tests reported, including 13 insertion/lifecycle tests, zero failures/errors and one existing skipped test. DevDebug assembly, test APK assembly, and lint passed with two Gradle workers. Five native Android `EditText` contract tests passed on the Pixel_10 Android 37 emulator. These checks cover simulated recreation callbacks and native editor operations, not actual rotation during dictation, WebView or FUTO Keyboard interoperability on a phone. Those checks remain pending, including delayed composition callbacks during real IME use. No backend defaults, saved selections, or recognition-activity result format changed.
 
 
 ## SHARE-04: Show reactive model readiness and upgrade notices

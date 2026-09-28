@@ -430,7 +430,7 @@ abstract class RecordingSession {
                         report?.partial(it.length)
                         lifecycleScope.launch {
                             withContext(Dispatchers.Main) {
-                                partialResult(it)
+                                if (loadGeneration == recognitionGeneration) partialResult(it)
                             }
                         }
                     },
@@ -918,13 +918,16 @@ abstract class RecordingSession {
 
     private fun startStreaming(backend: StreamingSpeechBackend) {
         val report = diagnostics
+        val streamGeneration = recognitionGeneration
         streamingAudio.start(
             backend = backend,
             onPartial = { result ->
                 report?.partial(result.length)
                 lifecycleScope.launch {
                     withContext(Dispatchers.Main) {
-                        partialResult(PersonalVocabulary.apply(result, personalVocabulary))
+                        if (streamGeneration == recognitionGeneration) {
+                            partialResult(PersonalVocabulary.apply(result, personalVocabulary))
+                        }
                     }
                 }
             },
@@ -1140,6 +1143,7 @@ abstract class RecordingSession {
         clearBackend(runGeneration, runBackend)
 
         withContext(Dispatchers.Main) {
+            if (runGeneration != recognitionGeneration) return@withContext
             runBackend.detectedLanguage?.let(::languageDetected)
             if (text.isBlank() && !cleanupResult.validEmpty) {
                 failed(NoSpeechRecognizedException())
