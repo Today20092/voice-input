@@ -67,12 +67,20 @@ class RecognitionModelCatalogTest {
         assertEquals("nemotron", multilingual.runtimeId)
         assertEquals("multilingual", multilingual.variantId)
         assertEquals("2026-06-11", multilingual.version)
-        assertEquals(6, multilingual.artifacts.size)
-        assertEquals(683_164_180, multilingual.transferBytes)
+        assertEquals(4, multilingual.artifacts.size)
+        assertEquals(682_215_356, multilingual.transferBytes)
         assertEquals(null, multilingual.archive)
         assertTrue(multilingual.artifacts.all { it.url.contains("ab43d895f5985b1bbab8b6eac8607fcdc05343f3") })
         assertTrue(multilingual.source.contains("OpenMDW 1.1"))
         assertEquals(listOf(multilingual), multilingualCard.models)
+    }
+
+    @Test
+    fun nemotronMultilingualInstallsOnlyRuntimeArtifacts() {
+        assertEquals(
+            listOf("encoder.int8.onnx", "decoder.int8.onnx", "joiner.int8.onnx", "tokens.txt"),
+            RecognitionModelCatalog.nemotronMultilingual.artifacts.map { it.name }
+        )
     }
 
     @Test

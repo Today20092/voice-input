@@ -49,6 +49,11 @@ class NemotronNativeSmokeTest {
         val previousProfile = context.getSetting(NEMOTRON_PROFILE)
         val previousLanguage = context.getSetting(NEMOTRON_MULTILINGUAL_LANGUAGE)
         val modelDirectory = context.nemotronModelDirectory(profile)
+        assumeTrue(
+            "Supply English and Japanese test WAVs separately; they are not runtime model assets",
+            modelDirectory.resolve("test_wavs/en.wav").isFile &&
+                modelDirectory.resolve("test_wavs/ja.wav").isFile
+        )
 
         try {
             context.setSetting(NEMOTRON_PROFILE, profile.id)

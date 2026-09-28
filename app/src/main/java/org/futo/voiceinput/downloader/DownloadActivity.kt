@@ -108,6 +108,8 @@ fun Intent.putRecognitionModel(model: RecognitionModel) {
     putExtra(EXTRA_REQUIRED_FREE_SPACE, model.requiredFreeSpaceBytes)
     putExtra(EXTRA_MODEL_ID, model.id)
     putExtra(EXTRA_MODEL_VERSION, model.version)
+    listOf(EXTRA_ARCHIVE_NAME, EXTRA_ARCHIVE_URL, EXTRA_ARCHIVE_HASH, EXTRA_ARCHIVE_SIZE, EXTRA_ARCHIVE_ROOT)
+        .forEach { removeExtra(it) }
     model.archive?.let { archive ->
         putExtra(EXTRA_ARCHIVE_NAME, archive.name)
         putExtra(EXTRA_ARCHIVE_URL, archive.url)
@@ -116,6 +118,11 @@ fun Intent.putRecognitionModel(model: RecognitionModel) {
         putExtra(EXTRA_ARCHIVE_ROOT, model.archiveRoot)
     }
 }
+
+internal fun Intent.refreshRecognitionModel(): RecognitionModel? =
+    getStringExtra(EXTRA_MODEL_ID)?.let { id ->
+        RecognitionModelCatalog.models.firstOrNull { it.id == id }
+    }?.also { putRecognitionModel(it) }
 
 fun Context.recognitionModelDownloadIntent(model: RecognitionModel) =
     Intent(this, DownloadActivity::class.java).apply {
@@ -390,11 +397,7 @@ fun DownloadScreen(models: List<ModelInfo> = EXAMPLE_MODELS, onRetry: (() -> Uni
 class DownloadActivity : ComponentActivity() {
     private var diagnosticDownload: DiagnosticSession? = null
     private var downloadStartedMs = 0L
-    private val managedModel by lazy {
-        intent.getStringExtra(EXTRA_MODEL_ID)?.let { id ->
-            RecognitionModelCatalog.models.firstOrNull { it.id == id }
-        }
-    }
+    private var managedModel: RecognitionModel? = null
     private val modelLifecycle by lazy {
         RecognitionModelLifecycle.create(filesDir, BuildConfig.BUNDLE_PARAKEET_MODEL)
     }
@@ -849,6 +852,8 @@ class DownloadActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        // A restored activity may still contain a manifest from an older app version.
+        managedModel = intent.refreshRecognitionModel()
         allRequestedFiles = explicitDownloadRequests() ?: legacyDownloadRequests()
         intent.getStringExtra(EXTRA_DOWNLOAD_SOURCE)?.let { source ->
             val transferBytes = archiveToDownload?.expectedSize
