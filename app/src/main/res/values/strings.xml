@@ -82,7 +82,7 @@
     <string name="incompatible_keyboard">Incompatible keyboard</string>
     <string name="gboard_incompatible_details">You appear to be using Gboard. This keyboard is incompatible with FUTO Voice Input.\n\nGboard relies on its own voice typing system and does not appear to integrate with standard Android APIs for voice input at this time. You will need to use a different keyboard if you want to use FUTO Voice Input with your keyboard.\n\nPlease visit the Help page in settings for more information.</string>
     <string name="gboard_incompatible_accept">I understand Gboard is incompatible</string>
-    <string name="swiftkey_incompatible_details">You appear to be using SwiftKey. Please be sure to disable \"Rich voice input\" in SwiftKey settings in order to make it use FUTO Voice Input.\n\nSome users have experienced bugs due to SwiftKey, so you may want to consider using a different keyboard.</string>
+    <string name="swiftkey_incompatible_details">You appear to be using SwiftKey. Please be sure to disable \"Rich voice input\" in SwiftKey settings in order to make it use FUTO Voice Input.\n\nSome users have experienced bugs causing frequent text loss with SwiftKey. You may want to consider using a different keyboard.</string>
     <string name="swiftkey_incompatible_accept">I\'ve disabled the toggle and understand</string>
     <string name="typewise_incompatible_details">You appear to be using Typewise. This keyboard does not have a voice input button at this time, so you will need to use a different keyboard if you want to use FUTO Voice Input with your keyboard.</string>
     <string name="typewise_incompatible_accept">I understand Typewise is incompatible</string>
