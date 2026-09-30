@@ -95,11 +95,14 @@ fun modelsSubtitle(): String? {
         multilingualModel = MULTILINGUAL_MODELS[multilingualModelIndex.coerceIn(MULTILINGUAL_MODELS.indices)],
         multilingualEnabled = multilingualEnabled
     )
+    val updateDismissed = readiness?.optionalUpgrade?.let {
+        context.getSharedPreferences("model_upgrade_notices", 0).getBoolean("${it.id}@${it.version}", false)
+    } ?: false
     return if (backend.toSpeechBackendType() != SpeechBackendType.WhisperGGML &&
         readiness?.isReady != true
     ) {
         "$selected • Download required"
-    } else if (readiness?.optionalUpgrade != null) {
+    } else if (readiness?.optionalUpgrade != null && !updateDismissed) {
         "$selected • Optional update"
     } else {
         selected
@@ -338,6 +341,7 @@ private fun SelectedRecognitionModelNotice() {
     RecognitionModelNotice(readiness, dismissed.value, context::startRecognitionModelDownloadActivity) {
         dismissed.value = true
         key?.let { preferences.edit().putBoolean(it, true).apply() }
+        RecognitionModelLifecycle.publishChange()
     }
 }
 
