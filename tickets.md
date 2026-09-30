@@ -77,16 +77,24 @@ spoken TalkBack remain open. Hardware details were requested. The published beta
 
 **Blocked by:** None.
 
-**Triage:** ready-for-agent
+**Triage:** needs-info
 
 - [ ] Verify every remaining manual-update criterion first, including active-session coordination, staged validation, rollback and reload.
 - [ ] Then verify every reactive-readiness criterion through the update lifecycle contract.
-- [ ] Preserve the usable installation, explicit confirmation and cheap startup checks. No automatic transfer or fabricated successor.
+- [x] Preserve the usable installation, explicit confirmation and cheap startup checks. No automatic transfer or fabricated successor.
 
 **Required detail:**
 
 - [Add safe manual model updates](docs/plans/ticket-detail-2026-09-30.md#add-safe-manual-model-updates)
 - [SHARE-04: Show reactive model readiness and upgrade notices](docs/plans/ticket-detail-2026-09-30.md#share-04-show-reactive-model-readiness-and-upgrade-notices)
+
+**Evidence:** [Atomic updates and reactive readiness verification](docs/testing/ticket-03-model-updates.md).
+Tested source `a63e4f8`: 198 JVM passes, one existing skip, zero lint errors,
+app/test APK assembly and 18 disposable-emulator tests passed. Two explicit pinned
+fixtures verify staging, rollback, interruption, recording/runtime leases, payload
+reload and reactive notices. Production has no declared successor and shows no
+upgrade offer. Required physical-device successor inference and interrupted-update/
+notice-clearance evidence remain open. Control tower alone integrates the scoped commits.
 
 ## 04: Verify long dictation and bounded recovery
 

@@ -85,11 +85,11 @@ Implemented by `1aa54e6` (`feat: add Nemotron latency profiles`).
 
 **Plan ID:** SHARE-03
 
-**Working branch:** `codex/share-03`
+**Working branch:** `codex/ticket-03-atomic-readiness`
 
-**Claimed by:** SHARE-03 chat `01a0df6d-a4d3-7b23-aff9-326ddb941334`
+**Claimed by:** Ticket 03 isolated worker. Prior SHARE-03 claim: chat `01a0df6d-a4d3-7b23-aff9-326ddb941334`.
 
-**Triage:** ready-for-agent
+**Triage:** needs-info
 
 **Priority:** P2
 
@@ -97,14 +97,24 @@ Implemented by `1aa54e6` (`feat: add Nemotron latency profiles`).
 
 **Blocked by:** Create the managed recognition model catalog.
 
-- [ ] Represent the usable installed version and an optional known pinned successor separately; no automatic transfers, remote discovery service, or fabricated update notification is introduced.
-- [ ] Reuse the source, size, free-space, and cellular confirmation flow before starting an update.
-- [ ] Stage and hash-check the successor separately while the old installation remains selectable and usable; retain legacy installation compatibility.
-- [ ] Coordinate activation with RecordingSession and runtime ownership so an active dictation is not invalidated, a new session cannot race replacement, and the next load uses the validated version.
-- [ ] Activate atomically and remove superseded assets only after successful activation; interruption, cancellation, insufficient space, corrupt data, and activation failure retain the previous selection and valid files.
-- [ ] Startup/readiness and Compose perform no full-model hashing. Keep install-time validation and cheap versioned markers.
-- [ ] Tests exercise two explicit pinned fixtures, old-version readiness, activation failure, interrupted updates, active-session coordination, cleanup, and reloading. Production update UI appears only for a real catalog successor.
+- [x] Represent the usable installed version and an optional known pinned successor separately; no automatic transfers, remote discovery service, or fabricated update notification is introduced.
+- [x] Reuse the source, size, free-space, and cellular confirmation flow before starting an update.
+- [x] Stage and hash-check the successor separately while the old installation remains selectable and usable; retain legacy installation compatibility.
+- [x] Coordinate activation with RecordingSession and runtime ownership so an active dictation is not invalidated, a new session cannot race replacement, and the next load uses the validated version.
+- [x] Activate atomically and remove superseded assets only after successful activation; interruption, cancellation, insufficient space, corrupt data, and activation failure retain the previous selection and valid files.
+- [x] Startup/readiness and Compose perform no full-model hashing. Keep install-time validation and cheap versioned markers.
+- [x] Tests exercise two explicit pinned fixtures, old-version readiness, activation failure, interrupted updates, active-session coordination, cleanup, and reloading. Production update UI appears only for a real catalog successor.
 - [ ] Relevant unit, download UI, assembly, and lint checks pass. Verify an interrupted update and successful reload on a device before release.
+
+### September 30 isolated implementation
+
+[Verification record](../testing/ticket-03-model-updates.md), tested source `a63e4f8`.
+198 JVM passes and one existing skip, zero lint errors, app/test APK assembly and
+18 disposable-emulator tests passed. Staging, journal rollback/recovery, pre-load
+RecordingSession ownership and backend acquisition/reload use explicit pinned
+fixtures through the production lifecycle seam. Payload reload is not native speech
+inference. The last criterion stays open for required physical-device interrupted
+update and real-engine successor reload. No production successor was invented.
 
 ### History
 
@@ -559,7 +569,9 @@ Implementation and review complete; ticket remains open for end-to-end device ev
 
 ## SHARE-04: Show reactive model readiness and upgrade notices
 
-**Triage:** ready-for-agent
+**Working branch:** `codex/ticket-03-atomic-readiness`
+
+**Triage:** needs-info
 
 **Priority:** P2
 
@@ -567,12 +579,22 @@ Implementation and review complete; ticket remains open for end-to-end device ev
 
 **Blocked by:** Add safe manual model updates.
 
-- [ ] Differentiate missing/incompatible assets, a usable current installation, and an optional pinned upgrade. A working older model keeps dictating without a compulsory update.
-- [ ] Reflect selection, successful installation, deletion, activation, failure, and returning to the app without stale notices or an app restart.
-- [ ] Offer an explicit action through the existing download confirmation. Avoid automatically opening a downloader, interrupting active recording, or performing network requests or full-model hashing during composition.
-- [ ] Preserve the distinct legacy Whisper migration flow and the fork's GitHub app updater; a model update must not masquerade as an application update.
-- [ ] Unit and UI tests verify notice transitions, optional-update dismissal/continued use, installed-version changes, and absence of notifications when no real successor exists.
+- [x] Differentiate missing/incompatible assets, a usable current installation, and an optional pinned upgrade. A working older model keeps dictating without a compulsory update.
+- [x] Reflect selection, successful installation, deletion, activation, failure, and returning to the app without stale notices or an app restart.
+- [x] Offer an explicit action through the existing download confirmation. Avoid automatically opening a downloader, interrupting active recording, or performing network requests or full-model hashing during composition.
+- [x] Preserve the distinct legacy Whisper migration flow and the fork's GitHub app updater; a model update must not masquerade as an application update.
+- [x] Unit and UI tests verify notice transitions, optional-update dismissal/continued use, installed-version changes, and absence of notifications when no real successor exists.
 - [ ] Relevant tests, assembly, and lint pass; confirm the notice clears after a successful upgrade on-device.
+
+### September 30 isolated implementation
+
+[Verification record](../testing/ticket-03-model-updates.md), tested source `a63e4f8`.
+Shared settled-state invalidations drive Model Options, repair/upgrade notices and
+the compact settings summary; resume refreshes persisted markers. A reviewed
+failure-path correction publishes after guarded invalidation. Android fixture
+checks verify optional dismissal, activation clearing, repair/reinstallation and
+deletion transitions without transfer. The last criterion remains open for required
+physical-device notice clearance after a real-engine successor upgrade.
 
 
 ## SHARE-05: Make language settings follow the selected model
