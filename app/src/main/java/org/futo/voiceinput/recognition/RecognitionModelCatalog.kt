@@ -24,6 +24,7 @@ data class RecognitionModelArtifact(
     val sha256: String
 ) {
     init {
+        require(name.isNotBlank() && name != "." && name != ".." && !name.contains('/') && !name.contains('\\'))
         require(url.startsWith("https://"))
         require(sizeBytes > 0L)
         require(sha256.matches(Regex("[0-9a-f]{64}")))
@@ -46,10 +47,21 @@ data class RecognitionModel(
     val artifacts: List<RecognitionModelArtifact>,
     val archive: RecognitionModelArtifact? = null,
     val archiveRoot: String? = null,
-    val completionMarker: String = ".download_complete"
+    val completionMarker: String = ".download_complete",
+    val supportedOlderVersions: List<RecognitionModel> = emptyList()
 ) {
     init {
+        require(id.isNotBlank() && version.isNotBlank())
+        require(directoryName.isNotBlank() && directoryName != "." && directoryName != ".." &&
+            !directoryName.contains('/') && !directoryName.contains('\\'))
+        require(artifacts.isNotEmpty() && artifacts.map { it.name }.distinct().size == artifacts.size)
         require((archive == null) == (archiveRoot == null))
+        require(supportedOlderVersions.all {
+            it.id == id && it.runtimeId == runtimeId && it.variantId == variantId &&
+                it.directoryName == directoryName && it.version != version &&
+                it.artifacts.map { artifact -> artifact.name } == artifacts.map { artifact -> artifact.name } &&
+                it.supportedOlderVersions.isEmpty()
+        })
     }
 
     val transferBytes = archive?.sizeBytes ?: artifacts.sumOf { it.sizeBytes }
@@ -432,11 +444,76 @@ class SelectedModelDeletionException : IllegalStateException(
 
 class RecognitionModelStore(
     private val rootDirectory: File,
+    private val moveDirectory: (File, File) -> Boolean = { from, to -> from.renameTo(to) },
     private val hashFile: (File) -> String = ::sha256
 ) {
     fun modelDirectory(model: RecognitionModel) = File(rootDirectory, model.directoryName)
 
-    fun isInstalled(model: RecognitionModel, verifyHashes: Boolean = false): Boolean {
+    fun stagingDirectory(model: RecognitionModel) = File(rootDirectory,
+        ".${model.directoryName}-${model.version.toByteArray().let {
+            java.security.MessageDigest.getInstance("SHA-256").digest(it)
+                .joinToString("") { byte -> "%02x".format(byte) }
+        }}.staging")
+
+    private fun backupDirectory(model: RecognitionModel) = File(rootDirectory, ".${model.directoryName}.previous")
+    private fun journal(model: RecognitionModel) = File(rootDirectory, ".${model.directoryName}.activating")
+
+    fun recover(model: RecognitionModel) = synchronized(storageLock) {
+        val backup = backupDirectory(model)
+        if (journal(model).exists()) {
+            if (backup.exists()) {
+                check(modelDirectory(model).deleteRecursively())
+                check(moveDirectory(backup, modelDirectory(model))) { "Could not restore previous model" }
+            }
+            check(journal(model).delete())
+        } else if (backup.exists()) {
+            check(backup.deleteRecursively())
+        }
+    }
+
+    fun installedVersion(model: RecognitionModel, verifyHashes: Boolean = false): RecognitionModel? = synchronized(storageLock) {
+        recover(model)
+        return (listOf(model) + model.supportedOlderVersions).firstOrNull { isExactInstalled(it, verifyHashes) }
+    }
+
+    fun validateStaged(model: RecognitionModel): Boolean {
+        val directory = stagingDirectory(model)
+        if (!artifactsValid(model, true, directory)) return false
+        File(directory, model.completionMarker).writeText("${model.id}@${model.version}")
+        return true
+    }
+
+    fun hasValidatedCandidate(model: RecognitionModel): Boolean {
+        val directory = stagingDirectory(model)
+        return runCatching { File(directory, model.completionMarker).readText() }.getOrNull() ==
+            "${model.id}@${model.version}" && artifactsValid(model, false, directory)
+    }
+
+    fun activateStaged(model: RecognitionModel) = synchronized(storageLock) {
+        recover(model)
+        val staged = stagingDirectory(model)
+        check(File(staged, model.completionMarker).readText() == "${model.id}@${model.version}")
+        check(artifactsValid(model, false, staged))
+        val installed = modelDirectory(model)
+        val backup = backupDirectory(model)
+        journal(model).writeText(model.version)
+        try {
+            if (installed.exists()) check(moveDirectory(installed, backup)) { "Could not retain previous model" }
+            check(moveDirectory(staged, installed)) { "Could not activate validated model" }
+            check(isExactInstalled(model)) { "Activated model is not ready" }
+            check(journal(model).delete()) { "Could not commit model activation" }
+        } catch (failure: Throwable) {
+            recover(model)
+            throw failure
+        }
+        // Once committed, leftover backups are harmless and cleaned on the next readiness check.
+        backup.deleteRecursively()
+    }
+
+    fun isInstalled(model: RecognitionModel, verifyHashes: Boolean = false): Boolean =
+        installedVersion(model, verifyHashes) != null
+
+    private fun isExactInstalled(model: RecognitionModel, verifyHashes: Boolean = false): Boolean {
         val directory = modelDirectory(model)
         val marker = File(directory, model.completionMarker)
         if (!marker.isFile) return false
@@ -460,7 +537,8 @@ class RecognitionModelStore(
     }
 
     fun invalidate(model: RecognitionModel) {
-        File(modelDirectory(model), model.completionMarker).delete()
+        val marker = File(modelDirectory(model), model.completionMarker)
+        if (runCatching { marker.readText() }.getOrNull() == "${model.id}@${model.version}") marker.delete()
     }
 
     fun select(model: RecognitionModel, updateSelection: () -> Unit) {
@@ -478,6 +556,10 @@ class RecognitionModelStore(
         check(modelDirectory(model).deleteRecursively()) {
             "Failed to delete ${model.displayName}"
         }
+    }
+
+    companion object {
+        private val storageLock = Any()
     }
 
     private fun artifactsValid(

@@ -321,7 +321,8 @@ fun DownloadPrompt(
 
 @Composable
 @Preview(showBackground = true)
-fun DownloadScreen(models: List<ModelInfo> = EXAMPLE_MODELS, onRetry: (() -> Unit)? = null) {
+fun DownloadScreen(models: List<ModelInfo> = EXAMPLE_MODELS, onRetry: (() -> Unit)? = null,
+                   activationPending: Boolean = false) {
     val finishedCount = models.count { it.finished }
     val hasUnknownActiveSize = models.any { !it.finished && !it.error && it.size == null }
     val knownSizeProgress = if (!hasUnknownActiveSize && models.all { it.size != null || it.finished }) {
@@ -349,7 +350,8 @@ fun DownloadScreen(models: List<ModelInfo> = EXAMPLE_MODELS, onRetry: (() -> Uni
             )
         } else {
             Text(
-                stringResource(if (models.any { it.verifying }) R.string.download_verifying else R.string.download_in_progress),
+                if (activationPending) "Waiting for dictation to finish before activating the model..." else
+                    stringResource(if (models.any { it.verifying }) R.string.download_verifying else R.string.download_in_progress),
                 modifier = Modifier.padding(16.dp, 0.dp),
                 style = Typography.bodyMedium
             )
@@ -399,6 +401,7 @@ class DownloadActivity : ComponentActivity() {
     private lateinit var allRequestedFiles: List<ModelInfo>
     private val httpClient = OkHttpClient()
     private var isDownloading by mutableStateOf(false)
+    private var activationPending by mutableStateOf(false)
     private var completionMarker: File? = null
     private var confirmation: DownloadConfirmation? = null
     private var archiveToDownload: ModelInfo? = null
@@ -414,7 +417,7 @@ class DownloadActivity : ComponentActivity() {
                 ) {
                     if (isDownloading) {
                         DownloadScreen(models = modelsToDownload,
-                            onRetry = { retryDownloads() })
+                            onRetry = { retryDownloads() }, activationPending = activationPending)
                     } else {
                         DownloadPrompt(
                             onContinue = { startDownload() },
@@ -431,7 +434,6 @@ class DownloadActivity : ComponentActivity() {
     private fun startDownload() {
         if (confirmation?.hasEnoughSpace == false) return
         lifecycleScope.launch {
-            managedModel?.let { modelLifecycle.releaseArtifacts(it) }
             startDownloadAfterRuntimeRelease()
         }
     }
@@ -574,6 +576,7 @@ class DownloadActivity : ComponentActivity() {
     }
 
     private fun markError(model: ModelInfo, message: String? = null, error: Throwable? = null, code: Int = 0) {
+        RecognitionModelLifecycle.publishChange()
         // The UI's message can contain URLs or file paths; never include it in a standard report.
         diagnosticDownload?.event(DiagnosticEvent.DOWNLOAD_FAILED,
             mapOf(DiagnosticMetric.BYTES to (model.expectedSize ?: 0L),
@@ -599,11 +602,13 @@ class DownloadActivity : ComponentActivity() {
         validModelFile(model.targetFile, model.expectedSize, model.sha256)
 
     override fun onDestroy() {
+        RecognitionModelLifecycle.publishChange()
         httpClient.dispatcher.cancelAll()
         super.onDestroy()
     }
 
     private fun cancel() {
+        RecognitionModelLifecycle.publishChange()
         diagnosticDownload?.end(DiagnosticEvent.DOWNLOAD_CANCELLED)
         val returnIntent = Intent()
         setResult(RESULT_CANCELED, returnIntent)
@@ -618,9 +623,8 @@ class DownloadActivity : ComponentActivity() {
                         "Downloaded model files failed validation"
                     }
                     managedModel?.let { model ->
-                        check(modelLifecycle.completeInstallation(model, ::updateRecognitionModelSelection)) {
-                            "Downloaded ${model.displayName} failed validation"
-                        }
+                        withContext(Dispatchers.Main) { activationPending = true }
+                        modelLifecycle.activateInstallation(model, ::updateRecognitionModelSelection)
                     } ?: completionMarker?.let { marker ->
                         marker.parentFile?.mkdirs()
                         marker.writeText(
@@ -634,6 +638,7 @@ class DownloadActivity : ComponentActivity() {
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (error: Exception) {
+                activationPending = false
                 if (modelsToDownload.isEmpty()) {
                     modelsToDownload = archiveToDownload?.let { listOf(it) } ?: allRequestedFiles
                 }
@@ -711,7 +716,7 @@ class DownloadActivity : ComponentActivity() {
         }
 
         val targetSubdir = intent.getStringExtra(EXTRA_TARGET_SUBDIR)
-        val targetDir = if (targetSubdir != null) {
+        val targetDir = managedModel?.let(modelLifecycle::downloadDirectory) ?: if (targetSubdir != null) {
             File(filesDir, targetSubdir)
         } else {
             filesDir
@@ -800,7 +805,7 @@ class DownloadActivity : ComponentActivity() {
                     incomplete
                 }
             }
-            if (modelsToDownload.isEmpty()) {
+            if (modelsToDownload.isEmpty() && managedModel == null) {
                 downloadsFinished()
                 return@launch
             }

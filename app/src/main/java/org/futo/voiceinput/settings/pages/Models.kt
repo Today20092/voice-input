@@ -11,6 +11,8 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
@@ -53,10 +55,27 @@ import org.futo.voiceinput.recognition.RecognitionModelCatalog
 import org.futo.voiceinput.recognition.RecognitionModelLifecycle
 import org.futo.voiceinput.recognition.RecognitionModel
 import org.futo.voiceinput.recognition.RecognitionModelSelection
+import org.futo.voiceinput.recognition.RecognitionModelReadiness
+import org.futo.voiceinput.recognition.RecognitionModelRepairReason
 import org.futo.voiceinput.recognition.updateRecognitionModelSelection
 
 @Composable
+private fun observeModelReadinessChanges(): Long {
+    val revision by RecognitionModelLifecycle.invalidations.collectAsState()
+    val owner = LocalLifecycleOwner.current
+    DisposableEffect(owner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) RecognitionModelLifecycle.publishChange()
+        }
+        owner.lifecycle.addObserver(observer)
+        onDispose { owner.lifecycle.removeObserver(observer) }
+    }
+    return revision
+}
+
+@Composable
 fun modelsSubtitle(): String? {
+    observeModelReadinessChanges()
     val context = LocalContext.current
     val (backend, _) = useDataStore(SPEECH_BACKEND)
     val (moonshineVariantId, _) = useDataStore(MOONSHINE_MODEL_VARIANT)
@@ -80,6 +99,8 @@ fun modelsSubtitle(): String? {
         readiness?.isReady != true
     ) {
         "$selected • Download required"
+    } else if (readiness?.optionalUpgrade != null) {
+        "$selected • Optional update"
     } else {
         selected
     }
@@ -87,12 +108,11 @@ fun modelsSubtitle(): String? {
 
 @Composable
 fun ManagedRecognitionModelCatalog() {
+    observeModelReadinessChanges()
     val context = LocalContext.current
-    val lifecycleOwner = LocalLifecycleOwner.current
     val backend = useDataStore(SPEECH_BACKEND)
     val moonshineVariant = useDataStore(MOONSHINE_MODEL_VARIANT)
     val nemotronProfile = useDataStore(NEMOTRON_PROFILE)
-    val refresh = remember { mutableStateOf(0) }
     val modelLifecycle = remember(context) {
         RecognitionModelLifecycle.create(context.filesDir, BuildConfig.BUNDLE_PARAKEET_MODEL)
     }
@@ -100,17 +120,6 @@ fun ManagedRecognitionModelCatalog() {
         RecognitionModelSelection(backend.value, moonshineVariant.value, nemotronProfile.value)
     )?.model?.id
 
-    DisposableEffect(lifecycleOwner, context) {
-        val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) {
-                refresh.value += 1
-            }
-        }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
-    }
-
-    refresh.value
     RecognitionModelCatalog.cards.forEach { card ->
         ScreenTitle(card.displayName)
         Tip(card.description)
@@ -125,8 +134,7 @@ fun ManagedRecognitionModelCatalog() {
                 ManagedRecognitionModelItem(
                     model = model,
                     selectedModelId = selectedModelId,
-                    modelLifecycle = modelLifecycle,
-                    onDeleted = { refresh.value += 1 }
+                    modelLifecycle = modelLifecycle
                 )
             }
             card.models.firstOrNull { it.id == selectedModelId }?.let {
@@ -140,16 +148,18 @@ fun ManagedRecognitionModelCatalog() {
 private fun ManagedRecognitionModelItem(
     model: RecognitionModel,
     selectedModelId: String?,
-    modelLifecycle: RecognitionModelLifecycle,
-    onDeleted: () -> Unit
+    modelLifecycle: RecognitionModelLifecycle
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val bundled = model.runtimeId == SpeechBackendType.Parakeet.id &&
         BuildConfig.BUNDLE_PARAKEET_MODEL
+    val revision by RecognitionModelLifecycle.invalidations.collectAsState()
+    revision
     val installed = modelLifecycle.isReady(model)
+    val readiness = modelLifecycle.readiness(modelLifecycle.selectionFor(model))
     val selected = selectedModelId == model.id
-    val presentation = presentRecognitionModel(model, installed, selected)
+    val presentation = presentRecognitionModel(readiness?.installedModel ?: model, installed, selected)
     val showDetails = remember { mutableStateOf(false) }
     val selectOrDownload = {
         if (installed) {
@@ -167,13 +177,17 @@ private fun ManagedRecognitionModelItem(
     ) {
         Column {
             TextButton(onClick = { showDetails.value = true }) { Text("Details") }
+            readiness?.optionalUpgrade?.let { successor ->
+                TextButton(onClick = { context.startRecognitionModelDownloadActivity(successor) }) {
+                    Text("Update")
+                }
+            }
             if (installed && !bundled) {
                 TextButton(
                     enabled = !selected,
                     onClick = {
                         lifecycleOwner.lifecycleScope.launch {
                             modelLifecycle.delete(model, selectedModelId)
-                            onDeleted()
                         }
                     }
                 ) { Text(if (selected) "Selected" else "Delete") }
@@ -287,6 +301,47 @@ private fun ModelDetailsDialog(presentation: ModelPresentation, onDismiss: () ->
 }
 
 @Composable
+fun RecognitionModelNotice(
+    readiness: RecognitionModelReadiness?,
+    dismissed: Boolean,
+    onDownload: (RecognitionModel) -> Unit,
+    onDismiss: () -> Unit
+) {
+    if (readiness == null) return
+    if (!readiness.isReady) {
+        val action = if (readiness.repairReason == RecognitionModelRepairReason.INVALID_OR_INCOMPATIBLE)
+            "Repair" else "Download"
+        Tip("${readiness.model.displayName}: $action required")
+        TextButton(onClick = { onDownload(readiness.model) }) { Text("$action model") }
+    } else if (readiness.optionalUpgrade != null && !dismissed) {
+        Tip("An optional update is available for ${readiness.model.displayName}. " +
+            "You can keep using the installed version.", onDismiss = onDismiss)
+        TextButton(onClick = { onDownload(readiness.optionalUpgrade) }) { Text("Update model") }
+    }
+}
+
+@Composable
+private fun SelectedRecognitionModelNotice() {
+    observeModelReadinessChanges()
+    val context = LocalContext.current
+    val backend = useDataStore(SPEECH_BACKEND).value
+    val moonshine = useDataStore(MOONSHINE_MODEL_VARIANT).value
+    val nemotron = useDataStore(NEMOTRON_PROFILE).value
+    val lifecycle = remember(context) {
+        RecognitionModelLifecycle.create(context.filesDir, BuildConfig.BUNDLE_PARAKEET_MODEL)
+    }
+    val readiness = lifecycle.readiness(RecognitionModelSelection(backend, moonshine, nemotron))
+    val successor = readiness?.optionalUpgrade
+    val key = successor?.let { "${it.id}@${it.version}" }
+    val preferences = remember(context) { context.getSharedPreferences("model_upgrade_notices", 0) }
+    val dismissed = remember(key) { mutableStateOf(key?.let { preferences.getBoolean(it, false) } ?: false) }
+    RecognitionModelNotice(readiness, dismissed.value, context::startRecognitionModelDownloadActivity) {
+        dismissed.value = true
+        key?.let { preferences.edit().putBoolean(it, true).apply() }
+    }
+}
+
+@Composable
 @Preview
 fun ModelsScreen(
     settingsViewModel: SettingsViewModel = viewModel(),
@@ -302,6 +357,7 @@ fun ModelsScreen(
 
     ScrollableList {
         ScreenTitle(stringResource(R.string.model_options), showBack = true, navController = navController)
+        SelectedRecognitionModelNotice()
 
         if (whisperSelected) {
             ConditionalModelUpdate()

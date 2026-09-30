@@ -184,6 +184,7 @@ abstract class RecordingSession {
         unfocusAudio()
         microphoneRouting?.second?.close()
         microphoneRouting = null
+        releaseModelSession(generation)
         failed(error)
     }
 
@@ -228,6 +229,7 @@ abstract class RecordingSession {
     }
 
     private var backend: SpeechBackend? = null
+    private var modelSession: Pair<Long, AutoCloseable>? = null
     private var backendGeneration = -1L
     private var parakeetLease: OwnedParakeetLease? = null
     @Volatile
@@ -378,7 +380,10 @@ abstract class RecordingSession {
         val backendToClose: SpeechBackend?
         val parakeetLeaseToRelease: OwnedParakeetLease?
         val backupToClose: AudioHistoryStore.Capture?
+        val modelSessionToRelease: AutoCloseable?
         synchronized(this) {
+            modelSessionToRelease = modelSession?.second
+            modelSession = null
             recognitionGeneration += 1
             backupToClose = backup?.second
             backup = null
@@ -412,11 +417,13 @@ abstract class RecordingSession {
             modelJobToJoin?.join()
             loadModelJobToJoin?.join()
             withContext(Dispatchers.IO) { runCatching { backupToClose?.close() } }
-            if (parakeetLeaseToRelease != null) {
-                modelLifecycle.release(parakeetLeaseToRelease.lease, lifecycleScope)
-            } else if (backendToClose != null) {
-                modelLifecycle.release(backendToClose, lifecycleScope)
-            }
+            try {
+                if (parakeetLeaseToRelease != null) {
+                    modelLifecycle.release(parakeetLeaseToRelease.lease, lifecycleScope)
+                } else if (backendToClose != null) {
+                    modelLifecycle.release(backendToClose, lifecycleScope)
+                }
+            } finally { modelSessionToRelease?.close() }
         }
     }
 
@@ -631,13 +638,13 @@ abstract class RecordingSession {
                 report.event(DiagnosticEvent.PERMISSION_REQUIRED)
                 needPermission()
             } else {
-                startRecording()
+                startRecordingWithModelSession()
             }
         }
     }
 
     fun permissionResultGranted() {
-        startRecording()
+        startRecordingWithModelSession()
     }
 
     fun permissionResultRejected() {
@@ -649,6 +656,33 @@ abstract class RecordingSession {
         activeRecorder.read(samples, 0, AUDIO_READ_SIZE, mode)
     } catch (_: RuntimeException) {
         AudioRecord.ERROR_INVALID_OPERATION
+    }
+
+    private fun releaseModelSession(generation: Long) {
+        synchronized(this) {
+            modelSession?.takeIf { it.first == generation }?.let {
+                modelSession = null
+                it.second.close()
+            }
+        }
+    }
+
+    private fun startRecordingWithModelSession() {
+        val generation = recognitionGeneration
+        lifecycleScope.launch {
+            val lease = selectedManagedModel?.let { modelLifecycle.acquireSession(it) }
+            val current = synchronized(this@RecordingSession) {
+                if (generation != recognitionGeneration || modelSession != null) false else {
+                    lease?.let { modelSession = generation to it }
+                    true
+                }
+            }
+            if (!current) { lease?.close(); return@launch }
+            try { startRecording() } catch (failure: Throwable) {
+                releaseModelSession(generation)
+                throw failure
+            }
+        }
     }
 
     private fun startRecording(numTries: Int = 0) {
@@ -945,6 +979,7 @@ abstract class RecordingSession {
             recordingStarted()
         } catch(e: SecurityException){
             report?.event(DiagnosticEvent.RECORDER_FAILED, error = e)
+            releaseModelSession(recognitionGeneration)
             stopAndReleaseRecorder()
             // It's possible we may have lost permission, so let's just ask for permission again
             needPermission()
@@ -1089,6 +1124,7 @@ abstract class RecordingSession {
                         backup?.takeIf { it.first == runGeneration }?.second
                     }
                     withContext(Dispatchers.IO) { runCatching { capture?.close() } }
+                    releaseModelSession(runGeneration)
                 }
             }
         }

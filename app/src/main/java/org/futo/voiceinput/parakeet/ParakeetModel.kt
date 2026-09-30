@@ -80,7 +80,6 @@ fun Context.deleteIncompleteParakeetModel() {
 }
 
 fun Context.parakeetModelDownloadIntent(): Intent {
-    runBlocking { ParakeetEngineManager.forceClose() }
     return Intent(this, DownloadActivity::class.java).apply {
         putRecognitionModel(ParakeetModel.recognitionModel)
     }

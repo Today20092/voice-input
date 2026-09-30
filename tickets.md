@@ -71,7 +71,7 @@ spoken TalkBack remain open. Hardware details were requested. The published beta
 
 ## 03: Finish safe model updates and readiness
 
-**Working branch:** `codex/share-beta-integration`
+**Working branch:** `codex/ticket-03-atomic-readiness`
 
 **What to build:** Finish explicit atomic pinned updates, then reactive readiness and optional upgrade notices.
 
