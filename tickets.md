@@ -6,7 +6,8 @@ Work on `codex/share-beta-integration`, then merge the tested release into `mast
 
 Before working a ticket, read its linked sections. Their unchecked criteria are required detail; checked criteria and resolutions are existing evidence. Record verification there and check the summary only when its requirements are met. The detail file is not a second queue; do not reopen completed work. Historical claims/blockers are superseded by this queue.
 
-The frontier is 01. The last checked release run failed at Build APK and publication was unverified; recheck live CI. See [finish plan](docs/plans/share-beta-finish.md).
+The frontier is 01. Signed beta 2 is published and its release checks passed; the
+original packaging cause remains unproven. See [finish plan](docs/plans/share-beta-finish.md).
 
 ## 01: Restore the integrated beta build
 
@@ -20,11 +21,19 @@ The frontier is 01. The last checked release run failed at Build APK and publica
 
 - [ ] Record the actual failed CI command/error and reproduce or establish its cause.
 - [ ] Fix the cause; pass unit tests, lint, UI-test compilation, native checks, APK build and signature/package verification.
-- [ ] Record successful CI, tested commit, tag, prerelease URL and artifacts.
+- [x] Record successful CI, tested commit, tag, prerelease URL and artifacts.
 
 **Evidence:** [Build diagnosis and beta verification](docs/testing/ticket-01-beta-build.md).
 Diagnostic CI passed unchanged packaging/signing configuration; the original
 underlying exception is absent from the failed log. Cause and fix remain unverified.
+
+**Checkpoint:** Tested source `00d5e34b91f48df83b260bf2206706678e326989`,
+tag `v1.4.6-share-beta.2`, [successful CI](https://github.com/Today20092/voice-input/actions/runs/36754734286),
+[signed prerelease](https://github.com/Today20092/voice-input/releases/tag/v1.4.6-share-beta.2).
+Unit tests: 189 passed, one skipped; lint: zero errors; UI-test compilation,
+nine native Harper tests, assembly and package/signature verification passed.
+The published APK matches the CI APK and GitHub digest and preserves the stable signer.
+The first two criteria remain open because successful reruns do not prove a root-cause fix.
 
 ## 02: Verify the integrated voice-input experience
 

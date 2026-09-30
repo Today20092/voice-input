@@ -28,6 +28,14 @@ selected skill's actual checks and code-review closeout. Use writing-for-agents
 when editing ticket or evidence documentation. Continue on the ticket's Working
 branch; SHARE-09 remains an isolated experiment until its feasibility decision.
 
+Ticket 01 checkpoint, 2026-09-30: signed
+[beta 2](https://github.com/Today20092/voice-input/releases/tag/v1.4.6-share-beta.2)
+published from `00d5e34b91f48df83b260bf2206706678e326989` after
+[CI 36754734286](https://github.com/Today20092/voice-input/actions/runs/36754734286)
+passed. [Build evidence](../testing/ticket-01-beta-build.md) records the artifact,
+signer, reports and unresolved original packaging cause. Ticket 01 remains open;
+physical-device acceptance and the final master merge remain later work.
+
 ## Historical plan
 
 Updated 2026-09-28. This plan supersedes the parallel dispatch instructions in
