@@ -217,14 +217,24 @@ Commit `d12ee49` removes the Rust/JNI runtime, Cargo/NDK wiring, duplicate-libra
 **Triage:** ready-for-human
 
 - [x] The compatible Compose navigation stack uses Navigation Compose 2.8.0 or newer without raising the minimum supported Android version.
-- [ ] Swiping back from Model Options on Android 15 or newer previews the settings home screen with an interactive cross-fade instead of freezing until commit.
-- [ ] Swiping back from Input keeps the outgoing and incoming page text visually distinct instead of compositing both pages' text on top of each other.
+- [x] Swiping back from Model Options on Android 15 or newer previews the settings home screen with an interactive cross-fade instead of freezing until commit.
+- [x] Swiping back from Input keeps the outgoing and incoming page text visually distinct instead of compositing both pages' text on top of each other.
 - [x] Committing the gesture returns to the correct previous destination, while cancelling it retains the current destination.
 - [x] Another settings destination exhibits the same predictive-back behavior through the shared navigation host.
 - [x] System back and the in-app back arrow continue to return to the correct previous destination.
 - [x] Forward navigation retains clear transition feedback.
-- [ ] An instrumentation check covers settings back-stack behavior at the shared navigation-host seam, and a real-device or emulator check verifies the interactive animation.
-- [ ] Relevant unit, instrumentation, build, and lint checks pass after the dependency upgrade.
+- [x] An instrumentation check covers settings back-stack behavior at the shared navigation-host seam, and a real-device or emulator check verifies the interactive animation.
+- [x] Relevant unit, instrumentation, build, and lint checks pass after the dependency upgrade.
+
+### Integrated verification, 2026-09-30
+
+Local Android Studio build, JVM suite, lint and both SettingsNavigationTest cases
+passed. API 37 system gestures exposed a missing SettingsActivity manifest opt-in,
+then overlapping text in simultaneous fades. Explicit opt-in and successive
+built-in pop fades fix both at the shared host. Before/after recordings, Input
+cancellation and Model Options preview are recorded in [ticket 02 evidence](../testing/ticket-02-integrated-experience.md).
+This section permits emulator animation evidence; the parent ticket's physical
+keyboard/editor/headset/TalkBack criteria remain open.
 
 ### Beta observation
 
@@ -271,15 +281,22 @@ In the signed `v1.4.2-beta.5` prerelease, Download Progress remained at 4 of 6 f
 
 **Triage:** ready-for-agent
 
-- [ ] Retrying an interrupted model installation skips files that already downloaded and validated.
-- [ ] Retrying a partially downloaded file continues from its saved byte position when the server supports range requests.
-- [ ] If a server cannot resume safely, the UI explains that the affected file must restart instead of silently presenting it as resumed.
+- [x] Retrying an interrupted model installation skips files that already downloaded and validated.
+- [x] Retrying a partially downloaded file continues from its saved byte position when the server supports range requests.
+- [x] If a server cannot resume safely, the UI explains that the affected file must restart instead of silently presenting it as resumed.
 - [ ] A failed retry cannot replace a previously validated file or mark an incomplete model as installed.
 - [x] A focused download check covers interruption and retry of a large model artifact.
 
 ### Implementation checkpoint
 
 Implemented on `codex/resume-downloads` after the verified Nemotron prerequisite. Eight standalone Kotlin/JUnit transfer tests pass, including an interrupted 33 MiB artifact. Standards and specification reviews are clear after correcting refused-range recovery. App Gradle, archive integration tests, and Android UI checks await the shared build slot; the ticket remains open. See [verification evidence](docs/download-resumption-verification.md).
+
+September 30 integrated follow-up: all eight file-transfer tests and six archive
+fixture tests pass through local Gradle, with the published-Orukeet check skipped.
+Both DownloadRetryUiTest cases and both manifest-request Android tests passed.
+The first three criteria are verified at transfer/UI seams, not by reproduction
+of the phone's stalled transfer. A full Android failed-install/marker and actual
+interrupted-installation check remain open. See [ticket 02 evidence](../testing/ticket-02-integrated-experience.md).
 
 ### Beta observation
 
@@ -445,22 +462,22 @@ Validation at `4a12bba`: the 9 Moonshine Gradle tests passed; the full suite rep
 
 **Claimed by:** Model Options chat (`01a0df6e-16f5-7d22-b916-56c53222e516`)
 
-**Validation pending:** SHARE-05 prerequisites are incorporated. Standards and Spec source reviews passed after correcting asynchronous UI assertions and checking Details scroll reachability. `git diff --check` passed. Unit tests, instrumentation, assembly, and lint await the exclusive build/emulator slot; no physical-device or manual accessibility result is claimed.
+**Validation:** September 30 local Android Studio Gradle checks and all five model-catalog Android tests passed. A test-only assertion requiring every details dialog to overflow was removed; end-of-content reachability and dismissal remain checked. No physical-device or spoken TalkBack result is claimed. See [ticket 02 evidence](../testing/ticket-02-integrated-experience.md).
 
 **What to build:** Make Model Options accurately explain recognition behavior and keep recognition-model selection separate from transcript cleanup. Present concise model choices first, with technical attribution and version details available on demand.
 
 **Blocked by:** None — can start immediately.
 
-- [ ] Whisper is described as final-only transcription rather than live transcription.
-- [ ] Model information distinguishes live transcription, buffered live transcription, and final-only transcription: Moonshine and Nemotron are live, Parakeet Unified is buffered live, and Parakeet TDT and Whisper are final-only.
-- [ ] S1-mini transcript cleanup has a dedicated settings destination and is no longer presented inside the recognition-model catalog flow.
-- [ ] Recognition-model rows show a compact summary containing recognition behavior, languages, download size, installed size, and installation/selection status.
-- [ ] Source, license/attribution, version, and other technical information remain available from a model-details action instead of crowding the primary row.
-- [ ] Whisper English and multilingual variants appear directly with the Whisper choice rather than at the bottom of the catalog after selection.
-- [ ] Model Options and its parent settings summary identify the exact selected variant where a family has multiple choices.
-- [ ] Focused tests cover model-presentation metadata and the settings navigation/placement behavior at stable public seams.
-- [ ] Relevant unit tests, instrumentation tests, assembly, and lint pass.
-- [ ] Whisper native-runtime modernization and Whisper large-v3-turbo Q5/Q8 models remain out of scope.
+- [x] Whisper is described as final-only transcription rather than live transcription.
+- [x] Model information distinguishes live transcription, buffered live transcription, and final-only transcription: Moonshine and Nemotron are live, Parakeet Unified is buffered live, and Parakeet TDT and Whisper are final-only.
+- [x] S1-mini transcript cleanup has a dedicated settings destination and is no longer presented inside the recognition-model catalog flow.
+- [x] Recognition-model rows show a compact summary containing recognition behavior, languages, download size, installed size, and installation/selection status.
+- [x] Source, license/attribution, version, and other technical information remain available from a model-details action instead of crowding the primary row.
+- [x] Whisper English and multilingual variants appear directly with the Whisper choice rather than at the bottom of the catalog after selection.
+- [x] Model Options and its parent settings summary identify the exact selected variant where a family has multiple choices.
+- [x] Focused tests cover model-presentation metadata and the settings navigation/placement behavior at stable public seams.
+- [x] Relevant unit tests, instrumentation tests, assembly, and lint pass.
+- [x] Whisper native-runtime modernization and Whisper large-v3-turbo Q5/Q8 models remain out of scope.
 
 ## Diagnose intermittent waveform behavior when opening voice input
 
@@ -608,7 +625,12 @@ All five `LanguagesScreenTest` cases passed on Pixel_10, Android 37, emulator-55
 - [ ] Preserve audio/transcript continuity. If changing the device requires starting a new utterance, make that explicit and retain the current recording instead of silently dropping it.
 - [ ] Device names and other private surrounding information do not enter standard diagnostic exports; record only useful permitted route/state categories.
 - [ ] Focused state tests and real phone/headset tests cover route selection, denied/unavailable routing, disconnect, repeated sessions, Activity, and IME. Record Android/headset details and any unsupported combinations.
-- [ ] Relevant tests, assembly, and lint pass; do not mark hardware validation complete without a real headset test.
+- [x] Relevant tests, assembly, and lint pass; do not mark hardware validation complete without a real headset test.
+
+September 30 integrated follow-up: all three MicrophoneRouteControlTest checks
+and AndroidMicrophonePlatformTest passed on a fresh API 37 AVD using virtual input,
+with the full JVM suite, assembly and lint. Physical headset acceptance remains
+unchecked. See [ticket 02 evidence](../testing/ticket-02-integrated-experience.md).
 
 ### Implementation checkpoint
 
@@ -747,11 +769,18 @@ The restored checkout retains baseline `eb5e1dad`. Its lost uncommitted preparat
 
 **Claimed by:** SHARE-12 documentation chat
 
-- [ ] Name and date the upstream branch/revision used for comparisons. Acknowledge its multi-model/streaming work without implying this fork lacks equivalent capabilities or claiming unmeasured performance wins.
-- [ ] Explain that FUTO Keyboard's built-in recognizer and the external fork are separate choices. Provide the supported switching path and manual fallback appropriate to the shipped app.
-- [ ] Keep this fork's package identity, GitHub update source, Orukeet default, retained models, and cleanup/history features accurate. Link source attribution and actual feature availability.
-- [ ] Describe any SwiftKey text-loss warning as an upstream report unless reproduced on our build; do not add a blanket incompatibility claim or disable unrelated keyboards without evidence.
-- [ ] Document SHARE-03's reopened status accurately and update the product comparison as accepted features ship. Validate links and ensure UI help does not promise unfinished ticket work.
+- [x] Name and date the upstream branch/revision used for comparisons. Acknowledge its multi-model/streaming work without implying this fork lacks equivalent capabilities or claiming unmeasured performance wins.
+- [x] Explain that FUTO Keyboard's built-in recognizer and the external fork are separate choices. Provide the supported switching path and manual fallback appropriate to the shipped app.
+- [x] Keep this fork's package identity, GitHub update source, Orukeet default, retained models, and cleanup/history features accurate. Link source attribution and actual feature availability.
+- [x] Describe any SwiftKey text-loss warning as an upstream report unless reproduced on our build; do not add a blanket incompatibility claim or disable unrelated keyboards without evidence.
+- [x] Document SHARE-03's reopened status accurately and update the product comparison as accepted features ship. Validate links and ensure UI help does not promise unfinished ticket work.
+
+September 30 integrated follow-up: reviewed README and existing Help against the
+current setup UI, parsed resource XML, verified relative links, and inspected
+Help at normal font and 1.5x landscape on the separate API 37 AVD. README now links
+the local evidence and distinguishes unpublished predictive-back fixes from beta
+2. SHARE-03/04 remain pending; no update availability or phone/headset/TalkBack
+result is promised. See [ticket 02 evidence](../testing/ticket-02-integrated-experience.md).
 
 ### Partial implementation, 2026-09-28
 

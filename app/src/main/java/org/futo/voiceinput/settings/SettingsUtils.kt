@@ -7,6 +7,9 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -145,7 +148,9 @@ fun SettingsMain(
 
     NavHost(
         navController = navController,
-        startDestination = initialDestination
+        startDestination = initialDestination,
+        popExitTransition = { fadeOut(tween(100)) },
+        popEnterTransition = { fadeIn(tween(100, delayMillis = 100)) }
     ) {
         composable(SettingsDestination.Home.route) { HomeScreen(settingsViewModel, navController) }
         composable(SettingsDestination.KeyboardProvider.route) { KeyboardProviderScreen(navController, settingsViewModel) }

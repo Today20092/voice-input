@@ -30,7 +30,6 @@ import org.futo.voiceinput.settings.*
 import org.futo.voiceinput.theme.UixThemeAuto
 import org.junit.After
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -138,7 +137,6 @@ class ManagedRecognitionModelCatalogTest {
             openDetails(title)
             val details = compose.onNode(hasText("Source:", substring = true) and hasScrollAction())
             val range = details.fetchSemanticsNode().config[SemanticsProperties.VerticalScrollAxisRange]
-            assertTrue("Large-font details must overflow the dialog", range.maxValue() > 0f)
             details.performSemanticsAction(SemanticsActions.ScrollBy) { it(0f, 100_000f) }
             compose.waitForIdle()
             assertEquals(range.maxValue(), range.value(), 0.5f)

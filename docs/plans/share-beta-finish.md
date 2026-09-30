@@ -2,6 +2,14 @@
 
 ## Active sequence, 2026-09-30
 
+Ticket 02 active worker: `/root`, integration verification chat dispatched by
+control tower `01a0f345-1363-7ee1-ba31-ee9c533599aa`. Exclusive integration writer
+and local build slot claimed for this pass. Use installed Android Studio JBR/SDK,
+local Gradle and actual emulator/device execution. No connected device was found
+at initial inspection. Preserve Pixel_10 userdata; use a separate disposable test
+AVD for independent checks. Phone/headset and manual accessibility evidence stay
+open until measured. See [ticket 02 evidence](../testing/ticket-02-integrated-experience.md).
+
 [tickets.md](../../tickets.md) is the seven-ticket active queue. The detailed
 sections below are historical coordination evidence, including the earlier
 publication checkpoint; they do not override current ticket dependencies.
@@ -35,6 +43,16 @@ published from `00d5e34b91f48df83b260bf2206706678e326989` after
 passed. [Build evidence](../testing/ticket-01-beta-build.md) records the artifact,
 signer, reports and unresolved original packaging cause. Ticket 01 remains open;
 physical-device acceptance and the final master merge remain later work.
+
+Ticket 02 checkpoint, 2026-09-30: local Android Studio toolchain validation passed
+189 JVM tests with one existing skip, APK/test APK assembly, lint with zero errors,
+and 35 Android tests on a separate API 37 AVD. Real gestures demonstrated and
+verified fixes for missing settings callback opt-in and overlapping page text.
+Standards and Spec reviews have zero findings. [Ticket 02 evidence](../testing/ticket-02-integrated-experience.md)
+records retained logs/APKs/videos and remaining requirements. Ticket 02 is
+`needs-info` for physical phone/headset and spoken TalkBack evidence. Its build/test
+pass has concluded; the checkpoint push returns the exclusive integration slot
+to the control tower. The original Pixel_10 data and SHARE-09 experiment were untouched.
 
 ## Historical plan
 

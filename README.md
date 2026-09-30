@@ -95,6 +95,8 @@ If automatic setup is unsupported, tap **Open keyboard settings**, or open FUTO 
 
 The [SHARE-01 verification record](docs/testing/share-01-keyboard-provider.md) covers automated checks and detection/settings-return fallback with official FUTO Keyboard 0.1.30, which lacks automatic switching. Protocol-supporting keyboard microphone launch, returned text, cancellation, manual-path dictation, and TalkBack still need device verification. These instructions describe the implemented setup flow, not a claim of complete dictation interoperability or availability in an older release.
 
+The September 30 [integrated local check](docs/testing/ticket-02-integrated-experience.md) passed 189 JVM tests and 35 Android tests using Android Studio's local toolchain and a separate API 37 emulator. The integration branch also fixes settings edge-back opt-in and overlapping page text. Those fixes are newer than the published beta 2 APK. Phone/editor dictation, physical Bluetooth routing and spoken TalkBack checks remain open.
+
 For the existing Android voice-input method, enable Voice Input Moonshine in Android's input-method settings and select it using the system keyboard picker when available. This selects the fork's voice keyboard; it does not change FUTO Keyboard's built-in recognizer. The Help page's **Open input method settings** button opens those settings. Names and picker placement vary by device.
 
 Upstream's [help change `a15c965`](https://github.com/futo-org/voice-input/commit/a15c965) reports text loss with Microsoft SwiftKey. That is an upstream report, not a reproduced defect in this fork or a blanket incompatibility claim.

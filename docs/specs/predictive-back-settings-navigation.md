@@ -27,7 +27,8 @@ Make the shared settings navigation host support Android predictive back. While 
 
 - Upgrade Navigation Compose to a stable version that supports predictive in-app back, at least 2.8.0.
 - Upgrade only the Compose and AndroidX dependencies required to keep the navigation stack compatible.
-- Use Navigation Compose's built-in predictive-back cross-fade at the shared settings navigation host.
+- Use Navigation Compose's predictive-back progress and built-in fade transitions at the shared settings navigation host. Fade the outgoing text out before fading the incoming text in, so both pages' text does not overlap.
+- Explicitly enable `android:enableOnBackInvokedCallback` on SettingsActivity. The API 37 local check rejected platform callbacks without this opt-in even though the app targets API 35.
 - Do not add destination-specific back handlers or a custom animation framework.
 - Preserve the existing navigation graph, routes, back-stack behavior, and minimum Android version.
 - Apply the behavior to every destination owned by the shared settings navigation host rather than only Model Options.
@@ -53,4 +54,4 @@ Make the shared settings navigation host support Android predictive back. While 
 
 ## Further Notes
 
-The captured Android recording shows the destination remaining static during the edge gesture and changing immediately on commit. The current app uses Navigation Compose 2.6.0, while predictive in-app back requires Navigation Compose 2.8.0 or newer. Because the app targets Android 15, no manifest opt-in is required for Android 15 and newer.
+The original captured Android recording shows the destination remaining static during the edge gesture and changing immediately on commit. The original app used Navigation Compose 2.6.0; the integrated beta uses 2.9.8. The local API 37 check on September 30, 2026 required an explicit SettingsActivity manifest opt-in. Enabling it exposed overlapping text in the default simultaneous fades, so the shared host now uses successive built-in fades. See [ticket 02 evidence](../testing/ticket-02-integrated-experience.md) for the local checks and remaining device requirements.

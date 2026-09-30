@@ -43,11 +43,19 @@ The first two criteria remain open because successful reruns do not prove a root
 
 **Blocked by:** Ticket 01's signed test-beta publication milestone, verified at `00d5e34` with `v1.4.6-share-beta.2`. Its unresolved historical packaging cause does not block testing this verified artifact.
 
-**Triage:** ready-for-agent
+**Triage:** needs-info
 
 - [ ] Verify every remaining criterion in the linked sections, including phone/editor interoperability, TalkBack, Bluetooth hardware and predictive-back animation.
 - [ ] Record device/software/headset versions, settings and results; compilation or emulator checks do not substitute for required phone/headset evidence.
-- [ ] Refresh help to describe verified behavior; rerun affected checks after fixes.
+- [x] Refresh help to describe verified behavior; rerun affected checks after fixes.
+
+**Evidence:** [September 30 local integrated verification](docs/testing/ticket-02-integrated-experience.md).
+Android Studio local build, 189 JVM passes, one existing skip, lint with zero
+errors, and 35 emulator Android tests passed. Real edge gestures exposed and
+verified fixes for missing settings predictive-back opt-in and overlapping text.
+No physical device was connected; phone/editor dictation, headset routing and
+spoken TalkBack remain open. Hardware details were requested. The published beta
+2 APK does not contain these newer integration-branch fixes.
 
 **Required detail:**
 
