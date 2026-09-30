@@ -16,7 +16,9 @@ import org.futo.voiceinput.settings.ENABLE_30S_LIMIT
 import org.futo.voiceinput.settings.MULTILINGUAL_MODEL_INDEX
 import org.futo.voiceinput.settings.NavigationItem
 import org.futo.voiceinput.settings.NavigationItemStyle
+import org.futo.voiceinput.settings.STREAMING_TIER
 import org.futo.voiceinput.settings.ScreenTitle
+import org.futo.voiceinput.settings.SettingRadio
 import org.futo.voiceinput.settings.SettingToggleDataStore
 import org.futo.voiceinput.settings.SettingsRootList
 import org.futo.voiceinput.settings.SettingsViewModel
@@ -74,6 +76,18 @@ fun AdvancedScreen(
         SettingToggleDataStore(
             stringResource(R.string.re_enable_30s_limit),
             ENABLE_30S_LIMIT,
+        )
+
+        SettingRadio(
+            stringResource(R.string.model_settings_streaming_tier),
+            listOf(0, 1, 2, 3),
+            listOf(
+                stringResource(R.string.model_settings_streaming_tier_0),
+                stringResource(R.string.model_settings_streaming_tier_1),
+                stringResource(R.string.model_settings_streaming_tier_2),
+                stringResource(R.string.model_settings_streaming_tier_3),
+            ),
+            STREAMING_TIER,
         )
 
         DevOnlySettings()

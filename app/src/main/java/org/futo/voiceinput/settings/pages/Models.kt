@@ -224,20 +224,6 @@ fun ModelsScreen(
             Spacer(Modifier.height(16.dp))
         }
 
-        if(model.caps.supportsStreaming || modelEn.caps.supportsStreaming) {
-            SettingRadio(
-                stringResource(R.string.model_settings_streaming_tier),
-                listOf(0, 1, 2, 3),
-                listOf(
-                    stringResource(R.string.model_settings_streaming_tier_0),
-                    stringResource(R.string.model_settings_streaming_tier_1),
-                    stringResource(R.string.model_settings_streaming_tier_2),
-                    stringResource(R.string.model_settings_streaming_tier_3),
-                ),
-                STREAMING_TIER,
-            )
-        }
-
         Tip(stringResource(R.string.parameter_count_tip))
     }
 }
