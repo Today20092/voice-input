@@ -133,6 +133,46 @@ S1 rewriting measured separately. Existing default auto-stop, optional duration
 limit, segmentation, audio-history policy and recognition selections are preserved.
 No speed or accuracy improvement is claimed.
 
+## Standards review
+
+Independent Standards review of `bdedb175...9f71be6` found no documented-rule
+violations and no actionable baseline smells. Backend-neutral failure handling
+remains in RecordingSession, legacy backends remain intact, diagnostics add no
+dictated content and incomplete ticket criteria remain unchecked. The internal
+loader callback supports concrete regression tests and defaults to the existing
+lifecycle loader. Fake-backend no-op callbacks are appropriate test behavior.
+All six changed files were reviewed; the reviewer performed no builds or device
+operations.
+
+## Spec review
+
+Independent Spec review found no blocking defects in the authorized terminal-OOM
+slice. Both retries are removed; the post-load guard prevents Stop from reloading
+after terminal load failure. Decoding OOM reaches the established failure path,
+preserves seeded PCM, suppresses final delivery and retains the original OOM when
+retirement throws an Exception. Cancellation and successful pending-load Stop
+have focused real-session checks.
+
+No unrequested behavior was found. Segmentation and defaults remain unchanged;
+no classifier or generic replay framework was introduced. This follows the
+contract: "Do not add an unused production exception or generic retry framework
+merely to make synthetic tests pass."
+
+The expected gaps remain open:
+
+- The required short, approximately 30-second and at least two-minute phone
+  baselines, including continuity, memory, latency, Activity/IME and both variants,
+  remain unverified.
+- No evidenced adapter category exists to admit recovery. Eligible failure,
+  clean replacement and pinned-setting complete-audio recovery tests remain
+  deferred; synthetic failures do not open that gate.
+- Seeded-buffer checks demonstrate PCM retention, not actual microphone recording
+  or persisted audio-history behavior.
+
+Review totals: Standards has zero findings; Spec has zero blocking implementation
+findings and the three documented validation gaps above. Ticket04 remains open.
+These reviews cover the tested source commit; this follow-up changes evidence only.
+
 An injected recoverable failure and canceled recovery on a phone remain
 unverified because there is no admitted production recovery category and no
 connected physical phone. Terminal injected-OOM checks do not satisfy those
