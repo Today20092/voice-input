@@ -63,7 +63,6 @@ import org.futo.voiceinput.backend.StreamingSpeechBackend
 import org.futo.voiceinput.recognition.RecognitionModel
 import org.futo.voiceinput.recognition.RecognitionModelLifecycle
 import org.futo.voiceinput.recognition.RecognitionModelSelection
-import org.futo.voiceinput.recognition.RecognitionModelStore
 import org.futo.voiceinput.recognition.RecognitionRuntimeCallbacks
 import org.futo.voiceinput.s1.S1MiniCleanupResult
 import org.futo.voiceinput.s1.S1MiniDiagnostics
@@ -553,7 +552,7 @@ abstract class RecordingSession {
             report?.event(DiagnosticEvent.MODEL_LOAD_FAILED, error = error)
             if (loadGeneration == recognitionGeneration) {
                 selectedManagedModel?.let {
-                    RecognitionModelStore(context.filesDir).invalidate(it)
+                    modelLifecycle.invalidateInstallation(it)
                 }
                 withContext(Dispatchers.Main) { failRecognition(error, loadGeneration) }
             }

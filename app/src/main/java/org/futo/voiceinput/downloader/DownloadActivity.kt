@@ -434,11 +434,11 @@ class DownloadActivity : ComponentActivity() {
     private fun startDownload() {
         if (confirmation?.hasEnoughSpace == false) return
         lifecycleScope.launch {
-            startDownloadAfterRuntimeRelease()
+            startConfirmedDownload()
         }
     }
 
-    private fun startDownloadAfterRuntimeRelease() {
+    private fun startConfirmedDownload() {
         diagnosticDownload?.end(DiagnosticEvent.DOWNLOAD_CANCELLED)
         diagnosticDownload = AppDiagnostics.session(managedModel?.id ?: if (
             intent.getBooleanExtra(EXTRA_ENABLE_S1_MINI_AFTER_DOWNLOAD, false)) "s1_mini" else "whisper_ggml")

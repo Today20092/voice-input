@@ -147,6 +147,10 @@ class RecognitionModelLifecycle(
         } finally { publishChange() }
     }
 
+    fun invalidateInstallation(model: RecognitionModel) {
+        try { store.invalidate(model) } finally { publishChange() }
+    }
+
     suspend fun releaseArtifacts(model: RecognitionModel) = runtimeMutex.withLock {
         check(!modelInUse(model)) { "Model is in use by dictation" }
         releaseRuntimeArtifacts(model)

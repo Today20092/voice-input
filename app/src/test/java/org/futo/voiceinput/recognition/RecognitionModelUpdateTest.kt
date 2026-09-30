@@ -197,6 +197,20 @@ class RecognitionModelUpdateTest {
         assertFalse(observer.readiness(RecognitionModelSelection("fixture"))!!.isReady)
     }
 
+    @Test fun loadFailurePublishesRepairOnlyAfterVersionBoundInvalidationSettles() {
+        val model = fixture("1", "old")
+        val store = RecognitionModelStore(temporaryFolder.root)
+        install(store, model, "old")
+        val lifecycle = RecognitionModelLifecycle(store, listOf(model))
+        val revision = RecognitionModelLifecycle.invalidations.value
+        lifecycle.invalidateInstallation(model)
+        assertTrue(RecognitionModelLifecycle.invalidations.value > revision)
+        val readiness = requireNotNull(lifecycle.readiness(RecognitionModelSelection("fixture")))
+        assertFalse(readiness.isReady)
+        assertEquals(RecognitionModelRepairReason.INVALID_OR_INCOMPATIBLE, readiness.repairReason)
+        assertEquals("old", File(store.modelDirectory(model), "model.bin").readText())
+    }
+
     private class FixtureBackend(private val payload: String) : SpeechBackend {
         override suspend fun load(context: Context) = Unit
         override suspend fun transcribe(samples: FloatArray) = payload

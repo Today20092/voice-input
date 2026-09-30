@@ -106,6 +106,13 @@ class RecognitionModelNoticeTest {
             }
             compose.onNodeWithText("Update model").assertDoesNotExist()
             compose.onNodeWithText("Download model").assertDoesNotExist()
+            lifecycle.invalidateInstallation(second)
+            compose.onNodeWithText("Repair model").assertIsDisplayed()
+            runBlocking {
+                File(store.stagingDirectory(second).apply { mkdirs() }, "model.bin").writeText("new")
+                lifecycle.activateInstallation(second) {}
+            }
+            compose.onNodeWithText("Repair model").assertDoesNotExist()
             runBlocking { lifecycle.delete(second, null) }
             compose.onNodeWithText("Download model").assertIsDisplayed()
         } finally { root.deleteRecursively() }
