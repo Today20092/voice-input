@@ -38,6 +38,11 @@ physical-device acceptance and the final master merge remain later work.
 
 ## Historical plan
 
+The user requires local Android Studio tooling for development builds and tests.
+Use its installed SDK/JDK, local Gradle and connected devices or emulator; record
+actual local results. CI complements local checks for signed release publication.
+Ticket 02 can proceed from verified beta 2 while ticket 01's original cause stays open.
+
 Updated 2026-09-28. This plan supersedes the parallel dispatch instructions in
 `share-beta-coordination.md`; that file remains historical evidence.
 

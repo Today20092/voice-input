@@ -41,7 +41,7 @@ The first two criteria remain open because successful reruns do not prove a root
 
 **What to build:** Finish integrated keyboard/editor, settings, download and microphone validation and fix demonstrated failures.
 
-**Blocked by:** 01: Restore the integrated beta build.
+**Blocked by:** Ticket 01's signed test-beta publication milestone, verified at `00d5e34` with `v1.4.6-share-beta.2`. Its unresolved historical packaging cause does not block testing this verified artifact.
 
 **Triage:** ready-for-agent
 
