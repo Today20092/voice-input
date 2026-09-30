@@ -1,5 +1,29 @@
 # Share beta finish plan
 
+## Active sequence, 2026-09-30
+
+[tickets.md](../../tickets.md) is the seven-ticket active queue. The detailed
+sections below are historical coordination evidence, including the earlier
+publication checkpoint; they do not override current ticket dependencies.
+
+1. 01: Restore the integrated beta build.
+2. 02: Verify the integrated voice-input experience.
+3. 03: Finish safe model updates and readiness.
+4. 04: Verify long dictation and bounded recovery.
+5. 05: Decide whether optional engines earn inclusion.
+6. 06: Resolve the intermittent waveform report.
+7. 07: Calibrate and release the tested catalog.
+
+Run one concrete slice at a time on `codex/share-beta-integration`; the final
+merge destination is `master`. Keep the unmerged adapter experiment separate.
+Start a new chat per ticket, using the current integration ledger and linked
+criteria. Record evidence and a commit/checkpoint before the next handoff.
+Use one integration writer/build at a time. The numbers are recommended order,
+not extra blockers. Ticket 06 waits for reproduction and can be skipped until ready.
+Read each ticket's linked detail before acting; consolidation closes no criteria.
+
+## Historical plan
+
 Updated 2026-09-28. This plan supersedes the parallel dispatch instructions in
 `share-beta-coordination.md`; that file remains historical evidence.
 
