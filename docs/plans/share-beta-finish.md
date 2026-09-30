@@ -14,10 +14,12 @@ Resolved active chats:
 - 04: `01a0f3d1-42c5-7313-8745-53c34547015f`
 - 05: `01a0f3d1-4edd-7742-902c-214e7ccb87e2`
 
-Local heavy-build/device slot is serialized. Ticket 04 requests emulator-5560;
-ownership of the active Gradle build is being confirmed before granting it.
-Ticket 04 owns proposed terminal runModel OOM handling; loadModelInner overlap
-with ticket 03 must be resolved before both branches edit that function.
+Local heavy-build/device slot is serialized. Ticket 05 owns the native build slot
+for experiment.ps1 -Build, parallel=2. Ticket 04's build/emulator-5560 pass is next.
+Ticket 05 host tests passed using Android Studio JBR; no device mutation started.
+Overlap resolved: ticket 04 owns terminal OOM handling in runModel and
+loadModelInner. Ticket 03 owns store/lifecycle, staged downloads and readiness UI
+on codex/ticket-03-atomic-readiness in worktree 2f60; it edits neither function.
 
 - 03: `client-new-thread:e9f64026-c415-400f-8273-a66fb9cf2472`
 - 04: `client-new-thread:bdfc5613-081d-464d-b67a-5add1a24a12b`
