@@ -2,6 +2,16 @@
 
 ## Active sequence, 2026-09-30
 
+Current control-tower policy supersedes the serial policy below: the user requested
+independent ticket chats/worktrees and direct coordination without a schedule.
+The 10-minute heartbeat is paused. Tickets 03, 04 and 05 start from `bdedb17`
+in isolated worktrees; control tower alone integrates reviewed commits into
+`codex/share-beta-integration`. Workers never write the shared integration checkout.
+Coordinate heavyweight local builds and shared devices to avoid resource contention.
+Ticket 02's local pass is committed at `bdedb17`; remaining physical-device criteria
+stay open. Ticket 06 needs reproduction input. Ticket 07's release closure waits
+for its dependencies; independent measurement preparation may proceed earlier.
+
 Ticket 02 active worker: `/root`, integration verification chat dispatched by
 control tower `01a0f345-1363-7ee1-ba31-ee9c533599aa`. Exclusive integration writer
 and local build slot claimed for this pass. Use installed Android Studio JBR/SDK,
