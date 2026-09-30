@@ -39,7 +39,10 @@ configures separately from S1/legacy GGML and builds with two workers. No NDK,
 AGP or production build migration is required by this experiment's setup.
 Successful execution requires exactly the five JNI exports and rejects shared
 GGML, transcribe, llama, OpenCL and libc++ dependencies. It copies the engine
-and third-party notices beside `build/arm64/libshare09_parakeet.so`.
+and third-party notices, including the complete pinned tinyBLAS MIT header,
+beside `build/arm64/libshare09_parakeet.so`. Complete distribution notices remain
+unverified for the copied llama.cpp Unicode helpers/tables. See the
+[current source audit](../../docs/research/ticket-05-source-gates-2026-09-30.md#notice-completeness).
 These checks reduce collision risks; loading the runtimes together on Android
 is still required. The public engine compiles its full architecture registry,
 so this is not a size-optimized Parakeet-only distribution.
@@ -81,12 +84,13 @@ waits for loading to return, then frees the acquired session.
 Host tests cover cancellation versus release, suppression of canceled results,
 repeated successful and failed runs, full two-minute audio handoff, input
 validation and idempotent release. They do not measure native behavior.
-ARM64 compilation and manual ELF export/dependency inspection passed at the
-[safe-pause checkpoint](../../docs/research/transcribe-cpp-source-feasibility-2026-09-26.md#native-build-and-safe-pause-2026-09-28).
-The full script has not been rerun after the include-path fix. Actual JNI
-loading/inference, same-process legacy/S1 coexistence, Android packaging/notices,
-failure injection and phone benchmarks remain pending. Do not mark SHARE-09 or
-its dependent model tickets complete from these host checks.
+The full ARM64 build/ELF/notice-copy script was rerun on September 30 with the
+installed Android Studio toolchain. See the [current validation checkpoint](../../docs/testing/ticket-05-optional-engines.md).
+Actual JNI loading/inference, same-process legacy/S1 coexistence, Android
+packaging and complete distribution notices, native failure injection and phone
+benchmarks remain unverified. Production promotion is no-go at this checkpoint;
+ASR4ALL Small and Parakeet 110M catalog work stays deferred. Do not mark those
+checks passed from host tests or an ARM64 link.
 
 Reference contracts used: [coroutine child lifetime](https://github.com/Kotlin/kotlinx.coroutines/blob/master/docs/topics/coroutine-context-and-dispatchers.md),
 [CMake position-independent code](https://cmake.org/cmake/help/latest/prop_tgt/POSITION_INDEPENDENT_CODE.html),

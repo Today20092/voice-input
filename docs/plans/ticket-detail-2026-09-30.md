@@ -699,22 +699,40 @@ The restored checkout retains baseline `eb5e1dad`. Its lost uncommitted preparat
 
 ## SHARE-09: Evaluate a reproducible transcribe.cpp adapter
 
-**Triage:** ready-for-agent
+**Triage:** needs-info
+
+**Working branch:** `codex/ticket-05`; original `codex/share-09` preserved.
 
 **Priority:** P2
 
-**What to build:** Run a bounded source/build/measurement experiment behind SpeechBackend and StreamingSpeechBackend to decide whether transcribe.cpp earns a place in the fork. Do not replace production runtimes or extract a shared Android library. Upstream references: `e93865c`, `9c7a627`, `53db738`, `65178f8`, `867667a`, `f4d444b`, `3525563`. See [the adoption specification](docs/specs/upstream-share-adoption.md).
+**What to build:** Run a bounded source/build/measurement experiment behind SpeechBackend and StreamingSpeechBackend to decide whether transcribe.cpp earns a place in the fork. Do not replace production runtimes or extract a shared Android library. Upstream references: `e93865c`, `9c7a627`, `53db738`, `65178f8`, `867667a`, `f4d444b`, `3525563`. See [the adoption specification](../specs/upstream-share-adoption.md).
 
 **Blocked by:** None; source discovery can start immediately.
 
-- [ ] Resolve the source-availability gate first. FUTO's b9e8a8e pin was not anonymously fetchable and is absent from the public handy-computer repo. Record a fetchable immutable revision and the relevant difference from FUTO's integration, or conclude source feasibility is blocked with evidence.
-- [ ] If source is available, create an isolated experimental ARM64 adapter build. Keep existing defaults, installed selections, and production adapters; minimize toolchain changes and document any required NDK/AGP migration.
+- [x] Resolve the source-availability gate first. FUTO's b9e8a8e pin was not anonymously fetchable and is absent from the public handy-computer repo. Record a fetchable immutable revision and the relevant difference from FUTO's integration, or conclude source feasibility is blocked with evidence.
+- [x] If source is available, create an isolated experimental ARM64 adapter build. Keep existing defaults, installed selections, and production adapters; minimize toolchain changes and document any required NDK/AGP migration.
 - [ ] Verify coexistence with legacy GGML and S1's pinned llama.cpp/OpenCL build, native target/symbol packaging, and complete dependency notices. Do not assume differently pinned GGML trees can share one target.
 - [ ] Exercise loading, language selection, partials, complete finalization, cancellation, repeated sessions, failure handling, release, and model validation through existing interfaces.
 - [ ] Compare at least one shared model family with the current implementation using the specification's fixed-audio phone protocol. Record quantization differences, cold/warm latency, Stop-to-final p50/p95, accuracy, memory, APK/model size, and sustained-run behavior separately from cleanup.
-- [ ] Treat CPU as the baseline. GPU support is not established by the share branch and cannot be claimed without its own tested build and measurements.
-- [ ] Write a go/no-go recommendation. A documented no-go is valid, but unavailable hardware or source leaves the corresponding measurement/integration work unverified. Any proposal to replace Sherpa requires a new ADR and full model/feature parity evidence.
+- [x] Treat CPU as the baseline. GPU support is not established by the share branch and cannot be claimed without its own tested build and measurements.
+- [x] Write a go/no-go recommendation. A documented no-go is valid, but unavailable hardware or source leaves the corresponding measurement/integration work unverified. Any proposal to replace Sherpa requires a new ADR and full model/feature parity evidence.
 - [ ] Run relevant adapter tests and build/lint checks for code produced by the experiment; do not release an experimental adapter merely because it compiles.
+
+### Checkpoint, 2026-09-30
+
+[Local experiment evidence](../testing/ticket-05-optional-engines.md) records the
+provenance imports, three passing controlled-session host tests, two fresh ARM64
+script passes, five JNI exports and static CPU dependencies. The default build's
+missing tinyBLAS MIT notice was reproduced and fixed; full copied llama.cpp/UCD
+provenance remains unverified. [Current source findings](../research/ticket-05-source-gates-2026-09-30.md)
+reconfirm the public pin and absent ASR4ALL API.
+
+No-go for production promotion at this checkpoint. Actual JNI inference/native
+lifecycle, legacy/S1 coexistence, APK packaging/lint, complete notices and the
+fixed-audio phone comparison remain unverified. No physical phone was attached;
+no device inference or performance claim is made. SHARE-10/11 catalog work is
+explicitly deferred without a positive adapter gate. Original experiment files,
+existing production sources, selections and defaults are preserved.
 
 
 ## SHARE-10: Evaluate ASR4ALL Small as an optional model
@@ -723,11 +741,16 @@ The restored checkout retains baseline `eb5e1dad`. Its lost uncommitted preparat
 
 **Priority:** P3
 
-**What to build:** Evaluate the smallest upstream ASR4ALL choice against our existing small English models. Integrate it as an explicit optional choice only if the measured result justifies the runtime/storage cost. Upstream references: `e93865c`, `65178f8`, `867667a`. See [the adoption specification](docs/specs/upstream-share-adoption.md).
+**What to build:** Evaluate the smallest upstream ASR4ALL choice against our existing small English models. Integrate it as an explicit optional choice only if the measured result justifies the runtime/storage cost. Upstream references: `e93865c`, `65178f8`, `867667a`. See [the adoption specification](../specs/upstream-share-adoption.md).
 
 **Blocked by:** SHARE-09: Evaluate a reproducible transcribe.cpp adapter.
 
 **Gate:** Proceed only after SHARE-09 establishes a reproducible, working adapter. A no-go result there does not unblock model implementation.
+
+**Disposition, 2026-09-30:** Deferred. SHARE-09 has no positive promotion gate;
+the public pin lacks FUTO's ASR4ALL extension API and the exact FUTO source remains
+anonymously unavailable. No artifact, comparison or catalog implementation was
+performed. Criteria below remain unverified. See [ticket 05 evidence](../testing/ticket-05-optional-engines.md).
 
 - [ ] Pin a fetchable model artifact/version, expected sizes and hashes, publisher/license attribution, supported language, and the engine revision required by that artifact; do not mix the old and v2 upstream filenames.
 - [ ] Measure against Moonshine Small with the fixed-audio protocol, including live-text stability, final transcript accuracy, Stop latency, peak memory, thermals, and disk/APK cost.
@@ -742,11 +765,16 @@ The restored checkout retains baseline `eb5e1dad`. Its lost uncommitted preparat
 
 **Priority:** P3
 
-**What to build:** Evaluate upstream's Parakeet TDT/CTC 110M as a smaller English final-only choice, using Moonshine Small and the existing Parakeet TDT model as comparisons. Upstream reference: `e93865c` and the pinned share model catalog. See [the adoption specification](docs/specs/upstream-share-adoption.md).
+**What to build:** Evaluate upstream's Parakeet TDT/CTC 110M as a smaller English final-only choice, using Moonshine Small and the existing Parakeet TDT model as comparisons. Upstream reference: `e93865c` and the pinned share model catalog. See [the adoption specification](../specs/upstream-share-adoption.md).
 
 **Blocked by:** SHARE-09: Evaluate a reproducible transcribe.cpp adapter.
 
 **Gate:** Proceed only after SHARE-09 establishes a reproducible, working adapter. A no-go result there does not unblock model implementation.
+
+**Disposition, 2026-09-30:** Deferred. Public Q8_0 metadata and final-only English
+TDT/RNNT behavior are documented, but there is no positive SHARE-09 adapter gate.
+No model download/inference, phone comparison or catalog entry was performed.
+Criteria below remain unverified. See [ticket 05 evidence](../testing/ticket-05-optional-engines.md).
 
 - [ ] Identify the exact supported variant and decoder behavior, pin the artifact and hashes, and record attribution, real transfer/storage sizes, and required runtime revision.
 - [ ] Measure accuracy, Stop-to-final time, total processing time, memory, and sustained-run behavior on the same phone/audio as the existing comparison models. Do not infer performance from parameter count.

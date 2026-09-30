@@ -52,6 +52,9 @@ if ($needed -match 'ggml|transcribe|llama|OpenCL|c\+\+_shared') {
 }
 Copy-Item -LiteralPath (Join-Path $source 'LICENSE') -Destination (Join-Path $native 'TRANSCRIBE-LICENSE.txt')
 Copy-Item -LiteralPath (Join-Path $source 'THIRD-PARTY-LICENSES.md') -Destination (Join-Path $native 'THIRD-PARTY-LICENSES.md')
+# The pinned default CPU build includes tinyBLAS, whose notice is absent above.
+Get-Content -LiteralPath (Join-Path $source 'ggml/src/ggml-cpu/llamafile/sgemm.cpp') -TotalCount 21 |
+    ForEach-Object { $_ -replace '^// ?', '' } | Set-Content -LiteralPath (Join-Path $native 'TINYBLAS-LICENSE.txt')
 Write-Output $needed
 Get-FileHash -LiteralPath $library -Algorithm SHA256
 Write-Output 'Five JNI exports only; no shared GGML, llama, OpenCL or C++ runtime dependency. Runtime coexistence still needs device testing.'

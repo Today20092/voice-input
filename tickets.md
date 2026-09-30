@@ -109,18 +109,28 @@ spoken TalkBack remain open. Hardware details were requested. The published beta
 
 ## 05: Decide whether optional engines earn inclusion
 
-**Working branch:** `codex/share-09` for the isolated adapter experiment.
+**Working branch:** `codex/ticket-05` for the continued isolated adapter experiment.
+Original `codex/share-09` and its orphaned retained artifacts are preserved read-only.
 Production promotion uses `codex/share-beta-integration` after a positive feasibility decision.
 
 **What to build:** Finish the isolated transcribe.cpp experiment, then evaluate ASR4ALL Small and Parakeet 110M only if justified.
 
 **Blocked by:** None for adapter feasibility; optional-model work requires a positive adapter feasibility decision.
 
-**Triage:** ready-for-agent
+**Triage:** needs-info
 
 - [ ] Resolve every adapter source/build/coexistence/inference/notice/measurement criterion; record a go/no-go decision.
 - [ ] On a positive decision, verify every optional-model criterion before production promotion.
-- [ ] A negative decision may defer dependent work with evidence and explicit disposition; unperformed checks are not passed. Preserve existing defaults and runtimes.
+- [x] A negative decision may defer dependent work with evidence and explicit disposition; unperformed checks are not passed. Preserve existing defaults and runtimes.
+
+**Evidence:** [September 30 experiment checkpoint](docs/testing/ticket-05-optional-engines.md)
+and [current primary-source audit](docs/research/ticket-05-source-gates-2026-09-30.md).
+Three host tests and a fresh ARM64 build/export/dependency check passed. The
+reproduced tinyBLAS notice omission is fixed and verified by a full script rerun.
+No-go for production promotion; ASR4ALL Small and Parakeet 110M catalog work is
+deferred. Actual JNI inference, legacy/S1 coexistence, complete notice provenance
+and phone benefit remain unverified. These open criteria are not passed. Original
+share-09 artifacts and all production sources/defaults are preserved.
 
 **Required detail:**
 
