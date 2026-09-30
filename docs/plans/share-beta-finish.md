@@ -7,6 +7,14 @@ independent ticket chats/worktrees and direct coordination without a schedule.
 The 10-minute heartbeat is paused. Tickets 03, 04 and 05 start from `bdedb17`
 in isolated worktrees; control tower alone integrates reviewed commits into
 `codex/share-beta-integration`. Workers never write the shared integration checkout.
+
+Queued worker attachments, resolve to actual thread IDs before waiting/messaging:
+- 03: `client-new-thread:e9f64026-c415-400f-8273-a66fb9cf2472`
+- 04: `client-new-thread:bdfc5613-081d-464d-b67a-5add1a24a12b`
+- 05: `client-new-thread:3c4d4b8f-7a6a-4b84-b6c7-52168228a979`
+
+Do not redispatch these tickets merely because pending setup is absent from
+list_threads. Actual worktree directories were created from the common checkpoint.
 Coordinate heavyweight local builds and shared devices to avoid resource contention.
 Ticket 02's local pass is committed at `bdedb17`; remaining physical-device criteria
 stay open. Ticket 06 needs reproduction input. Ticket 07's release closure waits
