@@ -10,6 +10,8 @@ The frontier is 01. The last checked release run failed at Build APK and publica
 
 ## 01: Restore the integrated beta build
 
+**Working branch:** `codex/share-beta-integration`
+
 **What to build:** Fix the failed release build, pass the combined release gates and publish a signed test beta.
 
 **Blocked by:** None.
@@ -20,7 +22,13 @@ The frontier is 01. The last checked release run failed at Build APK and publica
 - [ ] Fix the cause; pass unit tests, lint, UI-test compilation, native checks, APK build and signature/package verification.
 - [ ] Record successful CI, tested commit, tag, prerelease URL and artifacts.
 
+**Evidence:** [Build diagnosis and beta verification](docs/testing/ticket-01-beta-build.md).
+Diagnostic CI passed unchanged packaging/signing configuration; the original
+underlying exception is absent from the failed log. Cause and fix remain unverified.
+
 ## 02: Verify the integrated voice-input experience
+
+**Working branch:** `codex/share-beta-integration`
 
 **What to build:** Finish integrated keyboard/editor, settings, download and microphone validation and fix demonstrated failures.
 
@@ -46,6 +54,8 @@ The frontier is 01. The last checked release run failed at Build APK and publica
 
 ## 03: Finish safe model updates and readiness
 
+**Working branch:** `codex/share-beta-integration`
+
 **What to build:** Finish explicit atomic pinned updates, then reactive readiness and optional upgrade notices.
 
 **Blocked by:** None.
@@ -63,6 +73,8 @@ The frontier is 01. The last checked release run failed at Build APK and publica
 
 ## 04: Verify long dictation and bounded recovery
 
+**Working branch:** `codex/share-beta-integration`
+
 **What to build:** Measure long Moonshine dictation and add only demonstrated corrections and supported bounded replay recovery.
 
 **Blocked by:** None.
@@ -79,6 +91,9 @@ The frontier is 01. The last checked release run failed at Build APK and publica
 - [SHARE-08: Recover once from a recoverable streaming failure](docs/plans/ticket-detail-2026-09-30.md#share-08-recover-once-from-a-recoverable-streaming-failure)
 
 ## 05: Decide whether optional engines earn inclusion
+
+**Working branch:** `codex/share-09` for the isolated adapter experiment.
+Production promotion uses `codex/share-beta-integration` after a positive feasibility decision.
 
 **What to build:** Finish the isolated transcribe.cpp experiment, then evaluate ASR4ALL Small and Parakeet 110M only if justified.
 
@@ -98,6 +113,8 @@ The frontier is 01. The last checked release run failed at Build APK and publica
 
 ## 06: Resolve the intermittent waveform report
 
+**Working branch:** `codex/share-beta-integration`
+
 **What to build:** Reproduce the reported waveform failure, fix its cause and verify the reported phone scenario.
 
 **Blocked by:** User description of the symptom, entry point and reproducible scenario.
@@ -112,6 +129,8 @@ The frontier is 01. The last checked release run failed at Build APK and publica
 - [Diagnose intermittent waveform behavior when opening voice input](docs/plans/ticket-detail-2026-09-30.md#diagnose-intermittent-waveform-behavior-when-opening-voice-input)
 
 ## 07: Calibrate and release the tested catalog
+
+**Working branch:** `codex/share-beta-integration`
 
 **What to build:** Complete catalog performance/regression evidence and release the verified scope.
 

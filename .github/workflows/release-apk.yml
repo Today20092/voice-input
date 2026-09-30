@@ -69,6 +69,15 @@ jobs:
           echo "APK_DIR=app/build/outputs/apk/standalone/release" >> "$GITHUB_ENV"
           echo "APK_NAME=futo-voice-input-moonshine" >> "$GITHUB_ENV"
 
+      - name: Upload release check reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-check-reports
+          path: |
+            app/build/test-results/testStandaloneReleaseUnitTest/*.xml
+            app/build/reports/lint-results-standaloneRelease.*
+
       - name: Verify APK contents and signature
         run: |
           APK_PATH="$(find app/build/outputs/apk/standalone/release -maxdepth 1 -type f -name '*.apk' | head -n 1)"
@@ -87,7 +96,7 @@ jobs:
             echo 'Unexpected non-arm64 native library found'
             exit 1
           fi
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "$APK_PATH"
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$APK_PATH"
 
       - name: Rename APK
         run: |

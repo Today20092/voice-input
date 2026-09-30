@@ -22,6 +22,12 @@ Use one integration writer/build at a time. The numbers are recommended order,
 not extra blockers. Ticket 06 waits for reproduction and can be skipped until ready.
 Read each ticket's linked detail before acting; consolidation closes no criteria.
 
+Each new ticket chat reads `C:/Users/User/.agents/skills/ask-matt/SKILL.md` and
+selects the applicable diagnosing-bugs, implement or research flow. Follow the
+selected skill's actual checks and code-review closeout. Use writing-for-agents
+when editing ticket or evidence documentation. Continue on the ticket's Working
+branch; SHARE-09 remains an isolated experiment until its feasibility decision.
+
 ## Historical plan
 
 Updated 2026-09-28. This plan supersedes the parallel dispatch instructions in
