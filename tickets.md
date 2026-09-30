@@ -90,13 +90,13 @@ spoken TalkBack remain open. Hardware details were requested. The published beta
 
 ## 04: Verify long dictation and bounded recovery
 
-**Working branch:** `codex/share-beta-integration`
+**Working branch:** `codex/ticket-04`
 
 **What to build:** Measure long Moonshine dictation and add only demonstrated corrections and supported bounded replay recovery.
 
 **Blocked by:** None.
 
-**Triage:** ready-for-agent
+**Triage:** needs-info
 
 - [ ] Verify all linked long-dictation criteria with phone baselines, continuity, memory and Stop-to-final measurements.
 - [ ] Classify recoverable failures before implementation; verify every recovery criterion including injected failure and cancellation on-device.
@@ -106,6 +106,15 @@ spoken TalkBack remain open. Hardware details were requested. The published beta
 
 - [Verify long Moonshine dictation and improve segmentation only if needed](docs/plans/ticket-detail-2026-09-30.md#verify-long-moonshine-dictation-and-improve-segmentation-only-if-needed)
 - [SHARE-08: Recover once from a recoverable streaming failure](docs/plans/ticket-detail-2026-09-30.md#share-08-recover-once-from-a-recoverable-streaming-failure)
+
+**Evidence:** [September 30 terminal OOM and recovery-gate verification](docs/testing/ticket-04-long-dictation-recovery.md).
+Pinned-runtime source admits no supported recoverable category, so automatic
+recovery remains disabled. Removed model-load and recursive decoding OOM retries,
+including the Stop-after-failed-load fallback. Six real-session fake-backend
+Android checks passed after two baseline failures; 189 JVM tests passed with one
+existing skip, assembly passed and lint had zero errors. Defaults and segmentation
+are unchanged. Physical-phone long-dictation measurements and native/phone
+recoverable-failure/canceled-recovery validation remain open.
 
 ## 05: Decide whether optional engines earn inclusion
 

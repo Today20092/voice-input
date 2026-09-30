@@ -430,7 +430,7 @@ Implemented by `44fb6fe`, `5ab3750`, and `bef4320`.
 
 **Triage:** ready-for-agent
 
-**Working branch:** `codex/moonshine-long`
+**Working branch:** `codex/ticket-04`
 
 **What to build:** Establish whether Moonshine's existing streaming segmentation adequately handles longer dictation, and make the smallest demonstrated improvement only if it does not. Short-message dictation must retain its current stopping behavior. Do not add a separate VAD model or a new recording mode merely because recordings can exceed 30 seconds; a documented finding that no change is needed is a valid resolution.
 
@@ -451,6 +451,12 @@ Implemented by `44fb6fe`, `5ab3750`, and `bef4320`.
 The [2026-09-28 investigation](docs/research/moonshine-long-dictation-2026-09-28.md) documents the existing recording controls, a physical-phone baseline procedure, demonstrated worker error loss/rejected-feed/cancellation cleanup defects, and focused regression checks. The [runtime research](docs/research/moonshine-runtime-segmentation-sources-2026-09-28.md) verifies segmentation and native release behavior against pinned 0.0.68 source and cached Java bytecode. Segmentation and defaults remain unchanged. Physical-phone accuracy, continuity, latency and memory criteria remain open; only an emulator was attached. SHARE-08 owns bounded replay recovery.
 
 Validation at `4a12bba`: the 9 Moonshine Gradle tests passed; the full suite reported 147 passes and one skipped optional Orukeet archive test. Dev debug assembly and lint passed with zero lint errors. Loaded-model release/reload and affected physical-phone scenarios remain unverified, so the combined production-change acceptance criterion remains open.
+
+September 30 ticket04 pass: [current verification](../testing/ticket-04-long-dictation-recovery.md)
+preserves segmentation and defaults. No physical phone was attached, so the
+baseline, continuity, CPU/memory and Stop-to-final criteria remain open. Terminal
+OOM corrections and their checks are recorded under SHARE-08 below; they do not
+establish a long-dictation accuracy or performance benefit.
 
 ---
 
@@ -681,7 +687,7 @@ Still open: physical-phone dictation, TalkBack, actual orientation changes, opti
 
 **Blocked by:** None.
 
-**Working branch:** `codex/share-08`
+**Working branch:** `codex/ticket-04`
 
 **Claimed by:** Codex chat `01a0df6d-b8bd-7c93-8cef-6adf7cfa148e`
 
@@ -695,6 +701,27 @@ The restored checkout retains baseline `eb5e1dad`. Its lost uncommitted preparat
 - [ ] If recovery fails, retain the established error/retranscription path and report a content-free failure category rather than concealing the original failure.
 - [ ] Fake-backend tests demonstrate recoverable feed/finalization failure handling, exact sample preservation, one attempt only, cancellation, and no retry for excluded errors.
 - [ ] Run relevant session/backend tests, assembly, and lint; verify an injected recoverable failure and a canceled recovery on-device. Do not claim a speed improvement from this work.
+
+### September 30 verification
+
+[Pinned-runtime classification](../research/ticket-04-recovery-categories-2026-09-30.md)
+found no admitted recoverable category. Automatic recovery stays disabled;
+unknown native failures, lifecycle/channel misuse, model corruption, memory
+exhaustion and cancellation remain excluded. No generic replay framework or
+synthetic production exception was introduced.
+
+[Terminal OOM evidence](../testing/ticket-04-long-dictation-recovery.md) records
+two baseline failures followed by six passing real-session Android checks,
+189 JVM passes with one existing skip, passing app/test APK assembly and lint
+with zero errors. Removed both OOM retry paths and prevented Stop from reloading
+after a terminal load failure. Original failure and seeded retained PCM are
+preserved, and cancellation suppresses delivery before a new session.
+
+All SHARE-08 criteria remain open as combined requirements. These OOM checks do
+not exercise eligible recoverable feed/finalization failures, clean native
+replacement, pinned-setting full-audio recovery, or actual audio-history capture.
+No physical phone was available. The injected recoverable-failure and canceled
+recovery phone checks remain unperformed; no speed improvement is claimed.
 
 
 ## SHARE-09: Evaluate a reproducible transcribe.cpp adapter
