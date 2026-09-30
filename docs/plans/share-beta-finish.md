@@ -9,6 +9,16 @@ in isolated worktrees; control tower alone integrates reviewed commits into
 `codex/share-beta-integration`. Workers never write the shared integration checkout.
 
 Queued worker attachments, resolve to actual thread IDs before waiting/messaging:
+Resolved active chats:
+- 03: `01a0f3d1-3f64-7221-bcfc-3b1355403ed0`
+- 04: `01a0f3d1-42c5-7313-8745-53c34547015f`
+- 05: `01a0f3d1-4edd-7742-902c-214e7ccb87e2`
+
+Local heavy-build/device slot is serialized. Ticket 04 requests emulator-5560;
+ownership of the active Gradle build is being confirmed before granting it.
+Ticket 04 owns proposed terminal runModel OOM handling; loadModelInner overlap
+with ticket 03 must be resolved before both branches edit that function.
+
 - 03: `client-new-thread:e9f64026-c415-400f-8273-a66fb9cf2472`
 - 04: `client-new-thread:bdfc5613-081d-464d-b67a-5add1a24a12b`
 - 05: `client-new-thread:3c4d4b8f-7a6a-4b84-b6c7-52168228a979`
