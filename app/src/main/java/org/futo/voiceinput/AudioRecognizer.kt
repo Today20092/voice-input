@@ -463,7 +463,10 @@ abstract class RecordingSession {
         }
     }
 
-    private suspend fun loadModelInner(retryAfterOom: Boolean = true) {
+    internal suspend fun loadModelInner(
+        loadBackend: suspend (Context, RecognitionModelSelection, RecognitionRuntimeCallbacks) -> SpeechBackend =
+            { context, selection, callbacks -> modelLifecycle.load(context, selection, callbacks) }
+    ) {
         val loadGeneration = recognitionGeneration
         val report = diagnostics
         val loadStarted = SystemClock.elapsedRealtime()
@@ -474,7 +477,7 @@ abstract class RecordingSession {
                 moonshineVariantId = context.getSetting(MOONSHINE_MODEL_VARIANT),
                 nemotronVariantId = context.getSetting(NEMOTRON_PROFILE)
             )
-            val loadedBackend = modelLifecycle.load(
+            val loadedBackend = loadBackend(
                 context,
                 selection,
                 RecognitionRuntimeCallbacks(
@@ -523,23 +526,10 @@ abstract class RecordingSession {
                 throw CancellationException("Recognition was reset while loading the model")
             }
             decodingStatus(RunState.OOMError)
-            val failedBackend = backendForGeneration(loadGeneration)
-            if (failedBackend != null) {
-                modelLifecycle.release(failedBackend, lifecycleScope)
-            }
-            clearBackend(loadGeneration, failedBackend)
-
-            for(i in 0 until 2) {
-                System.gc()
-                System.runFinalization()
-                delay(500L)
-            }
-
-            if (loadGeneration != recognitionGeneration) {
-                throw CancellationException("Recognition was reset while recovering from OOM")
-            }
-            if (retryAfterOom) {
-                return loadModelInner(retryAfterOom = false)
+            try {
+                closeFailedBackend(loadGeneration)
+            } catch (closeError: Exception) {
+                e.addSuppressed(closeError)
             }
             withContext(Dispatchers.Main) { failRecognition(e, loadGeneration) }
         } catch (error: Exception) {
@@ -1066,7 +1056,8 @@ abstract class RecordingSession {
             runModelInner(runGeneration, runLoadModelJob)
         } catch (error: CancellationException) {
             throw error
-        } catch (error: Exception) {
+        } catch (error: Throwable) {
+            if (error !is Exception && error !is OutOfMemoryError) throw error
             if (runGeneration != recognitionGeneration) {
                 return
             }
@@ -1100,6 +1091,9 @@ abstract class RecordingSession {
         if(runLoadModelJob != null && runLoadModelJob.isActive) {
             println("Model was not finished loading...")
             runLoadModelJob.join()
+        }
+        if (runGeneration != recognitionGeneration || stopReason == StopReason.Cancel) {
+            throw CancellationException("Recognition ended before the model became ready")
         }
 
         var runBackend = backendForGeneration(runGeneration)
@@ -1137,7 +1131,7 @@ abstract class RecordingSession {
 
         yield()
         var cleanupResult = S1MiniCleanupResult("", applied = false)
-        val text = try {
+        val text = run {
             val recognitionStarted = SystemClock.elapsedRealtime()
             report?.event(DiagnosticEvent.RECOGNITION_STARTED,
                 mapOf(DiagnosticMetric.AUDIO_MS to floatArray.size.toLong() * 1000 / AUDIO_SAMPLE_RATE))
@@ -1171,14 +1165,15 @@ abstract class RecordingSession {
                 DiagnosticMetric.HARPER_EDITS to harperResult.edits.toLong(),
                 DiagnosticMetric.HARPER_OUTCOME to harperResult.outcome.toLong()))
             val finalDeliveredText = PersonalVocabulary.apply(harperResult.text, personalVocabulary)
+            val diagnosticReportId = cleanupResult.diagnosticReportId
             if (
-                cleanupResult.diagnosticReportId != null &&
+                diagnosticReportId != null &&
                 context.getSetting(S1_MINI_TRANSCRIPT_DIAGNOSTICS)
             ) {
                 runCatching {
                     S1MiniDiagnostics.recordTranscript(
                         context = context,
-                        reportId = cleanupResult.diagnosticReportId,
+                        reportId = diagnosticReportId,
                         rawTranscript = rawText,
                         cleanedTranscript = cleanupResult.text.takeIf { cleanupResult.applied },
                         finalDeliveredTranscript = finalDeliveredText,
@@ -1187,19 +1182,6 @@ abstract class RecordingSession {
                 }
             }
             finalDeliveredText
-        } catch(e: OutOfMemoryError) {
-            report?.event(DiagnosticEvent.SESSION_FAILED, error = e)
-            decodingStatus(RunState.OOMError)
-            closeFailedBackend(runGeneration)
-
-            for(i in 0 until 2) {
-                System.gc()
-                System.runFinalization()
-                delay(500L)
-            }
-
-            loadModel()
-            return runModel()
         }
 
         if (runGeneration != recognitionGeneration) {
