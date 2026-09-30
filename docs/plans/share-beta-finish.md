@@ -14,9 +14,11 @@ Resolved active chats:
 - 04: `01a0f3d1-42c5-7313-8745-53c34547015f`
 - 05: `01a0f3d1-4edd-7742-902c-214e7ccb87e2`
 
-Local heavy-build/device slot is serialized. Ticket 05 owns the native build slot
-for experiment.ps1 -Build, parallel=2. Ticket 04's build/emulator-5560 pass is next.
-Ticket 05 host tests passed using Android Studio JBR; no device mutation started.
+Local heavy-build/device slot is serialized. Ticket 05 released it after two
+successful ARM64 builds and the tinyBLAS notice regression fix. Ticket 04 now
+owns local Gradle and emulator-5560 for OOM/session checks; ticket 03 is next.
+Ticket 05 is reviewing/committing evidence; JNI/coexistence, complete distribution
+provenance and phone benefit remain unverified, so production promotion is no-go.
 Overlap resolved: ticket 04 owns terminal OOM handling in runModel and
 loadModelInner. Ticket 03 owns store/lifecycle, staged downloads and readiness UI
 on codex/ticket-03-atomic-readiness in worktree 2f60; it edits neither function.
