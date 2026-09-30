@@ -16,7 +16,9 @@ Resolved active chats:
 
 Local heavy-build/device slot is serialized. Ticket 05 released it after two
 successful ARM64 builds and the tinyBLAS notice regression fix. Ticket 04 now
-owns local Gradle and emulator-5560 for OOM/session checks; ticket 03 is next.
+released local Gradle and emulator-5560 after six session checks, 189 JVM passes,
+APK/test APK assembly and zero-error lint. Ticket 03 now owns the heavy build
+and disposable emulator slot. Ticket 04 is reviewing and committing its fix.
 Ticket 05 is reviewing/committing evidence; JNI/coexistence, complete distribution
 provenance and phone benefit remain unverified, so production promotion is no-go.
 Overlap resolved: ticket 04 owns terminal OOM handling in runModel and
