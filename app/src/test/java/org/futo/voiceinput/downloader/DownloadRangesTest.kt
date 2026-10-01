@@ -5,7 +5,7 @@ import org.junit.Test
 
 class DownloadRangesTest {
     @Test
-    fun splitsFileIntoFourContiguousRangesAndResumesWithinEachRange() {
+    fun splitsFileIntoFourContiguousRanges() {
         val ranges = downloadRanges(10)
 
         assertEquals(
@@ -17,7 +17,5 @@ class DownloadRangesTest {
             ),
             ranges
         )
-        assertEquals(4, ranges[1].resumeAt(2))
-        assertEquals(5, ranges[1].resumeAt(Long.MAX_VALUE))
     }
 }

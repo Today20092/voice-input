@@ -46,8 +46,7 @@ data class RecognitionModelReadiness(
     val isReady: Boolean,
     val installedModel: RecognitionModel? = null,
     val optionalUpgrade: RecognitionModel? = null,
-    val repairReason: RecognitionModelRepairReason? = null,
-    val candidateStaged: Boolean = false
+    val repairReason: RecognitionModelRepairReason? = null
 )
 
 data class RecognitionRuntimeCallbacks(
@@ -80,8 +79,7 @@ class RecognitionModelLifecycle(
             installedModel = installed,
             optionalUpgrade = installed?.takeIf { it.version != model.version }?.let { model },
             repairReason = if (installed != null) null else if (store.modelDirectory(model).exists())
-                RecognitionModelRepairReason.INVALID_OR_INCOMPATIBLE else RecognitionModelRepairReason.MISSING,
-            candidateStaged = store.hasValidatedCandidate(model)
+                RecognitionModelRepairReason.INVALID_OR_INCOMPATIBLE else RecognitionModelRepairReason.MISSING
         )
     }
 
@@ -152,18 +150,8 @@ class RecognitionModelLifecycle(
         try { store.invalidate(model) } finally { publishChange() }
     }
 
-    suspend fun releaseArtifacts(model: RecognitionModel) = runtimeMutex.withLock {
-        check(!modelInUse(model)) { "Model is in use by dictation" }
-        releaseRuntimeArtifacts(model)
-    }
-
     private suspend fun releaseRuntimeArtifacts(model: RecognitionModel) {
-        val runtimes = activeRuntimes.filterValues { it == model.id }.keys.toList().also {
-            it.forEach(activeRuntimes::remove)
-        }
-        if (!releaseParakeetArtifacts(model.runtimeId)) {
-            runtimes.forEach { it.close() }
-        }
+        releaseParakeetArtifacts(model.runtimeId)
     }
 
     suspend fun load(

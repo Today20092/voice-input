@@ -483,12 +483,6 @@ class RecognitionModelStore(
         return true
     }
 
-    fun hasValidatedCandidate(model: RecognitionModel): Boolean {
-        val directory = stagingDirectory(model)
-        return runCatching { File(directory, model.completionMarker).readText() }.getOrNull() ==
-            "${model.id}@${model.version}" && artifactsValid(model, false, directory)
-    }
-
     fun activateStaged(model: RecognitionModel) = synchronized(storageLock) {
         recover(model)
         val staged = stagingDirectory(model)
