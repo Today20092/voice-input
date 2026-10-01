@@ -2,6 +2,15 @@
 
 ## Active sequence, 2026-09-30
 
+October 1 integration owner: ticket 07 worker `/root`, task context
+`01a0f5e8-e6bb-78e3-85b6-bceba3b3b743`, dispatched by control tower
+`01a0f345-1363-7ee1-ba31-ee9c533599aa`. Ticket 03/04/05 workers released their
+slots and reviewed changes are integrated at `244e0be`. This worker alone owns
+the integration writer and local heavy-build/device slot for combined verification
+and signed beta 3/version 64 publication. Final catalog release/master merge
+remain blocked. See [integration evidence](../testing/ticket-07-beta3-integration.md).
+Earlier slot assignments below are historical and superseded by this checkpoint.
+
 Current control-tower policy supersedes the serial policy below: the user requested
 independent ticket chats/worktrees and direct coordination without a schedule.
 The 10-minute heartbeat is paused. Tickets 03, 04 and 05 start from `bdedb17`

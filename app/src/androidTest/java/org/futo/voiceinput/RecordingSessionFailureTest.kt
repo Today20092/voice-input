@@ -33,6 +33,7 @@ class RecordingSessionFailureTest {
             assertEquals(1, loads)
             assertEquals(listOf(failure), session.failures)
             assertEquals(0, session.finals)
+            assertTrue(session.leaseReleased.isCompleted)
         } finally {
             session.lifecycleScope.cancel()
         }
@@ -60,6 +61,7 @@ class RecordingSessionFailureTest {
             assertEquals(listOf(failure), session.failures)
             assertTrue(decoding.isCancelled)
             assertEquals(0, session.finals)
+            assertTrue(session.leaseReleased.isCompleted)
         } finally {
             session.lifecycleScope.cancel()
         }
@@ -84,6 +86,7 @@ class RecordingSessionFailureTest {
             assertEquals("known final", session.finalText)
             assertEquals(1, backend.finishes)
             assertEquals(1, backend.closes)
+            assertTrue(session.leaseReleased.isCompleted)
         } finally {
             session.lifecycleScope.cancel()
         }
@@ -101,6 +104,7 @@ class RecordingSessionFailureTest {
             assertEquals(1, backend.closes)
             assertEquals(0, session.finals)
             assertArrayEquals(floatArrayOf(0.1f, 0.2f, 0.3f), session.samples(), 0f)
+            assertTrue(session.leaseReleased.isCompleted)
         } finally {
             session.lifecycleScope.cancel()
         }
@@ -118,6 +122,7 @@ class RecordingSessionFailureTest {
             assertTrue(failure.suppressed.contains(closeFailure))
             assertEquals(1, backend.finishes)
             assertEquals(0, session.finals)
+            assertTrue(session.leaseReleased.isCompleted)
         } finally {
             session.lifecycleScope.cancel()
         }
@@ -133,6 +138,7 @@ class RecordingSessionFailureTest {
             withTimeout(10_000) { entered.await() }
             session.cancelRecognizer()
             withTimeout(10_000) { backend.closed.await() }
+            withTimeout(10_000) { session.leaseReleased.await() }
             assertTrue(decoding.isCancelled)
             assertTrue(session.failures.isEmpty())
             assertEquals(0, session.finals)
@@ -183,6 +189,7 @@ class RecordingSessionFailureTest {
             }
             owner.lifecycle.currentState = Lifecycle.State.RESUMED
             session = TestSession(owner.lifecycleScope)
+            session.attachLease(0L)
         }
         return session
     }
@@ -193,7 +200,17 @@ class RecordingSessionFailureTest {
         var finals = 0
         var finalText: String? = null
         var cancellations = 0
+        var leaseReleased = CompletableDeferred<Unit>()
+            private set
+        fun attachLease(generation: Long) {
+            leaseReleased = CompletableDeferred()
+            val released = leaseReleased
+            setField("modelSession", generation to AutoCloseable {
+                check(released.complete(Unit)) { "Model session lease released twice" }
+            })
+        }
         fun attach(backend: StreamingSpeechBackend, generation: Long = 0L) {
+            if (generation != 0L) attachLease(generation)
             setField("backend", backend)
             setField("backendGeneration", generation)
             setField("isRecording", true)

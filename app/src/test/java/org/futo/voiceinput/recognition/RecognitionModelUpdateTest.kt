@@ -148,6 +148,42 @@ class RecognitionModelUpdateTest {
         assertEquals(old, store.installedVersion(next))
     }
 
+    @Test fun failedOlderRuntimeLoadInvalidatesTheAttemptedInstallation() = runBlocking {
+        val old = fixture("1", "old")
+        val next = fixture("2", "new").copy(supportedOlderVersions = listOf(old))
+        val store = RecognitionModelStore(temporaryFolder.root)
+        install(store, old, "old")
+        val lifecycle = RecognitionModelLifecycle(store, listOf(next))
+        val selection = RecognitionModelSelection("fixture")
+        val revision = RecognitionModelLifecycle.invalidations.value
+        assertTrue(runCatching {
+            lifecycle.acquireRuntime(selection) { error("injected older runtime load failure") }
+        }.isFailure)
+        assertTrue(RecognitionModelLifecycle.invalidations.value > revision)
+        val readiness = requireNotNull(lifecycle.readiness(selection))
+        assertFalse(readiness.isReady)
+        assertNull(readiness.optionalUpgrade)
+        assertEquals(RecognitionModelRepairReason.INVALID_OR_INCOMPATIBLE, readiness.repairReason)
+        assertEquals("old", File(store.modelDirectory(old), "model.bin").readText())
+    }
+
+    @Test fun canceledOrOomRuntimeLoadPreservesTheInstalledVersion() = runBlocking {
+        val old = fixture("1", "old")
+        val next = fixture("2", "new").copy(supportedOlderVersions = listOf(old))
+        val store = RecognitionModelStore(temporaryFolder.root)
+        install(store, old, "old")
+        val lifecycle = RecognitionModelLifecycle(store, listOf(next))
+        for (failure in listOf(kotlinx.coroutines.CancellationException("injected"), OutOfMemoryError("injected"))) {
+            val revision = RecognitionModelLifecycle.invalidations.value
+            val result = runCatching {
+                lifecycle.acquireRuntime(RecognitionModelSelection("fixture")) { throw failure }
+            }
+            assertSame(failure, result.exceptionOrNull())
+            assertEquals(old, store.installedVersion(next))
+            assertEquals(revision, RecognitionModelLifecycle.invalidations.value)
+        }
+    }
+
     @Test fun backendAcquisitionUsesInstalledVersionAndNextLoadUsesActivatedPayload() = runBlocking {
         val old = fixture("1", "old")
         val next = fixture("2", "new").copy(supportedOlderVersions = listOf(old))

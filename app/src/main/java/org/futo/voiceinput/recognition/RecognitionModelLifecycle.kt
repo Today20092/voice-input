@@ -2,6 +2,7 @@ package org.futo.voiceinput.recognition
 
 import android.content.Context
 import androidx.lifecycle.LifecycleCoroutineScope
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
@@ -198,7 +199,14 @@ class RecognitionModelLifecycle(
         load: suspend (RecognitionModelReadiness?) -> SpeechBackend
     ): SpeechBackend = runtimeMutex.withLock {
         val readiness = readiness(selection)
-        val backend = load(readiness)
+        val backend = try {
+            load(readiness)
+        } catch (failure: Exception) {
+            if (failure !is CancellationException) {
+                readiness?.installedModel?.let(::invalidateInstallation)
+            }
+            throw failure
+        }
         readiness?.model?.id?.let { activeRuntimes[backend] = it }
         backend
     }

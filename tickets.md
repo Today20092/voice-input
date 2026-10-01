@@ -182,6 +182,10 @@ share-09 artifacts and all production sources/defaults are preserved.
 
 **Triage:** ready-for-agent
 
+**Independent beta milestone:** [Beta 3 integration evidence](docs/testing/ticket-07-beta3-integration.md).
+Worker `/root` owns combined verification and authorized signed test-beta publication.
+This milestone does not close the blocked catalog release or authorize master merge.
+
 - [ ] Verify every remaining calibration criterion, including measured latency/memory/thermals/backlog, attribution, regression checks and APK inspection.
 - [ ] Record disposition of 04, 05 and 06; explicitly disclose or defer unfinished work.
 - [ ] Publish from the tested commit and merge codex/share-beta-integration into master after applicable release checks pass.

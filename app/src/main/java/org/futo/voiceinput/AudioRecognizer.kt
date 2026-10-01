@@ -541,9 +541,6 @@ abstract class RecordingSession {
         } catch (error: Exception) {
             report?.event(DiagnosticEvent.MODEL_LOAD_FAILED, error = error)
             if (loadGeneration == recognitionGeneration) {
-                selectedManagedModel?.let {
-                    modelLifecycle.invalidateInstallation(it)
-                }
                 withContext(Dispatchers.Main) { failRecognition(error, loadGeneration) }
             }
         }
