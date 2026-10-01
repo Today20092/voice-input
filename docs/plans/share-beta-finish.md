@@ -1,13 +1,24 @@
 # Share beta finish plan
 
-## Active sequence, 2026-09-30
+## Active sequence, 2026-10-01
+
+Beta 3 is published and verified at `123f4e783e609cb66a5f51350e8ed733570f911b`,
+immutable tag `v1.4.6-share-beta.3`, version code 64.
+[CI 36820430244](https://github.com/Today20092/voice-input/actions/runs/36820430244)
+and [prerelease](https://github.com/Today20092/voice-input/releases/tag/v1.4.6-share-beta.3)
+passed: 200 JVM passes/one skip, zero lint errors, nine native Harper passes,
+assembly and signing/package checks; 24 combined local Android tests also passed.
+Published/CI/GitHub APK hashes agree and the stable signer is preserved.
+The ticket 07 worker returns the integration writer/build/device slot to the
+control tower. Final closure/master merge remains blocked on the precise criteria
+in [integration evidence](../testing/ticket-07-beta3-integration.md).
 
 October 1 integration owner: ticket 07 worker `/root`, task context
 `01a0f5e8-e6bb-78e3-85b6-bceba3b3b743`, dispatched by control tower
 `01a0f345-1363-7ee1-ba31-ee9c533599aa`. Ticket 03/04/05 workers released their
 slots and reviewed changes are integrated at `244e0be`. This worker alone owns
-the integration writer and local heavy-build/device slot for combined verification
-and signed beta 3/version 64 publication. Final catalog release/master merge
+the integration writer and local heavy-build/device slot for the completed verification
+and signed beta 3/version 64 publication pass. Final catalog release/master merge
 remain blocked. See [integration evidence](../testing/ticket-07-beta3-integration.md).
 Earlier slot assignments below are historical and superseded by this checkpoint.
 

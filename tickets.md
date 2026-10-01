@@ -6,7 +6,7 @@ Work on `codex/share-beta-integration`, then merge the tested release into `mast
 
 Before working a ticket, read its linked sections. Their unchecked criteria are required detail; checked criteria and resolutions are existing evidence. Record verification there and check the summary only when its requirements are met. The detail file is not a second queue; do not reopen completed work. Historical claims/blockers are superseded by this queue.
 
-The frontier is 01. Signed beta 2 is published and its release checks passed; the
+The frontier is 01. Signed beta 3 is published and its release checks passed; the
 original packaging cause remains unproven. See [finish plan](docs/plans/share-beta-finish.md).
 
 ## 01: Restore the integrated beta build
@@ -54,8 +54,9 @@ Android Studio local build, 189 JVM passes, one existing skip, lint with zero
 errors, and 35 emulator Android tests passed. Real edge gestures exposed and
 verified fixes for missing settings predictive-back opt-in and overlapping text.
 No physical device was connected; phone/editor dictation, headset routing and
-spoken TalkBack remain open. Hardware details were requested. The published beta
-2 APK does not contain these newer integration-branch fixes.
+spoken TalkBack remain open. Hardware details were requested. Published beta 3
+includes these newer integration fixes and the reviewed ticket 03/04 changes;
+required hardware evidence remains open.
 
 **Required detail:**
 
@@ -187,7 +188,7 @@ Worker `/root` owns combined verification and authorized signed test-beta public
 This milestone does not close the blocked catalog release or authorize master merge.
 
 - [ ] Verify every remaining calibration criterion, including measured latency/memory/thermals/backlog, attribution, regression checks and APK inspection.
-- [ ] Record disposition of 04, 05 and 06; explicitly disclose or defer unfinished work.
+- [x] Record disposition of 04, 05 and 06; explicitly disclose or defer unfinished work.
 - [ ] Publish from the tested commit and merge codex/share-beta-integration into master after applicable release checks pass.
 
 **Required detail:**

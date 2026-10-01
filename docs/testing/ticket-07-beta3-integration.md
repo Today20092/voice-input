@@ -72,6 +72,47 @@ Precommit debug APK SHA-256
 Its embedded revision is the initial HEAD; signed CI will rebuild the committed
 source and version 64 for immutable tag `v1.4.6-share-beta.3`.
 
+## Signed publication checkpoint
+
+Published immutable tag `v1.4.6-share-beta.3` from tested source
+`123f4e783e609cb66a5f51350e8ed733570f911b`.
+[Signed CI 36820430244](https://github.com/Today20092/voice-input/actions/runs/36820430244)
+passed; [beta 3](https://github.com/Today20092/voice-input/releases/tag/v1.4.6-share-beta.3)
+is public, a prerelease and not a draft. Latest stable remains v1.4.5.
+
+Exact committed local app/test assembly passed in 14 seconds. Installing those
+APKs and repeating the same combined classes passed `OK (24 tests)` in 30.973
+seconds. Committed debug APK SHA-256
+`054129c2270deb54d2d7c4319f2eeb37a51afce78c7e0a2bae34f5a77ee25abe`.
+Additional logs: `integration-committed-build.log`,
+`integration-committed-instrumentation.log`, `integration-ci-watch.log`.
+
+CI reports contain 201 JVM tests, 200 passed, one existing skip, zero failures or
+errors. Standalone release lint has zero errors, 87 warnings and nine informational
+findings. Android test compilation passed. Nine pinned Harper native tests and
+notice generation passed; combined release Gradle build passed in 8m 24s.
+
+Downloaded APK `futo-voice-input-moonshine-v1.4.6-share-beta.3.apk` is 127,098,863
+bytes. SHA-256
+`9e54387fc3190cb7e5b38a0f3c19e0ccc70f601e68e89e005531d5f4d6722804`
+matches both GitHub's asset digest and the separately downloaded CI APK artifact.
+Android build-tools 35.0.0 independently verify APK v2 signing with one signer.
+Certificate SHA-256 remains
+`385efab077fd42b52288004a7f6f404190d2f97b9c50d43aefbfc7d53774e2c5`,
+matching the previously verified stable v1.4.5 signer.
+
+Package `org.futo.voiceinput.moonshine`, version code 64, version name
+`1.4.6-share-beta.3-moonshine`, target SDK 35, `extractNativeLibs=true`.
+ZIP inspection finds 21 ARM64 libraries, no other ABI and no duplicate entries
+using case-sensitive names. Expected S1, Harper, llama, OpenCL and ggml libraries
+and Harper notices are present. No complete model-license audit is inferred.
+
+Downloaded signed APKs, CI unit/lint reports and full CI log are retained under
+`build/ticket07/` in this integration worktree. Both workflow artifacts are
+`release-check-reports` and `futo-voice-input-moonshine-apk`.
+The worker releases its exclusive writer/build/device slot to the control tower
+after this publication verification. Master was not merged; no ticket was closed.
+
 ## Outstanding final release criteria
 
 - Ticket 01: original packaging root cause remains unproven despite successful
