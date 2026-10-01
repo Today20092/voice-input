@@ -575,7 +575,12 @@ class DownloadActivity : ComponentActivity() {
                         markError(model, code = response.code)
                         return
                     }
-                    val file = File.createTempFile(model.name + ".download", null, cacheDir)
+                    val file = try {
+                        File.createTempFile(model.targetFile.name + ".download", null, cacheDir)
+                    } catch (error: IOException) {
+                        markError(model, error = error)
+                        return
+                    }
                     try {
                         body.byteStream().use { input ->
                             file.outputStream().use { output -> input.copyTo(output, 128 * 1024) }
