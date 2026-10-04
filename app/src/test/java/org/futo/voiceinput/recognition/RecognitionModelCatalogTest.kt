@@ -18,7 +18,7 @@ class RecognitionModelCatalogTest {
     fun catalogHasCompleteImmutableManifests() {
         val models = RecognitionModelCatalog.models
 
-        assertEquals(8, RecognitionModelCatalog.cards.size)
+        assertEquals(9, RecognitionModelCatalog.cards.size)
         assertEquals("orukeet-v0.1.0", RecognitionModelCatalog.defaultModel.id)
         assertTrue(models.isNotEmpty())
         models.forEach { model ->
@@ -102,6 +102,21 @@ class RecognitionModelCatalogTest {
             assertTrue(model.source.isNotBlank())
             assertTrue(model.licenseAttribution.isNotBlank())
         }
+    }
+
+    @Test
+    fun reduxUsesPackedWeightsWithItsOwnRuntimeAndPreservesDefault() {
+        val model = RecognitionModelCatalog.parakeetRedux
+        assertEquals("parakeet_redux", model.runtimeId)
+        assertEquals(null, model.variantId)
+        assertEquals(TranscriptionBehavior.FINAL_ONLY, model.transcription)
+        assertEquals(213_319_296L, model.transferBytes)
+        assertEquals("redux-packed.gguf", model.artifacts.single().name)
+        assertEquals(listOf(model), RecognitionModelCatalog.cards.single { it.id == "parakeet-redux" }.models)
+        val lifecycle = RecognitionModelLifecycle(RecognitionModelStore(temporaryFolder.root))
+        assertEquals(model, lifecycle.readiness(RecognitionModelSelection("parakeet_redux"))?.model)
+        assertFalse(lifecycle.readiness(RecognitionModelSelection("parakeet_redux"))!!.isReady)
+        assertEquals("orukeet", RecognitionModelCatalog.defaultModel.runtimeId)
     }
 
     @Test

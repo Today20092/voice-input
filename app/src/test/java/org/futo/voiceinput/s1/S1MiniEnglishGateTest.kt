@@ -19,7 +19,9 @@ class S1MiniEnglishGateTest {
 
     @Test
     fun legacyBackendsAllowEnglishDictationWithoutLanguageMetadata() {
-        SpeechBackendType.entries.filter { it != SpeechBackendType.Cohere }.forEach { backend ->
+        SpeechBackendType.entries.filter {
+            it != SpeechBackendType.Cohere && it != SpeechBackendType.ParakeetRedux
+        }.forEach { backend ->
             assertTrue(backend.id, established(backend))
             assertTrue(backend.id, established(backend, detected = ""))
             assertTrue(backend.id, established(backend, detected = "EN"))
@@ -31,6 +33,13 @@ class S1MiniEnglishGateTest {
         assertTrue(established(SpeechBackendType.Cohere, detected = "en"))
         assertFalse(established(SpeechBackendType.Cohere, detected = "ar"))
         assertFalse(established(SpeechBackendType.Cohere))
+    }
+
+    @Test
+    fun reduxDoesNotAssumeMultilingualSpeechIsEnglish() {
+        assertFalse(established(SpeechBackendType.ParakeetRedux))
+        assertTrue(established(SpeechBackendType.ParakeetRedux, forced = "en"))
+        assertFalse(established(SpeechBackendType.ParakeetRedux, forced = "fr"))
     }
 
     @Test

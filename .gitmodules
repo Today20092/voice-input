@@ -10,3 +10,6 @@
 [submodule "app/src/main/cpp/third_party/llama.cpp"]
 	path = app/src/main/cpp/third_party/llama.cpp
 	url = https://github.com/ggml-org/llama.cpp.git
+[submodule "app/src/main/cpp/third_party/parakeet.cpp"]
+	path = app/src/main/cpp/third_party/parakeet.cpp
+	url = https://github.com/mudler/parakeet.cpp.git

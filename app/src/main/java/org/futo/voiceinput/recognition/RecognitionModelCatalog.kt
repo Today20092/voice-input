@@ -80,6 +80,7 @@ data class RecognitionModelCard(
 )
 
 object RecognitionModelCatalog {
+    val parakeetRedux = org.futo.voiceinput.redux.ReduxModel.model
     private const val MOONSHINE_REVISION = "2026-03-16-sha256"
     private const val MOONSHINE_SOURCE = "Moonshine AI"
 
@@ -233,6 +234,16 @@ object RecognitionModelCatalog {
         )
 
     val cards = listOf(
+        RecognitionModelCard(
+            id = "parakeet-redux",
+            runtimeId = parakeetRedux.runtimeId,
+            displayName = parakeetRedux.displayName,
+            description = parakeetRedux.description,
+            transcription = parakeetRedux.transcription,
+            recognitionLanguages = parakeetRedux.recognitionLanguages,
+            performanceClasses = setOf(parakeetRedux.performanceClass),
+            models = listOf(parakeetRedux)
+        ),
         RecognitionModelCard(
             id = "moonshine",
             runtimeId = "moonshine",

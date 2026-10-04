@@ -164,6 +164,7 @@ class RecognitionModelLifecycle(
             SpeechBackendType.Parakeet -> acquireParakeetRuntime(context)
             SpeechBackendType.Orukeet -> orukeetBackend()
             SpeechBackendType.ParakeetUnified -> parakeetUnifiedBackend()
+            SpeechBackendType.ParakeetRedux -> org.futo.voiceinput.redux.ReduxBackend()
             SpeechBackendType.Nemotron -> SherpaStreamingBackend()
             SpeechBackendType.Cohere -> CohereBackend()
             SpeechBackendType.Moonshine -> MoonshineBackend(context.getSelectedMoonshineModelVariant())

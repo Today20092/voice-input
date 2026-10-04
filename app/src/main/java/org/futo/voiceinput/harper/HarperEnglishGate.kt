@@ -24,7 +24,8 @@ object HarperEnglishGate {
             SpeechBackendType.WhisperGGML -> if (enabledWhisperLanguages.size == 1)
                 enabledWhisperLanguages.single().isEnglish() else explicitlyEnglish
             // Orukeet and Parakeet TDT v3 are multilingual and do not expose detection.
-            SpeechBackendType.Orukeet, SpeechBackendType.Parakeet -> explicitlyEnglish
+            SpeechBackendType.Orukeet, SpeechBackendType.Parakeet,
+            SpeechBackendType.ParakeetRedux -> explicitlyEnglish
             SpeechBackendType.Cohere -> false // Its backend supplies the selected language.
         }
     }

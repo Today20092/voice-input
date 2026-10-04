@@ -26,6 +26,7 @@ object S1MiniEnglishGate {
 
             // Cohere always supplies its selected language. Do not assume English if absent.
             SpeechBackendType.Cohere -> false
+            SpeechBackendType.ParakeetRedux -> false
 
             SpeechBackendType.WhisperGGML ->
                 enabledWhisperLanguages.isEmpty() || "en" in enabledWhisperLanguages

@@ -111,3 +111,23 @@ add_library(harper SHARED harper_jni.cpp)
 target_link_libraries(harper PRIVATE harper_core_android android log dl m)
 # Support Android's 16 KiB page-size devices.
 target_link_options(harper PRIVATE "-Wl,-z,max-page-size=16384")
+# Redux has a separate static ggml build to avoid ABI/symbol collisions with S1.
+include(ExternalProject)
+set(REDUX_BINARY_DIR "${CMAKE_CURRENT_BINARY_DIR}/redux")
+ExternalProject_Add(redux_native
+    SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/redux"
+    BINARY_DIR "${REDUX_BINARY_DIR}"
+    CMAKE_ARGS
+        "-DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}"
+        "-DANDROID_ABI=${ANDROID_ABI}"
+        "-DANDROID_PLATFORM=${ANDROID_PLATFORM}"
+        "-DCMAKE_BUILD_TYPE=Release"
+        "-DCMAKE_MAKE_PROGRAM=${CMAKE_MAKE_PROGRAM}"
+    INSTALL_COMMAND ""
+    BUILD_ALWAYS ON
+    BUILD_BYPRODUCTS "${REDUX_BINARY_DIR}/libparakeet_redux.so")
+add_library(parakeet_redux SHARED IMPORTED)
+set_target_properties(parakeet_redux PROPERTIES
+    IMPORTED_LOCATION "${REDUX_BINARY_DIR}/libparakeet_redux.so")
+add_dependencies(parakeet_redux redux_native)
+target_link_libraries(voiceinput parakeet_redux)
