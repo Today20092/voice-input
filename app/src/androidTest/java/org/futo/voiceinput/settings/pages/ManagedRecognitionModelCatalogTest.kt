@@ -77,6 +77,19 @@ class ManagedRecognitionModelCatalogTest {
     }
 
     @Test
+    fun reduxShowsFinalOnlyBehaviorAndAttribution() {
+        showCatalog()
+        compose.onNode(hasText("Parakeet Redux (Beta)") and
+            hasText("Final-only transcription", substring = true) and
+            hasText("213.3 MB", substring = true))
+            .performScrollTo().assertIsDisplayed()
+        openDetails("Parakeet Redux (Beta)")
+        compose.onNodeWithText("CC BY 4.0", substring = true).assertIsDisplayed()
+        compose.onNodeWithText("Done").performClick()
+        assertEquals(emptyList<Intent>(), launches)
+    }
+
+    @Test
     fun nemotronProfilesKeepTechnicalInformationBehindDetails() {
         showCatalog()
         compose.onAllNodesWithText("Nemotron").assertCountEquals(1)

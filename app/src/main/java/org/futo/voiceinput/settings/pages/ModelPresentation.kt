@@ -16,7 +16,7 @@ fun recognitionLanguageGuidance(model: RecognitionModel): String = when {
             "Automatic language detection is not available, and mixed-language speech may be inaccurate."
     model.runtimeId == "nemotron" && model.variantId == "multilingual" ->
         "${model.recognitionLanguages}. Choose a recognition language or Auto-detect."
-    model.runtimeId == "parakeet" || model.runtimeId == "orukeet" ->
+    model.runtimeId == "parakeet" || model.runtimeId == "orukeet" || model.runtimeId == "parakeet_redux" ->
         "${model.recognitionLanguages}. The model recognizes the spoken language automatically; " +
             "no manual language selector is available."
     else -> "${model.recognitionLanguages} only. " +

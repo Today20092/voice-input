@@ -87,6 +87,7 @@ jobs:
           printf '%s\n' "$APK_LISTING" | grep -Fx 'lib/arm64-v8a/libharper.so'
           printf '%s\n' "$APK_LISTING" | grep -Fx 'assets/HARPER-NOTICES.txt'
           printf '%s\n' "$APK_LISTING" | grep -Fx 'lib/arm64-v8a/libparakeet_redux.so'
+          printf '%s\n' "$APK_LISTING" | grep -Fx 'assets/REDUX-NOTICES.txt'
           printf '%s\n' "$APK_LISTING" | grep -Fx 'lib/arm64-v8a/libllama.so'
           printf '%s\n' "$APK_LISTING" | grep -Fx 'lib/arm64-v8a/libggml-opencl.so'
           printf '%s\n' "$APK_LISTING" | grep -Fx 'lib/arm64-v8a/libOpenCL.so'

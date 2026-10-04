@@ -8,7 +8,7 @@ import org.junit.Test
 class RecognitionLanguagePresentationTest {
     @Test
     fun multilingualGuidanceMatchesTheRuntimeLanguageControls() {
-        listOf("parakeet", "orukeet").forEach {
+        listOf("parakeet", "orukeet", "parakeet_redux").forEach {
             assertEquals(
                 "25 European languages. The model recognizes the spoken language automatically; no manual language selector is available.",
                 recognitionLanguageGuidance(requireNotNull(RecognitionModelCatalog.modelFor(it)))

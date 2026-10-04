@@ -116,6 +116,22 @@ fun CreditsScreen(openDependencies: () -> Unit = {}, navController: NavHostContr
         )
 
         CreditItem(
+            name = "Moondream Parakeet Redux",
+            thanksFor = "Optional packed ternary speech recognition, derived from NVIDIA Parakeet TDT 0.6B V3",
+            link = "https://huggingface.co/moondream/parakeet-redux",
+            license = "CC BY 4.0; converted GGUF by mudler/parakeet.cpp",
+            copyright = "Moondream and NVIDIA"
+        )
+
+        CreditItem(
+            name = "parakeet.cpp",
+            thanksFor = "Redux CPU runtime; native notices bundled in REDUX-NOTICES.txt",
+            link = "https://github.com/mudler/parakeet.cpp",
+            license = "MIT",
+            copyright = "Copyright (c) 2026 the parakeet.cpp authors"
+        )
+
+        CreditItem(
             name = "TensorFlow Lite",
             thanksFor = stringResource(R.string.thanks_for_the_machine_learning_inference_library),
             link = "https://mvnrepository.com/artifact/org.tensorflow/tensorflow-lite",

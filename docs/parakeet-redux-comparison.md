@@ -1,7 +1,7 @@
 # Redux, Ultra, and the app's Orukeet
 
-Checked October 4, 2026. Integration starts from master after
-`v1.4.6-share-beta.5`, including the Nemotron nested-download fix.
+Checked October 4, 2026. Release integration starts from the actual
+`v1.4.6-share-beta.5` tag, including its Nemotron nested-download fix.
 
 ## Published accuracy
 
@@ -69,9 +69,9 @@ transcription time, peak memory and normalized WER separately. Include quiet
 dictation, noisy speech and each language actually used. Ultra would require
 an additional Android integration before it can join that test.
 
-Local validation: ARM64 dev debug APK built; 129 JVM unit tests passed;
-`lintDevDebug` completed with no errors and no Redux findings. Android test APK
-built, including native-library loading and installed-model transcription
-checks. APK contents include `libparakeet_redux.so`; dynamic-symbol inspection
-confirms that Redux does not export GGML or C-API symbols. No device was
-connected, so instrumentation tests and Android inference remain unrun.
+The initial development checkout passed 129 JVM tests and built an ARM64 debug
+APK and Android test APK. The release was then rebased onto the actual beta.5
+tag; see the beta.6 release notes for validation of that combined source.
+Dynamic-symbol inspection confirms that Redux does not export GGML or C-API
+symbols. No device was connected, so instrumentation tests and Android
+inference remain unrun.

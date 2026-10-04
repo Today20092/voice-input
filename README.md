@@ -1,5 +1,10 @@
 # FUTO Voice Input Moonshine
 
+The [Share beta 6](https://github.com/Today20092/voice-input/releases/tag/v1.4.6-share-beta.6)
+adds optional Parakeet Redux to beta 5. It is a 213 MB packed CPU model;
+Android speed and inference still need device testing. See the
+[release notes](docs/releases/v1.4.6-share-beta.6.md) for sources and test steps.
+
 <p align="center">
   <a href="https://github.com/Today20092/voice-input/releases/latest"><img alt="Latest stable release" src="https://img.shields.io/github/v/release/Today20092/voice-input?style=for-the-badge&amp;logo=github&amp;labelColor=493267&amp;color=C4A7E7"></a>
   <a href="https://github.com/Today20092/voice-input/actions/workflows/release-apk.yml"><img alt="APK build" src="https://img.shields.io/github/actions/workflow/status/Today20092/voice-input/release-apk.yml?branch=master&amp;style=for-the-badge&amp;logo=githubactions&amp;logoColor=white&amp;label=APK%20build&amp;labelColor=245968"></a>
