@@ -127,6 +127,7 @@ jobs:
           files: |
             release/*.apk
             docs/examples/arabic-transliteration.txt
+            docs/screenshots/${{ github.ref_name }}/*.png
           generate_release_notes: true
           prerelease: ${{ contains(github.ref_name, '-beta') }}
           make_latest: ${{ !contains(github.ref_name, '-beta') }}

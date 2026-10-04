@@ -11,6 +11,7 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -79,12 +80,12 @@ class ManagedRecognitionModelCatalogTest {
     @Test
     fun reduxShowsFinalOnlyBehaviorAndAttribution() {
         showCatalog()
-        compose.onNode(hasText("Parakeet Redux (Beta)") and
-            hasText("Final-only transcription", substring = true) and
+        compose.onNode(hasText("Parakeet Redux") and
+            hasText("25 European languages", substring = true) and
             hasText("213.3 MB", substring = true))
             .performScrollTo().assertIsDisplayed()
-        openDetails("Parakeet Redux (Beta)")
-        compose.onNodeWithText("CC BY 4.0", substring = true).assertIsDisplayed()
+        openDetails("Parakeet Redux")
+        compose.onNodeWithText("CC BY 4.0", substring = true).performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Done").performClick()
         assertEquals(emptyList<Intent>(), launches)
     }
@@ -95,14 +96,14 @@ class ManagedRecognitionModelCatalogTest {
         compose.onAllNodesWithText("Nemotron").assertCountEquals(1)
         listOf("Low latency" to "80 ms", "Balanced" to "160 ms", "Accuracy" to "560 ms")
             .forEach { (title, latency) ->
-                compose.onNode(hasText(title) and hasText("Live transcription • English", substring = true))
+                compose.onNode(hasText(title) and hasText("English", substring = true))
                     .performScrollTo().assertIsDisplayed()
                 compose.onNodeWithText("Source:", substring = true).assertDoesNotExist()
                 openDetails(title)
                 compose.onNodeWithText(latency, substring = true).assertIsDisplayed()
-                compose.onNodeWithText("License/attribution: NVIDIA Open Model License", substring = true)
-                    .assertIsDisplayed()
-                compose.onNodeWithText("Version: 2026-04-25", substring = true).assertIsDisplayed()
+                compose.onNodeWithText("NVIDIA Open Model License")
+                    .performScrollTo().assertIsDisplayed()
+                compose.onNodeWithText("2026-04-25").performScrollTo().assertIsDisplayed()
                 compose.onNodeWithText("Done").performClick()
                 compose.onNodeWithText("Source:", substring = true).assertDoesNotExist()
             }
@@ -116,15 +117,17 @@ class ManagedRecognitionModelCatalogTest {
         compose.onNodeWithText("Parakeet TDT").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Parakeet Unified").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Parakeet Unified EN 0.6B").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("Buffered live transcription • English", substring = true).assertIsDisplayed()
-        compose.onNodeWithText("Download 663.0 MB • Installed 663.0 MB", substring = true).assertIsDisplayed()
+        compose.onNodeWithText("Download: 663.0 MB", substring = true).assertIsDisplayed()
+        openDetails("Parakeet Unified EN 0.6B")
+        compose.onNodeWithText("Buffered live transcription").assertIsDisplayed()
+        compose.onNodeWithText("Done").performClick()
     }
 
     @Test
     fun nemotronMultilingualHasItsOwnCard() {
         showCatalog()
         compose.onNodeWithText("Nemotron 3.5 Multilingual").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("Live transcription • 28 languages and Auto-detect", substring = true).assertIsDisplayed()
+        compose.onNodeWithText("28 languages and Auto-detect", substring = true).assertIsDisplayed()
         compose.onNodeWithText("OpenMDW 1.1", substring = true).assertDoesNotExist()
     }
 
@@ -134,7 +137,7 @@ class ManagedRecognitionModelCatalogTest {
         compose.onNodeWithText("Whisper (legacy)").performScrollTo().assertIsDisplayed()
         listOf(ENGLISH_MODELS to "English", MULTILINGUAL_MODELS to "Multilingual").forEach { (models, language) ->
             models.forEach { model ->
-                compose.onNode(hasText(model.name) and hasText("Final-only transcription • $language", substring = true))
+                compose.onNode(hasText(model.name) and hasText(language, substring = true))
                     .performScrollTo().assertIsDisplayed()
             }
         }
@@ -146,9 +149,9 @@ class ManagedRecognitionModelCatalogTest {
     @Test
     fun managedAndWhisperDetailsCanScrollAtLargeFontSizes() {
         showCatalog(fontScale = 2f)
-        listOf("Cohere Transcribe (Beta)", "English-39 (default)").forEach { title ->
+        listOf("Cohere Transcribe", "English-39 (default)").forEach { title ->
             openDetails(title)
-            val details = compose.onNode(hasText("Source:", substring = true) and hasScrollAction())
+            val details = compose.onNode(hasScrollAction() and hasAnyDescendant(hasText("Source")))
             val range = details.fetchSemanticsNode().config[SemanticsProperties.VerticalScrollAxisRange]
             details.performSemanticsAction(SemanticsActions.ScrollBy) { it(0f, 100_000f) }
             compose.waitForIdle()

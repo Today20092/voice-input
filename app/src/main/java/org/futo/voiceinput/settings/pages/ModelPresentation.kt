@@ -2,13 +2,72 @@ package org.futo.voiceinput.settings.pages
 
 import org.futo.voiceinput.ModelData
 import org.futo.voiceinput.recognition.RecognitionModel
+import org.futo.voiceinput.ENGLISH_MODELS
+import org.futo.voiceinput.MULTILINGUAL_MODELS
+import org.futo.voiceinput.recognition.RecognitionModelCard
+import org.futo.voiceinput.recognition.RecognitionModelCatalog
 import java.util.Locale
 
 data class ModelPresentation(
     val title: String,
     val summary: String,
-    val details: String
-)
+    val description: String,
+    val fields: List<Pair<String, String>>,
+    val informationLinks: List<ModelInformationLink>
+) {
+    val compactSummary: String get() {
+        val values = fields.toMap()
+        val size = values.getValue("Download size")
+        val download = if (size == "Included in app") size else "$size download"
+        return "${values.getValue("Languages")} • $download\n" +
+            values.getValue("Status")
+    }
+    val details: String get() = description + "\n\n" +
+        fields.joinToString("\n") { (label, value) -> "$label: $value" }
+}
+
+data class ModelInformationLink(val label: String, val url: String)
+
+fun modelCardsForDisplay(): List<RecognitionModelCard> = RecognitionModelCatalog.cards
+    .sortedWith(compareBy<RecognitionModelCard> { it.transcription.ordinal }.thenBy { card ->
+        if (card.models.isEmpty()) {
+            (ENGLISH_MODELS + MULTILINGUAL_MODELS).minOf {
+                if (it.ggml.is_builtin_asset) 0L else it.sizeBytes
+            }
+        } else card.models.minOf { it.transferBytes }
+    })
+    .map { card ->
+        // These profiles share weights; tiny archive-size differences are not useful ordering.
+        if (card.id == "nemotron") card
+        else card.copy(models = card.models.sortedBy { model -> model.transferBytes })
+    }
+
+private fun modelInformationLinks(model: RecognitionModel): List<ModelInformationLink> {
+    val publisher = when (model.runtimeId) {
+        "moonshine" -> "https://github.com/moonshine-ai/moonshine"
+        "nemotron" -> if (model.variantId == "multilingual")
+            "https://huggingface.co/csukuangfj2/sherpa-onnx-nemotron-3.5-asr-streaming-0.6b-560ms-int8-2026-06-11"
+        else "https://huggingface.co/nvidia/nemotron-speech-streaming-en-0.6b"
+        "parakeet" -> "https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3"
+        "orukeet" -> "https://huggingface.co/oruk/orukeet"
+        "parakeet_redux" -> "https://huggingface.co/moondream/parakeet-redux"
+        "parakeet_unified" -> "https://huggingface.co/csukuangfj2/sherpa-onnx-nemo-parakeet-unified-en-0.6b-int8-streaming-560ms"
+        "cohere" -> "https://huggingface.co/CohereLabs/cohere-transcribe-03-2026"
+        else -> return emptyList()
+    }
+    val artifactUrl = (model.archive ?: model.artifacts.first()).url
+    val packagePage = when {
+        artifactUrl.startsWith("https://huggingface.co/") && artifactUrl.contains("/resolve/") ->
+            artifactUrl.substringBefore("/resolve/") + "/tree/" +
+                artifactUrl.substringAfter("/resolve/").substringBefore('/')
+        artifactUrl.startsWith("https://github.com/") && artifactUrl.contains("/releases/download/") ->
+            artifactUrl.substringBefore("/releases/download/") + "/releases/tag/" +
+                artifactUrl.substringAfter("/releases/download/").substringBefore('/')
+        else -> null
+    }
+    return listOf(ModelInformationLink("Model info", publisher)) +
+        listOfNotNull(packagePage?.let { ModelInformationLink("App model package", it) })
+}
 
 fun recognitionLanguageGuidance(model: RecognitionModel): String = when {
     model.runtimeId == "cohere" ->
@@ -34,11 +93,16 @@ fun presentRecognitionModel(
         title = model.displayName,
         summary = "${model.transcription.label} • ${model.recognitionLanguages}\n" +
             "Download ${model.transferBytes.megabytes()} • Installed ${installedBytes.megabytes()} • $status",
-        details = "${model.description}\n\n" +
-            "Source: ${model.source}\n" +
-            "License/attribution: ${model.licenseAttribution}\n" +
-            "Version: ${model.version}\n" +
-            "Technical: ${model.performanceClass.label} • ${model.artifacts.size} model artifacts"
+        description = model.description,
+        fields = modelDetailFields(
+            model.transcription.label, model.recognitionLanguages,
+            model.transferBytes.megabytes(), installedBytes.megabytes(), status,
+            model.performanceClass.label, model.source, model.licenseAttribution,
+            model.version, "${model.artifacts.size} model " +
+                if (model.artifacts.size == 1) "artifact" else "artifacts",
+            recognitionLanguageGuidance(model)
+        ),
+        informationLinks = modelInformationLinks(model)
     )
 }
 
@@ -54,13 +118,39 @@ fun presentWhisperModel(
         summary = "Final-only transcription • $languages\n" +
             "Download ${if (model.ggml.is_builtin_asset) "Included (${sizeBytes.megabytes()})" else sizeBytes.megabytes()} • " +
             "Installed ${sizeBytes.megabytes()} • ${modelStatus(installed, selected)}",
-        details = "Returns text after recording stops.\n\n" +
-            "Source: FUTO Voice Input legacy model catalog\n" +
-            "License/attribution: OpenAI Whisper and whisper.cpp (MIT)\n" +
-            "Version: ${model.ggml.ggml_file}\n" +
-            "Technical: Q8 GGML • ${model.name.substringBefore(' ')}"
+        description = "Returns text after recording stops.",
+        fields = modelDetailFields(
+            "Final-only transcription", languages,
+            if (model.ggml.is_builtin_asset) "Included in app" else sizeBytes.megabytes(),
+            sizeBytes.megabytes(), modelStatus(installed, selected), "Not rated",
+            "FUTO Voice Input legacy model catalog", "OpenAI Whisper and whisper.cpp (MIT)",
+            model.ggml.ggml_file, "1 model artifact • Q8 GGML",
+            "Configure recognition languages in Languages settings."
+        ),
+        informationLinks = listOf(
+            ModelInformationLink("Model info", "https://github.com/openai/whisper"),
+            ModelInformationLink("FUTO model integration", "https://github.com/futo-org/voice-input")
+        )
     )
 }
+
+private fun modelDetailFields(
+    transcription: String, languages: String, download: String, storage: String,
+    status: String, performance: String, source: String, license: String,
+    version: String, files: String, languageGuidance: String
+): List<Pair<String, String>> = listOf(
+    "Transcription" to transcription,
+    "Languages" to languages,
+    "Language selection" to languageGuidance,
+    "Download size" to download,
+    "Model size" to storage,
+    "Status" to status,
+    "Performance class" to performance,
+    "Source" to source,
+    "License/attribution" to license,
+    "Version" to version,
+    "Model files" to files
+)
 
 fun selectedRecognitionModelSummary(
     runtimeId: String,

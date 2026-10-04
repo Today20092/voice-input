@@ -210,7 +210,7 @@ object RecognitionModelCatalog {
         directoryName = COHERE_DIRECTORY,
         source = "Cohere Labs, Sherpa-ONNX INT8 export by k2-fsa",
         licenseAttribution = "Apache 2.0",
-        displayName = "Cohere Transcribe (Beta)",
+        displayName = "Cohere Transcribe",
         description = "Experimental final-only transcription in 14 languages, including Arabic. " +
             "Requires about 2.89 GB of storage and substantial memory. Phone performance is unverified. " +
             "Choose one recognition language; automatic detection and reliable mixed-language dictation are not supported.",

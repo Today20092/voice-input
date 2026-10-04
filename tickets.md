@@ -1,5 +1,37 @@
 # Tickets: Voice Input
 
+Migrated to [GitHub Issues](https://github.com/Today20092/voice-input/issues) on October 4, 2026. Update criteria, blockers, claims and resolutions in GitHub. The sections below preserve the historical queue; its instructions and frontier statements describe previous status and authorization. Linked specifications and evidence remain supporting documents.
+
+| Former local ticket | Active issue |
+| --- | --- |
+| 01 | [#9: Integrated beta build](https://github.com/Today20092/voice-input/issues/9) |
+| 02 | [#10: Voice-input verification](https://github.com/Today20092/voice-input/issues/10) |
+| 03 | [#11: Model updates and readiness](https://github.com/Today20092/voice-input/issues/11) |
+| 04 | [#12: Long dictation and recovery](https://github.com/Today20092/voice-input/issues/12) |
+| 05 | [#13: Optional engines](https://github.com/Today20092/voice-input/issues/13) |
+| 06 | [#14: Waveform report](https://github.com/Today20092/voice-input/issues/14) |
+| 07 | [#15: Catalog calibration and release](https://github.com/Today20092/voice-input/issues/15) |
+| 08 | [#16: FUTO Keyboard setup](https://github.com/Today20092/voice-input/issues/16) |
+
+Existing GitHub #7 and #8 are separate bug reports, unrelated to former local numbering.
+
+## 08: Restore FUTO Keyboard setup after upstream release support
+
+**What to build:** Restore the FUTO Keyboard settings entry once a published upstream keyboard release supports choosing this fork as its external voice-input provider. Preserve the existing setup screen, route, provider helpers, strings and tests for reuse.
+
+**Blocked by:** A compatible upstream FUTO Keyboard release and physical-device verification of its external-provider setup flow.
+
+**Triage:** needs-info
+
+**Context:** On 2026-10-04, the user reported that the installed FUTO Keyboard cannot use this app's setup flow. Hide the settings entry for now. The user believes upstream Keyboard and Voice Input are working on support; this is not yet verified. The latest listed keyboard release at review was v0.1.30, whose release notes do not confirm support for this flow. This deferral supersedes exposing SHARE-01 setup during ticket 02 verification; recognition activity and IME functionality remain available.
+
+**Upstream:** [Keyboard repository](https://github.com/futo-org/android-keyboard), [Keyboard releases](https://github.com/futo-org/android-keyboard/releases), [Voice Input repository](https://github.com/futo-org/voice-input).
+
+- [x] Hide the FUTO Keyboard settings entry while preserving its implementation.
+- [ ] Identify a published compatible keyboard release; record its tag, provider contract and release URL.
+- [ ] Verify setup, provider status, cancellation and microphone dictation with this fork on the S25 Ultra; record keyboard/app versions.
+- [ ] Restore the settings entry, update outdated instructions, and rerun affected navigation/provider checks.
+
 Seven outcome tickets replace the 18 open tickets. All previous acceptance criteria, statuses and completed-work evidence remain in [ticket detail and history](docs/plans/ticket-detail-2026-09-30.md). Organization changes; scope and completion status do not.
 
 Work on `codex/share-beta-integration`, then merge the tested release into `master`. Keep the unmerged `codex/share-09` experiment isolated until its feasibility decision. Start one new chat per numbered ticket and work one runnable slice at a time. Read the current integration ledger and linked details at the start; record evidence and the commit/checkpoint before handing off to the next chat. Run only one integration writer/build at a time. Numbers indicate recommended order, not additional blockers; skip a blocked ticket and return when its missing input is available.

@@ -100,9 +100,11 @@ fun LanguagesScreen(
 }
 
 @Composable
-fun RecognitionModelLanguageOptions(model: RecognitionModel) {
-    Tip(recognitionLanguageGuidance(model))
-    Tip("Personal vocabulary corrections still apply after recognition. They are separate from vocabulary hints sent to a model during recognition.")
+fun RecognitionModelLanguageOptions(model: RecognitionModel, showGuidance: Boolean = true) {
+    if (showGuidance) {
+        Tip(recognitionLanguageGuidance(model))
+        Tip("Personal vocabulary corrections still apply after recognition. They are separate from vocabulary hints sent to a model during recognition.")
+    }
     if (model.runtimeId == "cohere") {
         SettingRadio(
             title = "Recognition language",

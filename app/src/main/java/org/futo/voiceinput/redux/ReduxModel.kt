@@ -16,7 +16,7 @@ object ReduxModel {
         directoryName = "parakeet-redux-packed",
         source = "Moondream Parakeet Redux, converted to packed GGUF by mudler/parakeet.cpp",
         licenseAttribution = "Moondream and NVIDIA Parakeet TDT 0.6B V3, CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/). Converted packed GGUF weights; parakeet.cpp runtime MIT.",
-        displayName = "Parakeet Redux (Beta)",
+        displayName = "Parakeet Redux",
         description = "Compact ternary model for CPU recognition. Returns text after recording stops. Android speed is not yet benchmarked; background noise can reduce accuracy.",
         transcription = TranscriptionBehavior.FINAL_ONLY,
         recognitionLanguages = "25 European languages",

@@ -1,9 +1,10 @@
 # FUTO Voice Input Moonshine
 
-The [Share beta 6](https://github.com/Today20092/voice-input/releases/tag/v1.4.6-share-beta.6)
-adds optional Parakeet Redux to beta 5. It is a 213 MB packed CPU model;
-Android speed and inference still need device testing. See the
-[release notes](docs/releases/v1.4.6-share-beta.6.md) for sources and test steps.
+The [Share beta 7](https://github.com/Today20092/voice-input/releases/tag/v1.4.6-share-beta.7)
+organizes models by when text appears, with consistent cards, download and
+unpacked model sizes, and buttons linking to model information. It includes
+Parakeet Redux from beta 6 and the confirmed Nemotron download fix. See the
+[release notes](docs/releases/v1.4.6-share-beta.7.md) for screenshots and testing limits.
 
 <p align="center">
   <a href="https://github.com/Today20092/voice-input/releases/latest"><img alt="Latest stable release" src="https://img.shields.io/github/v/release/Today20092/voice-input?style=for-the-badge&amp;logo=github&amp;labelColor=493267&amp;color=C4A7E7"></a>
@@ -116,19 +117,32 @@ See the [1.4.3 release notes](docs/releases/v1.4.3.md) for verification and limi
 
 ## Choose a model
 
+Start with **Orukeet**, the default. For words while speaking, choose a streaming model. Compare the same short recording on your phone before downloading several large models.
+
+| What you want | Try first | Next option |
+| --- | --- | --- |
+| Everyday dictation in a supported European language | Orukeet | Parakeet TDT V3 |
+| Live English text with a lighter model | Moonshine Small | Moonshine Medium, then Nemotron English |
+| Live multilingual text | Nemotron 3.5 Multilingual | Orukeet if final-only text is acceptable |
+| Arabic dictation | Cohere Transcribe with Arabic selected | Whisper multilingual |
+| A smaller multilingual download to experiment with | Parakeet Redux | Orukeet; Redux still needs Android device validation |
+| The original FUTO recognition path | Whisper | A model matching your language and live-text needs above |
+
+We keep several models because language coverage, live text, download size and recognition results differ. Alternatives let you find one that suits your speech and phone; Whisper preserves the original FUTO path. S1-mini is optional English text cleanup after recognition, a separate choice from the speech model. This guide is a starting point, not a phone benchmark or an accuracy ranking.
+
 These are the options exposed by this app, not every capability of the upstream models. The use cases describe intended trade-offs, not a measured ranking across Android devices.
 
 | Model | Languages in the app | Text appears | Purpose and trade-off | Model source |
 | --- | --- | --- | --- | --- |
 | **Orukeet · default** | 25 European languages | After Stop | Starting point for everyday dictation. A Parakeet-derived model with multilingual and accent-focused adaptation; no live partials. | [Oruk AI](https://huggingface.co/oruk/orukeet) |
-| **Parakeet Redux · beta** | 25 European languages | After Stop | Compact packed ternary CPU model, about 213 MB. Android speed is unmeasured; publisher results show a noise-accuracy trade-off. | [Moondream](https://huggingface.co/moondream/parakeet-redux) · [packed GGUF](https://huggingface.co/mudler/parakeet-cpp-gguf) |
+| **Parakeet Redux** | 25 European languages | After Stop | Compact packed ternary CPU model, about 213 MB. Android speed is unmeasured; publisher results show a noise-accuracy trade-off. | [Moondream](https://huggingface.co/moondream/parakeet-redux) · [packed GGUF](https://huggingface.co/mudler/parakeet-cpp-gguf) |
 | **Moonshine Small** | English | Live | Lighter English streaming option when resource use matters. | [Moonshine AI](https://github.com/moonshine-ai/moonshine) |
 | **Moonshine Medium** | English | Live | Larger English streaming option intended to favor accuracy, with greater resource use than Small. | [Moonshine AI](https://github.com/moonshine-ai/moonshine) |
 | **Parakeet TDT 0.6B V3** | 25 European languages | After Stop | NVIDIA's multilingual alternative to Orukeet, useful for comparing results on your own speech. | [NVIDIA](https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3) · [INT8 export](https://huggingface.co/twmht/sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8) |
 | **Parakeet Unified EN 0.6B** | English | Buffered live | Recomputes recent context for live updates. More work per update than a recognizer that reuses cached streaming state. | [Sherpa-ONNX export](https://huggingface.co/csukuangfj2/sherpa-onnx-nemo-parakeet-unified-en-0.6b-int8-streaming-560ms) |
 | **Nemotron English** | English | Live | Choose Low latency, Balanced, or Accuracy profiles to trade update frequency against recognition context. | [NVIDIA](https://huggingface.co/nvidia/nemotron-speech-streaming-en-0.6b) · [Sherpa-ONNX packages](https://github.com/k2-fsa/sherpa-onnx/releases/tag/asr-models) |
 | **Nemotron 3.5 Multilingual** | 28 languages, with Auto-detect | Live | Multilingual streaming with explicit language selection or automatic detection. | [Sherpa-ONNX export](https://huggingface.co/csukuangfj2/sherpa-onnx-nemotron-3.5-asr-streaming-0.6b-560ms-int8-2026-06-11) |
-| **Cohere Transcribe · beta** | 14 languages, including Arabic and English | After Stop | Another multilingual option, particularly for Arabic. Explicit language selection; a large download and substantial memory use. | [Cohere Labs](https://huggingface.co/CohereLabs/cohere-transcribe-03-2026) · [INT8 export](https://huggingface.co/csukuangfj2/sherpa-onnx-cohere-transcribe-14-lang-int8-2026-04-01) |
+| **Cohere Transcribe** | 14 languages, including Arabic and English | After Stop | Another multilingual option, particularly for Arabic. Explicit language selection; a large download and substantial memory use. | [Cohere Labs](https://huggingface.co/CohereLabs/cohere-transcribe-03-2026) · [INT8 export](https://huggingface.co/csukuangfj2/sherpa-onnx-cohere-transcribe-14-lang-int8-2026-04-01) |
 | **Whisper · legacy** | English and multilingual options | Final after Stop; legacy decode progress may show partials | Preserves FUTO's original Whisper/GGML path as a fallback and comparison option. | [FUTO source and model integration](https://github.com/futo-org/voice-input) |
 | **S1-mini by Superwhisper** | English text | After recognition | Optional transcript cleanup, not speech recognition. Adds processing time to improve the presentation of dictated text. | [Superwhisper GGUF](https://huggingface.co/superwhisper/s1-mini-GGUF) |
 
@@ -136,7 +150,7 @@ Nemotron English's 80, 160, and 560 ms profile values describe audio chunks, not
 
 See the [Redux, Ultra, and Orukeet comparison](docs/parakeet-redux-comparison.md) for published accuracy, CPU measurements, storage, and their limits. Redux uses a pinned MIT parakeet.cpp runtime and converted CC BY 4.0 weights by Moondream, derived from NVIDIA Parakeet. Ultra is compared there but is not an app option.
 
-Cohere download and recognition, history improvements, and the popup were manually tried on a Samsung Galaxy S25 Ultra. No comparative speed, memory, or accuracy benchmark was collected. Cohere remains labeled Beta; it has no automatic language detection, and mixed-language dictation can be inaccurate.
+Cohere download and recognition, history improvements, and the popup were manually tried on a Samsung Galaxy S25 Ultra. No comparative speed, memory, or accuracy benchmark was collected. Cohere has no automatic language detection, and mixed-language dictation can be inaccurate.
 
 ### Model downloads
 
@@ -176,9 +190,12 @@ Expiry is checked during app use and by a periodic Android job. Android may dela
 
 The recognition UI shows the selected model and a scrolling waveform driven directly by microphone amplitude. Under **Advanced**, enable **Unobtrusive recognizer popup (beta)** to move the speech-recognition activity near the bottom and remove background dimming. It does not change the voice keyboard layout or recognition engine.
 
-<img src="docs/screenshots/model-options.png" alt="Model Options screen with Orukeet selected" width="360">
+<img src="docs/screenshots/v1.4.6-share-beta.7/models-overview.png" alt="Selected model and live transcription group" width="320">
+<img src="docs/screenshots/v1.4.6-share-beta.7/models-final-only.png" alt="Consistent model cards showing download and unpacked model sizes" width="320">
+<img src="docs/screenshots/v1.4.6-share-beta.7/model-details.png" alt="Model details with source buttons and consistent labeled fields" width="320">
 
-This screenshot predates some current model options.
+Fresh beta 7 UI captures from a Samsung Galaxy S25 Ultra. Model size is the
+unpacked files on disk; it is not a measurement of RAM used during transcription.
 
 ## Diagnostics and privacy
 
@@ -194,7 +211,32 @@ To collect comparable measurements on your phone, follow the [phone dictation te
 
 An [initial S25 Ultra diagnostic baseline](docs/research/phone-diagnostics-baseline-2026-09-25.md) contains 27 completed Orukeet dictations on 1.4.3. The median wait from Stop to result-ready was **0.85 seconds**, ranging from **0.59 to 2.32 seconds** for recordings of 2.88 to 47.88 seconds. These are ordinary-use observations, with no controlled cold/warm split or accuracy assessment.
 
+## Roadmap
+
+Work is tracked in [GitHub Issues](https://github.com/Today20092/voice-input/issues). These are planned outcomes and remaining verification, not release promises. Issue checklists and labels carry the current status.
+
+| Planned outcome | Current gate | Ticket |
+| --- | --- | --- |
+| Verified keyboard/editor use, Bluetooth microphones and accessibility | Physical-device and headset evidence | [#10](https://github.com/Today20092/voice-input/issues/10) |
+| Safe model updates and clear readiness | Device verification of update, rollback and notices | [#11](https://github.com/Today20092/voice-input/issues/11) |
+| Long dictation and bounded recovery | Phone measurements and a supported recoverable failure category | [#12](https://github.com/Today20092/voice-input/issues/12) |
+| Additional optional engines | Experiment currently has no-go for production; dependent model work is deferred | [#13](https://github.com/Today20092/voice-input/issues/13) |
+| Resolve the intermittent waveform report | Reproduction details from the affected scenario | [#14](https://github.com/Today20092/voice-input/issues/14) |
+| Measured model guidance and a verified catalog release | Device benchmarks and completion of integration/update gates | [#15](https://github.com/Today20092/voice-input/issues/15) |
+| Restore FUTO Keyboard setup | A compatible upstream release and on-device verification | [#16](https://github.com/Today20092/voice-input/issues/16) |
+
+## Contributing
+
+Bug reports, device testing, documentation fixes and focused pull requests are welcome. Search [existing issues](https://github.com/Today20092/voice-input/issues) before opening one. For a larger feature or new model, discuss its use case in an issue first, including its download size, runtime needs and license.
+
+For a bug, include the app version, phone and Android version, keyboard/editor, selected model and language, reproduction steps, and expected versus actual behavior. Mention microphone or headset routing when relevant. Review diagnostic exports before sharing and remove private audio, transcripts and personal details.
+
+For model testing, report recording length, time from Stop to final text, recognition errors and any memory or heat problems. State whether results come from this Android app or a publisher benchmark. A report with a clear procedure is more useful than an unsupported speed or accuracy ranking.
+
+For code changes, read [AGENTS.md](AGENTS.md), link the relevant GitHub issue, keep changes focused and preserve upstream attribution and model notices. Follow the build steps below and run the unit tests and lint for affected code. Changes to microphone routing, text insertion or model inference also need device evidence; document any checks you could not perform. Do not commit signing keys, private recordings or local SDK configuration.
+
 ## Build locally
+
 
 Install JDK 17 or newer, Android SDK platform 35, NDK `28.2.13676358`, and CMake `3.22.1`. Initialize the repository's submodules. Point `local.properties` at your Android SDK, or set `ANDROID_HOME`.
 

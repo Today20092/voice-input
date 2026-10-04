@@ -1,9 +1,23 @@
 package org.futo.voiceinput.settings.pages
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Card
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Button
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -14,6 +28,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
@@ -31,6 +48,7 @@ import org.futo.voiceinput.MULTILINGUAL_MODELS
 import org.futo.voiceinput.ModelData
 import org.futo.voiceinput.R
 import org.futo.voiceinput.modelNeedsDownloading
+import org.futo.voiceinput.openURI
 import org.futo.voiceinput.downloader.startRecognitionModelDownloadActivity
 import org.futo.voiceinput.migration.ConditionalModelUpdate
 import org.futo.voiceinput.migration.NeedsMigration
@@ -44,7 +62,6 @@ import org.futo.voiceinput.settings.MULTILINGUAL_MODEL_INDEX
 import org.futo.voiceinput.settings.SPEECH_BACKEND
 import org.futo.voiceinput.settings.ScreenTitle
 import org.futo.voiceinput.settings.ScrollableList
-import org.futo.voiceinput.settings.SettingItem
 import org.futo.voiceinput.settings.SettingsViewModel
 import org.futo.voiceinput.settings.SpeechBackendType
 import org.futo.voiceinput.settings.Tip
@@ -123,9 +140,29 @@ fun ManagedRecognitionModelCatalog() {
         RecognitionModelSelection(backend.value, moonshineVariant.value, nemotronProfile.value)
     )?.model?.id
 
-    RecognitionModelCatalog.cards.forEach { card ->
-        ScreenTitle(card.displayName)
-        Tip(card.description)
+    val cards = modelCardsForDisplay()
+    cards.forEachIndexed { index, card ->
+        if (index == 0 || cards[index - 1].transcription != card.transcription) {
+            val (title, explanation) = when (card.transcription) {
+                org.futo.voiceinput.recognition.TranscriptionBehavior.LIVE ->
+                    "While you speak" to "Text appears as you speak."
+                org.futo.voiceinput.recognition.TranscriptionBehavior.BUFFERED_LIVE ->
+                    "Buffered updates" to "Text updates by reprocessing recent audio."
+                org.futo.voiceinput.recognition.TranscriptionBehavior.FINAL_ONLY ->
+                    "After you stop" to "The transcript is returned when recording stops."
+            }
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 24.dp, bottom = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                HorizontalDivider()
+                Text(title, style = MaterialTheme.typography.headlineSmall)
+                Text(explanation, style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        Text(card.displayName, modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            style = MaterialTheme.typography.titleMedium)
 
         if (card.models.isEmpty()) {
             val selected = backend.value == card.runtimeId
@@ -141,8 +178,43 @@ fun ManagedRecognitionModelCatalog() {
                 )
             }
             card.models.firstOrNull { it.id == selectedModelId }?.let {
-                RecognitionModelLanguageOptions(it)
+                RecognitionModelLanguageOptions(it, showGuidance = false)
             }
+        }
+    }
+}
+
+@Composable
+private fun ModelCatalogItem(
+    presentation: ModelPresentation,
+    selected: Boolean,
+    onSelect: () -> Unit,
+    actions: @Composable ColumnScope.() -> Unit
+) {
+    val values = presentation.fields.toMap()
+    Surface(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
+        shape = MaterialTheme.shapes.medium,
+        color = if (selected) MaterialTheme.colorScheme.secondaryContainer
+            else MaterialTheme.colorScheme.surfaceContainer
+    ) {
+        Column(
+            modifier = Modifier.selectable(selected = selected, role = Role.RadioButton, onClick = onSelect)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                RadioButton(selected = selected, onClick = null)
+                Text(presentation.title, style = MaterialTheme.typography.titleMedium)
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text("Languages: ${values.getValue("Languages")}", style = MaterialTheme.typography.bodyMedium)
+                Text("Download: ${values.getValue("Download size")}", style = MaterialTheme.typography.bodyMedium)
+                Text("Model size: ${values.getValue("Model size")}", style = MaterialTheme.typography.bodyMedium)
+                Text(values.getValue("Status"), style = MaterialTheme.typography.labelLarge)
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp), content = actions)
         }
     }
 }
@@ -172,14 +244,13 @@ private fun ManagedRecognitionModelItem(
         }
     }
 
-    SettingItem(
-        title = presentation.title,
-        subtitle = presentation.summary,
-        onClick = selectOrDownload,
-        icon = { RadioButton(selected = selected, onClick = selectOrDownload) }
+    ModelCatalogItem(
+        presentation = presentation,
+        selected = selected,
+        onSelect = selectOrDownload
     ) {
         Column {
-            TextButton(onClick = { showDetails.value = true }) { Text("Details") }
+            OutlinedButton(onClick = { showDetails.value = true }) { Text("Details") }
             readiness?.optionalUpgrade?.let { successor ->
                 TextButton(onClick = { context.startRecognitionModelDownloadActivity(successor) }) {
                     Text("Update")
@@ -228,7 +299,8 @@ fun WhisperModelRadio(
         }
     }
 
-    ScreenTitle(title)
+    Text(title, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+        style = MaterialTheme.typography.labelLarge)
     models.forEachIndexed { index, model ->
         val needsDownload = context.modelNeedsDownloading(model)
         val presentation = presentWhisperModel(
@@ -239,32 +311,19 @@ fun WhisperModelRadio(
         )
         val showDetails = remember(model.ggml.ggml_file) { mutableStateOf(false) }
         refresh.value
-        SettingItem(
-            title = presentation.title,
-            subtitle = presentation.summary,
-            onClick = {
+        ModelCatalogItem(
+            presentation = presentation,
+            selected = whisperSelected && variantSelected && modelIndex.value == index,
+            onSelect = {
                 context.updateRecognitionModelSelection(RecognitionModelSelection("whisper_ggml"))
                 if (modelIndex.value == index && needsDownload) {
                     context.startModelDownloadActivity(listOf(model))
                 } else {
                     modelIndex.setValue(index)
                 }
-            },
-            icon = {
-                RadioButton(
-                    selected = whisperSelected && variantSelected && modelIndex.value == index,
-                    onClick = {
-                        context.updateRecognitionModelSelection(RecognitionModelSelection("whisper_ggml"))
-                        if (modelIndex.value == index && needsDownload) {
-                            context.startModelDownloadActivity(listOf(model))
-                        } else {
-                            modelIndex.setValue(index)
-                        }
-                    }
-                )
             }
         ) {
-            TextButton(onClick = { showDetails.value = true }) { Text("Details") }
+            OutlinedButton(onClick = { showDetails.value = true }) { Text("Details") }
         }
         if (showDetails.value) {
             ModelDetailsDialog(presentation) { showDetails.value = false }
@@ -290,15 +349,57 @@ fun WhisperModelOptions(whisperSelected: Boolean) {
         variantSelected = multilingualEnabled
     )
 
-    Tip(stringResource(R.string.parameter_count_tip))
+    Text(
+        stringResource(R.string.parameter_count_tip),
+        modifier = Modifier.padding(16.dp),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant
+    )
 }
 
 @Composable
 private fun ModelDetailsDialog(presentation: ModelPresentation, onDismiss: () -> Unit) {
+    val context = LocalContext.current
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(presentation.title) },
-        text = { Text(presentation.details, modifier = Modifier.verticalScroll(rememberScrollState())) },
+        title = { Text(presentation.title, style = MaterialTheme.typography.titleLarge) },
+        text = {
+            SelectionContainer {
+                Column(
+                    modifier = Modifier.fillMaxWidth().heightIn(max = 480.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Text(presentation.description, style = MaterialTheme.typography.bodyLarge)
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        presentation.informationLinks.forEach { link ->
+                            OutlinedButton(
+                                onClick = { context.openURI(link.url) },
+                                modifier = Modifier.fillMaxWidth()
+                            ) { Text(link.label) }
+                        }
+                    }
+                    HorizontalDivider()
+                    presentation.fields.forEach { (label, value) ->
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text(
+                                label,
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(value, style = MaterialTheme.typography.bodyMedium)
+                            if (label == "Model size") {
+                                Text(
+                                    "Size of the unpacked model files stored on your phone. Memory use while transcribing can be different.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        },
         confirmButton = { TextButton(onClick = onDismiss) { Text("Done") } }
     )
 }
@@ -338,10 +439,40 @@ private fun SelectedRecognitionModelNotice() {
     val key = successor?.let { "${it.id}@${it.version}" }
     val preferences = remember(context) { context.getSharedPreferences("model_upgrade_notices", 0) }
     val dismissed = remember(key) { mutableStateOf(key?.let { preferences.getBoolean(it, false) } ?: false) }
-    RecognitionModelNotice(readiness, dismissed.value, context::startRecognitionModelDownloadActivity) {
-        dismissed.value = true
-        key?.let { preferences.edit().putBoolean(it, true).apply() }
-        RecognitionModelLifecycle.publishChange()
+    val englishIndex = useDataStore(ENGLISH_MODEL_INDEX).value.coerceIn(ENGLISH_MODELS.indices)
+    val multilingualIndex = useDataStore(MULTILINGUAL_MODEL_INDEX).value.coerceIn(MULTILINGUAL_MODELS.indices)
+    val multilingualEnabled = useDataStore(ENABLE_MULTILINGUAL).value
+    val english = ENGLISH_MODELS[englishIndex]
+    val multilingual = MULTILINGUAL_MODELS[multilingualIndex]
+    val legacyDownloads = (listOf(english) + if (multilingualEnabled) listOf(multilingual) else emptyList())
+        .filter { context.modelNeedsDownloading(it) }
+    val title = selectedRecognitionModelSummary(backend, readiness?.model, english, multilingual, multilingualEnabled)
+    Card(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text("Selected model", style = MaterialTheme.typography.labelLarge)
+            Text(title, style = MaterialTheme.typography.titleLarge)
+            val needsDownload = readiness?.isReady == false ||
+                (backend == "whisper_ggml" && legacyDownloads.isNotEmpty())
+            val repair = readiness?.repairReason == RecognitionModelRepairReason.INVALID_OR_INCOMPATIBLE
+            Text(if (repair) "Repair needed" else if (needsDownload) "Download needed" else "Ready to use",
+                style = MaterialTheme.typography.bodyMedium)
+            if (needsDownload) {
+                Button(onClick = {
+                    if (readiness != null) context.startRecognitionModelDownloadActivity(readiness.model)
+                    else context.startModelDownloadActivity(legacyDownloads)
+                }, modifier = Modifier.fillMaxWidth()) {
+                    Text("${if (repair) "Repair" else "Download"} $title")
+                }
+            } else if (successor != null && !dismissed.value) {
+                Text("An optional update is available. Your installed model is still usable.")
+                Button(onClick = { context.startRecognitionModelDownloadActivity(successor) }) { Text("Update model") }
+                TextButton(onClick = {
+                    dismissed.value = true
+                    key?.let { preferences.edit().putBoolean(it, true).apply() }
+                    RecognitionModelLifecycle.publishChange()
+                }) { Text("Keep installed version") }
+            }
+        }
     }
 }
 

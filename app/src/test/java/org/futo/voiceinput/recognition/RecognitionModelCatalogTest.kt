@@ -84,11 +84,11 @@ class RecognitionModelCatalogTest {
     }
 
     @Test
-    fun cohereIncludesExternalWeightsAndRemainsAnOptionalBeta() {
+    fun cohereIncludesExternalWeightsAndRemainsOptional() {
         val model = RecognitionModelCatalog.cohereTranscribe
         assertEquals("cohere", model.runtimeId)
         assertEquals(TranscriptionBehavior.FINAL_ONLY, model.transcription)
-        assertTrue(model.displayName.contains("Beta"))
+        assertEquals("Cohere Transcribe", model.displayName)
         assertEquals(2_888_052_036L, model.transferBytes)
         assertTrue(model.artifacts.all { it.url.contains(model.version) })
         assertEquals(2_731_503_072L, model.artifacts.single { it.name == "encoder.int8.onnx.data" }.sizeBytes)

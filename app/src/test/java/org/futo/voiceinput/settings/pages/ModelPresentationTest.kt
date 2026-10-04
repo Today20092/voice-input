@@ -11,6 +11,50 @@ import org.junit.Test
 
 class ModelPresentationTest {
     @Test
+    fun everyModelHasTheSameCompleteDetailFields() {
+        val presentations = RecognitionModelCatalog.cards.flatMap { it.models }.map {
+            presentRecognitionModel(it, installed = false, selected = false)
+        } + ENGLISH_MODELS.map {
+            presentWhisperModel(it, "English", installed = false, selected = false)
+        } + MULTILINGUAL_MODELS.map {
+            presentWhisperModel(it, "Multilingual", installed = false, selected = false)
+        }
+        val labels = listOf(
+            "Transcription", "Languages", "Language selection", "Download size", "Model size",
+            "Status", "Performance class", "Source", "License/attribution", "Version", "Model files"
+        )
+        presentations.forEach { presentation ->
+            assertEquals(presentation.title, labels, presentation.fields.map { it.first })
+            assertTrue(presentation.title, presentation.description.isNotBlank())
+            assertTrue(presentation.title, presentation.fields.all { it.second.isNotBlank() })
+            assertTrue(presentation.title, presentation.informationLinks.isNotEmpty())
+            assertTrue(presentation.title, presentation.informationLinks.all {
+                it.label.isNotBlank() && it.url.startsWith("https://") && !it.url.contains("/resolve/")
+            })
+        }
+    }
+
+    @Test
+    fun catalogDisplayGroupsByBehaviorThenSmallestDownloadWithoutDroppingModels() {
+        val cards = modelCardsForDisplay()
+        assertEquals(RecognitionModelCatalog.cards.map { it.id }.toSet(), cards.map { it.id }.toSet())
+        assertEquals(
+            RecognitionModelCatalog.models.map { it.id }.toSet(),
+            cards.flatMap { it.models }.map { it.id }.toSet()
+        )
+        assertEquals(cards.map { it.transcription.ordinal }.sorted(), cards.map { it.transcription.ordinal })
+        cards.groupBy { it.transcription }.values.forEach { group ->
+            val sizes = group.map { card -> card.models.minOfOrNull { it.transferBytes } ?: 0L }
+            assertEquals(sizes.sorted(), sizes)
+        }
+        assertEquals("moonshine", cards.first().id)
+        assertEquals(
+            listOf("Low latency", "Balanced", "Accuracy"),
+            cards.single { it.id == "nemotron" }.models.map { it.displayName }
+        )
+    }
+
+    @Test
     fun catalogDistinguishesLiveBufferedLiveAndFinalOnlyRecognition() {
         val cards = RecognitionModelCatalog.cards.associateBy { it.id }
 
@@ -39,10 +83,11 @@ class ModelPresentationTest {
             presentation.summary
         )
         assertFalse(presentation.summary.contains("NVIDIA"))
+        assertEquals("English • 463.9 MB download\nSelected", presentation.compactSummary)
         assertTrue(presentation.details.contains("Source: NVIDIA Nemotron via k2-fsa/sherpa-onnx"))
         assertTrue(presentation.details.contains("License/attribution: NVIDIA Open Model License"))
         assertTrue(presentation.details.contains("Version: 2026-04-25"))
-        assertTrue(presentation.details.contains("Technical: Balanced"))
+        assertTrue(presentation.details.contains("Performance class: Balanced"))
     }
 
     @Test
