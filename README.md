@@ -119,6 +119,22 @@ See the [1.4.3 release notes](docs/releases/v1.4.3.md) for verification and limi
 
 Start with **Orukeet**, the default. For words while speaking, choose a streaming model. Compare the same short recording on your phone before downloading several large models.
 
+### Model Options screenshots
+
+The current interface shows the selected model, groups models by when text
+appears, and lists download and unpacked model sizes. Details link to model
+information and the package used by the app.
+
+<img src="docs/screenshots/v1.4.6-share-beta.7/models-overview.png" alt="Model Options with Orukeet selected and Moonshine streaming model cards" width="280">
+<img src="docs/screenshots/v1.4.6-share-beta.7/models-final-only.png" alt="Whisper and Parakeet Redux cards showing download and unpacked model sizes" width="280">
+<img src="docs/screenshots/v1.4.6-share-beta.7/model-details.png" alt="Parakeet Redux details with model information, package source, transcription mode and languages" width="280">
+
+Captured on a Samsung Galaxy S25 Ultra running Android 16 for beta 7, whose
+interface is unchanged in stable 1.4.6. Model size means unpacked files on disk,
+not RAM used during transcription.
+
+### Compare models
+
 | What you want | Try first | Next option |
 | --- | --- | --- |
 | Everyday dictation in a supported European language | Orukeet | Parakeet TDT V3 |
@@ -189,13 +205,6 @@ Expiry is checked during app use and by a periodic Android job. Android may dela
 ## Popup and recording UI
 
 The recognition UI shows the selected model and a scrolling waveform driven directly by microphone amplitude. Under **Advanced**, enable **Unobtrusive recognizer popup (beta)** to move the speech-recognition activity near the bottom and remove background dimming. It does not change the voice keyboard layout or recognition engine.
-
-<img src="docs/screenshots/v1.4.6-share-beta.7/models-overview.png" alt="Selected model and live transcription group" width="320">
-<img src="docs/screenshots/v1.4.6-share-beta.7/models-final-only.png" alt="Consistent model cards showing download and unpacked model sizes" width="320">
-<img src="docs/screenshots/v1.4.6-share-beta.7/model-details.png" alt="Model details with source buttons and consistent labeled fields" width="320">
-
-Fresh beta 7 UI captures from a Samsung Galaxy S25 Ultra. Model size is the
-unpacked files on disk; it is not a measurement of RAM used during transcription.
 
 ## Diagnostics and privacy
 
