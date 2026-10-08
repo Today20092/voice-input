@@ -92,9 +92,10 @@ val ENGLISH_MODELS: List<ModelLoader> = listOf(
     ),
     ModelDownloadable(
         name = R.string.asr4all_l_name,
-        ggmlFile = "asr4all-l-Q8_0.gguf",
-        checksum = "bf42ca622c611ec6bf98d59c03011ce9f62552b7faa5b3f7741d4fcc4de569e5",
+        ggmlFile = "asr4all-l-Q8_0-v2.gguf",
+        checksum = "698f7c97522f8ff991c48e8dd614b6cdceddd288e230726a240d90e00f72876c",
         caps = Asr4AllCapabilities.copy(paramCount = 97),
+        backwardsCompatFiles = listOf("asr4all-s-Q8_0.gguf"),
     ),
     ModelDownloadable(
         name = R.string.parakeet_110m_name,

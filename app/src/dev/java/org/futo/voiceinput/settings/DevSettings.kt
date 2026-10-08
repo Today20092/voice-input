@@ -10,6 +10,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.compose.rememberNavController
 import com.android.billingclient.api.BillingClient
@@ -32,28 +33,26 @@ fun DevOnlySettings() {
 
     SettingsSeparator("Payment testing [Developer Build only]")
 
-    Button(onClick = {
-        val downloadList = (ENGLISH_MODELS + MULTILINGUAL_MODELS).filterIsInstance<ModelDownloadable>().mapNotNull {
-            val outdated = it.backwardsCompatFiles.firstOrNull() ?: return@mapNotNull null
+    (ENGLISH_MODELS + MULTILINGUAL_MODELS).filterIsInstance<ModelDownloadable>().filter {
+        it.backwardsCompatFiles.isNotEmpty() && File(context.filesDir, it.ggmlFile).isFile
+    }.forEach {
+        Button(onClick = {
             File(context.filesDir, it.ggmlFile).delete()
+            val downloadList = arrayListOf(it.backwardsCompatFiles.first())
 
-            outdated
+            val intent = Intent(context, DownloadActivity::class.java)
+            intent.putStringArrayListExtra("models", ArrayList(downloadList))
+
+            intent.putStringArrayListExtra("cleanup", ArrayList(emptyList<String>()))
+
+            if(context !is Activity) {
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+
+            context.startActivity(intent)
+        }) {
+            Text("Downgrade model ${stringResource(it.name)}")
         }
-
-        if(downloadList.isEmpty()) return@Button
-
-        val intent = Intent(context, DownloadActivity::class.java)
-        intent.putStringArrayListExtra("models", ArrayList(downloadList))
-
-        intent.putStringArrayListExtra("cleanup", ArrayList(emptyList<String>()))
-
-        if(context !is Activity) {
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        }
-
-        context.startActivity(intent)
-    }, modifier = Modifier.padding(32.dp, 64.dp)) {
-        Text("Outdate models")
     }
 
     SettingToggleDataStore(
