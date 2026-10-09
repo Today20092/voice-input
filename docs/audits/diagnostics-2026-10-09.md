@@ -167,6 +167,8 @@ The actual D implementation prunes/checks segments on each accepted record and c
 
 Follow-up issue links are recorded below after publication. P1 means content/privacy or core-flow correctness; P2 means materially useful triage evidence. Every ticket must retain ADR 0003/CONTEXT boundaries and distinguish automated checks from native/device evidence.
 
+The backlog was consolidated into three concise tickets at the maintainer's request: [#19 privacy and retention](https://github.com/Today20092/voice-input/issues/19) incorporates #20; [#21 safe diagnostics and accurate delivery](https://github.com/Today20092/voice-input/issues/21) incorporates #22; [#23 useful failure evidence](https://github.com/Today20092/voice-input/issues/23) incorporates #24 and #25. The four superseded tickets are closed as consolidated, not fixed. The original finding references below remain as audit history; use #19, #21 and #23 for implementation.
+
 | Finding | Priority and next work | Dependencies |
 | --- | --- | --- |
 | [F1 / #19](https://github.com/Today20092/voice-input/issues/19) ordinary/native/raw S1 content paths | P1: remove prompt/path logging; project errors before all ordinary storage/copy/log sinks, retain safe categories; test realistic sentinels including native paths and optional ACRA configuration. | None; packaged native validation needed. |
