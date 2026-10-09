@@ -418,6 +418,8 @@ class VoiceInputMethodService : InputMethodService(), LifecycleOwner, ViewModelS
         updateNavigationBarVisibility()
     }
 
+    override fun onEvaluateFullscreenMode(): Boolean = false
+
     override fun onDestroy() {
         super.onDestroy()
 
