@@ -33,7 +33,12 @@ object Asr4allModels {
             directoryName = "asr4all-$variant-xnnpack-int8", source = "FUTO ASR4ALL",
             licenseAttribution = "FUTO Model Weights Ethical Use License 1.0",
             displayName = "ASR4ALL $label",
-            description = "Shows English text as you speak. Adds punctuation, capital letters, and small corrections.",
+            description = "Shows English text as you speak. Adds punctuation, capital letters, and small corrections. " +
+                when (variant) {
+                    "s" -> "Small needs the least memory and processing of the ASR4ALL options."
+                    "m" -> "Medium needs more memory and processing than Small, and less than Large."
+                    else -> "Large needs the most memory and processing of the ASR4ALL options."
+                },
             transcription = TranscriptionBehavior.LIVE, recognitionLanguages = "English",
             performanceClass = when (variant) {
                 "s" -> PerformanceClass.LIGHT

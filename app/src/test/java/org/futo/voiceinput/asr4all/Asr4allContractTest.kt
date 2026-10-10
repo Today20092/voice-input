@@ -35,7 +35,7 @@ class Asr4allContractTest {
             val presentation = org.futo.voiceinput.settings.pages.presentRecognitionModel(model, false, false)
             assertFalse(presentation.description.contains("ExecuTorch"))
             assertFalse(presentation.description.contains("PCEC"))
-            assertTrue(presentation.description.length < 120)
+            assertTrue(presentation.description.length < 240)
             assertTrue(presentation.details.contains("S1-mini is skipped"))
             assertTrue(presentation.details.contains("XNNPACK INT8"))
         }

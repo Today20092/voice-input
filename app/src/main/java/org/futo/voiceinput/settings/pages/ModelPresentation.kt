@@ -132,7 +132,30 @@ fun presentWhisperModel(
         summary = "Final-only transcription • $languages\n" +
             "Download ${if (model.ggml.is_builtin_asset) "Included (${sizeBytes.megabytes()})" else sizeBytes.megabytes()} • " +
             "Installed ${sizeBytes.megabytes()} • ${modelStatus(installed, selected)}",
-        description = "Returns text after recording stops.",
+        description = when (model.ggml.ggml_file) {
+            "tiny_en_acft_q8_0.bin.not.tflite" ->
+                "Turns English speech into text after you stop recording. The smallest legacy English option " +
+                    "is included in the app and needs less memory and processing than the larger English options."
+            "base_en_acft_q8_0.bin" ->
+                "Turns English speech into text after you stop recording. It is slower and more accurate than " +
+                    "English-39, with a larger download and more memory use."
+            "small_en_acft_q8_0.bin" ->
+                "Turns English speech into text after you stop recording. The largest legacy English option " +
+                    "is slow and needs more storage and memory than the smaller English options."
+            "tiny_acft_q8_0.bin" ->
+                "Turns speech in the supported Whisper languages into text after you stop recording. " +
+                    "The smallest legacy multilingual option needs less storage and memory, but is less accurate. " +
+                    "Choose recognition languages in Languages settings."
+            "base_acft_q8_0.bin" ->
+                "Turns speech in the supported Whisper languages into text after you stop recording. " +
+                    "The default legacy multilingual option needs more storage and memory than Multilingual-39, " +
+                    "and less than Multilingual-244. Choose recognition languages in Languages settings."
+            "small_acft_q8_0.bin" ->
+                "Turns speech in the supported Whisper languages into text after you stop recording. " +
+                    "The largest legacy multilingual option is slow and needs more storage and memory. " +
+                    "Choose recognition languages in Languages settings."
+            else -> "Turns speech into text after you stop recording. Choose recognition languages in Languages settings."
+        },
         fields = modelDetailFields(
             "Final-only transcription", languages,
             if (model.ggml.is_builtin_asset) "Included in app" else sizeBytes.megabytes(),

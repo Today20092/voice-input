@@ -26,7 +26,8 @@ object ParakeetModel {
         source = "NVIDIA Parakeet TDT 0.6B V3 (CC BY 4.0), Sherpa-ONNX export by twmht",
         licenseAttribution = "CC BY 4.0",
         displayName = "Parakeet TDT 0.6B V3",
-        description = "High-accuracy NVIDIA recognition that returns text after recording stops.",
+        description = "Turns speech in 25 European languages into text after you stop recording. " +
+            "It detects the spoken language automatically. Choose it for accuracy if your phone can handle its substantial memory and processing needs.",
         transcription = TranscriptionBehavior.FINAL_ONLY,
         recognitionLanguages = "25 European languages",
         performanceClass = PerformanceClass.DEMANDING,

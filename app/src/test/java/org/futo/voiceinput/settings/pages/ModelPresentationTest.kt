@@ -41,9 +41,18 @@ class ModelPresentationTest {
             "Transcription", "Languages", "Language selection", "Download size", "Model size",
             "Status", "Performance class", "Source", "License/attribution", "Version", "Model files"
         )
+        assertEquals(20, presentations.size)
+        assertEquals(presentations.size, presentations.map { it.description }.distinct().size)
         presentations.forEach { presentation ->
             assertEquals(presentation.title, labels, presentation.fields.map { it.first }.take(labels.size))
-            assertTrue(presentation.title, presentation.description.isNotBlank())
+            val description = presentation.description
+            val timing = if (presentation.fields.toMap().getValue("Transcription") ==
+                TranscriptionBehavior.FINAL_ONLY.label) "after you stop recording" else "as you speak"
+            assertTrue(presentation.title, description.contains(timing))
+            assertTrue(presentation.title, description.contains("English") || description.contains("languages"))
+            assertTrue(presentation.title, listOf("memory", "processing", "storage").any {
+                description.contains(it)
+            })
             assertTrue(presentation.title, presentation.fields.all { it.second.isNotBlank() })
             assertTrue(presentation.title, presentation.informationLinks.isNotEmpty())
             assertTrue(presentation.title, presentation.informationLinks.all {
