@@ -22,7 +22,7 @@ Stable [1.4.6](https://github.com/Today20092/voice-input/releases/tag/v1.4.6)
 promotes the tested Share beta 7 code, with clearer Model Options, Parakeet Redux
 and the Nemotron download fix.
 
-Beta [1.4.7-beta.1](https://github.com/Today20092/voice-input/releases/tag/v1.4.7-beta.1)
+Beta [1.4.7-beta.2](https://github.com/Today20092/voice-input/releases/tag/v1.4.7-beta.2)
 adds ASR4ALL dictation, simpler cleanup settings, and a smaller voice-input panel.
 Install the beta APK directly if you want to try these changes.
 
