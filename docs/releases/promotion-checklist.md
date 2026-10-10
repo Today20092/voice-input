@@ -17,6 +17,21 @@ and the thinner waveform and smaller voice-input panel. Include subsequent
 fixes and honest verification limits. Keep the full README refresh for stable
 promotion; a short, clearly labeled beta announcement can remain in the README.
 
+For each functional change, add its user-visible effect to the beta notes in
+the same work session. Record affected documentation in this promotion list
+or the release notes' working draft, with an explicit done/pending state. Use
+those notes as the stable-promotion inventory instead of reconstructing changes
+from memory. Update the full documentation at stable promotion, as requested.
+
+For the 1.4.7 cycle, the full documentation refresh is pending:
+
+- README model starting points and source links.
+- Complete model-guide table, including ASR4ALL choices and English Whisper's
+  optional legacy role versus multilingual Whisper.
+- Current screenshots and explanations for expandable Model Options, Basic
+  text cleanup/AI rewrite, and the compact panel/bar waveform.
+- Consolidated stable notes, including fixes added after the initial beta.
+
 ## When stable promotion is requested
 
 1. Identify the exact beta the maintainer tested. Promote that implementation,
