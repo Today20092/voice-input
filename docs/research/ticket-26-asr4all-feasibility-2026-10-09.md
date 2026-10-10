@@ -46,7 +46,7 @@ The offline suite exercises native decoding, S1 bypass and its UI, catalog optio
 
 ARM64 dev app and test APK builds and Android lint passed. Python extraction-tool lint, formatting and type checks passed. The 211-test unit run had two pre-existing Windows DiagnosticStoreTest failures and one skipped test. ASR4ALL contract, catalog and presentation regressions passed.
 
-The first 22-test offline device run passed 21 tests. Its sole failure was screenshot capture selecting two Compose roots when a dialog was open. Capture now selects the dialog root; all 10 catalog tests passed on rerun. Native decoding, cleanup and result delivery all passed. The final dev and test APK rebuild also passed.
+The first 22-test offline device run passed 21 tests. Its sole failure was screenshot capture selecting two Compose roots when a dialog was open. Capture now uses Android UI automation to include the dialog window; all 10 catalog tests passed on rerun. Native decoding, cleanup and result delivery all passed. The final dev and test APK rebuild also passed.
 
 Independent Standards review found no remaining concrete issue after quadratic PCM buffer copying was removed. Independent Spec review found no decoder defect against the packaged reference. It identified this obsolete report and missing broader release evidence.
 

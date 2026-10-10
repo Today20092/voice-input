@@ -342,4 +342,5 @@
     <string name="recognizer_model_caption">Model: %1$s</string>
     <string name="download_restarted">This file must restart because the server or saved download cannot be resumed safely. Validated files are kept.</string>
     <string name="recognizer_provisional_transcript">Live transcript · may change</string>
+    <string name="finish_recording">Finish recording</string>
 </resources>

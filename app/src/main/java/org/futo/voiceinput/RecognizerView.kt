@@ -18,6 +18,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
@@ -52,8 +53,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
@@ -112,28 +115,30 @@ fun Modifier.recognizerSurfaceClickable(disabled: Boolean, onPauseVAD: (Boolean)
 fun InnerRecognize(
     bars: List<Pair<Float, Float>> = emptyList(),
     state: MagnitudeState = MagnitudeState.MIC_MAY_BE_BLOCKED,
+    compact: Boolean = false,
     onDrawn: () -> Unit = {}
 ) {
     val color = MaterialTheme.colorScheme.primary
-    val baseline = MaterialTheme.colorScheme.outlineVariant
     Canvas(
         modifier = Modifier
             .fillMaxWidth()
             .testTag("recognition-waveform")
-            .height(120.dp)
+            .height(if (compact) 48.dp else 120.dp)
             .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
         val middle = size.height / 2f
-        drawLine(baseline, Offset(0f, middle), Offset(size.width, middle), 1.dp.toPx())
-        val step = size.width / 200f
-        bars.forEachIndexed { index, (low, high) ->
-            val x = size.width - (bars.size - index - 0.5f) * step
-            // Use the PCM amplitude directly so background noise stays small.
+        val count = (size.width / 8.dp.toPx()).toInt().coerceIn(1, 48)
+        val step = size.width / count
+        recordingBarAmplitudes(bars, count).forEachIndexed { index, amplitude ->
+            val x = (index + 0.5f) * step
+            // Fixed gain keeps quiet noise small; zero PCM leaves a row of short bars.
+            val halfHeight = (amplitude * 4f).coerceAtMost(1f) * (middle - 2.dp.toPx()).coerceAtLeast(0f)
             drawLine(
                 color,
-                Offset(x, middle - high.coerceIn(0f, 1f) * middle),
-                Offset(x, middle - low.coerceIn(-1f, 0f) * middle),
-                step.coerceAtLeast(1f)
+                Offset(x, middle - halfHeight),
+                Offset(x, middle + halfHeight),
+                3.dp.toPx(),
+                cap = StrokeCap.Round
             )
         }
         onDrawn()
@@ -226,11 +231,23 @@ fun ColumnScope.PartialDecodingResult(text: String = "I am speaking [...]") {
 }
 
 @Composable
-fun RecognitionContent(state: RecognitionUiState, onWaveformDrawn: () -> Unit = {}) {
+fun RecognitionContent(state: RecognitionUiState, compact: Boolean = false,
+    onFinish: () -> Unit = {}, onWaveformDrawn: () -> Unit = {}) {
     if (state.phase == RecognitionUiPhase.Inactive) return
     Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
         if (state.isRecording) {
-            InnerRecognize(state.bars, state.magnitude, onWaveformDrawn)
+            if (compact) {
+                Row(verticalAlignment = Alignment.Top) {
+                    Column(Modifier.weight(1f)) {
+                        InnerRecognize(state.bars, state.magnitude, compact = true, onDrawn = onWaveformDrawn)
+                    }
+                    IconButton(onClick = onFinish, modifier = Modifier.size(48.dp)) {
+                        Icon(painterResource(R.drawable.ic_stop), contentDescription = stringResource(R.string.finish_recording))
+                    }
+                }
+            } else {
+                InnerRecognize(state.bars, state.magnitude, onDrawn = onWaveformDrawn)
+            }
             state.statusText?.let {
                 Text(it, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
             }
@@ -238,81 +255,88 @@ fun RecognitionContent(state: RecognitionUiState, onWaveformDrawn: () -> Unit = 
             RecognizeLoadingCircle(state.statusText ?: stringResource(R.string.initializing))
         }
         RecognitionModelCaption(state.modelName)
-        if (state.partialText.isNotBlank()) PartialDecodingResult(state.partialText)
+        if (!compact && state.partialText.isNotBlank()) PartialDecodingResult(state.partialText)
     }
 }
 
 @Composable
 fun ColumnScope.RecognizeMicError(openSettings: () -> Unit) {
-    Text(
-        stringResource(R.string.grant_microphone_permission_to_use_voice_input),
-        modifier = Modifier
-            .padding(8.dp, 2.dp)
-            .align(Alignment.CenterHorizontally),
-        textAlign = TextAlign.Center,
-        color = MaterialTheme.colorScheme.onSurface
-    )
-    IconButton(
-        onClick = { openSettings() },
-        modifier = Modifier
-            .padding(4.dp)
-            .align(Alignment.CenterHorizontally)
-            .size(64.dp)
-    ) {
-        Icon(
-            Icons.Default.Settings,
-            contentDescription = stringResource(R.string.open_voice_input_settings),
-            modifier = Modifier.size(32.dp),
-            tint = MaterialTheme.colorScheme.onSurface
+    Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
+        Text(
+            stringResource(R.string.grant_microphone_permission_to_use_voice_input),
+            modifier = Modifier
+                .padding(8.dp, 2.dp)
+                .align(Alignment.CenterHorizontally),
+            textAlign = TextAlign.Center,
+            color = MaterialTheme.colorScheme.onSurface
         )
+        IconButton(
+            onClick = { openSettings() },
+            modifier = Modifier
+                .padding(4.dp)
+                .align(Alignment.CenterHorizontally)
+                .size(64.dp)
+        ) {
+            Icon(
+                Icons.Default.Settings,
+                contentDescription = stringResource(R.string.open_voice_input_settings),
+                modifier = Modifier.size(32.dp),
+                tint = MaterialTheme.colorScheme.onSurface
+            )
+        }
     }
 }
 
 @Composable
 fun ColumnScope.RecognizeFailure(message: String, onModelOptions: (() -> Unit)?) {
-    Text(
-        message,
-        modifier = Modifier
-            .padding(12.dp, 8.dp)
-            .align(Alignment.CenterHorizontally),
-        textAlign = TextAlign.Center,
-        color = MaterialTheme.colorScheme.onSurface
-    )
+    Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
+        Text(
+            message,
+            modifier = Modifier
+                .padding(12.dp, 8.dp)
+                .align(Alignment.CenterHorizontally),
+            textAlign = TextAlign.Center,
+            color = MaterialTheme.colorScheme.onSurface
+        )
 
-    onModelOptions?.let {
-        Button(
-            onClick = it,
-            modifier = Modifier.align(Alignment.CenterHorizontally).padding(8.dp)
-        ) {
-            Text(stringResource(R.string.model_options))
+        onModelOptions?.let {
+            Button(
+                onClick = it,
+                modifier = Modifier.align(Alignment.CenterHorizontally).padding(8.dp)
+            ) {
+                Text(stringResource(R.string.model_options))
+            }
         }
     }
 }
 
 @Composable
 fun ColumnScope.RecognizeModelDownloadRequired(body: String, onDownload: () -> Unit) {
-    Text(
-        body,
-        modifier = Modifier
-            .padding(12.dp, 2.dp)
-            .align(Alignment.CenterHorizontally),
-        textAlign = TextAlign.Center,
-        color = MaterialTheme.colorScheme.onSurface
-    )
+    Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
+        Text(
+            body,
+            modifier = Modifier
+                .padding(12.dp, 2.dp)
+                .align(Alignment.CenterHorizontally),
+            textAlign = TextAlign.Center,
+            color = MaterialTheme.colorScheme.onSurface
+        )
 
-    Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
-    Button(
-        onClick = onDownload,
-        modifier = Modifier
-            .align(Alignment.CenterHorizontally)
-            .padding(8.dp)
-    ) {
-        Text(stringResource(R.string.download_model))
+        Button(
+            onClick = onDownload,
+            modifier = Modifier
+                .align(Alignment.CenterHorizontally)
+                .padding(8.dp)
+        ) {
+            Text(stringResource(R.string.download_model))
+        }
     }
 }
 
 abstract class RecognizerView {
+    protected open val compact: Boolean = false
     private var shouldPlaySounds = ENABLE_SOUND.default
     private var shouldBeVerbose = VERBOSE_PROGRESS.default
     private var shouldRequestLanguage = MANUALLY_SELECT_LANGUAGE.default
@@ -378,7 +402,7 @@ abstract class RecognizerView {
                 onPauseVAD = { if (state.isRecording) recognizer.pauseVAD(it) },
                 allowClick = state.isRecording
             ) {
-                RecognitionContent(state) {
+                RecognitionContent(state, compact = compact, onFinish = { finishRecognizerIfRecording() }) {
                     if (firstWaveformFrame && state.bars.isNotEmpty()) {
                         firstWaveformFrame = false
                         recognizer.waveformDrawn()

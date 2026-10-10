@@ -3,10 +3,15 @@ package org.futo.voiceinput.settings.pages
 import android.widget.Toast
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -16,7 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.lifecycleScope
@@ -46,12 +51,14 @@ import org.futo.voiceinput.settings.ScreenTitle
 import org.futo.voiceinput.settings.ScrollableList
 import org.futo.voiceinput.settings.SettingItem
 import org.futo.voiceinput.settings.SettingRadio
-import org.futo.voiceinput.settings.SettingToggleDataStoreItem
 import org.futo.voiceinput.settings.SettingToggleRaw
 import org.futo.voiceinput.settings.SettingToggleDataStore
 import org.futo.voiceinput.settings.VERBOSE_PROGRESS
 import org.futo.voiceinput.settings.Tip
 import org.futo.voiceinput.settings.useDataStore
+import org.futo.voiceinput.settings.toS1MiniContext
+import org.futo.voiceinput.settings.toS1MiniStructure
+import org.futo.voiceinput.settings.toS1MiniStyling
 import java.text.DateFormat
 import java.util.Date
 
@@ -90,66 +97,57 @@ fun S1MiniOptions(showTitle: Boolean = true) {
     if (showTitle) {
         ScreenTitle("Transcript cleanup")
     }
-    Tip(
-        "S1-mini by Superwhisper cleans final English transcripts on-device after you press Stop. " +
-            "English only • 484.2 MB download • experimental beta feature."
-    )
-
-    SettingItem(
-        title = "S1-mini by Superwhisper",
-        subtitle = if (installed) {
-            "Q4_K_M • v1 • Installed and verified"
-        } else {
-            "Q4_K_M • v1 • Download required (484.2 MB)"
-        },
-        onClick = { if (!installed) S1MiniModel.startDownload(context) }
-    ) {
+    val styling = useDataStore(S1_MINI_STYLING).value.toS1MiniStyling()
+    val structure = useDataStore(S1_MINI_STRUCTURE).value.toS1MiniStructure()
+    val rewriteContext = useDataStore(S1_MINI_CONTEXT).value.toS1MiniContext()
+    CleanupCard {
+        CleanupToggle("AI rewrite", enabled.value) { newValue ->
+            if (newValue && !installed) {
+                enabled.setValue(false)
+                S1MiniModel.startDownload(context, enableAfterDownload = true)
+            } else {
+                enabled.setValue(newValue)
+                if (!newValue) lifecycleOwner.lifecycleScope.launch { S1MiniClient.unload(context) }
+            }
+        }
+        CleanupText("Rewrites English transcripts for grammar, tone, and structure. May change your wording.")
+        Text("S1-mini by Superwhisper · Experimental", style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
+        CleanupText(if (installed) "Model installed and verified" else "484.2 MB model download required")
         if (installed) {
-            TextButton(onClick = {
+            TextButton(colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurface), onClick = {
                 lifecycleOwner.lifecycleScope.launch {
                     enabled.setValue(false)
                     S1MiniModel.delete(context)
                     refresh.value += 1
                 }
-            }) { Text("Delete") }
+            }) { Text("Delete model") }
         } else {
-            TextButton(onClick = { S1MiniModel.startDownload(context) }) { Text("Download") }
-        }
-    }
-
-    SettingToggleDataStoreItem(
-        title = "Enable S1-mini cleanup",
-        dataStoreItem = enabled,
-        subtitle = "Runs once on the final transcript. Assumes English when the recognizer cannot report a language; known non-English input is bypassed.",
-        onChanged = { newValue ->
-            if (newValue && !installed) {
-                enabled.setValue(false)
-                S1MiniModel.startDownload(context, enableAfterDownload = true)
-            } else if (!newValue) {
-                lifecycleOwner.lifecycleScope.launch { S1MiniClient.unload(context) }
+            Button(
+                onClick = { S1MiniModel.startDownload(context) }, modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            ) {
+                Text("Download S1-mini")
             }
         }
-    )
-
-    SettingRadio(
-        "Styling",
-        S1MiniStyling.entries.map { it.id },
-        S1MiniStyling.entries.map { it.label },
-        S1_MINI_STYLING
-    )
-    SettingRadio(
-        "Structure",
-        S1MiniStructure.entries.map { it.id },
-        S1MiniStructure.entries.map { it.label },
-        S1_MINI_STRUCTURE
-    )
-    SettingRadio(
-        "Context",
-        S1MiniContext.entries.map { it.id },
-        S1MiniContext.entries.map { it.label },
-        S1_MINI_CONTEXT
-    )
-    if (benchmarking.value) Tip("Optimizing S1-mini…")
+        CleanupDetails("What can it rewrite?") {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                CleanupText("Runs once after you stop recording. Can rewrite grammar and wording using the preferences below.")
+                CleanupText("English only. Assumes English when no language is reported; known non-English input is skipped. Works without Basic text cleanup.")
+                CleanupText("Model: Q4_K_M · v1. Processing stays on your device.")
+            }
+        }
+        CleanupText("${styling.label} · ${structure.label} · ${rewriteContext.label}")
+        CleanupDetails("Rewrite preferences") {
+            CleanupRadio("Tone", S1MiniStyling.entries.map { it.id to it.label }, S1_MINI_STYLING)
+            CleanupRadio("Structure", S1MiniStructure.entries.map { it.id to it.label }, S1_MINI_STRUCTURE)
+            CleanupRadio("Context", S1MiniContext.entries.map { it.id to it.label }, S1_MINI_CONTEXT)
+        }
+        if (benchmarking.value) CleanupText("Optimizing S1-mini…")
+    }
 }
 
 @Composable
@@ -365,17 +363,6 @@ private fun TranscriptStage(
         S1MiniTranscriptStageStatus.NotProduced -> "Not produced"
     }
     Text("$label: $value")
-}
-
-@Composable
-@Preview
-fun TranscriptCleanupScreen(navController: NavHostController = rememberNavController()) {
-    ScrollableList {
-        ScreenTitle("Transcript Cleanup", showBack = true, navController = navController)
-        HarperOptions()
-        SettingsSeparator("S1-mini rewrite")
-        S1MiniOptions(showTitle = false)
-    }
 }
 
 @Composable

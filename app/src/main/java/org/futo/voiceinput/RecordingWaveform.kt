@@ -39,3 +39,15 @@ internal class RecordingWaveform {
     }
 
 }
+
+/** Reduce the four-second envelope to spaced bars without normalizing away silence. */
+internal fun recordingBarAmplitudes(bars: List<Pair<Float, Float>>, count: Int): List<Float> {
+    require(count > 0)
+    val amplitudes = MutableList(count) { 0f }
+    val history = bars.takeLast(200)
+    history.forEachIndexed { index, (low, high) ->
+        val column = (200 - history.size + index) * count / 200
+        amplitudes[column] = maxOf(amplitudes[column], -low, high).coerceIn(0f, 1f)
+    }
+    return amplitudes
+}

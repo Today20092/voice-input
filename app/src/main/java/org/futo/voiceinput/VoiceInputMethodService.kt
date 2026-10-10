@@ -10,14 +10,15 @@ import android.view.WindowManager
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
 import android.view.inputmethod.InputMethodSubtype
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.material.icons.Icons
@@ -31,15 +32,10 @@ import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.graphics.ColorFilter
-import androidx.compose.ui.graphics.drawscope.scale
-import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.platform.ComposeView
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.ViewCompositionStrategy
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
@@ -89,55 +85,24 @@ fun RecognizerInputMethodWindow(switchBack: (() -> Unit)? = null, allowClick: Bo
             modifier = Modifier
                 .recognizerSurfaceClickable(disabled = !allowClick, onPauseVAD = onPauseVAD, onFinish = onFinish)
                 .fillMaxWidth()
-                .wrapContentHeight(),
+                .wrapContentHeight()
+                .testTag("ime-panel"),
             color = MaterialTheme.colorScheme.surface
         ) {
-            val icon = painterResource(id = R.drawable.futo_o)
-            val bgIconTint = MaterialTheme.colorScheme.outline
-
-            Column(
-                modifier = Modifier.padding(0.dp, 0.dp, 0.dp, 64.dp).drawBehind {
-                    with(icon) {
-                        translate(left = -icon.intrinsicSize.width/2, top = -icon.intrinsicSize.height/2) {
-                            translate(left = size.width / 3, top = size.height / 2) {
-                                scale(scaleX = 1.3f, scaleY = 1.3f) {
-                                    draw(icon.intrinsicSize, colorFilter = ColorFilter.tint(bgIconTint))
-                                }
-
-                            }
+            Column(Modifier.padding(horizontal = 8.dp, vertical = 4.dp)) {
+                ConditionalUnpaidNoticeInVoiceInputWindow(switchBack)
+                Row(Modifier.fillMaxWidth().weight(1f, fill = false), verticalAlignment = Alignment.Top) {
+                    Column(Modifier.weight(1f)) { content() }
+                    if (switchBack != null) {
+                        IconButton(onClick = switchBack, modifier = Modifier.size(48.dp)) {
+                            Icon(
+                                Icons.Default.Close,
+                                contentDescription = stringResource(R.string.cancel),
+                                tint = MaterialTheme.colorScheme.onSurface
+                            )
                         }
                     }
                 }
-            ) {
-
-                val context = LocalContext.current
-                Box(modifier = Modifier.fillMaxWidth()) {
-                    Box(modifier = Modifier.align(Alignment.CenterStart)) {
-                        ConditionalUnpaidNoticeInVoiceInputWindow(switchBack)
-                    }
-
-                    Box(modifier = Modifier.align(Alignment.CenterEnd)) {
-                        if (switchBack != null) {
-                            IconButton(
-                                onClick = switchBack
-                            ) {
-                                Icon(
-                                    Icons.Default.Close,
-                                    contentDescription = stringResource(R.string.cancel),
-                                    tint = MaterialTheme.colorScheme.onSurface
-                                )
-                            }
-                        } else {
-                            Spacer(modifier = Modifier.height(32.dp))
-                        }
-                    }
-                }
-
-                Box(modifier = Modifier.padding(12.dp)) {
-                    
-                }
-
-                Column(Modifier.weight(1f, fill = false)) { content() }
                 Spacer(Modifier.height(navBarHeight()))
             }
         }
@@ -157,7 +122,7 @@ fun RecognizeIMELoadingPreview() {
 @Composable
 fun PreviewRecognizeViewLoadedIME() {
     RecognizerInputMethodWindow(switchBack = { }) {
-        InnerRecognize()
+        RecognitionContent(RecognitionUiState().start("Orukeet").recording(), compact = true)
     }
 }
 @Preview
@@ -201,6 +166,7 @@ class VoiceInputMethodService : InputMethodService(), LifecycleOwner, ViewModelS
     }
 
     private val recognizer = object : RecognizerView() {
+        override val compact: Boolean = true
         override val context: Context
             get() = this@VoiceInputMethodService
         override val lifecycleScope: LifecycleCoroutineScope

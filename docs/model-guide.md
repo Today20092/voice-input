@@ -21,7 +21,7 @@ not RAM used during transcription.
 
 ## Compare models
 
-Development builds also include **ASR4ALL Small, Medium and Large** for live
+1.4.7 beta builds also include **ASR4ALL Small, Medium and Large** for live
 English dictation. They add punctuation, capital letters and small corrections
 with built-in PCEC, so S1-mini is skipped for these models. Downloads are about
 38.6, 72.5 and 123.1 MB. All three use the low-latency `c16r4` streaming tier;

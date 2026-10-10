@@ -22,6 +22,10 @@ Stable [1.4.6](https://github.com/Today20092/voice-input/releases/tag/v1.4.6)
 promotes the tested Share beta 7 code, with clearer Model Options, Parakeet Redux
 and the Nemotron download fix.
 
+Beta [1.4.7-beta.1](https://github.com/Today20092/voice-input/releases/tag/v1.4.7-beta.1)
+adds ASR4ALL dictation, simpler cleanup settings, and a smaller voice-input panel.
+Install the beta APK directly if you want to try these changes.
+
 ## Get started
 
 1. Install the signed APK from [GitHub Releases](https://github.com/Today20092/voice-input/releases/latest).
@@ -71,7 +75,7 @@ Try the same recording with different models before downloading several large on
 | --- | --- |
 | Everyday dictation in a supported European language | Orukeet |
 | Live English text | Moonshine Small |
-| Live English text with built-in cleanup (development build) | ASR4ALL Small, Medium or Large |
+| Live English text with built-in cleanup (1.4.7 beta) | ASR4ALL Small, Medium or Large |
 | Live multilingual text | Nemotron 3.5 Multilingual |
 | Arabic dictation | Cohere Transcribe with Arabic selected |
 | Original FUTO recognition path | Legacy Whisper |

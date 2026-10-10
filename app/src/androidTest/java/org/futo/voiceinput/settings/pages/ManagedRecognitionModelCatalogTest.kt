@@ -4,9 +4,6 @@ import android.content.ContextWrapper
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
-import androidx.compose.ui.graphics.asAndroidBitmap
-import androidx.compose.ui.test.captureToImage
-import androidx.compose.ui.test.isRoot
 import androidx.activity.ComponentActivity
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalContext
@@ -113,9 +110,10 @@ class ManagedRecognitionModelCatalogTest {
         openDetails("ASR4ALL Medium")
         compose.onNodeWithText("Shows English text as you speak. Adds punctuation, capital letters, and small corrections.")
             .assertIsDisplayed()
+        android.os.SystemClock.sleep(500) // Let the platform dialog animation finish before capture.
         File(appContext.filesDir, "asr4all-details.png").outputStream().use {
-            compose.onNode(isRoot() and hasAnyDescendant(hasText("Shows English text as you speak. Adds punctuation, capital letters, and small corrections.")))
-                .captureToImage().asAndroidBitmap().compress(Bitmap.CompressFormat.PNG, 100, it)
+            androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot()
+                .compress(Bitmap.CompressFormat.PNG, 100, it)
         }
     }
 

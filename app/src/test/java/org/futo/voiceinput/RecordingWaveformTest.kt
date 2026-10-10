@@ -6,6 +6,18 @@ import org.junit.Test
 
 class RecordingWaveformTest {
     @Test
+    fun displayBarsPreservePeaksAndShowSilenceWithoutRescaling() {
+        assertEquals(List(4) { 0f }, recordingBarAmplitudes(emptyList(), 4))
+        val waveform = RecordingWaveform()
+        waveform.append(ShortArray(320) { -16384 }, 320)
+        assertEquals(listOf(0f, 0f, 0f, 0.5f), recordingBarAmplitudes(waveform.snapshot(), 4))
+        repeat(50) { waveform.append(ShortArray(320), 320) }
+        assertEquals(listOf(0f, 0f, 0.5f, 0f), recordingBarAmplitudes(waveform.snapshot(), 4))
+        repeat(200) { waveform.append(ShortArray(320), 320) }
+        assertEquals(List(4) { 0f }, recordingBarAmplitudes(waveform.snapshot(), 4))
+    }
+
+    @Test
     fun preservesPeaksAcrossReadsScrollsAndResets() {
         val waveform = RecordingWaveform()
         val first = ShortArray(320)
