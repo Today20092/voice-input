@@ -32,6 +32,37 @@ For the 1.4.7 cycle, the full documentation refresh is pending:
   text cleanup/AI rewrite, and the compact panel/bar waveform.
 - Consolidated stable notes, including fixes added after the initial beta.
 
+### Model-guide comparison requested by the maintainer
+
+At stable promotion, make the differences between all selectable models easy to
+compare. Use a table or chart with language coverage, download/installed size,
+RAM when available, live versus final text, built-in formatting/cleanup, and
+publisher accuracy and timing evidence. Link the model cards and identify the
+measurement source, hardware, dataset and streaming profile where applicable.
+
+Keep disk size separate from RAM. Label unmeasured RAM or speed as unknown;
+do not invent estimates. Publisher WER from different datasets is not a direct
+ranking. Our S25 Ultra ASR4ALL fixture figures include the test process and
+instrumentation overhead, so they are not universal model-only memory or speed.
+
+Explain that FUTO's ASR4ALL base models have PCEC punctuation, capitalization
+and small corrections, and the app skips S1-mini after them. Describe mobile
+deployment from the source evidence without claiming all ASR4ALL models beat
+every alternative in accuracy or speed.
+
+End the guide with practical starting choices and trade-offs for:
+
+- Slower phones, limited RAM/storage, and stronger phones with more resources.
+- English-only dictation with or without live text and built-in cleanup.
+- Spanish and supported European languages.
+- Arabic and broader multilingual needs, including unsupported languages or
+  automatic language detection when the selected model supports it.
+- Users who prioritize response time, recognition quality, or keeping legacy
+  behavior. Include compatibility and uncertainty alongside the recommendation.
+
+Consider the actual app capabilities and all existing model families, rather
+than listing only ASR4ALL or assuming one default suits every user.
+
 ## When stable promotion is requested
 
 1. Identify the exact beta the maintainer tested. Promote that implementation,
