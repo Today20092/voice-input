@@ -62,6 +62,7 @@ import org.futo.voiceinput.settings.ENABLE_MULTILINGUAL
 import org.futo.voiceinput.settings.ENGLISH_MODEL_INDEX
 import org.futo.voiceinput.settings.MODELS_MIGRATED
 import org.futo.voiceinput.settings.MOONSHINE_MODEL_VARIANT
+import org.futo.voiceinput.settings.ASR4ALL_VARIANT
 import org.futo.voiceinput.settings.NEMOTRON_PROFILE
 import org.futo.voiceinput.settings.MULTILINGUAL_MODEL_INDEX
 import org.futo.voiceinput.settings.SPEECH_BACKEND
@@ -103,13 +104,14 @@ fun modelsSubtitle(): String? {
     val (backend, _) = useDataStore(SPEECH_BACKEND)
     val (moonshineVariantId, _) = useDataStore(MOONSHINE_MODEL_VARIANT)
     val (nemotronProfileId, _) = useDataStore(NEMOTRON_PROFILE)
+    val (asr4allVariantId, _) = useDataStore(ASR4ALL_VARIANT)
     val (englishModelIndex, _) = useDataStore(ENGLISH_MODEL_INDEX)
     val (multilingualModelIndex, _) = useDataStore(MULTILINGUAL_MODEL_INDEX)
     val (multilingualEnabled, _) = useDataStore(ENABLE_MULTILINGUAL)
     val readiness = remember(context) {
         RecognitionModelLifecycle.create(context.filesDir, BuildConfig.BUNDLE_PARAKEET_MODEL)
     }.readiness(
-        RecognitionModelSelection(backend, moonshineVariantId, nemotronProfileId)
+        RecognitionModelSelection(backend, moonshineVariantId, nemotronProfileId, asr4allVariantId)
     )
     val selected = selectedRecognitionModelSummary(
         runtimeId = backend,
@@ -140,6 +142,7 @@ fun ManagedRecognitionModelCatalog() {
     val backend = useDataStoreValueNullable(SPEECH_BACKEND.key, SPEECH_BACKEND.default) ?: return
     val moonshineVariant = useDataStore(MOONSHINE_MODEL_VARIANT)
     val nemotronProfile = useDataStore(NEMOTRON_PROFILE)
+    val asr4allVariant = useDataStore(ASR4ALL_VARIANT)
     val englishIndex = useDataStore(ENGLISH_MODEL_INDEX).value.coerceIn(ENGLISH_MODELS.indices)
     val multilingualIndex = useDataStore(MULTILINGUAL_MODEL_INDEX).value.coerceIn(MULTILINGUAL_MODELS.indices)
     val multilingualEnabled = useDataStore(ENABLE_MULTILINGUAL).value
@@ -147,7 +150,7 @@ fun ManagedRecognitionModelCatalog() {
         RecognitionModelLifecycle.create(context.filesDir, BuildConfig.BUNDLE_PARAKEET_MODEL)
     }
     val selectedModel = modelLifecycle.readiness(
-        RecognitionModelSelection(backend, moonshineVariant.value, nemotronProfile.value)
+        RecognitionModelSelection(backend, moonshineVariant.value, nemotronProfile.value, asr4allVariant.value)
     )?.model
     val selectedModelId = selectedModel?.id
     val selectedSummary = selectedRecognitionModelSummary(
@@ -447,10 +450,11 @@ private fun SelectedRecognitionModelNotice() {
     val backend = useDataStore(SPEECH_BACKEND).value
     val moonshine = useDataStore(MOONSHINE_MODEL_VARIANT).value
     val nemotron = useDataStore(NEMOTRON_PROFILE).value
+    val asr4all = useDataStore(ASR4ALL_VARIANT).value
     val lifecycle = remember(context) {
         RecognitionModelLifecycle.create(context.filesDir, BuildConfig.BUNDLE_PARAKEET_MODEL)
     }
-    val readiness = lifecycle.readiness(RecognitionModelSelection(backend, moonshine, nemotron))
+    val readiness = lifecycle.readiness(RecognitionModelSelection(backend, moonshine, nemotron, asr4all))
     val successor = readiness?.optionalUpgrade
     val key = successor?.let { "${it.id}@${it.version}" }
     val preferences = remember(context) { context.getSharedPreferences("model_upgrade_notices", 0) }

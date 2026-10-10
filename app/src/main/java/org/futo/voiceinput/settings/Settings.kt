@@ -129,6 +129,7 @@ enum class SpeechBackendType(val id: String) {
     Nemotron("nemotron"),
     Cohere("cohere"),
     Moonshine("moonshine"),
+    Asr4all("asr4all"),
     WhisperGGML("whisper_ggml")
 }
 
@@ -137,6 +138,7 @@ fun String.toSpeechBackendType(): SpeechBackendType {
 }
 
 val SPEECH_BACKEND = SettingsKey(stringPreferencesKey("speech_backend"), SpeechBackendType.Orukeet.id)
+val ASR4ALL_VARIANT = SettingsKey(stringPreferencesKey("asr4all_variant"), "m")
 val MOONSHINE_MODEL_VARIANT =
     SettingsKey(stringPreferencesKey("moonshine_model_variant"), MoonshineModelVariant.Small.id)
 val NEMOTRON_PROFILE =

@@ -60,6 +60,12 @@ fun S1MiniOptions(showTitle: Boolean = true) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val enabled = useDataStore(S1_MINI_ENABLED)
+    val builtInCleanup = useDataStore(org.futo.voiceinput.settings.SPEECH_BACKEND).value == "asr4all"
+    if (builtInCleanup) {
+        if (showTitle) ScreenTitle("Transcript cleanup")
+        Tip("ASR4ALL already adds punctuation, capital letters, and small corrections. S1-mini is skipped for this model.")
+        return
+    }
     val refresh = remember { mutableStateOf(0) }
     val benchmarking = remember { mutableStateOf(false) }
     refresh.value

@@ -11,6 +11,19 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class RecognitionModelRequestTest {
     @Test
+    fun asr4allRequestsKeepPinnedUrlsHashesAndStorageRequirements() {
+        org.futo.voiceinput.asr4all.Asr4allModels.models.forEach { model ->
+            val request = Intent().apply { putRecognitionModel(model) }
+            request.refreshRecognitionModel()
+            assertEquals(listOf("asr_encoder.pte", "metadata.json"), request.getStringArrayListExtra(EXTRA_DOWNLOAD_FILE_NAMES))
+            assertEquals(model.artifacts.map { it.sha256 }, request.getStringArrayListExtra(EXTRA_DOWNLOAD_FILE_HASHES))
+            assertEquals(model.artifacts.map { it.url }, request.getStringArrayListExtra(EXTRA_DOWNLOAD_FILE_URLS))
+            assertEquals(model.requiredFreeSpaceBytes, request.getLongExtra(EXTRA_REQUIRED_FREE_SPACE, -1))
+            assertFalse(request.hasExtra(EXTRA_ARCHIVE_URL))
+        }
+    }
+
+    @Test
     fun staleManagedRequestUsesCurrentRuntimeManifest() {
         val model = RecognitionModelCatalog.nemotronMultilingual
         val request = Intent().apply {

@@ -47,6 +47,7 @@ import org.futo.voiceinput.settings.END_OF_SPEECH_PROFILE
 import org.futo.voiceinput.settings.IS_VAD_ENABLED
 import org.futo.voiceinput.settings.MANUAL_STOP_DRAIN_MS
 import org.futo.voiceinput.settings.MOONSHINE_MODEL_VARIANT
+import org.futo.voiceinput.settings.ASR4ALL_VARIANT
 import org.futo.voiceinput.settings.NEMOTRON_PROFILE
 import org.futo.voiceinput.settings.PARAKEET_KEEP_WARM
 import org.futo.voiceinput.settings.PARAKEET_KEEP_WARM_TIMEOUT_MS
@@ -481,7 +482,8 @@ abstract class RecordingSession {
             val selection = RecognitionModelSelection(
                 runtimeId = context.getSetting(SPEECH_BACKEND),
                 moonshineVariantId = context.getSetting(MOONSHINE_MODEL_VARIANT),
-                nemotronVariantId = context.getSetting(NEMOTRON_PROFILE)
+                nemotronVariantId = context.getSetting(NEMOTRON_PROFILE),
+                asr4allVariantId = context.getSetting(ASR4ALL_VARIANT)
             )
             val loadedBackend = loadBackend(
                 context,
@@ -577,7 +579,8 @@ abstract class RecordingSession {
                 RecognitionModelSelection(
                     runtimeId = backendType.id,
                     moonshineVariantId = context.getSetting(MOONSHINE_MODEL_VARIANT),
-                    nemotronVariantId = context.getSetting(NEMOTRON_PROFILE)
+                    nemotronVariantId = context.getSetting(NEMOTRON_PROFILE),
+                    asr4allVariantId = context.getSetting(ASR4ALL_VARIANT)
                 )
             )
             selectedManagedModel = readiness?.model
@@ -606,6 +609,7 @@ abstract class RecordingSession {
             streamingAudio.reset(
                 backendType == SpeechBackendType.ParakeetUnified ||
                     backendType == SpeechBackendType.Nemotron ||
+                    backendType == SpeechBackendType.Asr4all ||
                     backendType == SpeechBackendType.Moonshine
             )
             if (backendType == SpeechBackendType.WhisperGGML) {

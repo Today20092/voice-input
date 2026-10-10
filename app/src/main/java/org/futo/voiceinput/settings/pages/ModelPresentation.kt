@@ -62,6 +62,7 @@ private fun modelInformationLinks(model: RecognitionModel): List<ModelInformatio
         "parakeet_redux" -> "https://huggingface.co/moondream/parakeet-redux"
         "parakeet_unified" -> "https://huggingface.co/csukuangfj2/sherpa-onnx-nemo-parakeet-unified-en-0.6b-int8-streaming-560ms"
         "cohere" -> "https://huggingface.co/CohereLabs/cohere-transcribe-03-2026"
+        "asr4all" -> "https://huggingface.co/futo-org/${model.id}"
         else -> return emptyList()
     }
     val artifactUrl = (model.archive ?: model.artifacts.first()).url
@@ -110,7 +111,11 @@ fun presentRecognitionModel(
             model.version, "${model.artifacts.size} model " +
                 if (model.artifacts.size == 1) "artifact" else "artifacts",
             recognitionLanguageGuidance(model)
-        ),
+        ) + if (model.runtimeId == "asr4all") listOf(
+            "Runtime" to "ExecuTorch 1.2.0, XNNPACK INT8, one CPU thread",
+            "Streaming profile" to "stream_c16r4, the publisher's default",
+            "Text cleanup" to "Built-in punctuation, capitalization, and error correction. S1-mini is skipped."
+        ) else emptyList(),
         informationLinks = modelInformationLinks(model)
     )
 }

@@ -3,6 +3,10 @@ package org.futo.voiceinput.settings.pages
 import android.content.ContextWrapper
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
+import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.test.isRoot
 import androidx.activity.ComponentActivity
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalContext
@@ -96,6 +100,23 @@ class ManagedRecognitionModelCatalogTest {
         compose.onNode(hasText(family) and
             SemanticsMatcher.keyIsDefined(SemanticsProperties.StateDescription))
             .performScrollTo().performClick()
+    }
+
+    @Test
+    fun asr4allFamilyShowsAllThreeChoicesWithoutChangingSelection() {
+        showCatalog()
+        toggleFamily("ASR4ALL")
+        org.futo.voiceinput.asr4all.Asr4allModels.models.forEach {
+            compose.onNodeWithText(it.displayName).assertExists()
+        }
+        assertEquals("orukeet", runBlocking { appContext.dataStore.data.first()[SPEECH_BACKEND.key] })
+        openDetails("ASR4ALL Medium")
+        compose.onNodeWithText("Shows English text as you speak. Adds punctuation, capital letters, and small corrections.")
+            .assertIsDisplayed()
+        File(appContext.filesDir, "asr4all-details.png").outputStream().use {
+            compose.onNode(isRoot() and hasAnyDescendant(hasText("Shows English text as you speak. Adds punctuation, capital letters, and small corrections.")))
+                .captureToImage().asAndroidBitmap().compress(Bitmap.CompressFormat.PNG, 100, it)
+        }
     }
 
     @Test

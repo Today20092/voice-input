@@ -45,6 +45,9 @@ object S1MiniTranscriptCleaner {
         forcedLanguage: String?,
         onCleaning: suspend () -> Unit
     ): S1MiniCleanupResult {
+        if (backend == SpeechBackendType.Asr4all) {
+            return S1MiniCleanupResult(rawTranscript, false, fallbackCategory = "built_in_cleanup_bypass")
+        }
         if (!context.getSetting(S1_MINI_ENABLED)) return S1MiniCleanupResult(rawTranscript, false)
 
         val english = S1MiniEnglishGate.isEstablishedEnglish(

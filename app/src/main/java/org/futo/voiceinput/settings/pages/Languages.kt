@@ -88,6 +88,8 @@ fun LanguagesScreen(
         val variant = when (backend) {
             SpeechBackendType.Moonshine -> useDataStore(MOONSHINE_MODEL_VARIANT).value.toMoonshineModelVariant().id
             SpeechBackendType.Nemotron -> useDataStore(NEMOTRON_PROFILE).value.toNemotronProfile().id
+            SpeechBackendType.Asr4all -> org.futo.voiceinput.asr4all.Asr4allModels.selected(
+                useDataStore(org.futo.voiceinput.settings.ASR4ALL_VARIANT).value).variantId
             else -> null
         }
         val model = requireNotNull(RecognitionModelCatalog.modelFor(backend.id, variant))

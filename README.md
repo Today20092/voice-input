@@ -71,6 +71,7 @@ Try the same recording with different models before downloading several large on
 | --- | --- |
 | Everyday dictation in a supported European language | Orukeet |
 | Live English text | Moonshine Small |
+| Live English text with built-in cleanup (development build) | ASR4ALL Small, Medium or Large |
 | Live multilingual text | Nemotron 3.5 Multilingual |
 | Arabic dictation | Cohere Transcribe with Arabic selected |
 | Original FUTO recognition path | Legacy Whisper |

@@ -21,6 +21,14 @@ not RAM used during transcription.
 
 ## Compare models
 
+Development builds also include **ASR4ALL Small, Medium and Large** for live
+English dictation. They add punctuation, capital letters and small corrections
+with built-in PCEC, so S1-mini is skipped for these models. Downloads are about
+38.6, 72.5 and 123.1 MB. All three use the low-latency `c16r4` streaming tier;
+Plus models are omitted because their extra speaker features do not help this
+dictation flow. See the [implementation and S25 Ultra test report](research/ticket-26-asr4all-feasibility-2026-10-09.md)
+for pinned sources, timings and test limits.
+
 | What you want | Try first | Next option |
 | --- | --- | --- |
 | Everyday dictation in a supported European language | Orukeet | Parakeet TDT V3 |

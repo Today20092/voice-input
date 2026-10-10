@@ -18,7 +18,7 @@ class RecognitionModelCatalogTest {
     fun catalogHasCompleteImmutableManifests() {
         val models = RecognitionModelCatalog.models
 
-        assertEquals(9, RecognitionModelCatalog.cards.size)
+        assertEquals(10, RecognitionModelCatalog.cards.size)
         assertEquals("orukeet-v0.1.0", RecognitionModelCatalog.defaultModel.id)
         assertTrue(models.isNotEmpty())
         models.forEach { model ->

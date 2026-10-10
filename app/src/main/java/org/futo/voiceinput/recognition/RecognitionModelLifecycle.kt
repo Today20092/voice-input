@@ -26,6 +26,7 @@ import org.futo.voiceinput.parakeet.parakeetUnifiedBackend
 import org.futo.voiceinput.parakeet.releaseParakeetArtifacts
 import org.futo.voiceinput.parakeet.releaseParakeetRuntime
 import org.futo.voiceinput.settings.MOONSHINE_MODEL_VARIANT
+import org.futo.voiceinput.settings.ASR4ALL_VARIANT
 import org.futo.voiceinput.settings.NEMOTRON_PROFILE
 import org.futo.voiceinput.settings.SPEECH_BACKEND
 import org.futo.voiceinput.settings.SpeechBackendType
@@ -36,7 +37,8 @@ import java.io.File
 data class RecognitionModelSelection(
     val runtimeId: String,
     val moonshineVariantId: String? = null,
-    val nemotronVariantId: String? = null
+    val nemotronVariantId: String? = null,
+    val asr4allVariantId: String? = null
 )
 
 enum class RecognitionModelRepairReason { MISSING, INVALID_OR_INCOMPATIBLE }
@@ -67,6 +69,7 @@ class RecognitionModelLifecycle(
         val variantId = when (selection.runtimeId) {
             "moonshine" -> selection.moonshineVariantId
             "nemotron" -> selection.nemotronVariantId
+            "asr4all" -> org.futo.voiceinput.asr4all.Asr4allModels.selected(selection.asr4allVariantId ?: "m").variantId
             else -> null
         }
         val model = models.firstOrNull {
@@ -128,7 +131,8 @@ class RecognitionModelLifecycle(
     fun selectionFor(model: RecognitionModel) = RecognitionModelSelection(
         runtimeId = model.runtimeId,
         moonshineVariantId = model.variantId.takeIf { model.runtimeId == "moonshine" },
-        nemotronVariantId = model.variantId.takeIf { model.runtimeId == "nemotron" }
+        nemotronVariantId = model.variantId.takeIf { model.runtimeId == "nemotron" },
+        asr4allVariantId = model.variantId.takeIf { model.runtimeId == "asr4all" }
     )
 
     fun select(model: RecognitionModel, updateSelection: (RecognitionModelSelection) -> Unit) {
@@ -166,6 +170,7 @@ class RecognitionModelLifecycle(
             SpeechBackendType.ParakeetUnified -> parakeetUnifiedBackend()
             SpeechBackendType.ParakeetRedux -> org.futo.voiceinput.redux.ReduxBackend()
             SpeechBackendType.Nemotron -> SherpaStreamingBackend()
+            SpeechBackendType.Asr4all -> org.futo.voiceinput.asr4all.asr4allBackend(context, selection.asr4allVariantId ?: "m")
             SpeechBackendType.Cohere -> CohereBackend()
             SpeechBackendType.Moonshine -> MoonshineBackend(context.getSelectedMoonshineModelVariant())
             SpeechBackendType.WhisperGGML -> WhisperGGMLBackend(
@@ -249,6 +254,7 @@ internal suspend fun SpeechBackend.loadOrCloseOnFailure(
 }
 
 fun Context.updateRecognitionModelSelection(selection: RecognitionModelSelection) {
+    selection.asr4allVariantId?.let { setSettingBlocking(ASR4ALL_VARIANT.key, it) }
     selection.moonshineVariantId?.let {
         setSettingBlocking(MOONSHINE_MODEL_VARIANT.key, it)
     }

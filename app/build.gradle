@@ -302,6 +302,7 @@ dependencies {
     implementation 'org.apache.commons:commons-compress:1.28.0'
 
     implementation 'ai.moonshine:moonshine-voice:0.0.68'
+    implementation 'org.pytorch:executorch-android:1.2.0'
     implementation sherpaOnnxFiles
 
     implementation 'ch.acra:acra-http:5.11.1'

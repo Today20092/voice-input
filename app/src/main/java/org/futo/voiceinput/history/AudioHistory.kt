@@ -41,7 +41,7 @@ suspend fun Context.purgeAudioHistory() = withContext(Dispatchers.IO) {
 suspend fun Context.retranscribeAudio(id: String, scope: LifecycleCoroutineScope): String =
     withContext(Dispatchers.IO) {
         val selection = RecognitionModelSelection(getSetting(SPEECH_BACKEND),
-            getSetting(MOONSHINE_MODEL_VARIANT), getSetting(NEMOTRON_PROFILE))
+            getSetting(MOONSHINE_MODEL_VARIANT), getSetting(NEMOTRON_PROFILE), getSetting(org.futo.voiceinput.settings.ASR4ALL_VARIANT))
         val lifecycle = RecognitionModelLifecycle.create(filesDir, BuildConfig.BUNDLE_PARAKEET_MODEL)
         val readiness = lifecycle.readiness(selection)
         val report = AppDiagnostics.session(readiness?.model?.id ?: selection.runtimeId)

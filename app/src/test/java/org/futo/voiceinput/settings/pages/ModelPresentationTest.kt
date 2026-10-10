@@ -29,7 +29,7 @@ class ModelPresentationTest {
     }
 
     @Test
-    fun everyModelHasTheSameCompleteDetailFields() {
+    fun everyModelIncludesTheCompleteSharedDetailFields() {
         val presentations = RecognitionModelCatalog.cards.flatMap { it.models }.map {
             presentRecognitionModel(it, installed = false, selected = false)
         } + ENGLISH_MODELS.map {
@@ -42,7 +42,7 @@ class ModelPresentationTest {
             "Status", "Performance class", "Source", "License/attribution", "Version", "Model files"
         )
         presentations.forEach { presentation ->
-            assertEquals(presentation.title, labels, presentation.fields.map { it.first })
+            assertEquals(presentation.title, labels, presentation.fields.map { it.first }.take(labels.size))
             assertTrue(presentation.title, presentation.description.isNotBlank())
             assertTrue(presentation.title, presentation.fields.all { it.second.isNotBlank() })
             assertTrue(presentation.title, presentation.informationLinks.isNotEmpty())
@@ -65,7 +65,7 @@ class ModelPresentationTest {
             val sizes = group.map { card -> card.models.minOfOrNull { it.transferBytes } ?: 0L }
             assertEquals(sizes.sorted(), sizes)
         }
-        assertEquals("moonshine", cards.first().id)
+        assertEquals("asr4all", cards.first().id)
         assertEquals(
             listOf("Low latency", "Balanced", "Accuracy"),
             cards.single { it.id == "nemotron" }.models.map { it.displayName }
