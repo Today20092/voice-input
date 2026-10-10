@@ -28,6 +28,15 @@ data class ModelPresentation(
 
 data class ModelInformationLink(val label: String, val url: String)
 
+fun modelFamiliesForDisplay(): Map<String, List<RecognitionModelCard>> =
+    modelCardsForDisplay().groupBy { card ->
+        when (card.runtimeId) {
+            "parakeet", "parakeet_unified", "parakeet_redux" -> "Parakeet"
+            "nemotron" -> "Nemotron"
+            else -> card.displayName
+        }
+    }
+
 fun modelCardsForDisplay(): List<RecognitionModelCard> = RecognitionModelCatalog.cards
     .sortedWith(compareBy<RecognitionModelCard> { it.transcription.ordinal }.thenBy { card ->
         if (card.models.isEmpty()) {

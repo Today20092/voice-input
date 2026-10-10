@@ -11,6 +11,24 @@ import org.junit.Test
 
 class ModelPresentationTest {
     @Test
+    fun familiesKeepEveryModelAndCombineParakeetAndNemotronVariants() {
+        val families = modelFamiliesForDisplay()
+        assertEquals(
+            RecognitionModelCatalog.cards.map { it.id }.sorted(),
+            families.values.flatten().map { it.id }.sorted()
+        )
+        assertEquals(
+            setOf("parakeet", "parakeet_unified", "parakeet_redux"),
+            families.getValue("Parakeet").map { it.runtimeId }.toSet()
+        )
+        assertEquals(
+            setOf("nemotron", "nemotron-multilingual"),
+            families.getValue("Nemotron").map { it.id }.toSet()
+        )
+        assertEquals(listOf("orukeet"), families.getValue("Orukeet").map { it.id })
+    }
+
+    @Test
     fun everyModelHasTheSameCompleteDetailFields() {
         val presentations = RecognitionModelCatalog.cards.flatMap { it.models }.map {
             presentRecognitionModel(it, installed = false, selected = false)

@@ -25,11 +25,16 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.key
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
@@ -67,6 +72,7 @@ import org.futo.voiceinput.settings.SpeechBackendType
 import org.futo.voiceinput.settings.Tip
 import org.futo.voiceinput.settings.toSpeechBackendType
 import org.futo.voiceinput.settings.useDataStore
+import org.futo.voiceinput.settings.useDataStoreValueNullable
 import org.futo.voiceinput.startModelDownloadActivity
 import org.futo.voiceinput.recognition.RecognitionModelCatalog
 import org.futo.voiceinput.recognition.RecognitionModelLifecycle
@@ -130,55 +136,65 @@ fun modelsSubtitle(): String? {
 fun ManagedRecognitionModelCatalog() {
     observeModelReadinessChanges()
     val context = LocalContext.current
-    val backend = useDataStore(SPEECH_BACKEND)
+    // Wait for the saved selection before initializing which family is open.
+    val backend = useDataStoreValueNullable(SPEECH_BACKEND.key, SPEECH_BACKEND.default) ?: return
     val moonshineVariant = useDataStore(MOONSHINE_MODEL_VARIANT)
     val nemotronProfile = useDataStore(NEMOTRON_PROFILE)
+    val englishIndex = useDataStore(ENGLISH_MODEL_INDEX).value.coerceIn(ENGLISH_MODELS.indices)
+    val multilingualIndex = useDataStore(MULTILINGUAL_MODEL_INDEX).value.coerceIn(MULTILINGUAL_MODELS.indices)
+    val multilingualEnabled = useDataStore(ENABLE_MULTILINGUAL).value
     val modelLifecycle = remember(context) {
         RecognitionModelLifecycle.create(context.filesDir, BuildConfig.BUNDLE_PARAKEET_MODEL)
     }
-    val selectedModelId = modelLifecycle.readiness(
-        RecognitionModelSelection(backend.value, moonshineVariant.value, nemotronProfile.value)
-    )?.model?.id
+    val selectedModel = modelLifecycle.readiness(
+        RecognitionModelSelection(backend, moonshineVariant.value, nemotronProfile.value)
+    )?.model
+    val selectedModelId = selectedModel?.id
+    val selectedSummary = selectedRecognitionModelSummary(
+        backend, selectedModel, ENGLISH_MODELS[englishIndex],
+        MULTILINGUAL_MODELS[multilingualIndex], multilingualEnabled
+    )
 
-    val cards = modelCardsForDisplay()
-    cards.forEachIndexed { index, card ->
-        if (index == 0 || cards[index - 1].transcription != card.transcription) {
-            val (title, explanation) = when (card.transcription) {
-                org.futo.voiceinput.recognition.TranscriptionBehavior.LIVE ->
-                    "While you speak" to "Text appears as you speak."
-                org.futo.voiceinput.recognition.TranscriptionBehavior.BUFFERED_LIVE ->
-                    "Buffered updates" to "Text updates by reprocessing recent audio."
-                org.futo.voiceinput.recognition.TranscriptionBehavior.FINAL_ONLY ->
-                    "After you stop" to "The transcript is returned when recording stops."
+    modelFamiliesForDisplay().forEach { (family, cards) ->
+        key(family) {
+            val selected = cards.any { card ->
+                card.models.any { it.id == selectedModelId } ||
+                    (card.id == "whisper" && backend == card.runtimeId)
             }
-            Column(
-                modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 24.dp, bottom = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+            val expanded = rememberSaveable { mutableStateOf(selected) }
+            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+            TextButton(
+                onClick = { expanded.value = !expanded.value },
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp).semantics {
+                    heading()
+                    stateDescription = if (expanded.value) "Expanded" else "Collapsed"
+                }
             ) {
-                HorizontalDivider()
-                Text(title, style = MaterialTheme.typography.headlineSmall)
-                Text(explanation, style = MaterialTheme.typography.bodyMedium,
+                Column(modifier = Modifier.weight(1f).padding(vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(family, style = MaterialTheme.typography.titleMedium)
+                    if (selected) Text("Selected: $selectedSummary", style = MaterialTheme.typography.bodyMedium)
+                }
+                Text(if (expanded.value) "Hide" else "Show")
+            }
+            if (expanded.value) cards.forEach { card ->
+                if (cards.size > 1 && card.displayName != family) {
+                    Text(card.displayName, modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                        style = MaterialTheme.typography.titleMedium)
+                }
+                Text(card.description, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        }
-        Text(card.displayName, modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-            style = MaterialTheme.typography.titleMedium)
-
-        if (card.models.isEmpty()) {
-            val selected = backend.value == card.runtimeId
-            if (card.id == "whisper") {
-                WhisperModelOptions(whisperSelected = selected)
-            }
-        } else {
-            card.models.forEach { model ->
-                ManagedRecognitionModelItem(
-                    model = model,
-                    selectedModelId = selectedModelId,
-                    modelLifecycle = modelLifecycle
-                )
-            }
-            card.models.firstOrNull { it.id == selectedModelId }?.let {
-                RecognitionModelLanguageOptions(it, showGuidance = false)
+                if (card.id == "whisper") {
+                    WhisperModelOptions(whisperSelected = selected)
+                } else {
+                    card.models.forEach { model ->
+                        ManagedRecognitionModelItem(model, selectedModelId, modelLifecycle)
+                    }
+                    card.models.firstOrNull { it.id == selectedModelId }?.let {
+                        RecognitionModelLanguageOptions(it, showGuidance = false)
+                    }
+                }
             }
         }
     }
