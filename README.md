@@ -77,6 +77,7 @@ Try the same recording with different models before downloading several large on
 | Live English text | Moonshine Small |
 | Live English text with built-in cleanup (1.4.7 beta) | ASR4ALL Small, Medium or Large |
 | Live multilingual text | Nemotron 3.5 Multilingual |
+| Experimental final-only English recognition | Phonon 2 (186.6 MB download; separate CPU runtime) |
 | Arabic dictation | Cohere Transcribe with Arabic selected |
 | Original FUTO recognition path | Legacy Whisper |
 

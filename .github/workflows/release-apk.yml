@@ -63,6 +63,22 @@ jobs:
           cd app/src/main/rust/harper_android
           cargo test --locked
 
+      - name: Verify Phonon package and reference transcription
+        run: |
+          PHONON_TEST_ARCHIVE="$RUNNER_TEMP/phonon-weights.tar.gz"
+          curl --fail --location --retry 3 -o "$PHONON_TEST_ARCHIVE" \
+            'https://huggingface.co/eschmidbauer/phonon-2-c/resolve/1c91a6a7a26809fecedb35d847bef69663dde8bb/phonon-2-c-weights-v1.tar.gz'
+          echo "48137a58011c4b0bc0a97087ea7e868daabf1525ca8447414be230b21faf99e6  $PHONON_TEST_ARCHIVE" | sha256sum --check
+          echo "PHONON_TEST_ARCHIVE=$PHONON_TEST_ARCHIVE" >> "$GITHUB_ENV"
+          mkdir -p "$RUNNER_TEMP/phonon-model"
+          tar -xzf "$PHONON_TEST_ARCHIVE" -C "$RUNNER_TEMP/phonon-model"
+          cmake -S app/src/main/cpp/third_party/phonon-2-c -B "$RUNNER_TEMP/phonon-host" -DPHONON2_BUILD_EXAMPLES=OFF
+          cmake --build "$RUNNER_TEMP/phonon-host" --parallel 2
+          "$RUNNER_TEMP/phonon-host/phonon2" --quiet --threads 2 "$RUNNER_TEMP/phonon-model/c_weights" \
+            app/src/androidTest/assets/redux-speech.wav > "$RUNNER_TEMP/phonon-transcript.txt"
+          cat "$RUNNER_TEMP/phonon-transcript.txt"
+          grep -qi 'like the old portrait' "$RUNNER_TEMP/phonon-transcript.txt"
+
       - name: Build APK
         run: |
           ./gradlew --max-workers=2 '-Dorg.gradle.jvmargs=-Xmx4096m -Dfile.encoding=UTF-8' :app:testStandaloneReleaseUnitTest :app:lintStandaloneRelease :app:compileDevDebugAndroidTestKotlin :app:assembleStandaloneRelease --stacktrace
@@ -88,6 +104,10 @@ jobs:
           printf '%s\n' "$APK_LISTING" | grep -Fx 'assets/HARPER-NOTICES.txt'
           printf '%s\n' "$APK_LISTING" | grep -Fx 'lib/arm64-v8a/libparakeet_redux.so'
           printf '%s\n' "$APK_LISTING" | grep -Fx 'assets/REDUX-NOTICES.txt'
+          printf '%s\n' "$APK_LISTING" | grep -Fx 'lib/arm64-v8a/libphonon_jni.so'
+          printf '%s\n' "$APK_LISTING" | grep -Fx 'lib/arm64-v8a/libphonon_baseline.so'
+          printf '%s\n' "$APK_LISTING" | grep -Fx 'lib/arm64-v8a/libphonon_dotprod.so'
+          printf '%s\n' "$APK_LISTING" | grep -Fx 'assets/PHONON-NOTICES.txt'
           printf '%s\n' "$APK_LISTING" | grep -Fx 'lib/arm64-v8a/libexecutorch.so'
           printf '%s\n' "$APK_LISTING" | grep -Fx 'assets/ASR4ALL-NOTICES.txt'
           printf '%s\n' "$APK_LISTING" | grep -Fx 'assets/ASR4ALL-APACHE-NOTICES.txt'

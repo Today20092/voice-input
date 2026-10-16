@@ -169,6 +169,7 @@ class RecognitionModelLifecycle(
             SpeechBackendType.Orukeet -> orukeetBackend()
             SpeechBackendType.ParakeetUnified -> parakeetUnifiedBackend()
             SpeechBackendType.ParakeetRedux -> org.futo.voiceinput.redux.ReduxBackend()
+            SpeechBackendType.Phonon -> org.futo.voiceinput.phonon.PhononBackend()
             SpeechBackendType.Nemotron -> SherpaStreamingBackend()
             SpeechBackendType.Asr4all -> org.futo.voiceinput.asr4all.asr4allBackend(context, selection.asr4allVariantId ?: "m")
             SpeechBackendType.Cohere -> CohereBackend()

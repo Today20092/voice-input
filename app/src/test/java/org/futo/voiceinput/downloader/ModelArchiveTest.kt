@@ -201,6 +201,44 @@ class ModelArchiveTest {
         assertEquals("valid", target.resolve("model.bin").readText())
     }
 
+    @Test
+    fun gzipArchivesValidateBeforeReplacingInstalledFiles() {
+        val contents = "valid".toByteArray()
+        val output = ByteArrayOutputStream()
+        java.util.zip.GZIPOutputStream(output).use { gzip ->
+            TarArchiveOutputStream(gzip).use { tar ->
+                tar.putArchiveEntry(TarArchiveEntry("model/model.bin").apply { size = contents.size.toLong() })
+                tar.write(contents)
+                tar.closeArchiveEntry()
+            }
+        }
+        val bytes = output.toByteArray()
+        val target = temporaryFolder.newFolder("gzip")
+        val installed = target.resolve("model.bin").apply { writeText("previous") }
+        val artifacts = listOf(RecognitionModelArtifact("model.bin", "https://example.com/model.tar.gz",
+            contents.size.toLong(), sha256(contents)))
+        assertThrows(IllegalArgumentException::class.java) {
+            extractModelArchive(ByteArrayInputStream(bytes), target, "model", artifacts, "0".repeat(64))
+        }
+        assertEquals("previous", installed.readText())
+        extractModelArchive(ByteArrayInputStream(bytes), target, "model", artifacts, sha256(bytes))
+        assertEquals("valid", installed.readText())
+    }
+
+    @Test
+    fun installsPublishedPhononArchive() {
+        val path = System.getenv("PHONON_TEST_ARCHIVE")
+        assumeTrue("Set PHONON_TEST_ARCHIVE to the pinned download", path != null)
+        val model = org.futo.voiceinput.phonon.PhononModel.model
+        val store = RecognitionModelStore(temporaryFolder.root)
+        File(requireNotNull(path)).inputStream().use { input ->
+            extractModelArchive(input, store.modelDirectory(model), requireNotNull(model.archiveRoot),
+                model.artifacts, requireNotNull(model.archive).sha256)
+        }
+        org.junit.Assert.assertTrue(store.completeInstall(model))
+        org.junit.Assert.assertTrue(store.isInstalled(model, verifyHashes = true))
+    }
+
     private fun archive(name: String, contents: ByteArray, blockSize: Int = 512): ByteArray {
         val output = ByteArrayOutputStream()
         BZip2CompressorOutputStream(output).use { compressed ->

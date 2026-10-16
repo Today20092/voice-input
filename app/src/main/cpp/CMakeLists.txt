@@ -131,3 +131,4 @@ set_target_properties(parakeet_redux PROPERTIES
     IMPORTED_LOCATION "${REDUX_BINARY_DIR}/libparakeet_redux.so")
 add_dependencies(parakeet_redux redux_native)
 target_link_libraries(voiceinput parakeet_redux)
+add_subdirectory(phonon)

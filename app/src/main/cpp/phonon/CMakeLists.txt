@@ -1,0 +1,23 @@
+cmake_minimum_required(VERSION 3.22.1)
+project(phonon_android LANGUAGES C CXX)
+# Pinned standalone C engine: keep its symbols separate from the other model runtimes.
+set(PHONON_SOURCE "${CMAKE_CURRENT_LIST_DIR}/../third_party/phonon-2-c/csrc")
+set(PHONON_SOURCES blas.c threadpool.c tensor_ops.c encoder.c decoder.c mel.c
+    weights.c tokens.c wav.c resample.c segment.c engine.c json.c)
+list(TRANSFORM PHONON_SOURCES PREPEND "${PHONON_SOURCE}/")
+foreach(tier baseline dotprod)
+    add_library(phonon_${tier} SHARED ${PHONON_SOURCES})
+    set_target_properties(phonon_${tier} PROPERTIES C_STANDARD 11 C_STANDARD_REQUIRED ON)
+    target_compile_options(phonon_${tier} PRIVATE -O3 -ffast-math -funroll-loops)
+    target_compile_options(phonon_${tier} PRIVATE -include "${CMAKE_CURRENT_LIST_DIR}/android_compat.h")
+    target_compile_definitions(phonon_${tier} PRIVATE _GNU_SOURCE)
+    target_link_libraries(phonon_${tier} PRIVATE m)
+    target_link_options(phonon_${tier} PRIVATE "-Wl,-Bsymbolic" "-Wl,-z,max-page-size=16384")
+endforeach()
+# The JNI bridge checks HWCAP_ASIMDDP before loading this library.
+target_compile_options(phonon_dotprod PRIVATE -march=armv8-a+dotprod)
+add_library(phonon_jni SHARED ../phonon_jni.cpp)
+set_target_properties(phonon_jni PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON)
+target_include_directories(phonon_jni PRIVATE "${PHONON_SOURCE}")
+target_link_libraries(phonon_jni PRIVATE dl)
+target_link_options(phonon_jni PRIVATE "-Wl,-z,max-page-size=16384")

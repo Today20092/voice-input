@@ -17,6 +17,7 @@ object S1MiniEnglishGate {
         // Enabling English cleanup also covers recognizers that cannot report a language.
         return when (backend) {
             SpeechBackendType.Moonshine,
+            SpeechBackendType.Phonon,
             SpeechBackendType.Asr4all,
             SpeechBackendType.Orukeet,
             SpeechBackendType.Parakeet,

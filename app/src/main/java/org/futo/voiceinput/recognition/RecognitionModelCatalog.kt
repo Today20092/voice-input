@@ -80,6 +80,7 @@ data class RecognitionModelCard(
 )
 
 object RecognitionModelCatalog {
+    val phonon = org.futo.voiceinput.phonon.PhononModel.model
     val parakeetRedux = org.futo.voiceinput.redux.ReduxModel.model
     private const val MOONSHINE_REVISION = "2026-03-16-sha256"
     private const val MOONSHINE_SOURCE = "Moonshine AI"
@@ -238,6 +239,16 @@ object RecognitionModelCatalog {
         )
 
     val cards = listOf(
+        RecognitionModelCard(
+            id = "phonon-2",
+            runtimeId = phonon.runtimeId,
+            displayName = phonon.displayName,
+            description = phonon.description,
+            transcription = phonon.transcription,
+            recognitionLanguages = phonon.recognitionLanguages,
+            performanceClasses = setOf(phonon.performanceClass),
+            models = listOf(phonon)
+        ),
         RecognitionModelCard(
             id = "asr4all", runtimeId = "asr4all", displayName = "ASR4ALL",
             description = "English text as you speak, with built-in text cleanup.",

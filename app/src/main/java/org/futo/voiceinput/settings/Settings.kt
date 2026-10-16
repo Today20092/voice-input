@@ -126,6 +126,7 @@ enum class SpeechBackendType(val id: String) {
     Orukeet("orukeet"),
     ParakeetUnified("parakeet_unified"),
     ParakeetRedux("parakeet_redux"),
+    Phonon("phonon"),
     Nemotron("nemotron"),
     Cohere("cohere"),
     Moonshine("moonshine"),

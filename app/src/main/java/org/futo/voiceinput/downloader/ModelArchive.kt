@@ -1,7 +1,7 @@
 package org.futo.voiceinput.downloader
 
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
-import org.apache.commons.compress.compressors.bzip2.BZip2CompressorInputStream
+import org.apache.commons.compress.compressors.CompressorStreamFactory
 import org.futo.voiceinput.sha256
 import org.futo.voiceinput.recognition.RecognitionModelArtifact
 import java.io.File
@@ -51,9 +51,9 @@ internal fun extractModelArchive(
     stagingDirectory.deleteRecursively()
     check(stagingDirectory.mkdirs()) { "Failed to create model staging directory" }
     try {
-        // Buffer outside the digest so bzip2's byte reads hash whole blocks, not individual bytes.
+        // Buffer outside the digest so format detection and byte reads hash each block once.
         DigestInputStream(input, digest).buffered(128 * 1024).use { verifiedInput ->
-            TarArchiveInputStream(BZip2CompressorInputStream(verifiedInput)).use { archive ->
+            TarArchiveInputStream(CompressorStreamFactory().createCompressorInputStream(verifiedInput)).use { archive ->
                 while (true) {
                     val entry = archive.nextEntry ?: break
                     val relativeName = entry.name.removePrefix("$archiveRoot/")

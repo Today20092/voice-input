@@ -64,6 +64,26 @@ Cohere download and recognition, history improvements, and the popup were manual
 
 ## Model downloads
 
+### Phonon 2 experimental option
+
+Phonon 2 produces English text after Stop, including punctuation and capitalization.
+It uses a separate pinned [phonon-2-c runtime](https://github.com/eschmidbauer/phonon-2-c)
+and [repackaged five-value weights](https://huggingface.co/eschmidbauer/phonon-2-c).
+The model card uses the same download, selection, deletion and Details controls as
+the other models. Orukeet remains the default.
+
+The download is 186.6 MB and the installed files total 255.4 MB. Allow at least
+442.1 MB free for installation; runtime RAM is additional. The publisher's 164 MB
+figure describes its original archive, not this app's package.
+
+The runtime uses four CPU threads, selects ARM dot-product instructions only on
+supported hardware, and otherwise uses the baseline ARM64 implementation.
+Phonon is experimental: Android speed, memory use and accuracy have not been
+verified. The publisher's benchmarks do not measure this app. Long recordings
+use the runtime's pause-based windows, and cancellation waits for an in-flight
+native decode to finish before releasing its model. Compare short recordings
+against Redux and Orukeet before relying on it.
+
 Models download separately into app-private storage. The normal APK does not bundle weights. Network access is needed for the initial download; recognition then works offline. S1-mini is a separate optional download.
 
 - **Orukeet:** about 487 MB to download and 672 MB installed. Allow about 1.16 GB free during installation for the archive and extracted files. Interrupted downloads can resume when the server supports byte ranges.

@@ -41,7 +41,7 @@ class ModelPresentationTest {
             "Transcription", "Languages", "Language selection", "Download size", "Model size",
             "Status", "Performance class", "Source", "License/attribution", "Version", "Model files"
         )
-        assertEquals(20, presentations.size)
+        assertEquals(21, presentations.size)
         assertEquals(presentations.size, presentations.map { it.description }.distinct().size)
         presentations.forEach { presentation ->
             assertEquals(presentation.title, labels, presentation.fields.map { it.first }.take(labels.size))

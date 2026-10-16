@@ -33,6 +33,7 @@ class HarperEnglishGateTest {
 
     @Test fun onlyEnglishOnlyProfilesAreImplicitlyEligible() {
         assertTrue(accepts(SpeechBackendType.Moonshine))
+        assertTrue(accepts(SpeechBackendType.Phonon))
         assertTrue(accepts(SpeechBackendType.ParakeetUnified))
         assertTrue(accepts(SpeechBackendType.Nemotron, profile = "streaming"))
         assertTrue(accepts(SpeechBackendType.WhisperGGML))
