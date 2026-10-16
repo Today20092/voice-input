@@ -336,6 +336,7 @@ fun ColumnScope.RecognizeModelDownloadRequired(body: String, onDownload: () -> U
 }
 
 abstract class RecognizerView {
+    protected open val liveBenchmarkSession: org.futo.voiceinput.benchmark.LiveBenchmarkSession? get() = null
     protected open val compact: Boolean = false
     private var shouldPlaySounds = ENABLE_SOUND.default
     private var shouldBeVerbose = VERBOSE_PROGRESS.default
@@ -465,12 +466,14 @@ abstract class RecognizerView {
                 manager.sendAccessibilityEvent(event)
 
             }
+            val benchmarkSession = liveBenchmarkSession
             val accepted = try {
                 sendResult(result, detectedLanguage)
             } catch (error: Exception) {
                 report?.event(org.futo.voiceinput.diagnostics.DiagnosticEvent.DELIVERY_REJECTED, error = error)
                 throw error
             }
+            benchmarkSession?.delivered(result, accepted)
             // sendResult may synchronously reset the recognizer while returning to the previous IME.
             report?.end(if (accepted) org.futo.voiceinput.diagnostics.DiagnosticEvent.DELIVERY_ACCEPTED
                 else org.futo.voiceinput.diagnostics.DiagnosticEvent.DELIVERY_REJECTED)
@@ -480,6 +483,7 @@ abstract class RecognizerView {
         }
 
         override fun failed(error: Throwable) {
+            liveBenchmarkSession?.failure("Recognition or delivery failed (${error.javaClass.simpleName})")
             presentation = presentation.end()
             diagnostics?.end(org.futo.voiceinput.diagnostics.DiagnosticEvent.SESSION_FAILED, error)
             Log.e("RecognizerView", "Recognition did not produce a result", error)
@@ -686,7 +690,9 @@ abstract class RecognizerView {
         cancelSoundId = soundPool.load(this.context, R.raw.cancel, 0)
 
         lifecycleScope.launch {
+            recognizer.liveBenchmarkSession = liveBenchmarkSession
             loadSettings()
+            if (liveBenchmarkSession != null) { shouldRequestLanguage = false; languages = setOf("en") }
 
             if(shouldRequestLanguage && (languages.size > 1)) {
                 setContent {

@@ -91,13 +91,23 @@ class RecognitionModelLifecycle(
 
     fun downloadDirectory(model: RecognitionModel): File = store.stagingDirectory(model)
 
-    suspend fun acquireSession(model: RecognitionModel): AutoCloseable = runtimeMutex.withLock {
+    suspend fun acquireSession(model: RecognitionModel?): AutoCloseable = runtimeMutex.withLock {
+        check(!benchmarkOwned) { "Model comparison is running. Cancel it before dictation." }
         val token = Any()
-        synchronized(activeSessions) { activeSessions[token] = model.id }
+        synchronized(activeSessions) { activeSessions[token] = model?.id ?: "whisper_ggml" }
         AutoCloseable {
             synchronized(activeSessions) { activeSessions.remove(token) }
             runtimeChanges.update { it + 1 }
         }
+    }
+
+    suspend fun acquireBenchmark(): AutoCloseable = runtimeMutex.withLock {
+        check(!benchmarkOwned && activeRuntimes.isEmpty() && synchronized(activeSessions) { activeSessions.isEmpty() }) {
+            "Dictation or another comparison is active. Finish it before comparing models."
+        }
+        releaseParakeetArtifacts("parakeet")
+        benchmarkOwned = true
+        AutoCloseable { benchmarkOwned = false; runtimeChanges.update { it + 1 } }
     }
 
     private fun modelInUse(model: RecognitionModel): Boolean =
@@ -112,7 +122,7 @@ class RecognitionModelLifecycle(
                 val revision = runtimeChanges.value
                 val activated = runtimeMutex.withLock {
                     currentCoroutineContext().ensureActive()
-                    if (modelInUse(model)) false else {
+                    if (benchmarkOwned || modelInUse(model)) false else {
                         val wasInstalled = store.installedVersion(model) != null
                         releaseRuntimeArtifacts(model)
                         store.activateStaged(model)
@@ -136,6 +146,7 @@ class RecognitionModelLifecycle(
     )
 
     fun select(model: RecognitionModel, updateSelection: (RecognitionModelSelection) -> Unit) {
+        check(!benchmarkOwned) { "Model comparison is running" }
         check(isReady(model)) { "${model.displayName} is not installed" }
         updateSelection(selectionFor(model))
         publishChange()
@@ -144,6 +155,7 @@ class RecognitionModelLifecycle(
     suspend fun delete(model: RecognitionModel, selectedModelId: String?) {
         try {
             runtimeMutex.withLock {
+                check(!benchmarkOwned) { "Model comparison is running" }
                 check(!modelInUse(model)) { "Model is in use by dictation" }
                 store.delete(model, selectedModelId, ::releaseRuntimeArtifacts)
             }
@@ -191,13 +203,15 @@ class RecognitionModelLifecycle(
 
     internal suspend fun acquireRuntime(
         selection: RecognitionModelSelection,
+        preserveInstallation: Boolean = false,
         load: suspend (RecognitionModelReadiness?) -> SpeechBackend
     ): SpeechBackend = runtimeMutex.withLock {
+        check(!benchmarkOwned) { "Model comparison is running. Cancel it before dictation." }
         val readiness = readiness(selection)
         val backend = try {
             load(readiness)
         } catch (failure: Exception) {
-            if (failure !is CancellationException) {
+            if (!preserveInstallation && failure !is CancellationException) {
                 readiness?.installedModel?.let(::invalidateInstallation)
             }
             throw failure
@@ -224,6 +238,7 @@ class RecognitionModelLifecycle(
     }
 
     companion object {
+        @Volatile private var benchmarkOwned = false
         private val runtimeMutex = Mutex()
         private val activeRuntimes = mutableMapOf<SpeechBackend, String>()
         private val activeSessions = mutableMapOf<Any, String>()

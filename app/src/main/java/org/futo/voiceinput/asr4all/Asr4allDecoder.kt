@@ -94,7 +94,14 @@ internal class Asr4allDecoder(directory: File, geometry: JSONObject) : SherpaStr
     private var caches = inputs.drop(1).map { it.zeros() }
     private var pcm = FloatArray(0)
     private var readOffset = 0
-    private val pcec = Pcec()
+    private var pcec = Pcec()
+
+    override fun reset() {
+        caches = inputs.drop(1).map { it.zeros() }
+        pcm = FloatArray(0)
+        readOffset = 0
+        pcec = Pcec()
+    }
 
     init {
         try {

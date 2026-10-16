@@ -166,6 +166,8 @@ class VoiceInputMethodService : InputMethodService(), LifecycleOwner, ViewModelS
     }
 
     private val recognizer = object : RecognizerView() {
+        override val liveBenchmarkSession get() = org.futo.voiceinput.benchmark.LiveBenchmark.forEntry(
+            "ime", currentInputEditorInfo?.packageName == packageName)
         override val compact: Boolean = true
         override val context: Context
             get() = this@VoiceInputMethodService

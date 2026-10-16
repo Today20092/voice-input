@@ -28,6 +28,7 @@ internal interface CohereDecoder {
 }
 
 class CohereBackend internal constructor(
+    private val languageOverride: String? = null,
     private val decoderFactory: (File, String) -> CohereDecoder = { directory, language ->
         SherpaCohereDecoder(directory, language)
     }
@@ -43,7 +44,7 @@ class CohereBackend internal constructor(
     override suspend fun load(context: Context) {
         val store = RecognitionModelStore(context.filesDir)
         load(store.modelDirectory(RecognitionModelCatalog.cohereTranscribe),
-            context.getSetting(COHERE_LANGUAGE))
+            languageOverride ?: context.getSetting(COHERE_LANGUAGE))
     }
 
     internal suspend fun load(directory: File, language: String) = withContext(Dispatchers.IO) {

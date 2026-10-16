@@ -3,6 +3,7 @@
     xmlns:tools="http://schemas.android.com/tools" >
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
@@ -32,6 +33,14 @@
             android:name=".history.AudioHistoryCleanupService"
             android:permission="android.permission.BIND_JOB_SERVICE"
             android:exported="false" />
+        <activity
+            android:name=".benchmark.LiveComparisonActivity"
+            android:exported="false"
+            android:theme="@style/Theme.WhisperVoiceInput" />
+        <activity
+            android:name=".benchmark.ModelComparisonActivity"
+            android:exported="false"
+            android:theme="@style/Theme.WhisperVoiceInput" />
         <activity
             android:name=".RecognizeActivity"
             android:exported="true"

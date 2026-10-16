@@ -65,6 +65,7 @@ import org.futo.voiceinput.recognition.RecognitionModel
 import org.futo.voiceinput.recognition.RecognitionModelLifecycle
 import org.futo.voiceinput.recognition.RecognitionModelSelection
 import org.futo.voiceinput.recognition.RecognitionRuntimeCallbacks
+import org.futo.voiceinput.recognition.loadOrCloseOnFailure
 import org.futo.voiceinput.s1.S1MiniCleanupResult
 import org.futo.voiceinput.s1.S1MiniDiagnostics
 import org.futo.voiceinput.s1.S1MiniTranscriptCleaner
@@ -156,6 +157,7 @@ internal class StreamingAudioReplay {
 }
 
 abstract class RecordingSession {
+    internal var liveBenchmarkSession: org.futo.voiceinput.benchmark.LiveBenchmarkSession? = null
     protected var diagnostics: DiagnosticSession? = null
         private set
     private var diagnosticSamplingJob: Job? = null
@@ -176,6 +178,7 @@ abstract class RecordingSession {
     }
 
     private fun failRecognition(error: Throwable, generation: Long) {
+        liveBenchmarkSession?.failure("Recognition failed (${error.javaClass.simpleName})")
         if (generation != recognitionGeneration) return
         // End capture without clearing retained samples/history or restarting the utterance.
         cancelCapture()
@@ -333,6 +336,7 @@ abstract class RecordingSession {
     }
 
     fun cancelRecognizer() {
+        liveBenchmarkSession?.failure("Reading cancelled")
         println("Cancelling recognition")
         diagnostics?.end(DiagnosticEvent.SESSION_CANCELLED)
         reset()
@@ -479,13 +483,22 @@ abstract class RecordingSession {
         val loadStarted = SystemClock.elapsedRealtime()
         report?.event(DiagnosticEvent.MODEL_LOAD_STARTED)
         try {
-            val selection = RecognitionModelSelection(
+            val selection = liveBenchmarkSession?.selection ?: RecognitionModelSelection(
                 runtimeId = context.getSetting(SPEECH_BACKEND),
                 moonshineVariantId = context.getSetting(MOONSHINE_MODEL_VARIANT),
                 nemotronVariantId = context.getSetting(NEMOTRON_PROFILE),
                 asr4allVariantId = context.getSetting(ASR4ALL_VARIANT)
             )
-            val loadedBackend = loadBackend(
+            val loadedBackend = if (liveBenchmarkSession != null) {
+                modelLifecycle.acquireRuntime(selection, preserveInstallation = true) {
+                    val independent = liveBenchmarkSession!!.model.backend(context, onPartial = { text ->
+                        if (text.isNotBlank()) liveBenchmarkSession?.milestone("firstPartial")
+                        lifecycleScope.launch(Dispatchers.Main) { partialResult(text) }
+                    })
+                    independent.loadOrCloseOnFailure { load(context) }
+                    independent
+                }
+            } else loadBackend(
                 context,
                 selection,
                 RecognitionRuntimeCallbacks(
@@ -568,15 +581,15 @@ abstract class RecordingSession {
         loading()
 
         lifecycleScope.launch {
-            val backendType = context.getSetting(SPEECH_BACKEND).toSpeechBackendType()
+            val backendType = (liveBenchmarkSession?.selection?.runtimeId ?: context.getSetting(SPEECH_BACKEND)).toSpeechBackendType()
             diagnostics?.end(DiagnosticEvent.SESSION_RESET)
             diagnosticSamplingJob?.cancel()
-            personalVocabulary = context.getSetting(PERSONAL_DICTIONARY)
+            personalVocabulary = if (liveBenchmarkSession != null) "" else context.getSetting(PERSONAL_DICTIONARY)
             val readiness = RecognitionModelLifecycle.create(
                 context.filesDir,
                 BuildConfig.BUNDLE_PARAKEET_MODEL
             ).readiness(
-                RecognitionModelSelection(
+                liveBenchmarkSession?.selection ?: RecognitionModelSelection(
                     runtimeId = backendType.id,
                     moonshineVariantId = context.getSetting(MOONSHINE_MODEL_VARIANT),
                     nemotronVariantId = context.getSetting(NEMOTRON_PROFILE),
@@ -613,7 +626,8 @@ abstract class RecordingSession {
                     backendType == SpeechBackendType.Moonshine
             )
             if (backendType == SpeechBackendType.WhisperGGML) {
-                    val requiredModels = context.selectedWhisperModelsForCurrentSettings(forcedLanguage)
+                    val requiredModels = liveBenchmarkSession?.model?.whisper?.let { listOf(it) }
+                        ?: context.selectedWhisperModelsForCurrentSettings(forcedLanguage)
                     selectedModelName = requiredModels.joinToString(" / ") {
                         it.name.substringBefore(" (")
                     }
@@ -660,7 +674,10 @@ abstract class RecordingSession {
     private fun startRecordingWithModelSession() {
         val generation = recognitionGeneration
         lifecycleScope.launch {
-            val lease = selectedManagedModel?.let { modelLifecycle.acquireSession(it) }
+            val lease = try { modelLifecycle.acquireSession(selectedManagedModel) } catch (failure: Exception) {
+                failRecognition(failure, generation)
+                return@launch
+            }
             val current = synchronized(this@RecordingSession) {
                 if (generation != recognitionGeneration || modelSession != null) false else {
                     lease?.let { modelSession = generation to it }
@@ -743,10 +760,15 @@ abstract class RecordingSession {
             recorderJob = lifecycleScope.launch {
                 withContext(Dispatchers.Default) {
                     canExpandSpace = context.getSetting(ENABLE_30S_LIMIT) == false
-                    val backendType = context.getSetting(SPEECH_BACKEND).toSpeechBackendType()
+                    val backendType = (liveBenchmarkSession?.selection?.runtimeId ?: context.getSetting(SPEECH_BACKEND)).toSpeechBackendType()
                     val shouldUseVad = context.getSetting(IS_VAD_ENABLED) &&
                         (backendType != SpeechBackendType.Parakeet || context.getSetting(PARAKEET_USE_VAD))
                     val endOfSpeechProfile = context.getSetting(END_OF_SPEECH_PROFILE).toEndOfSpeechProfile()
+                    liveBenchmarkSession?.configuration(mapOf(
+                        "vadEnabled" to shouldUseVad.toString(), "endOfSpeechProfile" to endOfSpeechProfile.toString(),
+                        "durationLimit" to if (canExpandSpace) "180 seconds for benchmark" else "30 seconds",
+                        "cleanup" to "disabled; ASR4ALL inseparable built-in processing disclosed",
+                        "language" to "en", "personalVocabulary" to "disabled"))
 
                     var hasTalked = false
                     var anyNoiseAtAll = false
@@ -771,7 +793,7 @@ abstract class RecordingSession {
                     val capture = try {
                         val store = context.audioHistory()
                         store.purge(context.getSetting(AUDIO_HISTORY_RETENTION_HOURS))
-                        if (context.getSetting(AUDIO_HISTORY_ENABLED)) store.begin() else null
+                        if (liveBenchmarkSession == null && context.getSetting(AUDIO_HISTORY_ENABLED)) store.begin() else null
                     } catch (error: CancellationException) {
                         throw error
                     } catch (error: Exception) {
@@ -822,6 +844,7 @@ abstract class RecordingSession {
                                 while(remainingSamples > 0) {
                                     if(!vadSampleBuffer.hasRemaining()) {
                                         val isSpeech = vad.isSpeech(vadSampleBuffer.array())
+                                        if (isSpeech) liveBenchmarkSession?.speech()
                                         vadSampleBuffer.clear()
                                         vadSampleBuffer.rewind()
 
@@ -966,6 +989,7 @@ abstract class RecordingSession {
             // TODO: We could check if the model exists before doing all this work
             loadModel()
 
+            liveBenchmarkSession?.milestone("recordingStarted")
             recordingStarted()
         } catch(e: SecurityException){
             report?.event(DiagnosticEvent.RECORDER_FAILED, error = e)
@@ -1000,6 +1024,10 @@ abstract class RecordingSession {
             stopReason = StopReason.DurationLimit
             return AppendResult.DurationLimit
         }
+        if (liveBenchmarkSession != null && floatSamples.position() + nRead > 16000 * 180) {
+            stopReason = StopReason.DurationLimit
+            return AppendResult.DurationLimit
+        }
 
         val streamingChunk = if (streamingAudio.isEnabled()) FloatArray(nRead) else null
         for(i in 0 until nRead) {
@@ -1023,6 +1051,7 @@ abstract class RecordingSession {
                 lifecycleScope.launch {
                     withContext(Dispatchers.Main) {
                         if (streamGeneration == recognitionGeneration) {
+                            if (result.isNotBlank()) liveBenchmarkSession?.milestone("firstPartial")
                             partialResult(PersonalVocabulary.apply(result, personalVocabulary))
                         }
                     }
@@ -1146,7 +1175,7 @@ abstract class RecordingSession {
         runBackend ?: throw IllegalStateException("Model did not load for this recognition")
 
         val finalStopReason = stopReason
-        val backendType = context.getSetting(SPEECH_BACKEND).toSpeechBackendType()
+        val backendType = (liveBenchmarkSession?.selection?.runtimeId ?: context.getSetting(SPEECH_BACKEND)).toSpeechBackendType()
         val vadEnabled = context.getSetting(IS_VAD_ENABLED) &&
             (backendType != SpeechBackendType.Parakeet || context.getSetting(PARAKEET_USE_VAD))
         val floatArray = floatSamples.array().sliceArray(0 until floatSamples.position())
@@ -1173,6 +1202,8 @@ abstract class RecordingSession {
                 mapOf(DiagnosticMetric.AUDIO_MS to floatArray.size.toLong() * 1000 / AUDIO_SAMPLE_RATE))
             val rawText = (runBackend as? StreamingSpeechBackend)?.finishStreaming()
                 ?: runBackend.transcribe(floatArray)
+            liveBenchmarkSession?.raw(rawText)
+            if (liveBenchmarkSession != null) return@run rawText
             report?.event(DiagnosticEvent.RECOGNITION_FINISHED, mapOf(
                 DiagnosticMetric.DURATION_MS to SystemClock.elapsedRealtime() - recognitionStarted,
                 DiagnosticMetric.CHARACTERS to rawText.length.toLong()))
@@ -1295,6 +1326,8 @@ abstract class RecordingSession {
         }
         diagnostics?.event(DiagnosticEvent.RECORDING_STOPPED, mapOf(
             DiagnosticMetric.STOP_REASON to (stopReason?.ordinal ?: -1).toLong()))
+        liveBenchmarkSession?.milestone("captureStopped")
+        if (stopReason == StopReason.Manual) liveBenchmarkSession?.milestone("stopPressed")
 
         processing()
 

@@ -79,6 +79,7 @@ const val EXTRA_COMPLETION_MARKER = "completion_marker"
 const val EXTRA_DOWNLOAD_SOURCE = "download_source"
 const val EXTRA_REQUIRED_FREE_SPACE = "required_free_space"
 const val EXTRA_MODEL_ID = "recognition_model_id"
+const val EXTRA_PRESERVE_MODEL_SELECTION = "preserve_model_selection"
 const val EXTRA_MODEL_VERSION = "recognition_model_version"
 const val EXTRA_ARCHIVE_NAME = "recognition_model_archive_name"
 const val EXTRA_ARCHIVE_URL = "recognition_model_archive_url"
@@ -438,6 +439,16 @@ class DownloadActivity : ComponentActivity() {
         }
     }
 
+    internal fun startBenchmarkDownload(): Boolean {
+        check(BuildConfig.DEBUG && intent.getBooleanExtra(EXTRA_PRESERVE_MODEL_SELECTION, false))
+        if (!::modelsToDownload.isInitialized || isDownloading || confirmation?.hasEnoughSpace == false) return false
+        startDownload()
+        return true
+    }
+
+    internal fun benchmarkDownloadFailed(): Boolean =
+        ::modelsToDownload.isInitialized && modelsToDownload.any { it.error }
+
     private fun startConfirmedDownload() {
         diagnosticDownload?.end(DiagnosticEvent.DOWNLOAD_CANCELLED)
         diagnosticDownload = AppDiagnostics.session(managedModel?.id ?: if (
@@ -624,7 +635,9 @@ class DownloadActivity : ComponentActivity() {
                     }
                     managedModel?.let { model ->
                         withContext(Dispatchers.Main) { activationPending = true }
-                        modelLifecycle.activateInstallation(model, ::updateRecognitionModelSelection)
+                        modelLifecycle.activateInstallation(model) { selection ->
+                            if (!intent.getBooleanExtra(EXTRA_PRESERVE_MODEL_SELECTION, false)) updateRecognitionModelSelection(selection)
+                        }
                     } ?: completionMarker?.let { marker ->
                         marker.parentFile?.mkdirs()
                         marker.writeText(

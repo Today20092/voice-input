@@ -41,6 +41,12 @@ fun AdvancedScreen(
     ScrollableList {
         ScreenTitle(title = stringResource(id = R.string.advanced_settings), showBack = true, navController = navController)
 
+        NavigationItem(
+            title = "Model comparison",
+            style = NavigationItemStyle.Misc,
+            navigate = { context.startActivity(android.content.Intent(context, org.futo.voiceinput.benchmark.ModelComparisonActivity::class.java)) }
+        )
+
         SettingToggleDataStore(
             stringResource(R.string.unobtrusive_recognizer),
             UNOBTRUSIVE_RECOGNIZER,

@@ -432,7 +432,7 @@ suspend fun Context.getLanguageModelMap(): Map<String, ModelData> {
 
     val map = hashMapOf<String, ModelData>()
     languages.forEach {
-        if(it == "en") {
+        if(it == "en" && useLanguageSpecificModels) {
             map[it] = ENGLISH_MODELS[englishModelIdx]
         } else {
             map[it] = MULTILINGUAL_MODELS[modelIdx]
@@ -457,7 +457,7 @@ suspend fun Context.selectedWhisperModelsForCurrentSettings(forceLanguage: Strin
 
     val selected = if (forceLanguage != null) {
         listOf(
-            if (forceLanguage == "en") {
+            if (forceLanguage == "en" && (!isMultilingual || useLanguageSpecificModels)) {
                 ENGLISH_MODELS[englishModelIdx]
             } else {
                 MULTILINGUAL_MODELS[multilingualModelIdx]
