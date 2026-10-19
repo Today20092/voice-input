@@ -71,9 +71,11 @@ final def translationsWithoutEngValues = { final String path ->
     destDir
 }
 
+def modelFileName = "asr4all-m-gptq-Q8_0.gguf"
+def expectedModelChecksum = "5791f76d0f010885f36aa4b93e1d560fef0c8416004c97a843e9c5d640a036d0"
+
 def assetsDir = "$projectDir/src/main/assets"
-def modelFile = new File("$assetsDir/asr4all-m-Q8_0-v2.gguf")
-def expectedModelChecksum = "3894142e1dbea2e47a88decc8c3c022d1eb1b1d650792d00e2dce5cf1867b055"
+def modelFile = new File("$assetsDir/$modelFileName")
 
 def calculateSha256(File file) {
     def digest = MessageDigest.getInstance("SHA-256")
@@ -88,7 +90,7 @@ def calculateSha256(File file) {
 }
 
 tasks.register("downloadModel") {
-    def sourceUrl = "https://dl.voiceinput.futo.org/VoiceInput/asr4all-m-Q8_0-v2.gguf"
+    def sourceUrl = "https://dl.voiceinput.futo.org/VoiceInput/$modelFileName"
 
     outputs.file(modelFile)
 
