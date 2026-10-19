@@ -1,5 +1,7 @@
 package org.futo.voiceinput.shared.whisper
 
+import android.util.Log
+import androidx.collection.LruCache
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.coroutineScope
@@ -29,6 +31,83 @@ data class DecodingConfiguration(
     val suppressSymbols: Boolean,
     val tier: Int,
 )
+
+private fun<T> MutableSet<T>.flatMapInPlace(transformator: (T) -> Iterable<T>) {
+    val result = flatMap(transformator)
+    clear()
+    addAll(result)
+}
+
+object GlossaryProcessor {
+    private val cache = LruCache<String, Glossary>(6)
+    class Glossary(val compiledWords: String, private val transformationRules: List<Pair<Regex, String>>) {
+        fun processResult(result: String) =
+            transformationRules.fold(result) { v, rule -> rule.first.replace(v, rule.second) }
+    }
+
+    fun compileGlossary(model: ModelLoader, languages: Set<Language>, words: List<String>): Glossary {
+        val cacheKey = words.joinToString("\n") + model.caps.requiresPersonalDictSpecialCharacterProcessing + languages
+        return cache[cacheKey] ?: run {
+            val transformationRules = mutableListOf<Pair<Regex, String>>()
+            val compiledWords = buildString {
+                for (word in words) {
+                    val transformedWords = mutableSetOf(word)
+                    if (Language.English in languages && model.caps.requiresPersonalDictSpecialCharacterProcessing) {
+                        val rules = listOf(
+                            "@" to setOf("at"),
+                            "." to setOf("dot"), // period?
+                            "/" to setOf("slash", "or"),
+                            "+" to setOf("plus"),
+                            "-" to setOf("minus", "dash", ""),
+                            ":" to setOf("colon"),
+                            "0" to setOf("zero"),
+                            "1" to setOf("one"),
+                            "2" to setOf("two"),
+                            "3" to setOf("three"),
+                            "4" to setOf("four"),
+                            "5" to setOf("five"),
+                            "6" to setOf("six"),
+                            "7" to setOf("seven"),
+                            "8" to setOf("eight"),
+                            "9" to setOf("nine")
+                        )
+
+                        rules.forEach { (character, replacements) ->
+                            if (transformedWords.any { character in it }) {
+                                transformedWords.flatMapInPlace {
+                                    replacements.map { substitution ->
+                                        it.replace(
+                                            character,
+                                            " $substitution "
+                                        ).replace("  ", " ").trim()
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    transformedWords.forEach {
+                        append(it)
+                        append('\n')
+
+                        // PCEC may insert punctuation in long stuff like "Adamson one, two, three at Gmail dot com"
+                        // so this evil regex is needed to fix it
+                        if (it != word || it.any(Char::isUpperCase) || it.contains(' '))
+                            transformationRules.add(
+                                it.replace(" ", "[\\.,\\?!\\s]+")
+                                    .toRegex(RegexOption.IGNORE_CASE) to word
+                            )
+                    }
+                }
+            }
+
+            val glossary = Glossary(compiledWords, transformationRules)
+            cache.put(cacheKey, glossary)
+
+            glossary
+        }
+    }
+}
 
 class MultiModelRunner(
     private val modelManager: ModelManager
@@ -64,21 +143,23 @@ class MultiModelRunner(
         val allowedLanguages = decodingConfiguration.languages.map { it.toWhisperString() }.toTypedArray()
         val bailLanguages = runConfiguration.languageSpecificModels.filter { it.value != runConfiguration.primaryModel }.keys.map { it.toWhisperString() }.toTypedArray()
 
-        val glossary = if(decodingConfiguration.glossary.isNotEmpty()) {
-            "(Glossary: " + decodingConfiguration.glossary.joinToString(separator = ", ") + ")"
-        } else {
-            ""
-        }
+        val glossary = GlossaryProcessor.compileGlossary(
+            runConfiguration.primaryModel,
+            decodingConfiguration.languages,
+            decodingConfiguration.glossary
+        )
+
+        //Log.d("MultiModelRunner", "glossary: ${glossary.compiledWords}")
 
         val result = try {
             callback.updateStatus(InferenceState.Encoding)
             primaryModel.infer(
                 sampleFlow = sampleFlow,
-                prompt = glossary,
+                prompt = glossary.compiledWords,
                 languages = allowedLanguages,
                 bailLanguages = bailLanguages,
                 partialResultCallback = {
-                    callback.partialResult(it)
+                    callback.partialResult(glossary.processResult(it))
                 },
                 tier = decodingConfiguration.tier,
             )
@@ -92,17 +173,17 @@ class MultiModelRunner(
             val remainder = sampleFlow.toList()
             specificModel.infer(
                 sampleFlow = (listOf(e.samples) + remainder).asFlow(),
-                prompt = glossary,
+                prompt = glossary.compiledWords,
                 languages = arrayOf(e.language),
                 bailLanguages = arrayOf(),
                 partialResultCallback = {
-                    callback.partialResult(it)
+                    callback.partialResult(glossary.processResult(it))
                 },
                 tier = 3,//decodingConfiguration.tier,
             )
         }
 
-        return@coroutineScope result
+        return@coroutineScope glossary.processResult(result)
     }
 
     fun cancelAll() {

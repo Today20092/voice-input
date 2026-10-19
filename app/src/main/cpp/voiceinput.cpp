@@ -182,6 +182,7 @@ static jstring WhisperGGML_infer(JNIEnv *env, jobject instance, jlong handle, jf
 
     std::string language_hint = languageArrayToMergedString(env, languages, &capabilities);
     std::string bail_language_hint = languageArrayToMergedString(env, bail_languages, &capabilities);
+    std::string prompt_str;
 
     if(strcmp(transcribe_model_arch_string(transcribe_get_model(state->session)),
             "parakeet") == 0) {
@@ -222,10 +223,16 @@ static jstring WhisperGGML_infer(JNIEnv *env, jobject instance, jlong handle, jf
 
         wp.audio_ctx = std::max(160, std::min(1500, (int)ceil((double)num_samples / (double)(320.0)) + 32));
 
-        std::string prompt_str;
         if(prompt) {
-            prompt_str = jstring2string(env, prompt);
-            if(!prompt_str.empty()) {
+            auto p = jstring2string(env, prompt);
+            if(!p.empty()) {
+                prompt_str.append("(Glossary: ");
+                for(const char c : p) {
+                    if(c == '\n') prompt_str.append(", ");
+                    else prompt_str.push_back(c);
+                }
+                prompt_str.append(")");
+
                 wp.initial_prompt = prompt_str.c_str();
             }
         }
@@ -276,6 +283,7 @@ static jboolean WhisperGGML_startStream(JNIEnv *env, jobject instance, jlong han
 
     std::string language_hint = languageArrayToMergedString(env, languages, &capabilities);
     std::string bail_language_hint = languageArrayToMergedString(env, bail_languages, &capabilities);
+    std::string prompt_str = prompt ? jstring2string(env, prompt) : "";
 
     if(strcmp(transcribe_model_arch_string(transcribe_get_model(state->session)),
               "parakeet") == 0) {
@@ -312,6 +320,8 @@ static jboolean WhisperGGML_startStream(JNIEnv *env, jobject instance, jlong han
             TRANSCRIBE_EXT_KIND_ASR4ALL_STREAM
     )) {
         transcribe_asr4all_stream_ext_init(&a4ap);
+
+        a4ap.custom_dictionary = prompt_str.empty() ? NULL : prompt_str.c_str();
 
         if(tier <= 0) {
             a4ap.commit_frames = 16;
@@ -365,7 +375,18 @@ static jboolean WhisperGGML_startStream(JNIEnv *env, jobject instance, jlong han
     state->ticker = 0;
     state->inference_time = 0;
 
-    return transcribe_stream_begin(state->session, &r_params, &s_params) == TRANSCRIBE_OK;
+    auto result = transcribe_stream_begin(state->session, &r_params, &s_params) == TRANSCRIBE_OK;
+    if(!result && a4ap.custom_dictionary != NULL && s_params.family == &a4ap.ext) {
+        // needs updated gguf
+        AKLOGE("Failed to start stream with custom dictionary. Retrying with it cleared.");
+        a4ap.custom_dictionary = NULL;
+        result = transcribe_stream_begin(state->session, &r_params, &s_params) == TRANSCRIBE_OK;
+        if(!result) {
+            AKLOGE("Failed anyway.");
+        }
+    }
+
+    return result;
 }
 
 static jboolean WhisperGGML_feedStream(JNIEnv *env, jobject instance, jlong handle, jfloatArray samples_array) {

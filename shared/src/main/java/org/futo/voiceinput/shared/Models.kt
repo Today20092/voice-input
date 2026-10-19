@@ -25,8 +25,9 @@ val WhisperMultiCapabilities = ModelCapabilities(
 val Asr4AllCapabilities = ModelCapabilities(
     supportedLanguages = setOf(Language.English),
     supportsLanguageDetection = false,
-    supportsPersonalDict = false,
+    supportsPersonalDict = true,
     supportsStreaming = true,
+    requiresPersonalDictSpecialCharacterProcessing = true,
 )
 
 private val Nemotron600M = ModelDownloadable(
@@ -80,22 +81,22 @@ val ENGLISH_MODELS: List<ModelLoader> = listOf(
     ),
     ModelDownloadable(
         name = R.string.asr4all_s_name,
-        ggmlFile = "asr4all-s-Q8_0-v2.gguf",
-        checksum = "9c9cd8f8510a15f676df35f864009970ba073a0aa6d68caa36129c8b928dcb0c",
+        ggmlFile = "asr4all-s-gptq-Q8_0.gguf",
+        checksum = "812674fe5865136a5404c52c4f551da454e5d90d520ef770b7ca925f5babcddb",
         caps = Asr4AllCapabilities.copy(paramCount = 28),
-        backwardsCompatFiles = listOf("asr4all-s-Q8_0.gguf"),
+        backwardsCompatFiles = listOf("asr4all-s-Q8_0.gguf", "asr4all-s-Q8_0-v2.gguf"),
     ),
     ModelBuiltInAsset(
         name = R.string.asr4all_m_name,
-        ggmlFile = "asr4all-m-Q8_0-v2.gguf",
+        ggmlFile = "asr4all-m-gptq-Q8_0.gguf",
         caps = Asr4AllCapabilities.copy(paramCount = 56),
     ),
     ModelDownloadable(
         name = R.string.asr4all_l_name,
-        ggmlFile = "asr4all-l-Q8_0-v2.gguf",
-        checksum = "698f7c97522f8ff991c48e8dd614b6cdceddd288e230726a240d90e00f72876c",
+        ggmlFile = "asr4all-l-gptq-Q8_0.gguf",
+        checksum = "d2bdc25d4bda36a611dc17b4cb0c562a43ab2b2d4cc62294dcac6a8b9232e2d4",
         caps = Asr4AllCapabilities.copy(paramCount = 97),
-        backwardsCompatFiles = listOf("asr4all-s-Q8_0.gguf"),
+        backwardsCompatFiles = listOf("asr4all-l-Q8_0.gguf", "asr4all-l-Q8_0-v2.gguf"),
     ),
     ModelDownloadable(
         name = R.string.parakeet_110m_name,

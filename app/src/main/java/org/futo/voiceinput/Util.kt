@@ -252,7 +252,7 @@ fun Context.loadRecognizerSettings(inlinePartialResult: Boolean = false): Recogn
             languageSpecificModels = languageSpecificModels,
         ),
         decodingConfiguration = DecodingConfiguration(
-            glossary = getSetting(PERSONAL_DICTIONARY).split("\n").map { it.trim() }.filter { it.isNotBlank() },
+            glossary = getSetting(PERSONAL_DICTIONARY).split("\n", ", ", ",").map { it.trim() }.filter { it.isNotBlank() },
             languages = languages,
             suppressSymbols = getSetting(DISALLOW_SYMBOLS),
             tier = getSetting(STREAMING_TIER),

@@ -15,6 +15,7 @@ data class ModelCapabilities(
     val isWhisper: Boolean = false,
     val paramCount: Int = 0,
     val banishedToOther: Boolean = false,
+    val requiresPersonalDictSpecialCharacterProcessing: Boolean = false,
 )
 
 enum class ModelPresence {
