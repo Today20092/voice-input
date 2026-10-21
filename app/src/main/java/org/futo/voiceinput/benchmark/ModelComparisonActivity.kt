@@ -132,12 +132,10 @@ class ModelComparisonActivity : ComponentActivity() {
                             color = MaterialTheme.colorScheme.onErrorContainer)
                     }
                 }
-                if (model.busy) ComparisonCard {
-                    ComparisonHeading(if (model.recording) "Recording" else "Comparison in progress")
+                if (model.busy && model.report != null) ComparisonCard {
+                    ComparisonHeading("Comparison in progress")
                     LinearProgressIndicator(Modifier.fillMaxWidth())
                     Text(model.progress, Modifier.semantics { liveRegion = LiveRegionMode.Polite })
-                    if (model.recording) Button(onClick = model::stopRecording, modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary, contentColor = MaterialTheme.colorScheme.onSecondary)) { Text("Stop recording") }
                     OutlinedButton(onClick = model::cancel, modifier = Modifier.fillMaxWidth()) { Text("Cancel comparison") }
                     ComparisonText("Keep this screen open. Cancellation may wait for the current decode; completed measurements are kept.")
                 }
@@ -153,7 +151,9 @@ class ModelComparisonActivity : ComponentActivity() {
                             label = { Text("Passage") }, supportingText = { Text("Optional") },
                             modifier = Modifier.fillMaxWidth(), readOnly = model.busy, maxLines = 6)
                         TextButton(onClick = { showPrompts = true }, enabled = !model.busy) { Text("Choose a passage") }
-                        if (!model.recording) FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp),
+                        if (model.recording) Button(onClick = model::stopRecording, modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary, contentColor = MaterialTheme.colorScheme.onSecondary)) { Text("Stop recording") }
+                        else FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp),
                             maxItemsInEachRow = if (LocalDensity.current.fontScale > 1.3f) 1 else 2) {
                             Button(onClick = {
                                 player?.release(); player = null
@@ -163,6 +163,14 @@ class ModelComparisonActivity : ComponentActivity() {
                                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary, contentColor = MaterialTheme.colorScheme.onSecondary)) { Text("Record") }
                             OutlinedButton(onClick = { importer.launch(arrayOf("audio/*")) },
                                 enabled = !model.busy && model.clips.size < 8, modifier = Modifier.weight(1f).widthIn(min = 128.dp)) { Text("Import audio") }
+                        }
+                        if (model.busy) {
+                            LinearProgressIndicator(Modifier.fillMaxWidth())
+                            Text(model.progress, Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+                                style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            OutlinedButton(onClick = model::cancel, modifier = Modifier.fillMaxWidth()) {
+                                Text(if (model.recording) "Cancel recording" else "Cancel")
+                            }
                         }
                         if (model.clips.isEmpty()) ComparisonText("No recordings yet. Add audio to start a comparison.")
                         else ComparisonText("${model.clips.size} of 8 recordings added. Listen back and check the words below.")

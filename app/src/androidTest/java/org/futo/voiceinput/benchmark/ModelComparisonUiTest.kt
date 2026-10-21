@@ -116,7 +116,10 @@ class ModelComparisonUiTest {
     }
 
     @Test fun errorsAndProgressStayNearTheHeader() = withComparison(DevThemeYellow) { activity, model ->
-        compose.runOnIdle { model.error = "Cannot import audio. Choose another recording."; model.busy = true; model.progress = "Comparing models" }
+        compose.runOnIdle {
+            model.report = BenchmarkReport(clips = emptyList(), selectedModelIds = emptyList(), installedBefore = emptyList())
+            model.error = "Cannot import audio. Choose another recording."; model.busy = true; model.progress = "Comparing models"
+        }
         compose.onNodeWithText("Cannot import audio. Choose another recording.").assertIsDisplayed()
         compose.onNodeWithText("Cancel comparison").performScrollTo().assertIsEnabled()
         capture(activity, "error-progress")
@@ -134,6 +137,27 @@ class ModelComparisonUiTest {
         compose.onNodeWithText("Model comparison").performClick()
         compose.waitUntil(5000) { activity.isFinishing }
     }
+
+    @Test fun recordingKeepsPassageInPlace() = checkRecordingPassagePosition()
+
+    @Test fun recordingKeepsLargeTextPassageInPlace() = checkRecordingPassagePosition(320, 2f)
+
+    private fun checkRecordingPassagePosition(width: Int? = null, fontScale: Float = 1f) =
+        withComparison(DevThemeYellow, width, fontScale) { activity, model ->
+            val passage = compose.onNodeWithText("Passage")
+            passage.performScrollTo()
+            val before = passage.fetchSemanticsNode().boundsInRoot
+            compose.runOnIdle { model.busy = true }
+            assertEquals(before, passage.fetchSemanticsNode().boundsInRoot)
+            compose.runOnIdle {
+                model.recording = true
+                model.progress = "Recording. Stop after reading the passage. Limit: 180 seconds."
+            }
+            assertEquals(before, passage.fetchSemanticsNode().boundsInRoot)
+            capture(activity, "recording-passage")
+            compose.onNodeWithText("Stop recording").performScrollTo().assertIsEnabled().performClick()
+            compose.runOnIdle { assertFalse(model.recording); model.busy = false }
+        }
 
     @Test fun whistleSelectionRequiresAudioAndASupportedLanguage() = withComparison(DevThemeYellow) { activity, model ->
         compose.runOnIdle { model.selected = emptySet(); model.language = "fr" }
