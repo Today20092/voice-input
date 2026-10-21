@@ -28,6 +28,7 @@ object HarperEnglishGate {
             SpeechBackendType.Orukeet, SpeechBackendType.Parakeet,
             SpeechBackendType.ParakeetRedux -> explicitlyEnglish
             SpeechBackendType.Cohere -> false // Its backend supplies the selected language.
+            SpeechBackendType.Whistle -> false // English requires a detected language.
         }
     }
 

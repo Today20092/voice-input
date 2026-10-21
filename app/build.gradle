@@ -57,8 +57,8 @@ android {
         applicationId "org.futo.voiceinput"
         minSdk 26
         targetSdk 35
-        versionCode 72
-        versionName "1.4.7-beta.3"
+        versionCode 73
+        versionName "1.4.7-beta.4"
         buildConfigField "boolean", "BUNDLE_PARAKEET_MODEL", bundleParakeetModel.toString()
         buildConfigField "String", "S1_LLAMA_COMMIT", '"b19cbe925be361d229f0fe03435affe4a2717f37"'
         buildConfigField "String", "GIT_REVISION", '"' + gitShortHash + '"'
@@ -183,6 +183,7 @@ android {
     sourceSets {
         main {
             jniLibs.srcDirs 'src/main/jniLibs'
+            jniLibs.srcDir layout.buildDirectory.dir('generated/whistleJni')
         }
 
         dev {
@@ -390,8 +391,32 @@ tasks.register('downloadParakeetModels') {
 }
 
 tasks.named('preBuild') {
+    dependsOn 'downloadWhistleRuntime'
     if (bundleParakeetModel) {
         dependsOn tasks.named('downloadParakeetModels')
+    }
+}
+
+tasks.register('downloadWhistleRuntime') {
+    description = 'Fetch the pinned Whistle ARM64 runner (packaged as an executable native library)'
+    def destination = layout.buildDirectory.file('generated/whistleJni/arm64-v8a/libwhistle_runner.so')
+    outputs.file destination
+    outputs.upToDateWhen { false }
+    doLast {
+        def target = destination.get().asFile
+        def expected = '02a044e15489e19fa9f4f1cd1d5943d39dc0eefc08e0ba99d36279daf2351d46'
+        if (target.exists() && sha256(target) == expected) return
+        target.parentFile.mkdirs()
+        def temporary = new File(target.parentFile, 'needle.download')
+        try {
+            def curl = org.gradle.internal.os.OperatingSystem.current().isWindows() ? 'curl.exe' : 'curl'
+            exec {
+                commandLine curl, '--fail', '--location', '--retry', '3', '--output', temporary.absolutePath,
+                    'https://huggingface.co/Cactus-Compute/needle3/resolve/d6c7d6a2e9655505e0f8e23339356dd1705900eb/android-arm64/needle'
+            }
+            if (sha256(temporary) != expected) throw new GradleException('Whistle runtime checksum mismatch')
+            java.nio.file.Files.move(temporary.toPath(), target.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+        } finally { temporary.delete() }
     }
 }
 
