@@ -125,7 +125,7 @@ class ModelComparisonActivity : ComponentActivity() {
                 Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp).padding(bottom = 24.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                ComparisonText("Compare the same audio across models on this phone. Your daily model and settings stay unchanged.")
+                if (model.report == null) ComparisonText("Compare the same audio across models on this phone. Your daily model and settings stay unchanged.")
                 model.error?.let { error ->
                     Surface(color = MaterialTheme.colorScheme.errorContainer, shape = MaterialTheme.shapes.medium) {
                         Text(error, Modifier.fillMaxWidth().padding(16.dp).semantics { liveRegion = LiveRegionMode.Polite },
@@ -225,54 +225,73 @@ class ModelComparisonActivity : ComponentActivity() {
                     }
                 }
                 model.report?.takeUnless { model.busy }?.let { report ->
+                    var resultOrder by rememberSaveable(report.runId) { mutableStateOf(ResultOrder.SPEED) }
+                    var startupSpeed by rememberSaveable(report.runId) { mutableStateOf(false) }
+                    val summaries = comparisonSummaries(report, model.models)
                     ComparisonCard {
                         ComparisonHeading("Results")
                         ComparisonText("${report.status.replaceFirstChar { it.uppercase() }} · ${report.cases.count { it.status == "completed" }} of ${report.selectedModelIds.size} models completed")
-                        ComparisonText("Your recordings are saved with these results. Reuse them to compare other models without recording again.")
-                        Button(onClick = { model.reuseRecordings() }, enabled = report.clips.isNotEmpty(), modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary, contentColor = MaterialTheme.colorScheme.onSecondary)) { Text("Compare these recordings again") }
-                        OutlinedButton(onClick = model::startNew, modifier = Modifier.fillMaxWidth()) { Text("New comparison with new audio") }
                     }
-                    report.cases.toList().forEach { result ->
+                    ComparisonOverview(summaries, report.clips.size, startupSpeed) { startupSpeed = it }
+                    ComparisonCard {
+                        ComparisonHeading("Model details")
+                        ComparisonText("Sort by · ${resultOrder.label}${if (resultOrder == ResultOrder.SPEED) if (startupSpeed) " (load + first run)" else " (already loaded)" else ""}")
+                        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            ResultOrder.entries.forEach { order ->
+                                FilterChip(resultOrder == order, { resultOrder = order }, label = { Text(order.label) })
+                            }
+                        }
+                        ComparisonDetails("Recordings and references") {
+                            report.clips.forEachIndexed { index, clip ->
+                                ComparisonHeading("Recording ${index + 1} · %.1f seconds".format(clip.durationSeconds))
+                                Text(clip.reference ?: "No reference provided", style = MaterialTheme.typography.bodyMedium)
+                            }
+                        }
+                    }
+                    summaries.ordered(resultOrder, startupSpeed).forEach { summary ->
+                        val result = summary.result
                         key(report.runId, result.modelId) {
                             ComparisonCard {
-                                ComparisonHeading(model.models.firstOrNull { it.id == result.modelId }?.name ?: result.modelId)
+                                ComparisonHeading(summary.name)
                                 ComparisonText(result.status.replaceFirstChar { it.uppercase() } + result.reason?.let { ": $it" }.orEmpty())
-                                val loadsEveryPass = result.modelId == "whistle" || result.identity["runtime"] == "whistle"
-                                ComparisonText("${if (loadsEveryPass) "Backend preparation" else "Model load and setup"}: ${ms(result.initializationNs)} ms")
-                                result.identity["timingNotice"]?.let { ComparisonText(it) }
-                                if (loadsEveryPass) ComparisonText("Separate model-load and already-loaded transcription timings are unavailable for Whistle's worker runtime.")
+                                ComparisonMetricTable(listOf(
+                                    (if (result.loadsEveryPass) "Backend setup" else "Model load and setup") to "${ms(result.initializationNs)} ms",
+                                    "Model files" to (summary.modelBytes?.let { "${resultNumber(it / 1e6)} MB" } ?: "—"),
+                                    "Peak app RAM" to (summary.ramMiB?.let { "${resultNumber(it)} MiB" } ?: "—")
+                                ), "model-metrics-${result.modelId}")
+                                if (result.loadsEveryPass) ComparisonText("Whistle reloads a worker every pass. Separate load/already-loaded timings and worker RAM are unavailable.")
                                 report.clips.forEachIndexed { index, clip ->
                                     val observations = result.observations.toList().filter { it.clipId == clip.id }
                                     val warm = observations.filter { it.phase == "warm" }.map { it.elapsedNs }.sorted()
                                     ComparisonHeading("Recording ${index + 1} · %.1f seconds".format(clip.durationSeconds))
-                                    if (warm.isNotEmpty()) Text("${if (loadsEveryPass) "Repeated transcription, including worker load (median)" else "Already-loaded transcription (median)"}: ${ms(warm.medianNs())} ms")
+                                    val metrics = mutableListOf<Pair<String, String>>()
+                                    if (warm.isNotEmpty()) metrics += (if (result.loadsEveryPass) "Median incl. worker load" else "Loaded median") to "${ms(warm.medianNs())} ms"
                                     observations.firstOrNull { it.phase == "first" }?.let { first ->
-                                        Text("${if (loadsEveryPass) "First transcription, including worker load" else "First transcription after load"}: ${ms(first.elapsedNs)} ms")
-                                        Text("Load + first transcription: ${ms(result.initializationNs?.plus(first.elapsedNs))} ms")
+                                        metrics += (if (result.loadsEveryPass) "First incl. worker load" else "First decode") to "${ms(first.elapsedNs)} ms"
+                                        metrics += "Load + first decode" to "${ms(result.initializationNs?.plus(first.elapsedNs))} ms"
                                     }
                                     observations.firstOrNull()?.let { observation ->
-                                        Text("Word error rate: ${observation.accuracy.words?.let { "%.1f%%".format(it.rate * 100) } ?: "unavailable: ${observation.accuracy.unavailable}"}")
+                                        metrics += "Word error rate" to (observation.accuracy.words?.let { "%.1f%%".format(it.rate * 100) } ?: "No score")
+                                    }
+                                    ComparisonMetricTable(metrics, "clip-metrics-${result.modelId}-${clip.id}")
+                                    observations.firstOrNull()?.let { observation ->
+                                        if (observation.accuracy.words == null) ComparisonText(observation.accuracy.unavailable ?: "No word score available")
                                         androidx.compose.foundation.text.selection.SelectionContainer {
-                                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                                ComparisonText("Reference: ${clip.reference ?: "Unavailable"}")
-                                                Text("Recognized: ${observation.transcript}")
-                                            }
+                                            Text("Recognized: ${observation.transcript}", style = MaterialTheme.typography.bodyMedium)
                                         }
                                     }
                                 }
                                 ComparisonDetails("Every transcript and timing") {
-                                    ComparisonText("Backend preparation: ${ms(result.initializationNs)} ms.")
                                     result.identity["memoryNotice"]?.let { ComparisonText(it) }
                                     report.clips.forEachIndexed { index, clip ->
                                         val observations = result.observations.toList().filter { it.clipId == clip.id }
-                                        val warm = observations.filter { it.phase == "warm" }.map { it.elapsedNs }.sorted()
-                                        if (warm.isNotEmpty()) ComparisonText("Recording ${index + 1}: ${ms(warm.first())}–${ms(warm.last())} ms across ${warm.size}/${report.warmRepetitions} timed passes.")
-                                        observations.forEach { observation ->
-                                            ComparisonText("Recording ${index + 1} · ${if (observation.phase == "first") "First decode" else "Repeated decode ${observation.repetition}"}: ${ms(observation.elapsedNs)} ms")
-                                            if (observation.phase == "first") ComparisonText("Startup inclusive: ${ms(result.initializationNs?.plus(observation.elapsedNs))} ms")
-                                            ComparisonText("Word error rate: ${observation.accuracy.words?.let { "%.1f%%".format(it.rate * 100) } ?: "unavailable"} · Character error rate: ${observation.accuracy.characters?.let { "%.1f%%".format(it.rate * 100) } ?: "unavailable"}")
-                                            Text(observation.transcript)
+                                        ComparisonHeading("Recording ${index + 1} · ${observations.count { it.phase == "warm" }}/${report.warmRepetitions} repeated passes")
+                                        ComparisonMetricTable(observations.filter { it.phase == "warm" }.map {
+                                            "Pass ${it.repetition}" to "${ms(it.elapsedNs)} ms"
+                                        }, "passes-${result.modelId}-${clip.id}")
+                                        val representative = observations.firstOrNull()?.transcript
+                                        observations.filter { it.phase == "warm" && it.transcript != representative }.forEach { observation ->
+                                            Text("Pass ${observation.repetition}: ${observation.transcript}", style = MaterialTheme.typography.bodyMedium)
                                         }
                                     }
                                 }
@@ -284,6 +303,10 @@ class ModelComparisonActivity : ComponentActivity() {
                     }
                     ComparisonCard {
                         ComparisonHeading("Save or manage results")
+                        ComparisonText("Your recordings are saved with these results. Reuse them to compare other models without recording again.")
+                        Button(onClick = { model.reuseRecordings() }, enabled = report.clips.isNotEmpty(), modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary, contentColor = MaterialTheme.colorScheme.onSecondary)) { Text("Compare these recordings again") }
+                        OutlinedButton(onClick = model::startNew, modifier = Modifier.fillMaxWidth()) { Text("New comparison with new audio") }
                         ComparisonText(report.contentNotice)
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             OutlinedButton(onClick = { exportRunId = report.runId; exportMarkdown = false; exporter.launch("benchmark-${report.runId}-WITH-TRANSCRIPTS.json") },

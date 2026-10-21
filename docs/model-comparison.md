@@ -4,6 +4,40 @@ ADB runs accept `-WarmRepetitions 2` for an initial comparison (default five, ra
 
 Open Advanced settings, then Model comparison. Record one or more passages or import audio, listen back, and edit each reference to match the words actually spoken. Choose installed or downloadable models. The confirmation shows the additional download and installed storage. Model downloads use the existing downloader with daily-model selection disabled. Models run sequentially against the same saved canonical audio.
 
+## Results overview (development build after beta 6)
+
+The results overview provides horizontal bar charts for speed, word error rate
+and sampled app RAM. Each bar starts at zero and includes its exact value.
+Switch speed between the sum of already-loaded median decode times for all clips
+and load/setup plus the first decode of recording 1. The latter uses the same
+first recording for every model. Downloads, conversion and report writing are
+excluded from both measurements.
+
+Accuracy combines one representative transcript per recording, weighted by the
+number of reference words. Lower word error rate is better; it is not a capped
+accuracy percentage. All recordings need verified references and word scores.
+The representative is the first measured observation for that recording, as in
+the per-recording results. Missing scores are not treated as zero errors.
+
+RAM is sampled peak app-process PSS, including app overhead, rather than model
+allocation size. Whistle's worker is not sampled and reloads every pass, so it
+has no comparable RAM or already-loaded bar. Its load-plus-first-run measurement
+and scored transcripts remain available. Failed/incomplete runs are not ranked;
+already-loaded comparison requires every clip's configured timed repetitions.
+
+Model details can be sorted by speed, model-file size, word errors, RAM or run
+order. Missing measurements sort last. Timing and resource values use aligned
+label/value tables; shared reference text appears once under Recordings and
+references. Detailed repeated passes retain timings and differing transcripts
+without repeating identical transcripts and summary values. Raw exports retain
+every observation. These UI changes are not included in published beta 6.
+
+Local verification: dev-debug and Android-test assembly, lint and 24 benchmark
+JVM tests passed. All 18 comparison UI/flow tests passed on the Android emulator,
+including chart controls, sorting controls, worker exclusions, shared references
+and 320 dp / 200% text tables. Light and dark screenshots were inspected. Chart
+preview values are synthetic test fixtures, not measurements of model performance.
+
 ## In-app comparison on beta 3
 
 The integration branch `codex/model-comparison-beta3` starts from released `v1.4.7-beta.3` (`9312d1c`) and includes its Phonon 2 backend. This is a local test build, not a published beta release.

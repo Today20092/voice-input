@@ -105,9 +105,9 @@ class ModelComparisonUiTest {
                 installedBefore = emptyList(), cases = mutableListOf(result))
         }
         compose.onNodeWithText("Recognized: hello word").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("Model load and setup: 1.0 ms").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("First transcription after load: 2.0 ms").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("Load + first transcription: 3.0 ms").performScrollTo().assertIsDisplayed()
+        compose.onNode(hasText("Model load and setup") and hasText("1.0 ms")).performScrollTo().assertIsDisplayed()
+        compose.onNode(hasText("First decode") and hasText("2.0 ms")).performScrollTo().assertIsDisplayed()
+        compose.onNode(hasText("Load + first decode") and hasText("3.0 ms")).performScrollTo().assertIsDisplayed()
         compose.runOnIdle {
             val warm = listOf(4000000L, 6000000L).mapIndexed { index, elapsed ->
                 DecodeObservation(clip.id, "warm", index + 1, elapsed,
@@ -115,10 +115,10 @@ class ModelComparisonUiTest {
             }
             model.report = model.report!!.copy(cases = mutableListOf(result.copy(observations = (result.observations + warm).toMutableList())))
         }
-        compose.onNodeWithText("Already-loaded transcription (median): 5.0 ms").performScrollTo().assertIsDisplayed()
+        compose.onNode(hasText("Loaded median") and hasText("5.0 ms")).performScrollTo().assertIsDisplayed()
         capture(activity, "light-results")
         compose.onNodeWithText("Every transcript and timing").performScrollTo().performClick()
-        compose.onNodeWithText("Startup inclusive: 3.0 ms").performScrollTo().assertIsDisplayed()
+        compose.onNode(hasText("Pass 1") and hasText("4.0 ms")).performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Export JSON").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Export Markdown").performScrollTo().assertIsDisplayed()
         capture(activity, "light-exports")
@@ -143,10 +143,10 @@ class ModelComparisonUiTest {
                     initializationNs = 1000000L, observations = mutableListOf(
                         DecodeObservation(clip.id, "warm", 1, 4000000L, "hello", BenchmarkScoring.score(null, "hello"))))))
         }
-        compose.onNodeWithText("Backend preparation: 1.0 ms").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("Separate model-load and already-loaded", substring = true).performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("Repeated transcription, including worker load (median): 4.0 ms").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("Already-loaded transcription (median)", substring = true).assertDoesNotExist()
+        compose.onNode(hasText("Backend setup") and hasText("1.0 ms")).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Whistle reloads a worker every pass.", substring = true).performScrollTo().assertIsDisplayed()
+        compose.onNode(hasText("Median incl. worker load") and hasText("4.0 ms")).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Loaded median").assertDoesNotExist()
     }
 
     @Test fun referenceEditingKeepsKeyboardFocusAndBackNavigation() = withComparison(DevThemeYellow) { activity, _ ->
@@ -247,5 +247,52 @@ class ModelComparisonUiTest {
         compose.onNode(hasText("Whistle") and isToggleable()).performScrollTo().assertIsOff().performClick().assertIsOn()
         compose.onNodeWithText("Select none").performScrollTo().performClick()
         compose.onNode(hasText("Whistle") and isToggleable()).performScrollTo().assertIsOff()
+    }
+
+    private fun chartReport(): BenchmarkReport {
+        val catalog = BenchmarkModel.all()
+        val ids = listOf(catalog.first { it.managed?.runtimeId == "orukeet" }.id,
+            catalog.first { it.managed?.runtimeId == "phonon" }.id, "whistle")
+        val clip = BenchmarkClip("chart", "original", "canonical", 16000, "hello world", "reference")
+        return BenchmarkReport(status = "completed", clips = listOf(clip), selectedModelIds = ids, installedBefore = emptyList(),
+            warmRepetitions = 2, cases = ids.mapIndexed { index, id ->
+                val transcript = if (index == 1) "hello word" else "hello world"
+                BenchmarkCaseResult(id, status = "completed", initializationNs = 1000000L, sampledPeakPssKb = 204800L + index * 102400,
+                    observations = mutableListOf(
+                        DecodeObservation(clip.id, "first", 0, (index + 2) * 1000000L, transcript, BenchmarkScoring.score(clip.reference, transcript)),
+                        DecodeObservation(clip.id, "warm", 1, (index + 1) * 4000000L, transcript, BenchmarkScoring.score(clip.reference, transcript)),
+                        DecodeObservation(clip.id, "warm", 2, (index + 1) * 6000000L, transcript, BenchmarkScoring.score(clip.reference, transcript))))
+            }.toMutableList())
+    }
+
+    @Test fun chartsSwitchMetricsAndKeepMissingWorkerMeasurementsExplicit() = withComparison(ClassicMaterialLight) { activity, model ->
+        compose.runOnIdle { model.report = chartReport() }
+        compose.onNodeWithText("At a glance").assertIsDisplayed()
+        compose.onNode(hasText("Orukeet") and hasText("5.0 ms")).performScrollTo().assertIsDisplayed()
+        capture(activity, "charts-speed")
+        compose.onNodeWithText("Load + first run").performScrollTo().performClick()
+        compose.onNode(hasText("Whistle") and hasText("5.0 ms")).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Accuracy", substring = false).performScrollTo().performClick()
+        compose.onNode(hasText("Orukeet") and hasText("0.0%")).performScrollTo().assertIsDisplayed()
+        capture(activity, "charts-accuracy")
+        compose.onNodeWithText("RAM", substring = false).performScrollTo().performClick()
+        compose.onNodeWithText("Worker RAM is not measured").performScrollTo().assertIsDisplayed()
+        compose.onNode(hasText("Orukeet") and hasText("200.0 MiB")).performScrollTo().assertIsDisplayed()
+        capture(activity, "charts-memory")
+        compose.onNodeWithText("Smallest model", substring = false).performScrollTo().performClick()
+        compose.onNodeWithText("Sort by · Smallest model").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("clip-metrics-whistle-chart").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Recordings and references").performScrollTo().performClick()
+        compose.onAllNodesWithText("hello world", substring = false).assertCountEquals(1)
+    }
+
+    @Test fun narrowLargeTextChartsAndTablesRemainReadable() = withComparison(DevThemeYellow, 320, 2f) { activity, model ->
+        compose.runOnIdle { model.report = chartReport() }
+        compose.onNodeWithText("Transcription time").performScrollTo().assertIsDisplayed()
+        capture(activity, "charts-narrow")
+        val orukeet = model.models.first { it.managed?.runtimeId == "orukeet" }.id
+        compose.onNodeWithTag("clip-metrics-$orukeet-chart").performScrollTo().assertIsDisplayed()
+        compose.onNode(hasText("Load + first decode") and hasText("3.0 ms")).performScrollTo().assertIsDisplayed()
+        capture(activity, "table-narrow")
     }
 }
