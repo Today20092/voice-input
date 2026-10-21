@@ -56,25 +56,15 @@ internal fun ComparisonModelFamily(
     title: String, models: List<BenchmarkModel>, selected: Set<String>, installed: Set<String>,
     language: String, enabled: Boolean, onToggle: (String, Boolean) -> Unit
 ) {
-    var expanded by rememberSaveable(title) { mutableStateOf(false) }
     val selectedCount = models.count { it.id in selected }
     Column {
         HorizontalDivider()
-        TextButton(
-            onClick = { expanded = !expanded },
-            modifier = Modifier.fillMaxWidth().semantics {
-                heading()
-                stateDescription = if (expanded) "Expanded" else "Collapsed"
-            }
-        ) {
-            Column(Modifier.weight(1f).padding(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(title, Modifier.fillMaxWidth(), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
-                Text("$selectedCount selected · ${models.count { it.id in installed }} installed · ${models.size} ${if (models.size == 1) "model" else "models"}",
-                    Modifier.fillMaxWidth(), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            Icon(if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown, null)
+        Column(Modifier.fillMaxWidth().padding(vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            ComparisonHeading(title)
+            Text("$selectedCount selected · ${models.count { it.id in installed }} installed · ${models.size} ${if (models.size == 1) "model" else "models"}",
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        if (expanded) models.forEach { candidate ->
+        models.forEach { candidate ->
             val checked = candidate.id in selected
             val supported = candidate.supportsLanguage(language)
             Surface(

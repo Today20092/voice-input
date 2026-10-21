@@ -77,6 +77,8 @@ class BenchmarkStore(val root: File) {
         appendLine(report.cleanup)
         appendLine("Scoring: ${report.normalization}. WER/CER = edits / reference length; WER can exceed 100%. Numbers remain literal. Missing reference has no score.")
         appendLine("One first decode, one untimed warm-up per clip, ${report.warmRepetitions} measured warm decodes per clip. RTF = decode seconds / audio seconds. Release time measures the API call, not memory reclamation.")
+        appendLine("Initialization measures model load and backend setup/validation. Startup inclusive adds initialization and first decode; downloads, audio conversion and persistence are excluded. Already-loaded timings exclude initialization and warm-up.")
+        appendLine("Whistle prepares paths during initialization, then starts and loads a worker on every decode. Its repeated timings include worker loading; separate model-load and already-loaded timings are unavailable.")
         report.device.forEach { (key, value) -> appendLine("- $key: $value") }
         report.clips.forEach { clip ->
             appendLine("\n## Clip ${clip.id}")
@@ -96,7 +98,7 @@ class BenchmarkStore(val root: File) {
             appendLine("Before: ${result.before}; after: ${result.after}")
             report.clips.forEach { clip ->
                 val warm = result.observations.filter { it.clipId == clip.id && it.phase == "warm" }.map { it.elapsedNs }.sorted()
-                if (warm.isNotEmpty()) appendLine("${clip.id} warm min/median/max: ${milliseconds(warm.first())}/${milliseconds(warm.medianNs())}/${milliseconds(warm.last())} ms; ${warm.size}/5 completed.")
+                if (warm.isNotEmpty()) appendLine("${clip.id} ${if (result.modelId == "whistle") "repeated including worker load" else "already-loaded transcription"} min/median/max: ${milliseconds(warm.first())}/${milliseconds(warm.medianNs())}/${milliseconds(warm.last())} ms; ${warm.size}/${report.warmRepetitions} completed.")
             }
             result.observations.forEach { observation ->
                 val clip = report.clips.first { it.id == observation.clipId }

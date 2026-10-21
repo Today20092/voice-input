@@ -229,6 +229,31 @@ class BenchmarkViewModel(application: Application) : AndroidViewModel(applicatio
         installedBefore = installed
     }
 
+    fun reuseRecordings() = work {
+        val source = requireNotNull(report)
+        require(source.clips.isNotEmpty()) { "This comparison has no recordings to reuse" }
+        val newId = UUID.randomUUID().toString()
+        withContext(Dispatchers.IO) {
+            try {
+                for (clip in source.clips) {
+                    currentCoroutineContext().ensureActive()
+                    val original = File(benchmark.store.directory(source.runId), "${clip.id}.original")
+                    check(BenchmarkStore.hashFile(original) == clip.originalSha256) { "Original audio changed; import it again" }
+                    benchmark.store.saveAudio(newId, clip.id, benchmark.store.readAudio(source.runId, clip))
+                    original.copyTo(File(benchmark.store.directory(newId), "${clip.id}.original"))
+                }
+                val draft = BenchmarkReport(runId = newId, device = benchmark.device(), clips = source.clips,
+                    selectedModelIds = source.selectedModelIds, installedBefore = installed.toList())
+                draftWrites.withLock { benchmark.store.save(draft) }
+            } catch (failure: Throwable) {
+                benchmark.store.delete(newId)
+                throw failure
+            }
+        }
+        draftId = newId; clips = source.clips; language = source.clips.first().language
+        selected = source.selectedModelIds.toSet(); installedBefore = installed; report = null
+    }
+
     fun show(report: BenchmarkReport) {
         if (busy) return
         if (report.status == "prepared" && report.cases.isEmpty()) {

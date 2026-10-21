@@ -196,11 +196,13 @@ class ModelComparisonActivity : ComponentActivity() {
                     ComparisonCard {
                         val selectedCount = model.models.count { it.id in model.selected && it.supportsLanguage(model.language) }
                         ComparisonHeading("Models")
-                        ComparisonText("$selectedCount selected for this recording language. Expand a family to choose its models and variants.")
+                        ComparisonText("$selectedCount selected for this recording language. Check the models and variants to compare.")
                         FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp),
                             maxItemsInEachRow = if (LocalDensity.current.fontScale > 1.3f) 1 else 2) {
                             TextButton(onClick = { model.selected = model.models.filter { it.supportsLanguage(model.language) }.map { it.id }.toSet() },
                                 enabled = !model.busy, modifier = Modifier.weight(1f).widthIn(min = 128.dp)) { Text("Select all") }
+                            TextButton(onClick = { model.selected = emptySet() },
+                                enabled = !model.busy, modifier = Modifier.weight(1f).widthIn(min = 128.dp)) { Text("Select none") }
                             TextButton(onClick = { model.selected = model.models.filter { it.id in model.installed && it.supportsLanguage(model.language) }.map { it.id }.toSet() },
                                 enabled = !model.busy, modifier = Modifier.weight(1f).widthIn(min = 128.dp)) { Text("Installed only") }
                         }
@@ -226,22 +228,30 @@ class ModelComparisonActivity : ComponentActivity() {
                     ComparisonCard {
                         ComparisonHeading("Results")
                         ComparisonText("${report.status.replaceFirstChar { it.uppercase() }} · ${report.cases.count { it.status == "completed" }} of ${report.selectedModelIds.size} models completed")
-                        Button(onClick = model::startNew, modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary, contentColor = MaterialTheme.colorScheme.onSecondary)) { Text("New comparison") }
+                        ComparisonText("Your recordings are saved with these results. Reuse them to compare other models without recording again.")
+                        Button(onClick = { model.reuseRecordings() }, enabled = report.clips.isNotEmpty(), modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary, contentColor = MaterialTheme.colorScheme.onSecondary)) { Text("Compare these recordings again") }
+                        OutlinedButton(onClick = model::startNew, modifier = Modifier.fillMaxWidth()) { Text("New comparison with new audio") }
                     }
                     report.cases.toList().forEach { result ->
                         key(report.runId, result.modelId) {
                             ComparisonCard {
                                 ComparisonHeading(model.models.firstOrNull { it.id == result.modelId }?.name ?: result.modelId)
                                 ComparisonText(result.status.replaceFirstChar { it.uppercase() } + result.reason?.let { ": $it" }.orEmpty())
+                                val loadsEveryPass = result.modelId == "whistle" || result.identity["runtime"] == "whistle"
+                                ComparisonText("${if (loadsEveryPass) "Backend preparation" else "Model load and setup"}: ${ms(result.initializationNs)} ms")
                                 result.identity["timingNotice"]?.let { ComparisonText(it) }
+                                if (loadsEveryPass) ComparisonText("Separate model-load and already-loaded transcription timings are unavailable for Whistle's worker runtime.")
                                 report.clips.forEachIndexed { index, clip ->
                                     val observations = result.observations.toList().filter { it.clipId == clip.id }
                                     val warm = observations.filter { it.phase == "warm" }.map { it.elapsedNs }.sorted()
                                     ComparisonHeading("Recording ${index + 1} · %.1f seconds".format(clip.durationSeconds))
-                                    if (warm.isNotEmpty()) Text("Typical transcription: ${ms(warm.medianNs())} ms")
+                                    if (warm.isNotEmpty()) Text("${if (loadsEveryPass) "Repeated transcription, including worker load (median)" else "Already-loaded transcription (median)"}: ${ms(warm.medianNs())} ms")
+                                    observations.firstOrNull { it.phase == "first" }?.let { first ->
+                                        Text("${if (loadsEveryPass) "First transcription, including worker load" else "First transcription after load"}: ${ms(first.elapsedNs)} ms")
+                                        Text("Load + first transcription: ${ms(result.initializationNs?.plus(first.elapsedNs))} ms")
+                                    }
                                     observations.firstOrNull()?.let { observation ->
-                                        if (warm.isEmpty()) Text("First transcription: ${ms(observation.elapsedNs)} ms")
                                         Text("Word error rate: ${observation.accuracy.words?.let { "%.1f%%".format(it.rate * 100) } ?: "unavailable: ${observation.accuracy.unavailable}"}")
                                         androidx.compose.foundation.text.selection.SelectionContainer {
                                             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -283,7 +293,9 @@ class ModelComparisonActivity : ComponentActivity() {
                         }
                         ComparisonDetails("How to read these results") {
                             ComparisonText("Lower word error rate means fewer substitutions, missing words and extra words. It can exceed 100%. Punctuation and capitalization are not scored; number formatting stays literal.")
-                            ComparisonText("Typical transcription is the median of the repeated timed passes, excluding one untimed warm-up. Results describe these recordings and this phone, not a general model ranking.")
+                            ComparisonText("Model load and setup measures backend creation and loading, including validation. First transcription is the first decode after that load. Load + first transcription adds both measurements and excludes downloads, audio conversion and report saving.")
+                            ComparisonText("Already-loaded transcription is the median of the repeated timed passes after one untimed warm-up, excluding loading. Whistle starts and loads a worker every pass, so its repeated timings include that work. Filesystem caches may already be warm; these are not cold-device measurements.")
+                            ComparisonText("Results describe these recordings and this phone, not a general model ranking.")
                             ComparisonText(report.cacheNotice)
                         }
                         TextButton(onClick = {

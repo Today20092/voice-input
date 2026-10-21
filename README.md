@@ -27,6 +27,8 @@ includes the redesigned **Advanced settings → Model comparison** page: record 
 import audio and compare selected models, including experimental 16.9 MB Whistle.
 It also retains Phonon 2, ASR4ALL dictation and the earlier beta improvements.
 The passage now stays in place when recording starts, with Stop and Cancel below it.
+Reuse saved comparison audio with different models, and see loading, first-run
+and already-loaded transcription timings separately.
 Install the beta APK directly if you want to try these changes.
 
 ## Get started

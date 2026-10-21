@@ -7,6 +7,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performClick
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.test.core.app.ActivityScenario
@@ -116,5 +117,55 @@ class ModelComparisonFlowTest {
                 assertTrue(store.markdown(store.load(report.runId)).contains("hello word"))
             }
         } finally { store.delete(report.runId) }
+    }
+
+    @Test fun completedRecordingsCanBeReusedWithoutChangingPriorResults() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val store = BenchmarkStore(File(context.filesDir, "model-benchmarks"))
+        val source = BenchmarkReport(status = "completed", clips = emptyList(), selectedModelIds = listOf("whistle"), installedBefore = emptyList())
+        val original = File(store.directory(source.runId), "reuse.original").apply { writeBytes(byteArrayOf(1, 2, 3)) }
+        val samples = floatArrayOf(-0.5f, 0f, 0.5f)
+        val clip = BenchmarkClip("reuse", BenchmarkStore.hashFile(original), store.saveAudio(source.runId, "reuse", samples),
+            samples.size, "Saved spoken words", "reference", language = "fr")
+        val completed = source.copy(clips = listOf(clip), cases = mutableListOf(BenchmarkCaseResult("whistle", status = "completed")))
+        store.save(completed)
+        var newId: String? = null
+        try {
+            ActivityScenario.launch<ModelComparisonActivity>(Intent(context, ModelComparisonActivity::class.java)).use { scenario ->
+                lateinit var model: BenchmarkViewModel
+                scenario.onActivity { model = ViewModelProvider(it)[BenchmarkViewModel::class.java] }
+                compose.waitUntil(10000) { !model.busy }
+                scenario.onActivity { model.show(store.load(source.runId)) }
+                val directoriesBefore = store.root.listFiles()!!.map { it.name }.toSet()
+                original.writeBytes(byteArrayOf(9))
+                scenario.onActivity { model.reuseRecordings() }
+                compose.waitUntil(10000) { !model.busy }
+                assertNotNull(model.error)
+                assertEquals(source.runId, model.report!!.runId)
+                assertEquals(directoriesBefore, store.root.listFiles()!!.map { it.name }.toSet())
+                original.writeBytes(byteArrayOf(1, 2, 3))
+                compose.onNodeWithText("Compare these recordings again").performScrollTo().performClick()
+                compose.waitUntil(10000) { !model.busy }
+                assertNull(model.error)
+                assertNull(model.report)
+                assertNotEquals(source.runId, model.draftId)
+                newId = model.draftId
+                assertEquals(listOf(clip), model.clips)
+                assertEquals("fr", model.language)
+                assertEquals(setOf("whistle"), model.selected)
+                assertArrayEquals(samples, store.readAudio(model.draftId, clip), 0f)
+                assertArrayEquals(original.readBytes(), File(store.directory(model.draftId), "reuse.original").readBytes())
+                assertEquals("completed", store.load(source.runId).cases.single().status)
+                assertEquals("prepared", store.load(model.draftId).status)
+                // Each comparison owns its audio, so deleting old results cannot break a reused draft.
+                store.delete(source.runId)
+                assertArrayEquals(samples, store.readAudio(model.draftId, clip), 0f)
+                scenario.recreate()
+                assertEquals(listOf(clip), store.load(model.draftId).clips)
+            }
+        } finally {
+            if (File(store.root, source.runId).exists()) store.delete(source.runId)
+            newId?.let { store.delete(it) }
+        }
     }
 }

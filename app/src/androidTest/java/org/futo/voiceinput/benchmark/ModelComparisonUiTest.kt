@@ -88,7 +88,6 @@ class ModelComparisonUiTest {
         compose.onNodeWithText("Compare selected models").performScrollTo().assertIsNotEnabled()
         compose.onNodeWithText("Recording tips and file limits").performScrollTo().performClick()
         compose.onNodeWithText("Up to 8 recordings", substring = true).performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("Moonshine", substring = false).performScrollTo().performClick()
         val candidate = model.models.first { it.managed?.runtimeId == "moonshine" }
         compose.onNodeWithText(candidate.name).performScrollTo().assertIsOff().performClick().assertIsOn()
         compose.runOnIdle { assertTrue(candidate.id in model.selected) }
@@ -106,7 +105,17 @@ class ModelComparisonUiTest {
                 installedBefore = emptyList(), cases = mutableListOf(result))
         }
         compose.onNodeWithText("Recognized: hello word").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("First transcription: 2.0 ms").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Model load and setup: 1.0 ms").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("First transcription after load: 2.0 ms").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Load + first transcription: 3.0 ms").performScrollTo().assertIsDisplayed()
+        compose.runOnIdle {
+            val warm = listOf(4000000L, 6000000L).mapIndexed { index, elapsed ->
+                DecodeObservation(clip.id, "warm", index + 1, elapsed,
+                    "hello word", BenchmarkScoring.score(clip.reference, "hello word"))
+            }
+            model.report = model.report!!.copy(cases = mutableListOf(result.copy(observations = (result.observations + warm).toMutableList())))
+        }
+        compose.onNodeWithText("Already-loaded transcription (median): 5.0 ms").performScrollTo().assertIsDisplayed()
         capture(activity, "light-results")
         compose.onNodeWithText("Every transcript and timing").performScrollTo().performClick()
         compose.onNodeWithText("Startup inclusive: 3.0 ms").performScrollTo().assertIsDisplayed()
@@ -124,6 +133,20 @@ class ModelComparisonUiTest {
         compose.onNodeWithText("Cancel comparison").performScrollTo().assertIsEnabled()
         capture(activity, "error-progress")
         compose.runOnIdle { model.busy = false }
+    }
+
+    @Test fun whistleTimingsDoNotClaimAnAlreadyLoadedModel() = withComparison(DevThemeYellow) { _, model ->
+        val clip = BenchmarkClip("preview", "original", "canonical", 16000, null, "reference")
+        compose.runOnIdle {
+            model.report = BenchmarkReport(status = "completed", clips = listOf(clip), selectedModelIds = listOf("whistle"),
+                installedBefore = emptyList(), cases = mutableListOf(BenchmarkCaseResult("whistle", status = "completed",
+                    initializationNs = 1000000L, observations = mutableListOf(
+                        DecodeObservation(clip.id, "warm", 1, 4000000L, "hello", BenchmarkScoring.score(null, "hello"))))))
+        }
+        compose.onNodeWithText("Backend preparation: 1.0 ms").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Separate model-load and already-loaded", substring = true).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Repeated transcription, including worker load (median): 4.0 ms").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Already-loaded transcription (median)", substring = true).assertDoesNotExist()
     }
 
     @Test fun referenceEditingKeepsKeyboardFocusAndBackNavigation() = withComparison(DevThemeYellow) { activity, _ ->
@@ -161,7 +184,6 @@ class ModelComparisonUiTest {
 
     @Test fun whistleSelectionRequiresAudioAndASupportedLanguage() = withComparison(DevThemeYellow) { activity, model ->
         compose.runOnIdle { model.selected = emptySet(); model.language = "fr" }
-        compose.onNodeWithText("Whistle", substring = false).performScrollTo().performClick()
         compose.onNode(hasText("Whistle") and isToggleable()).performScrollTo().assertIsOff().performClick().assertIsOn()
         capture(activity, "whistle-selected")
         compose.onNodeWithText("Compare selected models").performScrollTo().assertIsNotEnabled()
@@ -194,8 +216,8 @@ class ModelComparisonUiTest {
         capture(activity, "narrow-audio")
         compose.onNodeWithText("Select all").performScrollTo()
         assertSingleLineLabel("Select all")
+        assertSingleLineLabel("Select none")
         assertSingleLineLabel("Installed only")
-        compose.onNodeWithText("Whistle", substring = false).performScrollTo().performClick()
         compose.onNode(hasText("Whistle") and isToggleable()).performScrollTo().assertIsEnabled().performClick().assertIsOn()
         capture(activity, "narrow-models")
         compose.onNodeWithText("Compare selected models").performScrollTo().assertIsNotEnabled()
@@ -209,8 +231,21 @@ class ModelComparisonUiTest {
     @Test fun wideLightLayoutKeepsAudioAndModelChoicesReadable() = withComparison(ClassicMaterialLight, 640) { activity, _ ->
         compose.onNodeWithText("Import audio").assertIsDisplayed()
         capture(activity, "wide-audio")
-        compose.onNodeWithText("Whistle", substring = false).performScrollTo().performClick()
         compose.onNode(hasText("Whistle") and isToggleable()).performScrollTo().assertIsEnabled()
         capture(activity, "wide-models")
+    }
+
+    @Test fun allModelsAreDirectlySelectableAndSelectNoneClearsThem() = withComparison(DevThemeYellow) { _, model ->
+        compose.onAllNodes(isToggleable()).assertCountEquals(model.models.size)
+        compose.onNodeWithText("Select all").performScrollTo().performClick()
+        compose.runOnIdle {
+            assertEquals(model.models.filter { it.supportsLanguage(model.language) }.map { it.id }.toSet(), model.selected)
+            assertTrue(model.selected.isNotEmpty())
+        }
+        compose.onNodeWithText("Select none").performScrollTo().performClick()
+        compose.runOnIdle { assertTrue(model.selected.isEmpty()) }
+        compose.onNode(hasText("Whistle") and isToggleable()).performScrollTo().assertIsOff().performClick().assertIsOn()
+        compose.onNodeWithText("Select none").performScrollTo().performClick()
+        compose.onNode(hasText("Whistle") and isToggleable()).performScrollTo().assertIsOff()
     }
 }
