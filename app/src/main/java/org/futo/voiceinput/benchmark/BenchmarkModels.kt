@@ -43,10 +43,13 @@ data class BenchmarkModel(val id: String, val name: String, val managed: Recogni
             "name" to name, "runtime" to (model?.runtimeId ?: "whisper_ggml"),
             "variant" to (model?.variantId ?: id), "version" to (model?.version ?: requireNotNull(whisper).ggml.digest),
             "artifacts" to (model?.artifacts?.joinToString { "${it.name}:${it.sha256}" } ?: requireNotNull(whisper).ggml.digest),
-            "language" to if (model?.runtimeId in setOf("parakeet", "orukeet", "parakeet_redux")) "auto (recording language $language)" else language,
+            "language" to if (model?.runtimeId in setOf("parakeet", "orukeet", "parakeet_redux", "whistle")) "auto (recording language $language)" else language,
             "decoding" to "runtime default; Whisper beam search 5, no glossary",
             "runtimeVersions" to "Sherpa-ONNX ${BuildConfig.SHERPA_ONNX_VERSION}; Moonshine 0.0.68; ExecuTorch 1.2.0; native runtime revision in app build"
-        )
+        ) + if (model?.runtimeId == "whistle") mapOf(
+            "timingNotice" to "Every Whistle pass includes worker startup and model loading; the model is not kept loaded between passes.",
+            "memoryNotice" to "Sampled memory covers the app process and excludes the Whistle worker."
+        ) else emptyMap()
     }
 
     fun recognizer(context: Context, language: String = "en"): BenchmarkRecognizer {
@@ -67,6 +70,7 @@ data class BenchmarkModel(val id: String, val name: String, val managed: Recogni
         whisper in ENGLISH_MODELS -> language == "en"
         managed?.recognitionLanguages == "English" -> language == "en"
         managed?.runtimeId == "cohere" -> org.futo.voiceinput.cohere.CohereLanguage.entries.any { it.id == language }
+        managed?.runtimeId == "whistle" -> language in org.futo.voiceinput.whistle.WhistleModel.languageCodes
         managed?.runtimeId == "nemotron" -> org.futo.voiceinput.nemotron.NEMOTRON_MULTILINGUAL_LANGUAGES.any { it.id == language }
         else -> true
     }
@@ -90,6 +94,7 @@ data class BenchmarkModel(val id: String, val name: String, val managed: Recogni
                     "parakeet_unified" -> parakeetUnifiedBackend()
                     "parakeet_redux" -> org.futo.voiceinput.redux.ReduxBackend()
                     "phonon" -> org.futo.voiceinput.phonon.PhononBackend()
+                    "whistle" -> org.futo.voiceinput.whistle.WhistleBackend()
                     "moonshine" -> MoonshineBackend(requireNotNull(model.variantId).toMoonshineModelVariant())
                     "cohere" -> CohereBackend(languageOverride = language)
                     "nemotron" -> SherpaStreamingBackend(
@@ -119,7 +124,8 @@ data class BenchmarkModel(val id: String, val name: String, val managed: Recogni
 
     companion object {
         fun all(): List<BenchmarkModel> = RecognitionModelCatalog.cards.flatMap { card ->
-            card.models.map { BenchmarkModel(it.id, "${card.displayName}: ${it.displayName}", managed = it) }
+            card.models.map { BenchmarkModel(it.id,
+                if (it.displayName.startsWith(card.displayName)) it.displayName else "${card.displayName}: ${it.displayName}", managed = it) }
         } + (ENGLISH_MODELS + MULTILINGUAL_MODELS).map {
             BenchmarkModel("whisper-${it.ggml.ggml_file.substringBefore('.')}", "Whisper: ${it.name}", whisper = it)
         }

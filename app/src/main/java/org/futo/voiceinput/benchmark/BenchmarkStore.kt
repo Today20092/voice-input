@@ -76,7 +76,7 @@ class BenchmarkStore(val root: File) {
         appendLine("Isolation: ${report.isolation}. ${report.cacheNotice}")
         appendLine(report.cleanup)
         appendLine("Scoring: ${report.normalization}. WER/CER = edits / reference length; WER can exceed 100%. Numbers remain literal. Missing reference has no score.")
-        appendLine("One first decode, one untimed warm-up per clip, five measured warm decodes. RTF = decode seconds / audio seconds. Release time measures the API call, not memory reclamation.")
+        appendLine("One first decode, one untimed warm-up per clip, ${report.warmRepetitions} measured warm decodes per clip. RTF = decode seconds / audio seconds. Release time measures the API call, not memory reclamation.")
         report.device.forEach { (key, value) -> appendLine("- $key: $value") }
         report.clips.forEach { clip ->
             appendLine("\n## Clip ${clip.id}")

@@ -1,5 +1,7 @@
 # Model comparison
 
+ADB runs accept `-WarmRepetitions 2` for an initial comparison (default five, range one to five). The saved JSON and Markdown record the count; existing reports without the field retain the five-repeat interpretation. With three clips, two repeats produce seven timed observations and three untimed warmups per model. Resuming a run keeps its saved protocol. To collect the deferred three repeats later, start a separate run with the same suite and model IDs and `-WarmRepetitions 3`; retain both reports and compare their build/device conditions before combining timings. Completed five-repeat models need no supplemental run.
+
 Open Advanced settings, then Model comparison. Record one or more passages or import audio, listen back, and edit each reference to match the words actually spoken. Choose installed or downloadable models. The confirmation shows the additional download and installed storage. Model downloads use the existing downloader with daily-model selection disabled. Models run sequentially against the same saved canonical audio.
 
 ## In-app comparison on beta 3
@@ -101,3 +103,54 @@ Five Android device tests pass on a Samsung SM-S938U running Android 16: canonic
 The three supplied AAC recordings import successfully. Pilot run `b5f44de1-7e7d-4f87-aadc-a46750a39a1a` completed with bundled Whisper Tiny English; its reference was reviewed by the recording owner and its report rescored without repeating inference. Full run `6945d405-1e91-4942-8cfb-6fa20fc363c9` is in progress; each completed model case has 16 measured observations across three clips. The host runner stopped after the first seven cases; persisted results remain intact and the run has resumed without repeating them. The full pass must finish and be reviewed before claiming catalog-wide performance coverage. APK updates occurred between segments; `build-evidence.json` records the resumed build hash and this limitation.
 
 Human microphone readings through both the recognition activity and keyboard completed with bundled Whisper Tiny English, with matching delivered and observed text. The recording owner confirmed that the keyboard sentence appeared once in the controlled editor. The usual FUTO keyboard was restored afterward. Live readings for other variants remain pending; these two readings do not establish catalog-wide live coverage. Native-inference cancellation and the complete user workflow still require review. Issue #17 should remain open until the remaining phone checks and report review are complete.
+
+## UI and Whistle review build — October 21, 2026
+
+The comparison page now uses the settings header, spacing and themed surfaces.
+Audio, individual recordings, models, results and saved comparisons have separate
+sections. Model families expand like Model Options; each choice shows installation
+state, size and languages. Technical instructions and individual measurements
+remain available in expandable details. Results keep transcripts and useful
+timings visible, and saved comparisons show dates instead of opaque run IDs.
+Actions wrap onto separate rows with enlarged text; reference fields show at most
+six lines while preserving their full editable contents.
+
+Whistle is included in the same recorded/imported-audio flow. Its seven supported
+language codes are enforced, and its benchmark identity reports automatic
+detection. Every pass includes worker startup and model loading. Sampled app PSS
+excludes that worker; both limitations appear in the report metadata and results.
+The daily model remains unchanged unless explicitly selected from results.
+
+Verification:
+
+- 71 focused JVM tests: zero failures, one optional host-runtime test skipped.
+- Dev debug assembly, Android-test APK assembly and dev debug lint pass.
+- All 11 Android comparison/UI tests pass on an API 37 emulator, including import,
+  recreation, catalog/backend coverage, Whistle language/readiness rules,
+  transcripts, exports, keyboard focus, back navigation, and error/progress states.
+- The actual page was rendered at 320 dp with 200% text and at 640 dp using local
+  Compose density overrides. Single-line checks cover short action labels to
+  prevent splitting words. Dark and light screenshots were inspected. Text and
+  control contrast checks cover the production Voice Input theme, Dev Yellow and
+  Classic Material Light.
+- Earlier emulator attempts encountered graphics-buffer errors, startup timeouts,
+  and low-memory process kills. The final successful run used software rendering
+  and 4 GB of emulator RAM.
+- The ARM64 Whistle runner in the APK matches its pinned SHA-256, and its notice
+  is packaged. No non-ARM64 libraries were found.
+
+Review artifacts are local and ignored by Git under `build/model-comparison/`:
+`voice-input-beta5-comparison-ui-dev.apk`, `ui-audio-dark.png`,
+`ui-whistle-selected.png`, `ui-results-light-sample.png`,
+`ui-large-text.png`, `ui-large-text-editing.png` and `ui-wide-light.png`.
+The results preview uses synthetic test data, not model accuracy measurements.
+
+The debug APK reports `1.4.7-beta.5-dev`, version code 74, application ID
+`org.futo.voiceinput.dev`. It includes current local changes; its embedded
+`5c74eb3` revision is not the complete source identity. APK SHA-256:
+`e5fe81d8762843d98ebae2496df269e7fc1937c218ebad2acb4002fca1f6199d`.
+
+This is a review build, not a published beta. Physical-phone Whistle inference,
+microphone recording, speed, memory and thermal comparisons remain unverified.
+The full Windows JVM suite was not repeated; the two previously documented
+DiagnosticStore failures are outside these focused checks.

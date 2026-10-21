@@ -47,12 +47,12 @@ import org.futo.voiceinput.theme.Typography
 import kotlin.math.roundToLong
 
 @Composable
-fun ScreenTitle(title: String, showBack: Boolean = false, navController: NavHostController = rememberNavController()) {
+fun ScreenTitle(title: String, showBack: Boolean = false, navController: NavHostController = rememberNavController(), onBack: (() -> Unit)? = null) {
     val navigateBack = stringResource(R.string.navigate_back)
     val rowModifier = if(showBack) {
         Modifier
             .fillMaxWidth()
-            .clickable(onClickLabel = navigateBack) { navController.navigateUp() }
+            .clickable(onClickLabel = navigateBack) { if (onBack != null) onBack() else navController.navigateUp() }
     } else {
         Modifier.fillMaxWidth()
     }

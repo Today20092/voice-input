@@ -64,6 +64,27 @@ Cohere download and recognition, history improvements, and the popup were manual
 
 ## Model downloads
 
+### Whistle experimental option
+
+Whistle adds a 16.9 MB final-only model for English, German, French, Spanish,
+Italian, Dutch and Polish, with automatic language detection. Download it from
+Model Options, then select it. Orukeet remains the default.
+
+The app uses revision-pinned, SHA-256-checked [Cactus Whistle weights](https://huggingface.co/Cactus-Compute/whistle)
+and an unmodified [Needle ARM64 runtime](https://huggingface.co/Cactus-Compute/needle3),
+both under Apache 2.0. It runs offline in a separate process with two CPU threads;
+the process exits after each recording, releasing model memory. Temporary audio
+and results stay in app-private cache and are deleted on completion, failure or
+cancellation. An interrupted app process can leave scratch files, cleared on the
+next nonempty Whistle run or by Android's cache cleanup. Audio history remains a
+separate setting. Runtime logs are discarded.
+
+Text appears after Stop; live transcription and manual language selection are not
+exposed in this beta. English cleanup only runs when English is established by
+recognition. The Light rating is advisory: Android speed, RAM, accuracy and
+performance on older phones have not been measured. Each recording includes a
+cold model load; the publisher's desktop timings do not measure this app.
+
 ### Phonon 2 experimental option
 
 Phonon 2 produces English text after Stop, including punctuation and capitalization.

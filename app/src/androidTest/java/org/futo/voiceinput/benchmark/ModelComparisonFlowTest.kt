@@ -29,6 +29,12 @@ class ModelComparisonFlowTest {
         val models = BenchmarkModel.all()
         models.forEach { assertNotNull("Missing backend for ${it.id}", it.backend(context, "en")) }
         assertTrue(models.first { it.managed?.runtimeId == "phonon" }.backend(context) is PhononBackend)
+        val whistle = models.single { it.id == "whistle" }
+        assertTrue(whistle.backend(context) is org.futo.voiceinput.whistle.WhistleBackend)
+        val identity = whistle.identity(context, "fr")
+        assertEquals("auto (recording language fr)", identity["language"])
+        assertTrue(identity.getValue("timingNotice").contains("worker startup"))
+        assertTrue(identity.getValue("memoryNotice").contains("excludes the Whistle worker"))
     }
 
     @Test fun draftRemovalAndDownloadHandoffSurviveRecreation() {

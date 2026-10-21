@@ -15,5 +15,11 @@ class BenchmarkCatalogTest {
         assertFalse(models.first { it.managed?.runtimeId == "moonshine" }.supportsLanguage("ar"))
         assertTrue(models.first { it.managed?.runtimeId == "cohere" }.supportsLanguage("ar"))
         assertFalse(models.first { it.managed?.runtimeId == "cohere" }.supportsLanguage("xx"))
+        val whistle = models.single { it.id == "whistle" }
+        assertEquals("Whistle", whistle.name)
+        for (language in listOf("en", "de", "fr", "es", "it", "nl", "pl")) assertTrue(whistle.supportsLanguage(language))
+        assertFalse(whistle.supportsLanguage("ar"))
+        assertFalse(whistle.supportsLanguage("xx"))
+        assertEquals("Moonshine Small", models.first { it.id == "moonshine-small" }.name)
     }
 }

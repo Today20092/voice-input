@@ -22,9 +22,10 @@ Stable [1.4.6](https://github.com/Today20092/voice-input/releases/tag/v1.4.6)
 promotes the tested Share beta 7 code, with clearer Model Options, Parakeet Redux
 and the Nemotron download fix.
 
-Beta [1.4.7-beta.3](https://github.com/Today20092/voice-input/releases/tag/v1.4.7-beta.3)
-adds experimental Phonon 2 recognition on top of beta 2's ASR4ALL dictation,
-simpler cleanup settings, and smaller voice-input panel.
+Beta [1.4.7-beta.5](https://github.com/Today20092/voice-input/releases/tag/v1.4.7-beta.5)
+includes the redesigned **Advanced settings → Model comparison** page: record or
+import audio and compare selected models, including experimental 16.9 MB Whistle.
+It also retains Phonon 2, ASR4ALL dictation and the earlier beta improvements.
 Install the beta APK directly if you want to try these changes.
 
 ## Get started

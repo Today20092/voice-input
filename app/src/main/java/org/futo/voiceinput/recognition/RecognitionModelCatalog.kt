@@ -80,6 +80,7 @@ data class RecognitionModelCard(
 )
 
 object RecognitionModelCatalog {
+    val whistle = org.futo.voiceinput.whistle.WhistleModel.model
     val phonon = org.futo.voiceinput.phonon.PhononModel.model
     val parakeetRedux = org.futo.voiceinput.redux.ReduxModel.model
     private const val MOONSHINE_REVISION = "2026-03-16-sha256"
@@ -248,6 +249,12 @@ object RecognitionModelCatalog {
             recognitionLanguages = phonon.recognitionLanguages,
             performanceClasses = setOf(phonon.performanceClass),
             models = listOf(phonon)
+        ),
+        RecognitionModelCard(
+            id = "whistle", runtimeId = whistle.runtimeId, displayName = whistle.displayName,
+            description = whistle.description, transcription = whistle.transcription,
+            recognitionLanguages = whistle.recognitionLanguages,
+            performanceClasses = setOf(whistle.performanceClass), models = listOf(whistle)
         ),
         RecognitionModelCard(
             id = "asr4all", runtimeId = "asr4all", displayName = "ASR4ALL",

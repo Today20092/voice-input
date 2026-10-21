@@ -14,12 +14,14 @@ import androidx.activity.viewModels
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import kotlinx.coroutines.Dispatchers
@@ -35,7 +37,18 @@ class ModelComparisonActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContent { UixThemeAuto { Surface { Comparison() } } }
+        setContent { ComparisonPage() }
+    }
+
+    @Composable
+    internal fun ComparisonPage() {
+        UixThemeAuto {
+            val colors = MaterialTheme.colorScheme
+            // Match the settings' neutral detail actions, including themes with a low-contrast primary color.
+            MaterialTheme(colorScheme = colors.copy(primary = colors.onSurface, onPrimary = colors.surfaceContainer)) {
+                Surface(color = colors.background) { Comparison() }
+            }
+        }
     }
 
     override fun onStop() {
@@ -62,6 +75,7 @@ class ModelComparisonActivity : ComponentActivity() {
         } catch (_: Exception) { player?.release(); player = null; model.error = "Cannot play this recording. Try importing it again." }
     }
 
+    @OptIn(ExperimentalLayoutApi::class)
     @Composable
     private fun Comparison() {
         val scope = rememberCoroutineScope()
@@ -104,114 +118,193 @@ class ModelComparisonActivity : ComponentActivity() {
             }
         }
         BackHandler(model.busy) { model.cancel() }
-        Column(Modifier.fillMaxSize().systemBarsPadding().imePadding().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("Model comparison", style = MaterialTheme.typography.headlineMedium)
-            Text("Record once and compare the same audio on this phone. Results describe your voice and device. Your daily settings stay unchanged.")
-            if (model.report == null) {
-                Text("Use a supplied passage or write your own. The reference must match the words you actually speak, including fillers. Edit it after listening if you deviate.")
-                OutlinedButton(onClick = { showPrompts = true }, enabled = !model.busy) { Text("Choose passage") }
-                OutlinedButton(onClick = { showLanguages = true }, enabled = !model.busy && model.clips.isEmpty()) {
-                    Text("Recording language: ${org.futo.voiceinput.LANGUAGE_LIST.firstOrNull { it.id == model.language }?.name ?: model.language}")
+        Column(Modifier.fillMaxSize().imePadding()) {
+            org.futo.voiceinput.settings.ScreenTitle("Model comparison", showBack = true,
+                onBack = { if (model.busy) model.cancel() else finish() })
+            Column(
+                Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp).padding(bottom = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                ComparisonText("Compare the same audio across models on this phone. Your daily model and settings stay unchanged.")
+                model.error?.let { error ->
+                    Surface(color = MaterialTheme.colorScheme.errorContainer, shape = MaterialTheme.shapes.medium) {
+                        Text(error, Modifier.fillMaxWidth().padding(16.dp).semantics { liveRegion = LiveRegionMode.Polite },
+                            color = MaterialTheme.colorScheme.onErrorContainer)
+                    }
                 }
-                Text("One language per comparison. English-only models are skipped for other languages. Models with automatic detection report that configuration.")
-                OutlinedTextField(reference, { if (it.length <= 6000) reference = it }, label = { Text("Prompt / spoken reference (optional)") }, modifier = Modifier.fillMaxWidth(), readOnly = model.busy)
-                Text("Limit: 180 seconds, 64 MiB per file. Import AAC M4A or 16-bit PCM WAV, mono/stereo, 8 to 48 kHz. Audio stays in private benchmark storage.")
-                if (model.recording) Button(onClick = model::stopRecording) { Text("Stop recording") }
-                else Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(onClick = {
-                        player?.release(); player = null
-                        if (ContextCompat.checkSelfPermission(this@ModelComparisonActivity, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) model.record(reference)
-                        else permission.launch(Manifest.permission.RECORD_AUDIO)
-                    }, enabled = !model.busy) { Text("Record") }
-                    OutlinedButton(onClick = { importer.launch(arrayOf("audio/*")) }, enabled = !model.busy) { Text("Import audio") }
+                if (model.busy) ComparisonCard {
+                    ComparisonHeading(if (model.recording) "Recording" else "Comparison in progress")
+                    LinearProgressIndicator(Modifier.fillMaxWidth())
+                    Text(model.progress, Modifier.semantics { liveRegion = LiveRegionMode.Polite })
+                    if (model.recording) Button(onClick = model::stopRecording, modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary, contentColor = MaterialTheme.colorScheme.onSecondary)) { Text("Stop recording") }
+                    OutlinedButton(onClick = model::cancel, modifier = Modifier.fillMaxWidth()) { Text("Cancel comparison") }
+                    ComparisonText("Keep this screen open. Cancellation may wait for the current decode; completed measurements are kept.")
                 }
-                model.clips.forEachIndexed { index, clip ->
-                    Text("Recording ${index + 1}: %.1f seconds".format(clip.durationSeconds))
-                    OutlinedButton(onClick = { preview(model.draftId, clip) }, enabled = !model.busy) { Text("Listen") }
-                    OutlinedTextField(clip.reference.orEmpty(), { model.reference(clip.id, it) }, label = { Text("Words actually spoken") }, modifier = Modifier.fillMaxWidth(), enabled = !model.busy)
-                    TextButton(onClick = { player?.release(); player = null; model.removeClip(clip.id) }, enabled = !model.busy) { Text("Remove recording") }
+                if (model.report == null) {
+                    ComparisonCard {
+                        ComparisonHeading("Audio")
+                        ComparisonText("Record a passage or import audio. Every selected model receives the same recording.")
+                        OutlinedButton(onClick = { showLanguages = true }, enabled = !model.busy && model.clips.isEmpty(),
+                            modifier = Modifier.fillMaxWidth()) {
+                            Text("Language: ${org.futo.voiceinput.LANGUAGE_LIST.firstOrNull { it.id == model.language }?.name ?: model.language}")
+                        }
+                        OutlinedTextField(reference, { if (it.length <= 6000) reference = it },
+                            label = { Text("Passage") }, supportingText = { Text("Optional") },
+                            modifier = Modifier.fillMaxWidth(), readOnly = model.busy, maxLines = 6)
+                        TextButton(onClick = { showPrompts = true }, enabled = !model.busy) { Text("Choose a passage") }
+                        if (!model.recording) FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp),
+                            maxItemsInEachRow = if (LocalDensity.current.fontScale > 1.3f) 1 else 2) {
+                            Button(onClick = {
+                                player?.release(); player = null
+                                if (ContextCompat.checkSelfPermission(this@ModelComparisonActivity, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) model.record(reference)
+                                else permission.launch(Manifest.permission.RECORD_AUDIO)
+                            }, enabled = !model.busy && model.clips.size < 8, modifier = Modifier.weight(1f).widthIn(min = 128.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary, contentColor = MaterialTheme.colorScheme.onSecondary)) { Text("Record") }
+                            OutlinedButton(onClick = { importer.launch(arrayOf("audio/*")) },
+                                enabled = !model.busy && model.clips.size < 8, modifier = Modifier.weight(1f).widthIn(min = 128.dp)) { Text("Import audio") }
+                        }
+                        if (model.clips.isEmpty()) ComparisonText("No recordings yet. Add audio to start a comparison.")
+                        else ComparisonText("${model.clips.size} of 8 recordings added. Listen back and check the words below.")
+                        ComparisonDetails("Recording tips and file limits") {
+                            ComparisonText("The reference must match the words actually spoken, including fillers. Edit it after listening, or leave it blank to compare transcripts without an accuracy score.")
+                            ComparisonText("Use one language per comparison. English-only models are skipped for other languages; automatic-detection models report that configuration.")
+                            ComparisonText("Up to 8 recordings, 180 seconds and 64 MiB per file. Import AAC M4A or 16-bit PCM WAV, mono/stereo, 8–48 kHz. Audio stays in private comparison storage.")
+                        }
+                    }
+                    model.clips.forEachIndexed { index, clip ->
+                        key(clip.id) {
+                            ComparisonCard {
+                                ComparisonHeading("Recording ${index + 1}")
+                                ComparisonText("%.1f seconds".format(clip.durationSeconds))
+                                OutlinedButton(onClick = { preview(model.draftId, clip) }, enabled = !model.busy) { Text("Listen") }
+                                OutlinedTextField(clip.reference.orEmpty(), { model.reference(clip.id, it) },
+                                    label = { Text("Words spoken") }, modifier = Modifier.fillMaxWidth(), enabled = !model.busy, maxLines = 6)
+                                TextButton(onClick = { player?.release(); player = null; model.removeClip(clip.id) }, enabled = !model.busy,
+                                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Text("Remove recording") }
+                            }
+                        }
+                    }
+                    ComparisonCard {
+                        val selectedCount = model.models.count { it.id in model.selected && it.supportsLanguage(model.language) }
+                        ComparisonHeading("Models")
+                        ComparisonText("$selectedCount selected for this recording language. Expand a family to choose its models and variants.")
+                        FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp),
+                            maxItemsInEachRow = if (LocalDensity.current.fontScale > 1.3f) 1 else 2) {
+                            TextButton(onClick = { model.selected = model.models.filter { it.supportsLanguage(model.language) }.map { it.id }.toSet() },
+                                enabled = !model.busy, modifier = Modifier.weight(1f).widthIn(min = 128.dp)) { Text("Select all") }
+                            TextButton(onClick = { model.selected = model.models.filter { it.id in model.installed && it.supportsLanguage(model.language) }.map { it.id }.toSet() },
+                                enabled = !model.busy, modifier = Modifier.weight(1f).widthIn(min = 128.dp)) { Text("Installed only") }
+                        }
+                        org.futo.voiceinput.settings.pages.modelFamiliesForDisplay().forEach { (family, cards) ->
+                            val ids = cards.flatMap { it.models }.map { it.id }.toSet()
+                            val candidates = model.models.filter { it.managed?.id in ids || (it.whisper != null && cards.any { card -> card.id == "whisper" }) }
+                            ComparisonModelFamily(family, candidates, model.selected, model.installed, model.language, !model.busy) { id, checked ->
+                                model.selected = if (checked) model.selected + id else model.selected - id
+                            }
+                        }
+                        ComparisonText("Additional download: ${mib(model.downloadBytes)} MiB · Installed storage: ${mib(model.storageBytes)} MiB")
+                        ComparisonText("Archives may need temporary extra space. Shared model files are counted once.")
+                        Button(onClick = { confirmRun = true },
+                            enabled = !model.busy && model.clips.isNotEmpty() && selectedCount > 0, modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary, contentColor = MaterialTheme.colorScheme.onSecondary)) {
+                            Text("Compare selected models")
+                        }
+                        if (model.clips.isEmpty()) ComparisonText("Add a recording above to enable comparison.")
+                        else if (selectedCount == 0) ComparisonText("Select at least one model that supports the recording language.")
+                    }
                 }
-                Text("Models and variants", style = MaterialTheme.typography.titleLarge)
-                Row {
-                    TextButton(onClick = { model.selected = model.models.map { it.id }.toSet() }, enabled = !model.busy) { Text("Select all") }
-                    TextButton(onClick = { model.selected = model.installed }, enabled = !model.busy) { Text("Installed only") }
+                model.report?.takeUnless { model.busy }?.let { report ->
+                    ComparisonCard {
+                        ComparisonHeading("Results")
+                        ComparisonText("${report.status.replaceFirstChar { it.uppercase() }} · ${report.cases.count { it.status == "completed" }} of ${report.selectedModelIds.size} models completed")
+                        Button(onClick = model::startNew, modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary, contentColor = MaterialTheme.colorScheme.onSecondary)) { Text("New comparison") }
+                    }
+                    report.cases.toList().forEach { result ->
+                        key(report.runId, result.modelId) {
+                            ComparisonCard {
+                                ComparisonHeading(model.models.firstOrNull { it.id == result.modelId }?.name ?: result.modelId)
+                                ComparisonText(result.status.replaceFirstChar { it.uppercase() } + result.reason?.let { ": $it" }.orEmpty())
+                                result.identity["timingNotice"]?.let { ComparisonText(it) }
+                                report.clips.forEachIndexed { index, clip ->
+                                    val observations = result.observations.toList().filter { it.clipId == clip.id }
+                                    val warm = observations.filter { it.phase == "warm" }.map { it.elapsedNs }.sorted()
+                                    ComparisonHeading("Recording ${index + 1} · %.1f seconds".format(clip.durationSeconds))
+                                    if (warm.isNotEmpty()) Text("Typical transcription: ${ms(warm.medianNs())} ms")
+                                    observations.firstOrNull()?.let { observation ->
+                                        if (warm.isEmpty()) Text("First transcription: ${ms(observation.elapsedNs)} ms")
+                                        Text("Word error rate: ${observation.accuracy.words?.let { "%.1f%%".format(it.rate * 100) } ?: "unavailable: ${observation.accuracy.unavailable}"}")
+                                        androidx.compose.foundation.text.selection.SelectionContainer {
+                                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                                ComparisonText("Reference: ${clip.reference ?: "Unavailable"}")
+                                                Text("Recognized: ${observation.transcript}")
+                                            }
+                                        }
+                                    }
+                                }
+                                ComparisonDetails("Every transcript and timing") {
+                                    ComparisonText("Backend preparation: ${ms(result.initializationNs)} ms.")
+                                    result.identity["memoryNotice"]?.let { ComparisonText(it) }
+                                    report.clips.forEachIndexed { index, clip ->
+                                        val observations = result.observations.toList().filter { it.clipId == clip.id }
+                                        val warm = observations.filter { it.phase == "warm" }.map { it.elapsedNs }.sorted()
+                                        if (warm.isNotEmpty()) ComparisonText("Recording ${index + 1}: ${ms(warm.first())}–${ms(warm.last())} ms across ${warm.size}/${report.warmRepetitions} timed passes.")
+                                        observations.forEach { observation ->
+                                            ComparisonText("Recording ${index + 1} · ${if (observation.phase == "first") "First decode" else "Repeated decode ${observation.repetition}"}: ${ms(observation.elapsedNs)} ms")
+                                            if (observation.phase == "first") ComparisonText("Startup inclusive: ${ms(result.initializationNs?.plus(observation.elapsedNs))} ms")
+                                            ComparisonText("Word error rate: ${observation.accuracy.words?.let { "%.1f%%".format(it.rate * 100) } ?: "unavailable"} · Character error rate: ${observation.accuracy.characters?.let { "%.1f%%".format(it.rate * 100) } ?: "unavailable"}")
+                                            Text(observation.transcript)
+                                        }
+                                    }
+                                }
+                                model.models.firstOrNull { it.id == result.modelId && result.status == "completed" }?.let { candidate ->
+                                    OutlinedButton(onClick = { model.select(candidate) }) { Text("Use as daily model") }
+                                }
+                            }
+                        }
+                    }
+                    ComparisonCard {
+                        ComparisonHeading("Save or manage results")
+                        ComparisonText(report.contentNotice)
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedButton(onClick = { exportRunId = report.runId; exportMarkdown = false; exporter.launch("benchmark-${report.runId}-WITH-TRANSCRIPTS.json") },
+                                modifier = Modifier.fillMaxWidth()) { Text("Export JSON") }
+                            OutlinedButton(onClick = { exportRunId = report.runId; exportMarkdown = true; exporter.launch("benchmark-${report.runId}-WITH-TRANSCRIPTS.md") },
+                                modifier = Modifier.fillMaxWidth()) { Text("Export Markdown") }
+                        }
+                        ComparisonDetails("How to read these results") {
+                            ComparisonText("Lower word error rate means fewer substitutions, missing words and extra words. It can exceed 100%. Punctuation and capitalization are not scored; number formatting stays literal.")
+                            ComparisonText("Typical transcription is the median of the repeated timed passes, excluding one untimed warm-up. Results describe these recordings and this phone, not a general model ranking.")
+                            ComparisonText(report.cacheNotice)
+                        }
+                        TextButton(onClick = {
+                            cleanupIds = report.selectedModelIds.filter { it !in report.installedBefore && it in model.installed }.toSet()
+                            showCleanup = true
+                        }) { Text("Optional model removal") }
+                        TextButton(onClick = { confirmDelete = report },
+                            colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Text("Delete this benchmark and its audio") }
+                    }
                 }
-                model.models.forEach { candidate ->
-                    val supported = candidate.supportsLanguage(model.language)
-                    Row(Modifier.fillMaxWidth().toggleable(value = candidate.id in model.selected, enabled = !model.busy && supported,
-                        role = Role.Checkbox, onValueChange = { checked -> model.selected = if (checked) model.selected + candidate.id else model.selected - candidate.id })) {
-                        Checkbox(candidate.id in model.selected, onCheckedChange = null, enabled = !model.busy && supported)
-                        Column(Modifier.weight(1f)) {
-                            Text(candidate.name)
-                            Text("${candidate.languages}; ${if (candidate.id in model.installed) "Installed" else "Download required"}; ${mib(candidate.storageBytes)} MiB", style = MaterialTheme.typography.bodySmall)
-                            if (!supported) Text("Skipped for this recording language", style = MaterialTheme.typography.bodySmall)
+                if (!model.busy && model.report == null) {
+                    ComparisonCard {
+                        ComparisonHeading("Saved comparisons")
+                        if (model.saved.isEmpty()) ComparisonText("Completed comparisons and saved recordings appear here.")
+                        model.saved.forEach { saved ->
+                            TextButton(onClick = { model.show(saved) }, modifier = Modifier.fillMaxWidth()) {
+                                Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Text(java.text.DateFormat.getDateTimeInstance(java.text.DateFormat.MEDIUM, java.text.DateFormat.SHORT).format(java.util.Date(saved.createdAtMs)),
+                                        style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
+                                    ComparisonText("${saved.status.replaceFirstChar { it.uppercase() }} · ${saved.clips.size} recordings · ${saved.selectedModelIds.size} models")
+                                }
+                            }
                         }
                     }
                 }
-                Text("Additional download: ${mib(model.downloadBytes)} MiB. Additional installed storage: ${mib(model.storageBytes)} MiB. Archives may need temporary extra space. Shared directories are counted once.")
-                Button(onClick = { confirmRun = true }, enabled = !model.busy && model.clips.isNotEmpty() && model.selected.isNotEmpty()) { Text("Compare selected models") }
             }
-            if (model.busy) {
-                LinearProgressIndicator(Modifier.fillMaxWidth())
-                Text(model.progress)
-                OutlinedButton(onClick = model::cancel) { Text("Cancel comparison") }
-                Text("Keep this screen open. Native decoding may finish its current call before cancellation takes effect. Completed measurements are kept.")
-            }
-            model.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-            model.report?.takeUnless { model.busy }?.let { report ->
-                Text("Results: ${report.status}", style = MaterialTheme.typography.titleLarge)
-                report.cases.toList().forEach { result ->
-                    var showObservations by remember(report.runId, result.modelId) { mutableStateOf(false) }
-                    Text(model.models.firstOrNull { it.id == result.modelId }?.name ?: result.modelId, style = MaterialTheme.typography.titleMedium)
-                    Text("${result.status}. ${result.reason.orEmpty()}")
-                    Text("Model loading: ${ms(result.initializationNs)} ms.")
-                    report.clips.forEachIndexed { index, clip ->
-                        Text("Recording ${index + 1}: %.1f seconds".format(clip.durationSeconds))
-                        val observations = result.observations.toList().filter { it.clipId == clip.id }
-                        val warm = observations.filter { it.phase == "warm" }.map { it.elapsedNs }.sorted()
-                        if (warm.isNotEmpty()) Text("Typical transcription: ${ms(warm.medianNs())} ms once loaded. Range: ${ms(warm.first())}–${ms(warm.last())} ms across ${warm.size}/5 timed passes.")
-                        observations.firstOrNull()?.let { observation ->
-                            Text("${if (observation.phase == "first") "First decode" else "Warm decode ${observation.repetition}"}: ${ms(observation.elapsedNs)} ms.")
-                            if (observation.phase == "first") Text("Startup inclusive: ${ms(result.initializationNs?.plus(observation.elapsedNs))} ms.")
-                            Text("Word error rate: ${observation.accuracy.words?.let { "%.1f%%".format(it.rate * 100) } ?: "unavailable: ${observation.accuracy.unavailable}"}")
-                            Text("Character error rate: ${observation.accuracy.characters?.let { "%.1f%%".format(it.rate * 100) } ?: "unavailable"}")
-                            Text("Reference: ${clip.reference ?: "Unavailable"}")
-                            Text("Recognized: ${observation.transcript}")
-                        }
-                    }
-                    TextButton(onClick = { showObservations = !showObservations }) { Text(if (showObservations) "Hide individual measurements" else "Show every transcript and timing") }
-                    if (showObservations) result.observations.toList().forEach { observation ->
-                        Text("${observation.clipId} ${observation.phase} ${observation.repetition}: ${ms(observation.elapsedNs)} ms; WER ${observation.accuracy.words?.let { "%.1f%%".format(it.rate * 100) } ?: "unavailable"}")
-                        Text(observation.transcript)
-                    }
-                    model.models.firstOrNull { it.id == result.modelId && result.status == "completed" }?.let { candidate ->
-                        OutlinedButton(onClick = { model.select(candidate) }, enabled = !model.busy) { Text("Use as daily model") }
-                    }
-                    HorizontalDivider()
-                }
-                Text("Lower word error rate means fewer word substitutions, missing words and extra words. It can exceed 100%. Punctuation and capitalization are not scored; number formatting stays literal. Export includes every transcript and timing. Warm timings exclude one warm-up.")
-                Text(report.contentNotice)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(onClick = { exportRunId = report.runId; exportMarkdown = false; exporter.launch("benchmark-${report.runId}-WITH-TRANSCRIPTS.json") }, enabled = !model.busy) { Text("Export JSON") }
-                    OutlinedButton(onClick = { exportRunId = report.runId; exportMarkdown = true; exporter.launch("benchmark-${report.runId}-WITH-TRANSCRIPTS.md") }, enabled = !model.busy) { Text("Export Markdown") }
-                }
-                OutlinedButton(onClick = {
-                    cleanupIds = report.selectedModelIds.filter { it !in report.installedBefore && it in model.installed }.toSet()
-                    showCleanup = true
-                }, enabled = !model.busy) { Text("Optional model removal") }
-                OutlinedButton(onClick = { confirmDelete = report }, enabled = !model.busy) { Text("Delete this benchmark and its audio") }
-                Button(onClick = model::startNew, enabled = !model.busy) { Text("New comparison") }
-            }
-            if (!model.busy && model.report == null) {
-                Text("Saved comparisons", style = MaterialTheme.typography.titleMedium)
-                model.saved.forEach { saved ->
-                    TextButton(onClick = { model.show(saved) }) { Text("${saved.runId.take(8)}: ${saved.status}, ${saved.clips.size} clips") }
-                }
-            }
-            TextButton(onClick = { finish() }, enabled = !model.busy) { Text("Back to settings") }
         }
         if (showPrompts) AlertDialog(onDismissRequest = { showPrompts = false }, title = { Text("Choose a passage") }, text = {
-            Column { repeat(prompts.length()) { index ->
+            Column(Modifier.verticalScroll(rememberScrollState())) { repeat(prompts.length()) { index ->
                 val prompt = prompts.getJSONObject(index)
                 TextButton(onClick = { reference = prompt.getString("text"); showPrompts = false }) { Text(prompt.getString("title")) }
             } }
@@ -224,7 +317,11 @@ class ModelComparisonActivity : ComponentActivity() {
             }
         }, confirmButton = { TextButton(onClick = { showLanguages = false }) { Text("Close") } })
         if (confirmRun) AlertDialog(onDismissRequest = { confirmRun = false }, title = { Text("Start comparison?") },
-            text = { Text("Confirm the reference matches your recording, or leave it blank to compare outputs without an accuracy score. Download ${mib(model.downloadBytes)} MiB, retain ${mib(model.storageBytes)} MiB of additional models, then run them sequentially. Each model makes a first pass, an untimed warm-up and five timed passes on the same audio. Large models can take several minutes. Missing or failed models get a skipped or failed row. Your daily model stays selected.") },
+            text = { Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text("Check that each reference matches the words spoken. Leave it blank to compare transcripts without an accuracy score.")
+                Text("Download ${mib(model.downloadBytes)} MiB and retain ${mib(model.storageBytes)} MiB of additional models. Your daily model stays selected.")
+                ComparisonText("Each model runs sequentially: a first pass, an untimed warm-up and five timed passes. Large models can take several minutes. Failed or missing models are listed in the results.")
+            } },
             confirmButton = { TextButton(onClick = { confirmRun = false; player?.release(); player = null; model.run() }) { Text("Download and compare") } },
             dismissButton = { TextButton(onClick = { confirmRun = false }) { Text("Cancel") } })
         confirmDelete?.let { report -> AlertDialog(onDismissRequest = { confirmDelete = null }, title = { Text("Delete benchmark?") },

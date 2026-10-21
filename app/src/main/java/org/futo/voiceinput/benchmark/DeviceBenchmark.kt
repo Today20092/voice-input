@@ -91,7 +91,7 @@ class DeviceBenchmark(private val context: Context, val store: BenchmarkStore = 
                             }
                         }
                         try {
-                            BenchmarkRunner(environment = ::environment).runCase(result, clips,
+                            BenchmarkRunner(environment = ::environment, warmRepetitions = report.warmRepetitions).runCase(result, clips,
                                 { model.recognizer(context, language) }, { store.save(report) })
                         } finally { sampler.cancelAndJoin() }
                     }

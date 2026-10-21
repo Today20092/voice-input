@@ -45,7 +45,8 @@ data class BenchmarkReport(
     val device: Map<String, String> = emptyMap(), val clips: List<BenchmarkClip>,
     val selectedModelIds: List<String>, val installedBefore: List<String>,
     val cases: MutableList<BenchmarkCaseResult> = mutableListOf(),
-    val liveReadings: MutableList<LiveBenchmarkReading> = mutableListOf()
+    val liveReadings: MutableList<LiveBenchmarkReading> = mutableListOf(),
+    val warmRepetitions: Int = 5
 )
 
 interface BenchmarkRecognizer {
@@ -76,13 +77,15 @@ fun BenchmarkReport.withVerifiedSpokenReferences(): BenchmarkReport {
 /** UI and instrumentation share all timing boundaries. Conversion, scoring and persistence are outside decode time. */
 class BenchmarkRunner(
     private val clock: () -> Long = System::nanoTime,
-    private val environment: () -> Map<String, String> = { emptyMap() }
+    private val environment: () -> Map<String, String> = { emptyMap() },
+    private val warmRepetitions: Int = 5
 ) {
     suspend fun runCase(
         result: BenchmarkCaseResult, clips: List<Pair<BenchmarkClip, FloatArray>>,
         factory: () -> BenchmarkRecognizer, persist: () -> Unit
     ) {
         require(clips.isNotEmpty())
+        require(warmRepetitions in 1..5)
         clips.forEach { (clip, samples) -> require(samples.size == clip.sampleCount && samples.isNotEmpty()) }
         var recognizer: BenchmarkRecognizer? = null
         result.before = environment()
@@ -109,7 +112,7 @@ class BenchmarkRunner(
             clips.forEach { (clip, audio) ->
                 currentCoroutineContext().ensureActive()
                 recognizer.transcribe(audio.copyOf())
-                repeat(5) { decode(clip, audio, "warm", it + 1) }
+                repeat(warmRepetitions) { decode(clip, audio, "warm", it + 1) }
             }
             result.status = "completed"
         } catch (cancelled: CancellationException) {

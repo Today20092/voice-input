@@ -10,6 +10,7 @@ param(
     [switch]$DownloadMissing,
     [switch]$ReferencesVerified,
     [switch]$Install,
+    [ValidateRange(1,5)][int]$WarmRepetitions = 5,
     [ValidateRange(30,3600)][int]$CaseTimeoutSeconds = 1800,
     [ValidateRange(0,600)][int]$CoolingSeconds = 0,
     [string]$OutputDirectory
@@ -102,7 +103,7 @@ try {
         Invoke-BenchmarkAdb -Arguments @('push',$temporarySuite,'/data/local/tmp/voiceinput-benchmark-suite.json') | Out-Null
         Invoke-BenchmarkAdb -Arguments @('shell','run-as',$Package,'cp','/data/local/tmp/voiceinput-benchmark-suite.json','files/benchmark-import/suite.json') | Out-Null
         Invoke-BenchmarkAdb -Arguments @('shell','rm','/data/local/tmp/voiceinput-benchmark-suite.json') | Out-Null
-        Invoke-BenchmarkCommand -Operation 'prepare' -Extra @('-e','benchmarkModels',($Models -join ','))
+        Invoke-BenchmarkCommand -Operation 'prepare' -Extra @('-e','benchmarkModels',($Models -join ','),'-e','benchmarkWarmRepetitions',$WarmRepetitions.ToString())
         $runId = (Read-BenchmarkControl).runId
     } else {
         $persistedText = Invoke-BenchmarkAdb -Arguments @('exec-out','run-as',$Package,'cat',"files/model-benchmarks/$runId/report.json")

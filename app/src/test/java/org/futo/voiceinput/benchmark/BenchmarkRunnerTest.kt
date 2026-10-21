@@ -14,6 +14,25 @@ class BenchmarkRunnerTest {
         assertEquals(Long.MAX_VALUE - 1, listOf(Long.MAX_VALUE, Long.MAX_VALUE - 2).medianNs())
     }
 
+    @Test fun twoWarmRepeatsCoverEachClipAndKeepFirstDecodeSeparate() = runBlocking {
+        var calls = 0
+        val result = BenchmarkCaseResult("short")
+        val clips = (1..3).map { clip.copy(id = "clip-$it") to floatArrayOf(0f, 0f) }
+        BenchmarkRunner(warmRepetitions = 2).runCase(result, clips, { object : BenchmarkRecognizer {
+            override suspend fun load() {}
+            override suspend fun transcribe(samples: FloatArray): String { calls++; return "hello" }
+            override suspend fun close() {}
+        } }, {})
+        assertEquals("completed", result.status)
+        assertEquals(10, calls)
+        assertEquals(1, result.observations.count { it.phase == "first" })
+        clips.forEach { (clip, _) ->
+            assertEquals(listOf(1, 2), result.observations.filter {
+                it.clipId == clip.id && it.phase == "warm"
+            }.map { it.repetition })
+        }
+    }
+
     @Test fun timingWarmupCopiesAndRelease() = runBlocking {
         var now = 0L
         var calls = 0

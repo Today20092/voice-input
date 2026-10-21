@@ -33,6 +33,8 @@ class BenchmarkAdbTest {
                 }).toString(2))
             }
             "prepare" -> {
+                val warmRepetitions = args.getString("benchmarkWarmRepetitions", "5")!!.toInt()
+                require(warmRepetitions in 1..5)
                 val suiteRoot = File(context.filesDir, "benchmark-import")
                 val manifest = File(suiteRoot, "suite.json")
                 require(manifest.length() in 1..100_000)
@@ -64,7 +66,8 @@ class BenchmarkAdbTest {
                 require(clips.map { it.id }.distinct().size == clips.size)
                 val report = BenchmarkReport(runId = runId, isolation = "fresh-process-adb",
                     device = benchmark.device(), clips = clips, selectedModelIds = ids,
-                    installedBefore = all.filter { it.installed(context) }.map { it.id })
+                    installedBefore = all.filter { it.installed(context) }.map { it.id },
+                    warmRepetitions = warmRepetitions)
                 benchmark.store.save(report)
                 control.writeText(JSONObject().put("runId", runId).toString())
             }
