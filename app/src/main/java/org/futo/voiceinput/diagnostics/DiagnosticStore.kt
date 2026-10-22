@@ -4,6 +4,8 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.io.File
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
 import java.util.UUID
 
 @Serializable
@@ -201,7 +203,7 @@ class DiagnosticStore(
         directory.mkdirs()
         val temporary = File(directory, "policy.tmp")
         temporary.writeText(json.encodeToString(next))
-        check(temporary.renameTo(policyFile)) { "Unable to save diagnostic preferences" }
+        Files.move(temporary.toPath(), policyFile.toPath(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
         policy = next
     }
 }

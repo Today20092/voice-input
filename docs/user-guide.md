@@ -9,7 +9,12 @@
 3. Open **Model Options**, keep Orukeet or select another recognizer, and confirm its download.
 4. Start dictating. Live text depends on the model; the final result is delivered after recording stops.
 
-The stable app uses `org.futo.voiceinput.moonshine`, a separate package from upstream FUTO Voice Input. Stable 1.4.6 updates this fork's earlier releases and tested betas while retaining settings and downloaded models. Existing model selections are preserved.
+The stable app uses `org.futo.voiceinput.moonshine`, a separate package from upstream FUTO Voice Input. Stable 1.4.7 updates this fork's earlier releases and tested betas while retaining settings, recordings and downloaded models. Existing model selections are preserved.
+
+We recommend **Advanced settings → Model comparison** to find a model that suits
+your device. Record or import two or three typical passages, check the words
+spoken, and compare speed, word error rate and sampled app RAM. Then test your
+preferred model in ordinary dictation. See the [comparison guide](model-comparison.md).
 
 Harper English cleanup is optional and off by default. Turn off **Enable Harper cleanup** in the cleanup settings to bypass it; existing beta preferences are preserved. It requires no model download. See the [Harper removal guide](harper-removal.md) for removing its code and native dependency from a future release.
 
@@ -37,7 +42,7 @@ settings. Names and picker placement vary by device.
 
 FUTO Keyboard's built-in recognizer and this separately installed app are
 different choices. Installing this fork does not automatically select it
-inside FUTO Keyboard. Stable 1.4.6 hides the dedicated provider setup entry
+inside FUTO Keyboard. The app still hides the dedicated provider setup entry
 until an upstream release supports it. Follow
 [issue #16](https://github.com/Today20092/voice-input/issues/16) for restoration
 and compatibility work.
@@ -77,6 +82,28 @@ Expiry is checked during app use and by a periodic Android job. Android may dela
 
 The recognition UI shows the selected model and a scrolling waveform driven directly by microphone amplitude. Under **Advanced**, enable **Unobtrusive recognizer popup (beta)** to move the speech-recognition activity near the bottom and remove background dimming. It does not change the voice keyboard layout or recognition engine.
 
+The voice keyboard uses a compact bar waveform beside finish and cancel controls.
+It hides provisional text while recording. The separate recognition activity
+keeps its larger layout and transcript preview. Prompts scroll when space is short.
+
+<img src="screenshots/v1.4.7/recording-panel.png" alt="Compact recording panel with an audio-driven waveform and finish/cancel controls" width="540">
+
+This Android emulator UI fixture illustrates the panel, not an actual dictation.
+
+### Transcript Cleanup layout
+
+Open **Transcript Cleanup** for separate **Basic text cleanup** and **AI rewrite**
+cards. Basic cleanup uses Harper for English spacing and capitalization without
+a model download. AI rewrite uses optional S1-mini and can change wording.
+The before/after example and expandable explanations show what each option does.
+For ASR4ALL, built-in PCEC already formats text, so S1-mini is skipped while its
+preference is preserved for other models. Basic cleanup remains independent.
+
+<img src="screenshots/v1.4.7/cleanup-basic.png" alt="Basic text cleanup with an example and English-language confirmation" width="280">
+<img src="screenshots/v1.4.7/cleanup-rewrite.png" alt="AI rewrite download and preferences" width="280">
+
+Captured from the release interface in the Android emulator.
+
 ## Diagnostics and privacy
 
 Open **Settings → Support → Diagnostics → Export bug report**, add optional notes, review the summary, and share the ZIP yourself. For intermittent issues, enable detailed mode before reproducing the problem; it stops automatically after 30 minutes.
@@ -87,6 +114,8 @@ Standard reports exclude audio, dictated text, personal vocabulary, clipboard or
 
 Crash evidence is best effort, and delivery records cannot prove how another app displayed the text. Diagnostics recording and sharing still need a device smoke test. See [the diagnostics guide](diagnostics.md) for archive contents, retention details, and verification.
 
-To collect comparable measurements on your phone, follow the [phone dictation test](phone-performance-test.md). It includes three passages, cold and warm run instructions, and the diagnostic export procedure. Controlled model comparisons will be added after those reports are reviewed.
+For model measurements on your phone, use [Model comparison](model-comparison.md).
+The [phone dictation test](phone-performance-test.md) also covers ordinary
+microphone dictation, cold/warm trials and diagnostic export.
 
 An [initial S25 Ultra diagnostic baseline](research/phone-diagnostics-baseline-2026-09-25.md) contains 27 completed Orukeet dictations on 1.4.3. The median wait from Stop to result-ready was **0.85 seconds**, ranging from **0.59 to 2.32 seconds** for recordings of 2.88 to 47.88 seconds. These are ordinary-use observations, with no controlled cold/warm split or accuracy assessment.

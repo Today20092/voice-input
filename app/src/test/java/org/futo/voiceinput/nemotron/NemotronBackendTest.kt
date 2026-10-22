@@ -15,6 +15,23 @@ import java.io.File
 
 class NemotronBackendTest {
     @Test
+    fun repeatedFixedAudioStartsWithFreshDecoderState() = runBlocking {
+        var resets = 0
+        var sampleCount = 0
+        val decoder = object : SherpaStreamingDecoder {
+            override fun reset() { resets++; sampleCount = 0 }
+            override fun acceptAudio(samples: FloatArray): String { sampleCount += samples.size; return "" }
+            override fun finish() = "$sampleCount samples"
+            override fun close() {}
+        }
+        val backend = SherpaStreamingBackend(decoder = decoder)
+        try {
+            repeat(7) { assertEquals("3 samples", backend.transcribe(floatArrayOf(0.1f, 0.2f, 0.3f))) }
+            assertEquals(7, resets)
+        } finally { backend.close() }
+    }
+
+    @Test
     fun appliesSelectedLanguageWhenLoading() = runBlocking {
         val decoder = FakeNemotronDecoder()
         val backend = SherpaStreamingBackend(decoderFactory = { decoder })

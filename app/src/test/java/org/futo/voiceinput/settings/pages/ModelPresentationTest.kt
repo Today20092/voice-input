@@ -11,7 +11,25 @@ import org.junit.Test
 
 class ModelPresentationTest {
     @Test
-    fun everyModelHasTheSameCompleteDetailFields() {
+    fun familiesKeepEveryModelAndCombineParakeetAndNemotronVariants() {
+        val families = modelFamiliesForDisplay()
+        assertEquals(
+            RecognitionModelCatalog.cards.map { it.id }.sorted(),
+            families.values.flatten().map { it.id }.sorted()
+        )
+        assertEquals(
+            setOf("parakeet", "parakeet_unified", "parakeet_redux"),
+            families.getValue("Parakeet").map { it.runtimeId }.toSet()
+        )
+        assertEquals(
+            setOf("nemotron", "nemotron-multilingual"),
+            families.getValue("Nemotron").map { it.id }.toSet()
+        )
+        assertEquals(listOf("orukeet"), families.getValue("Orukeet").map { it.id })
+    }
+
+    @Test
+    fun everyModelIncludesTheCompleteSharedDetailFields() {
         val presentations = RecognitionModelCatalog.cards.flatMap { it.models }.map {
             presentRecognitionModel(it, installed = false, selected = false)
         } + ENGLISH_MODELS.map {
@@ -23,9 +41,18 @@ class ModelPresentationTest {
             "Transcription", "Languages", "Language selection", "Download size", "Model size",
             "Status", "Performance class", "Source", "License/attribution", "Version", "Model files"
         )
+        assertEquals(22, presentations.size)
+        assertEquals(presentations.size, presentations.map { it.description }.distinct().size)
         presentations.forEach { presentation ->
-            assertEquals(presentation.title, labels, presentation.fields.map { it.first })
-            assertTrue(presentation.title, presentation.description.isNotBlank())
+            assertEquals(presentation.title, labels, presentation.fields.map { it.first }.take(labels.size))
+            val description = presentation.description
+            val timing = if (presentation.fields.toMap().getValue("Transcription") ==
+                TranscriptionBehavior.FINAL_ONLY.label) "after you stop recording" else "as you speak"
+            assertTrue(presentation.title, description.contains(timing))
+            assertTrue(presentation.title, description.contains("English") || description.contains("languages"))
+            assertTrue(presentation.title, listOf("memory", "processing", "storage").any {
+                description.contains(it)
+            })
             assertTrue(presentation.title, presentation.fields.all { it.second.isNotBlank() })
             assertTrue(presentation.title, presentation.informationLinks.isNotEmpty())
             assertTrue(presentation.title, presentation.informationLinks.all {
@@ -47,7 +74,7 @@ class ModelPresentationTest {
             val sizes = group.map { card -> card.models.minOfOrNull { it.transferBytes } ?: 0L }
             assertEquals(sizes.sorted(), sizes)
         }
-        assertEquals("moonshine", cards.first().id)
+        assertEquals("asr4all", cards.first().id)
         assertEquals(
             listOf("Low latency", "Balanced", "Accuracy"),
             cards.single { it.id == "nemotron" }.models.map { it.displayName }

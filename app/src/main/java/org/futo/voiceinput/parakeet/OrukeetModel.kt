@@ -19,7 +19,8 @@ object OrukeetModel {
         directoryName = directory,
         source = "Oruk AI Orukeet (CC BY-SA 4.0), based on NVIDIA Parakeet TDT 0.6B V3",
         displayName = "Orukeet",
-        description = "Multilingual Parakeet adaptation that returns text after recording stops.",
+        description = "Turns speech in 25 European languages into text after you stop recording. " +
+            "This adapted Parakeet model detects the spoken language automatically. It needs substantial memory and processing.",
         transcription = TranscriptionBehavior.FINAL_ONLY,
         recognitionLanguages = "25 European languages",
         performanceClass = PerformanceClass.DEMANDING,

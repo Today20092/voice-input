@@ -26,6 +26,7 @@ private const val SAMPLE_RATE = 16_000
 private val LANGUAGE_TAG = Regex("\\s*<([A-Za-z]{2,3}(?:-[A-Za-z]{2,4})?)>\\s*$")
 
 internal interface SherpaStreamingDecoder {
+    fun reset() {}
     fun setLanguage(language: String) {}
     fun acceptAudio(samples: FloatArray): String
     fun finish(): String
@@ -37,7 +38,8 @@ class SherpaStreamingBackend internal constructor(
     private val backendName: String = "Nemotron",
     private val decoderFactory: (File) -> SherpaStreamingDecoder = { SherpaOnlineDecoder(it) },
     private val catchingUpSamples: Int = SAMPLE_RATE,
-    private var decoder: SherpaStreamingDecoder? = null
+    private var decoder: SherpaStreamingDecoder? = null,
+    private val languageOverride: String? = null
 ) : StreamingSpeechBackend {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val queuedSamples = AtomicLong()
@@ -52,7 +54,7 @@ class SherpaStreamingBackend internal constructor(
         private set
 
     override suspend fun load(context: Context) = withContext(Dispatchers.IO) {
-        load(modelDirectory(context), context.selectedNemotronLanguageCode())
+        load(modelDirectory(context), languageOverride ?: context.selectedNemotronLanguageCode())
     }
 
     internal fun load(modelDirectory: File, languageCode: String?) {
@@ -71,6 +73,7 @@ class SherpaStreamingBackend internal constructor(
     ) {
         check(worker == null) { "$backendName streaming has already started" }
         val decoder = decoderOrThrow()
+        decoder.reset()
         this.onPartial = onPartial
         this.onCatchingUp = onCatchingUp
         queuedSamples.set(0)
@@ -145,7 +148,8 @@ class SherpaStreamingBackend internal constructor(
 
 internal class SherpaOnlineDecoder(modelDirectory: File, featureDim: Int = 80) : SherpaStreamingDecoder {
     private val recognizer: OnlineRecognizer
-    private val stream: OnlineStream
+    private var stream: OnlineStream
+    private var language: String? = null
 
     init {
         fun model(name: String) = File(modelDirectory, name).absolutePath
@@ -170,7 +174,14 @@ internal class SherpaOnlineDecoder(modelDirectory: File, featureDim: Int = 80) :
     }
 
     override fun setLanguage(language: String) {
+        this.language = language
         stream.setOption("language", language)
+    }
+
+    override fun reset() {
+        stream.release()
+        stream = recognizer.createStream()
+        language?.let { stream.setOption("language", it) }
     }
 
     override fun acceptAudio(samples: FloatArray): String {

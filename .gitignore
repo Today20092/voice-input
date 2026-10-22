@@ -41,6 +41,7 @@ app/src/main/assets/HARPER-NOTICES.txt
 # Logs / profiling / OS files
 *.log
 *.hprof
+benchmarks/results/
 .DS_Store
 Thumbs.db
 

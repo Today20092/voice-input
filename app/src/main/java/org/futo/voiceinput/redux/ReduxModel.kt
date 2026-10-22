@@ -17,7 +17,9 @@ object ReduxModel {
         source = "Moondream Parakeet Redux, converted to packed GGUF by mudler/parakeet.cpp",
         licenseAttribution = "Moondream and NVIDIA Parakeet TDT 0.6B V3, CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/). Converted packed GGUF weights; parakeet.cpp runtime MIT.",
         displayName = "Parakeet Redux",
-        description = "Compact ternary model for CPU recognition. Returns text after recording stops. Android speed is not yet benchmarked; background noise can reduce accuracy.",
+        description = "Turns speech in 25 European languages into text after you stop recording. " +
+            "Its compact model needs less storage than Parakeet TDT and runs on your phone's processor. " +
+            "Android speed has not been benchmarked, and background noise can reduce accuracy.",
         transcription = TranscriptionBehavior.FINAL_ONLY,
         recognitionLanguages = "25 European languages",
         performanceClass = PerformanceClass.BALANCED,

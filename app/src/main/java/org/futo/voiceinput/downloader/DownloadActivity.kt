@@ -7,6 +7,7 @@ import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.os.Bundle
 import android.os.SystemClock
+import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Column
@@ -27,6 +28,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -79,6 +81,7 @@ const val EXTRA_COMPLETION_MARKER = "completion_marker"
 const val EXTRA_DOWNLOAD_SOURCE = "download_source"
 const val EXTRA_REQUIRED_FREE_SPACE = "required_free_space"
 const val EXTRA_MODEL_ID = "recognition_model_id"
+const val EXTRA_PRESERVE_MODEL_SELECTION = "preserve_model_selection"
 const val EXTRA_MODEL_VERSION = "recognition_model_version"
 const val EXTRA_ARCHIVE_NAME = "recognition_model_archive_name"
 const val EXTRA_ARCHIVE_URL = "recognition_model_archive_url"
@@ -145,6 +148,7 @@ class ModelInfo(
     var finished by mutableStateOf(finished)
     var started by mutableStateOf(false)
     var verifying by mutableStateOf(false)
+    var installationProgress by mutableStateOf<Float?>(null)
     var errorMessage by mutableStateOf<String?>(null)
     var restarted by mutableStateOf(false)
 }
@@ -232,14 +236,14 @@ fun ModelItem(model: ModelInfo, showProgress: Boolean) {
                                 modifier = progressModifier,
                                 color = MaterialTheme.colorScheme.onPrimary
                             )
-                        } else if (model.size == null) {
+                        } else if (model.size == null || model.verifying && model.installationProgress == null) {
                             LinearProgressIndicator(
                                 modifier = progressModifier,
                                 color = MaterialTheme.colorScheme.onPrimary
                             )
                         } else {
                             LinearProgressIndicator(
-                                progress = model.progress,
+                                progress = model.installationProgress ?: model.progress,
                                 modifier = progressModifier,
                                 color = MaterialTheme.colorScheme.onPrimary
                             )
@@ -324,8 +328,9 @@ fun DownloadPrompt(
 fun DownloadScreen(models: List<ModelInfo> = EXAMPLE_MODELS, onRetry: (() -> Unit)? = null,
                    activationPending: Boolean = false) {
     val finishedCount = models.count { it.finished }
+    val installing = models.firstOrNull { it.verifying && !it.finished }
     val hasUnknownActiveSize = models.any { !it.finished && !it.error && it.size == null }
-    val knownSizeProgress = if (!hasUnknownActiveSize && models.all { it.size != null || it.finished }) {
+    val knownSizeProgress = if (activationPending) null else if (installing != null) installing.installationProgress else if (!hasUnknownActiveSize && models.all { it.size != null || it.finished }) {
         val totalSize = models.sumOf { it.size ?: 0L }
         if (totalSize > 0L) {
             val downloaded = models.sumOf {
@@ -350,7 +355,8 @@ fun DownloadScreen(models: List<ModelInfo> = EXAMPLE_MODELS, onRetry: (() -> Uni
             )
         } else {
             Text(
-                if (activationPending) "Waiting for dictation to finish before activating the model..." else
+                if (activationPending) "Finishing installation; any active dictation or comparison must finish first." else
+                    installing?.installationProgress?.let { stringResource(R.string.download_installing, (it * 100).toInt().coerceAtMost(99)) } ?:
                     stringResource(if (models.any { it.verifying }) R.string.download_verifying else R.string.download_in_progress),
                 modifier = Modifier.padding(16.dp, 0.dp),
                 style = Typography.bodyMedium
@@ -359,7 +365,7 @@ fun DownloadScreen(models: List<ModelInfo> = EXAMPLE_MODELS, onRetry: (() -> Uni
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        Text(
+        if (installing == null && !activationPending) Text(
             stringResource(R.string.download_file_count, finishedCount, models.size),
             modifier = Modifier.padding(16.dp, 0.dp),
             style = Typography.bodySmall,
@@ -409,6 +415,11 @@ class DownloadActivity : ComponentActivity() {
 
     private fun updateContent() {
         setContent {
+            val keepAwake = isDownloading && modelsToDownload.none { it.error }
+            DisposableEffect(keepAwake) {
+                if (keepAwake) window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                onDispose { window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON) }
+            }
             UixThemeAuto {
                 // A surface container using the 'background' color from the theme
                 Surface(
@@ -437,6 +448,16 @@ class DownloadActivity : ComponentActivity() {
             startConfirmedDownload()
         }
     }
+
+    internal fun startBenchmarkDownload(): Boolean {
+        check(BuildConfig.DEBUG && intent.getBooleanExtra(EXTRA_PRESERVE_MODEL_SELECTION, false))
+        if (!::modelsToDownload.isInitialized || isDownloading || confirmation?.hasEnoughSpace == false) return false
+        startDownload()
+        return true
+    }
+
+    internal fun benchmarkDownloadFailed(): Boolean =
+        ::modelsToDownload.isInitialized && modelsToDownload.any { it.error }
 
     private fun startConfirmedDownload() {
         diagnosticDownload?.end(DiagnosticEvent.DOWNLOAD_CANCELLED)
@@ -522,6 +543,8 @@ class DownloadActivity : ComponentActivity() {
         model.error = false
         model.errorMessage = null
         model.verifying = false
+        model.installationProgress = null
+        model.finished = false
         model.restarted = false
         lifecycleScope.launch(Dispatchers.IO) {
             try {
@@ -533,6 +556,7 @@ class DownloadActivity : ComponentActivity() {
                     }
                     val total = requireNotNull(model.expectedSize)
                     var lastUpdate = 0L
+                    val context = coroutineContext
                     downloadModelArchive(
                         client = httpClient,
                         archive = RecognitionModelArtifact(model.name, model.url, total, requireNotNull(model.sha256)),
@@ -540,6 +564,14 @@ class DownloadActivity : ComponentActivity() {
                         targetDirectory = requireNotNull(allRequestedFiles.firstOrNull()?.targetFile?.parentFile),
                         archiveRoot = requireNotNull(archiveRoot),
                         onRestart = { updateModelOnMain { model.restarted = true } },
+                        onInstallationProgress = { progress ->
+                            context.ensureActive()
+                            val now = SystemClock.elapsedRealtime()
+                            if (progress == 0f || progress == 1f || now - lastUpdate >= 250L) {
+                                lastUpdate = now
+                                updateModelOnMain { model.verifying = true; model.installationProgress = progress }
+                            }
+                        },
                         artifacts = allRequestedFiles.map {
                             RecognitionModelArtifact(it.name, it.url, requireNotNull(it.expectedSize), requireNotNull(it.sha256))
                         }
@@ -555,6 +587,7 @@ class DownloadActivity : ComponentActivity() {
                         }
                     }
                     ensureActive()
+                    updateModelOnMain { model.installationProgress = null }
                     markFinished(model)
                 }
             } catch (cancelled: CancellationException) {
@@ -624,7 +657,9 @@ class DownloadActivity : ComponentActivity() {
                     }
                     managedModel?.let { model ->
                         withContext(Dispatchers.Main) { activationPending = true }
-                        modelLifecycle.activateInstallation(model, ::updateRecognitionModelSelection)
+                        modelLifecycle.activateInstallation(model) { selection ->
+                            if (!intent.getBooleanExtra(EXTRA_PRESERVE_MODEL_SELECTION, false)) updateRecognitionModelSelection(selection)
+                        }
                     } ?: completionMarker?.let { marker ->
                         marker.parentFile?.mkdirs()
                         marker.writeText(

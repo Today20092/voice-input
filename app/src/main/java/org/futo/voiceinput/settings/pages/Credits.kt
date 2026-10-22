@@ -132,6 +132,22 @@ fun CreditsScreen(openDependencies: () -> Unit = {}, navController: NavHostContr
         )
 
         CreditItem(
+            name = "Fermion Research Phonon 2",
+            thanksFor = "Optional English recognition; repackaged weights and native notices in PHONON-NOTICES.txt",
+            link = "https://www.fermionresearch.com/models/phonon-2/",
+            license = "CC BY 4.0; phonon-2-c runtime MIT",
+            copyright = "Fermion Research, NVIDIA and phonon-2-c contributors"
+        )
+
+        CreditItem(
+            name = "Cactus Whistle",
+            thanksFor = "Optional multilingual recognition; notices in WHISTLE-NOTICES.txt",
+            link = "https://huggingface.co/Cactus-Compute/whistle",
+            license = "Apache 2.0",
+            copyright = "Cactus Compute"
+        )
+
+        CreditItem(
             name = "TensorFlow Lite",
             thanksFor = stringResource(R.string.thanks_for_the_machine_learning_inference_library),
             link = "https://mvnrepository.com/artifact/org.tensorflow/tensorflow-lite",

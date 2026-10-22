@@ -28,6 +28,15 @@ data class ModelPresentation(
 
 data class ModelInformationLink(val label: String, val url: String)
 
+fun modelFamiliesForDisplay(): Map<String, List<RecognitionModelCard>> =
+    modelCardsForDisplay().groupBy { card ->
+        when (card.runtimeId) {
+            "parakeet", "parakeet_unified", "parakeet_redux" -> "Parakeet"
+            "nemotron" -> "Nemotron"
+            else -> card.displayName
+        }
+    }
+
 fun modelCardsForDisplay(): List<RecognitionModelCard> = RecognitionModelCatalog.cards
     .sortedWith(compareBy<RecognitionModelCard> { it.transcription.ordinal }.thenBy { card ->
         if (card.models.isEmpty()) {
@@ -51,8 +60,11 @@ private fun modelInformationLinks(model: RecognitionModel): List<ModelInformatio
         "parakeet" -> "https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3"
         "orukeet" -> "https://huggingface.co/oruk/orukeet"
         "parakeet_redux" -> "https://huggingface.co/moondream/parakeet-redux"
+        "phonon" -> "https://www.fermionresearch.com/models/phonon-2/"
+        "whistle" -> "https://huggingface.co/Cactus-Compute/whistle"
         "parakeet_unified" -> "https://huggingface.co/csukuangfj2/sherpa-onnx-nemo-parakeet-unified-en-0.6b-int8-streaming-560ms"
         "cohere" -> "https://huggingface.co/CohereLabs/cohere-transcribe-03-2026"
+        "asr4all" -> "https://huggingface.co/futo-org/${model.id}"
         else -> return emptyList()
     }
     val artifactUrl = (model.archive ?: model.artifacts.first()).url
@@ -75,7 +87,7 @@ fun recognitionLanguageGuidance(model: RecognitionModel): String = when {
             "Automatic language detection is not available, and mixed-language speech may be inaccurate."
     model.runtimeId == "nemotron" && model.variantId == "multilingual" ->
         "${model.recognitionLanguages}. Choose a recognition language or Auto-detect."
-    model.runtimeId == "parakeet" || model.runtimeId == "orukeet" || model.runtimeId == "parakeet_redux" ->
+    model.runtimeId in setOf("parakeet", "orukeet", "parakeet_redux", "whistle") ->
         "${model.recognitionLanguages}. The model recognizes the spoken language automatically; " +
             "no manual language selector is available."
     else -> "${model.recognitionLanguages} only. " +
@@ -101,7 +113,17 @@ fun presentRecognitionModel(
             model.version, "${model.artifacts.size} model " +
                 if (model.artifacts.size == 1) "artifact" else "artifacts",
             recognitionLanguageGuidance(model)
-        ),
+        ) + if (model.runtimeId == "asr4all") listOf(
+            "Runtime" to "ExecuTorch 1.2.0, XNNPACK INT8, one CPU thread",
+            "Streaming profile" to "stream_c16r4, the publisher's default",
+            "Text cleanup" to "Built-in punctuation, capitalization, and error correction. S1-mini is skipped."
+        ) else if (model.runtimeId == "whistle") listOf(
+            "Runtime" to "Cactus Needle, ARM64 CPU, two threads; model memory released after each recording",
+            "Release status" to "Experimental; Android speed, memory use and accuracy have not been verified"
+        ) else if (model.runtimeId == "phonon") listOf(
+            "Runtime" to "phonon-2-c, ARM64 CPU, four threads; dot-product acceleration when supported",
+            "Release status" to "Experimental; Android speed and accuracy have not been verified"
+        ) else emptyList(),
         informationLinks = modelInformationLinks(model)
     )
 }
@@ -118,7 +140,30 @@ fun presentWhisperModel(
         summary = "Final-only transcription • $languages\n" +
             "Download ${if (model.ggml.is_builtin_asset) "Included (${sizeBytes.megabytes()})" else sizeBytes.megabytes()} • " +
             "Installed ${sizeBytes.megabytes()} • ${modelStatus(installed, selected)}",
-        description = "Returns text after recording stops.",
+        description = when (model.ggml.ggml_file) {
+            "tiny_en_acft_q8_0.bin.not.tflite" ->
+                "Turns English speech into text after you stop recording. The smallest legacy English option " +
+                    "is included in the app and needs less memory and processing than the larger English options."
+            "base_en_acft_q8_0.bin" ->
+                "Turns English speech into text after you stop recording. It is slower and more accurate than " +
+                    "English-39, with a larger download and more memory use."
+            "small_en_acft_q8_0.bin" ->
+                "Turns English speech into text after you stop recording. The largest legacy English option " +
+                    "is slow and needs more storage and memory than the smaller English options."
+            "tiny_acft_q8_0.bin" ->
+                "Turns speech in the supported Whisper languages into text after you stop recording. " +
+                    "The smallest legacy multilingual option needs less storage and memory, but is less accurate. " +
+                    "Choose recognition languages in Languages settings."
+            "base_acft_q8_0.bin" ->
+                "Turns speech in the supported Whisper languages into text after you stop recording. " +
+                    "The default legacy multilingual option needs more storage and memory than Multilingual-39, " +
+                    "and less than Multilingual-244. Choose recognition languages in Languages settings."
+            "small_acft_q8_0.bin" ->
+                "Turns speech in the supported Whisper languages into text after you stop recording. " +
+                    "The largest legacy multilingual option is slow and needs more storage and memory. " +
+                    "Choose recognition languages in Languages settings."
+            else -> "Turns speech into text after you stop recording. Choose recognition languages in Languages settings."
+        },
         fields = modelDetailFields(
             "Final-only transcription", languages,
             if (model.ggml.is_builtin_asset) "Included in app" else sizeBytes.megabytes(),

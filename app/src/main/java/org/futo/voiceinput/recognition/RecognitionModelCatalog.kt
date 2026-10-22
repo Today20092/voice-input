@@ -80,6 +80,8 @@ data class RecognitionModelCard(
 )
 
 object RecognitionModelCatalog {
+    val whistle = org.futo.voiceinput.whistle.WhistleModel.model
+    val phonon = org.futo.voiceinput.phonon.PhononModel.model
     val parakeetRedux = org.futo.voiceinput.redux.ReduxModel.model
     private const val MOONSHINE_REVISION = "2026-03-16-sha256"
     private const val MOONSHINE_SOURCE = "Moonshine AI"
@@ -89,7 +91,7 @@ object RecognitionModelCatalog {
         variantId = "small",
         directoryName = "moonshine-small-streaming-en",
         displayName = "Moonshine Small",
-        description = "Fast live English transcription with the lightest resource use.",
+        description = "Shows English text as you speak. Choose Small for fast recognition with less memory and processing than Moonshine Medium.",
         performance = PerformanceClass.LIGHT,
         baseUrl = "https://download.moonshine.ai/model/small-streaming-en/quantized",
         artifacts = listOf(
@@ -109,7 +111,7 @@ object RecognitionModelCatalog {
         variantId = "medium",
         directoryName = "moonshine-medium-streaming-en",
         displayName = "Moonshine Medium",
-        description = "Higher-accuracy live English transcription with greater resource use.",
+        description = "Shows English text as you speak. Aims for better accuracy than Moonshine Small, but needs more memory and processing.",
         performance = PerformanceClass.BALANCED,
         baseUrl = "https://download.moonshine.ai/model/medium-streaming-en/quantized",
         artifacts = listOf(
@@ -143,7 +145,8 @@ object RecognitionModelCatalog {
         source = "NVIDIA Parakeet Unified (NVIDIA Open Model License), Sherpa-ONNX export by k2-fsa",
         licenseAttribution = "NVIDIA Open Model License",
         displayName = "Parakeet Unified EN 0.6B",
-        description = "560 ms buffered live English transcription that recomputes left context; Nemotron is preferred for the fastest updates.",
+        description = "Shows English text as you speak, with a delay while it collects and processes audio. " +
+            "It processes 560 ms audio chunks and rechecks earlier speech, which needs more processing. Choose Nemotron for quicker updates.",
         transcription = TranscriptionBehavior.BUFFERED_LIVE,
         recognitionLanguages = "English",
         performanceClass = PerformanceClass.DEMANDING,
@@ -159,7 +162,8 @@ object RecognitionModelCatalog {
         latencyMs = 80,
         variantId = "low_latency",
         displayName = "Low latency",
-        description = "80 ms live English partials with the lowest latency and a lower-accuracy trade-off.",
+        description = "Shows English text as you speak. Processes short 80 ms audio chunks for quicker updates, " +
+            "with lower accuracy than the other Nemotron English profiles. All three profiles need similar model storage.",
         performanceClass = PerformanceClass.LIGHT,
         encoderSizeBytes = 652_916_847,
         encoderSha256 = "29a6aaf9155f25562a08a1aeea1f1a1a5d24b2f44a1d68211faf8a92073d1df6",
@@ -171,7 +175,8 @@ object RecognitionModelCatalog {
         latencyMs = 160,
         variantId = "balanced",
         displayName = "Balanced",
-        description = "Recommended 160 ms live English profile balancing latency and accuracy.",
+        description = "Shows English text as you speak. The recommended Nemotron English profile uses 160 ms audio chunks " +
+            "to balance update speed and accuracy. All three profiles need similar model storage.",
         performanceClass = PerformanceClass.BALANCED,
         encoderSizeBytes = 652_916_849,
         encoderSha256 = "71111f61b18e1e65e01e369434a5c0434868d2f44892742ae54240600c681209",
@@ -183,7 +188,8 @@ object RecognitionModelCatalog {
         latencyMs = 560,
         variantId = "accuracy",
         displayName = "Accuracy",
-        description = "Highest English accuracy with slower 560 ms live partials.",
+        description = "Shows English text as you speak. Uses longer 560 ms audio chunks to prioritize accuracy among " +
+            "the Nemotron English profiles, with longer waits between updates. All three profiles need similar model storage.",
         performanceClass = PerformanceClass.DEMANDING,
         encoderSizeBytes = 652_916_849,
         encoderSha256 = "7d932213491ad355c6e5576705dc3494731a52af87d7a1b954559340147909d8",
@@ -211,9 +217,9 @@ object RecognitionModelCatalog {
         source = "Cohere Labs, Sherpa-ONNX INT8 export by k2-fsa",
         licenseAttribution = "Apache 2.0",
         displayName = "Cohere Transcribe",
-        description = "Experimental final-only transcription in 14 languages, including Arabic. " +
-            "Requires about 2.89 GB of storage and substantial memory. Phone performance is unverified. " +
-            "Choose one recognition language; automatic detection and reliable mixed-language dictation are not supported.",
+        description = "Turns speech in 14 languages, including Arabic and English, into text after you stop recording. " +
+            "Choose one language before recording; automatic detection and reliable mixed-language dictation are not supported. " +
+            "This experimental model needs about 2.89 GB of storage and substantial memory. Phone performance has not been verified.",
         transcription = TranscriptionBehavior.FINAL_ONLY,
         recognitionLanguages = "14 languages, including Arabic and English",
         performanceClass = PerformanceClass.DEMANDING,
@@ -234,6 +240,29 @@ object RecognitionModelCatalog {
         )
 
     val cards = listOf(
+        RecognitionModelCard(
+            id = "phonon-2",
+            runtimeId = phonon.runtimeId,
+            displayName = phonon.displayName,
+            description = phonon.description,
+            transcription = phonon.transcription,
+            recognitionLanguages = phonon.recognitionLanguages,
+            performanceClasses = setOf(phonon.performanceClass),
+            models = listOf(phonon)
+        ),
+        RecognitionModelCard(
+            id = "whistle", runtimeId = whistle.runtimeId, displayName = whistle.displayName,
+            description = whistle.description, transcription = whistle.transcription,
+            recognitionLanguages = whistle.recognitionLanguages,
+            performanceClasses = setOf(whistle.performanceClass), models = listOf(whistle)
+        ),
+        RecognitionModelCard(
+            id = "asr4all", runtimeId = "asr4all", displayName = "ASR4ALL",
+            description = "English text as you speak, with built-in text cleanup.",
+            transcription = TranscriptionBehavior.LIVE, recognitionLanguages = "English",
+            performanceClasses = PerformanceClass.entries.toSet(),
+            models = org.futo.voiceinput.asr4all.Asr4allModels.models
+        ),
         RecognitionModelCard(
             id = "parakeet-redux",
             runtimeId = parakeetRedux.runtimeId,
@@ -434,7 +463,8 @@ object RecognitionModelCatalog {
             source = "NVIDIA Nemotron 3.5 (OpenMDW 1.1), Sherpa-ONNX export by k2-fsa",
             licenseAttribution = "OpenMDW 1.1",
             displayName = "Nemotron 3.5 Multilingual",
-            description = "560 ms live transcription with explicit language selection or Auto-detect.",
+            description = "Shows text as you speak in 28 supported languages. Choose a language or use Auto-detect. " +
+                "It needs substantial memory and processing, and uses longer 560 ms audio chunks than the faster Nemotron English profiles.",
             transcription = TranscriptionBehavior.LIVE,
             recognitionLanguages = "28 languages and Auto-detect",
             performanceClass = PerformanceClass.DEMANDING,

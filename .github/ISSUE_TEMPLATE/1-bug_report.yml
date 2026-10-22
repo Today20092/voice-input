@@ -1,16 +1,15 @@
 name: Bug Report
 description: Let us know about an unexpected error, a crash, or an incorrect behavior.
-labels: ["Bug", "Voice Input"]
+labels: ["needs-triage"]
 title: "Bug: "
 type: bug
-projects: ["futo-org/23"]
 body:
   - type: markdown
     attributes:
       value: |
         # Thank you for taking the time to fill out this bug report.
 
-        The [voice-input](https://github.com/futo-org/voice-input) issue tracker is reserved for issues relating to the FUTO Voice Input Android Application
+        This tracker is for the [Today20092 Voice Input fork](https://github.com/Today20092/voice-input).
 
         For general usage questions, please see the [FUTO Keyboard Zulip Channel](https://chat.futo.org/#narrow/stream/53-Keyboard) or the [FUTO Keyboard Discord](https://keyboard.futo.org/discord)
 
@@ -21,6 +20,16 @@ body:
         To fix your issues faster, we need clear reproduction cases - ideally allowing us to make it happen locally.
         * Please include all needed context. For example, Device, OS, Application, any relevant settings.
         * If you've found a particular series of interactions can introduce buggy behavior, please label those steps 1-n with markdown
+
+        If settings opens, go to Settings > Support > Diagnostics > Export bug report.
+        Review the summary and any notes, then share the standard ZIP and attach it here.
+        A downloaded recognition model or microphone permission is not needed to prepare a report.
+        Detailed mode is optional for reproducing a problem; it does not recover evidence from before it was enabled.
+
+        If the app cannot open or export fails, say so and provide the installed APK/version source,
+        device, Android version, last working version if known, and reproduction steps below.
+        If you cannot determine the app version, enter "unknown". An archive is optional.
+        Do not attach raw Logcat, recordings, or exports labeled WITH-TRANSCRIPTS without reviewing their contents.
 
   - type: textarea
     id: reproduction-steps
@@ -39,7 +48,7 @@ body:
     id: actual-result
     attributes:
       label: Actual result
-      description: What happend? You may want to include a video recording of the issue.
+      description: What happened? Remove dictated text and personal information from any screenshots or video you choose to attach.
       placeholder: Tell us what you saw!
     validations:
       required: true
@@ -48,7 +57,7 @@ body:
     id: expected-result
     attributes:
       label: Expected result
-      description: What was suppose to happen?
+      description: What did you expect to happen?
       placeholder: Tell us what you expected to happen!
     validations:
       required: true
@@ -57,7 +66,7 @@ body:
     id: voice-input-version
     attributes:
       label: Voice Input Version
-      description: Open the FUTO Voice Input application and look for the version name at the top-right. Please make sure you're up-to-date before filing a bug report. Reports from outdated versions may be closed.
+      description: Enter the installed version or APK source. If the app cannot open and the version is unavailable, enter "unknown".
       placeholder: "1.3.5"
     validations:
       required: true
@@ -104,6 +113,7 @@ body:
   - type: textarea
     id: logs
     attributes:
-      label: Relevant log output
-      description: Please copy and paste any relevant log output. This will be automatically formatted into code, so no need for backticks.
-      render: shell
+      label: Standard bug report or export failure
+      description: Attach the reviewed standard diagnostic ZIP here, or explain why it is unavailable. Do not paste raw logs; they can contain vocabulary, paths, or exception messages. Do not include dictated text in your notes unless you intend to share it publicly.
+    validations:
+      required: false

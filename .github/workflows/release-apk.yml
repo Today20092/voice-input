@@ -63,9 +63,48 @@ jobs:
           cd app/src/main/rust/harper_android
           cargo test --locked
 
-      - name: Build APK
+      - name: Verify Phonon package and reference transcription
         run: |
-          ./gradlew :app:testStandaloneReleaseUnitTest :app:lintStandaloneRelease :app:compileDevDebugAndroidTestKotlin :app:assembleStandaloneRelease --stacktrace
+          PHONON_TEST_ARCHIVE="$RUNNER_TEMP/phonon-weights.tar.gz"
+          curl --fail --location --retry 3 -o "$PHONON_TEST_ARCHIVE" \
+            'https://huggingface.co/eschmidbauer/phonon-2-c/resolve/1c91a6a7a26809fecedb35d847bef69663dde8bb/phonon-2-c-weights-v1.tar.gz'
+          echo "48137a58011c4b0bc0a97087ea7e868daabf1525ca8447414be230b21faf99e6  $PHONON_TEST_ARCHIVE" | sha256sum --check
+          echo "PHONON_TEST_ARCHIVE=$PHONON_TEST_ARCHIVE" >> "$GITHUB_ENV"
+          mkdir -p "$RUNNER_TEMP/phonon-model"
+          tar -xzf "$PHONON_TEST_ARCHIVE" -C "$RUNNER_TEMP/phonon-model"
+          cmake -S app/src/main/cpp/third_party/phonon-2-c -B "$RUNNER_TEMP/phonon-host" -DPHONON2_BUILD_EXAMPLES=OFF
+          cmake --build "$RUNNER_TEMP/phonon-host" --parallel 2
+          "$RUNNER_TEMP/phonon-host/phonon2" --quiet --threads 2 "$RUNNER_TEMP/phonon-model/c_weights" \
+            app/src/androidTest/assets/redux-speech.wav > "$RUNNER_TEMP/phonon-transcript.txt"
+          cat "$RUNNER_TEMP/phonon-transcript.txt"
+          grep -qi 'like the old portrait' "$RUNNER_TEMP/phonon-transcript.txt"
+
+      - name: Verify pinned Orukeet archive
+        run: |
+          curl --fail --location --retry 3 -o "$RUNNER_TEMP/orukeet.tar.bz2" \
+            'https://huggingface.co/oruk/orukeet/resolve/55a984d46f68323301837194ce647c702f55facc/onnx/sherpa-onnx-orukeet-v0.1.0-int8.tar.bz2?download=true'
+          echo "f9191f30178cc9122ce2f023bf9fefafc822028307b0efa4caff645ba3fe8d0a  $RUNNER_TEMP/orukeet.tar.bz2" | sha256sum --check
+
+      - name: Verify Whistle package and reference transcription
+        run: |
+          curl --fail --location --retry 3 -o "$RUNNER_TEMP/whistle.cact" \
+            'https://huggingface.co/Cactus-Compute/whistle/resolve/741118687e1f008f06d1351a402a731274789790/whistle.cact'
+          echo "b6e02f048568ac5d01a2042556c658061e699acbc0aa2a1439f52f3d461dffeb  $RUNNER_TEMP/whistle.cact" | sha256sum --check
+          curl --fail --location --retry 3 -o "$RUNNER_TEMP/whistle-runner" \
+            'https://huggingface.co/Cactus-Compute/needle3/resolve/d6c7d6a2e9655505e0f8e23339356dd1705900eb/linux-x86_64/needle'
+          echo "77cd35ee75c53df8532b397e11ed7cf94a45d89a9f14f50881fd9c68ba54a2d0  $RUNNER_TEMP/whistle-runner" | sha256sum --check
+          chmod +x "$RUNNER_TEMP/whistle-runner"
+          "$RUNNER_TEMP/whistle-runner" --model "$RUNNER_TEMP/whistle.cact" --threads 2 \
+            --audio app/src/androidTest/assets/redux-speech.wav > "$RUNNER_TEMP/whistle-result.json"
+          jq -e '.language == "en" and (.text | contains("like the old portrait"))' "$RUNNER_TEMP/whistle-result.json"
+
+      - name: Build APK
+        env:
+          ORUKEET_TEST_ARCHIVE: ${{ runner.temp }}/orukeet.tar.bz2
+          WHISTLE_TEST_RUNNER: ${{ runner.temp }}/whistle-runner
+          WHISTLE_TEST_MODEL: ${{ runner.temp }}/whistle.cact
+        run: |
+          ./gradlew --max-workers=2 '-Dorg.gradle.jvmargs=-Xmx4096m -Dfile.encoding=UTF-8' :app:testStandaloneReleaseUnitTest :app:lintStandaloneRelease :app:compileDevDebugAndroidTestKotlin :app:assembleStandaloneRelease --stacktrace
           echo "APK_DIR=app/build/outputs/apk/standalone/release" >> "$GITHUB_ENV"
           echo "APK_NAME=futo-voice-input-moonshine" >> "$GITHUB_ENV"
 
@@ -88,6 +127,18 @@ jobs:
           printf '%s\n' "$APK_LISTING" | grep -Fx 'assets/HARPER-NOTICES.txt'
           printf '%s\n' "$APK_LISTING" | grep -Fx 'lib/arm64-v8a/libparakeet_redux.so'
           printf '%s\n' "$APK_LISTING" | grep -Fx 'assets/REDUX-NOTICES.txt'
+          printf '%s\n' "$APK_LISTING" | grep -Fx 'lib/arm64-v8a/libphonon_jni.so'
+          printf '%s\n' "$APK_LISTING" | grep -Fx 'lib/arm64-v8a/libphonon_baseline.so'
+          printf '%s\n' "$APK_LISTING" | grep -Fx 'lib/arm64-v8a/libphonon_dotprod.so'
+          printf '%s\n' "$APK_LISTING" | grep -Fx 'assets/PHONON-NOTICES.txt'
+          printf '%s\n' "$APK_LISTING" | grep -Fx 'lib/arm64-v8a/libwhistle_runner.so'
+          printf '%s\n' "$APK_LISTING" | grep -Fx 'assets/WHISTLE-NOTICES.txt'
+          unzip -p "$APK_PATH" lib/arm64-v8a/libwhistle_runner.so > "$RUNNER_TEMP/whistle-android-runner"
+          echo "02a044e15489e19fa9f4f1cd1d5943d39dc0eefc08e0ba99d36279daf2351d46  $RUNNER_TEMP/whistle-android-runner" | sha256sum --check
+          printf '%s\n' "$APK_LISTING" | grep -Fx 'lib/arm64-v8a/libexecutorch.so'
+          printf '%s\n' "$APK_LISTING" | grep -Fx 'assets/ASR4ALL-NOTICES.txt'
+          printf '%s\n' "$APK_LISTING" | grep -Fx 'assets/ASR4ALL-APACHE-NOTICES.txt'
+          printf '%s\n' "$APK_LISTING" | grep -Fx 'assets/asr4all-geometry.json'
           printf '%s\n' "$APK_LISTING" | grep -Fx 'lib/arm64-v8a/libllama.so'
           printf '%s\n' "$APK_LISTING" | grep -Fx 'lib/arm64-v8a/libggml-opencl.so'
           printf '%s\n' "$APK_LISTING" | grep -Fx 'lib/arm64-v8a/libOpenCL.so'

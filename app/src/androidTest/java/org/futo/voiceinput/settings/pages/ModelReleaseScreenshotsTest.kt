@@ -58,9 +58,10 @@ class ModelReleaseScreenshotsTest {
     fun finalUiHasClearGroupsSizesAndSourceActions() {
         compose.onNodeWithText("Selected model").assertIsDisplayed()
         compose.onNodeWithText("Download Orukeet").assertIsDisplayed()
-        compose.onNodeWithText("While you speak").assertIsDisplayed()
+        compose.onNodeWithText("Selected: Orukeet").assertIsDisplayed()
         capture("models-overview")
 
+        compose.onNodeWithText("Parakeet").performScrollTo().performClick()
         compose.onNode(hasText("Parakeet Redux") and hasText("Download:", substring = true))
             .performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Model size: 213.3 MB", substring = true).assertIsDisplayed()

@@ -199,6 +199,7 @@ object AppDiagnostics {
         val variant = when (backend) {
             SpeechBackendType.Moonshine -> context.getSetting(MOONSHINE_MODEL_VARIANT)
             SpeechBackendType.Nemotron -> context.getSetting(NEMOTRON_PROFILE)
+            SpeechBackendType.Asr4all -> context.getSetting(ASR4ALL_VARIANT)
             else -> null
         }
         val model = RecognitionModelCatalog.modelFor(backend.id, variant)

@@ -20,7 +20,7 @@ class S1MiniEnglishGateTest {
     @Test
     fun legacyBackendsAllowEnglishDictationWithoutLanguageMetadata() {
         SpeechBackendType.entries.filter {
-            it != SpeechBackendType.Cohere && it != SpeechBackendType.ParakeetRedux
+            it != SpeechBackendType.Cohere && it != SpeechBackendType.ParakeetRedux && it != SpeechBackendType.Whistle
         }.forEach { backend ->
             assertTrue(backend.id, established(backend))
             assertTrue(backend.id, established(backend, detected = ""))

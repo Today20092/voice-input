@@ -18,7 +18,8 @@ object HarperEnglishGate {
         if (!detectedLanguage.isNullOrBlank()) return detectedLanguage.isEnglish()
         if (!forcedLanguage.isNullOrBlank() && forcedLanguage != "auto") return forcedLanguage.isEnglish()
         return when (backend) {
-            SpeechBackendType.Moonshine, SpeechBackendType.ParakeetUnified -> true
+            SpeechBackendType.Moonshine, SpeechBackendType.ParakeetUnified,
+            SpeechBackendType.Asr4all, SpeechBackendType.Phonon -> true
             SpeechBackendType.Nemotron -> if (nemotronProfile != "multilingual") true
                 else if (nemotronLanguage != "auto") nemotronLanguage.isEnglish() else explicitlyEnglish
             SpeechBackendType.WhisperGGML -> if (enabledWhisperLanguages.size == 1)
@@ -27,6 +28,7 @@ object HarperEnglishGate {
             SpeechBackendType.Orukeet, SpeechBackendType.Parakeet,
             SpeechBackendType.ParakeetRedux -> explicitlyEnglish
             SpeechBackendType.Cohere -> false // Its backend supplies the selected language.
+            SpeechBackendType.Whistle -> false // English requires a detected language.
         }
     }
 

@@ -1,0 +1,55 @@
+Phonon 2 integration
+
+Model: Phonon-2, (c) 2026 Fermion Research
+https://huggingface.co/FermionResearch/Phonon-2
+Derived from NVIDIA Parakeet TDT 0.6B v3, (c) NVIDIA Corporation
+https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3
+Model license: Creative Commons Attribution 4.0 International
+https://creativecommons.org/licenses/by/4.0/
+
+Fermion Research retrained the encoder's linear weights to five values and
+quantized the remaining parameters to 6-bit integer tables. The encoder,
+decoder, tokenizer and feature-extractor configuration derive from NVIDIA.
+
+The app downloads the phonon-2-c repackaging by eschmidbauer:
+https://huggingface.co/eschmidbauer/phonon-2-c/tree/1c91a6a7a26809fecedb35d847bef69663dde8bb
+The five-value weights retain 2-bit sign and 1-bit magnitude planes.
+Integer tables are widened to int8 with fp32 scales; fp16 tensors are widened
+to fp32. Depthwise convolution BatchNorm is folded in double precision and
+stored as fp32. The repackaging does not retrain or requantize the weights.
+Upstream attribution and changes:
+https://huggingface.co/eschmidbauer/phonon-2-c/blob/1c91a6a7a26809fecedb35d847bef69663dde8bb/NOTICE
+
+Training audio attribution from Phonon-2:
+CHiME-6, CC BY-SA 4.0: https://chimechallenge.github.io/chime6/
+https://creativecommons.org/licenses/by-sa/4.0/
+SPGISpeech, Kensho public terms: https://datasets.kensho.com/datasets/spgispeech
+
+Native runtime: phonon-2-c
+https://github.com/eschmidbauer/phonon-2-c
+Pinned revision: c4b860f6ad745369d6f21599d6e23d381c1fcc7a
+The Android integration adds JNI, CPU feature dispatch, and separate builds
+for baseline ARM64 and dot-product CPUs. The upstream C source is unchanged.
+Python conversion tools are not shipped in the APK.
+
+MIT License
+
+Copyright (c) 2026
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
