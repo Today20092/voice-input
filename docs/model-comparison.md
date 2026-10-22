@@ -4,7 +4,7 @@ ADB runs accept `-WarmRepetitions 2` for an initial comparison (default five, ra
 
 Open Advanced settings, then Model comparison. Record one or more passages or import audio, listen back, and edit each reference to match the words actually spoken. Choose installed or downloadable models. The confirmation shows the additional download and installed storage. Model downloads use the existing downloader with daily-model selection disabled. Models run sequentially against the same saved canonical audio.
 
-## Results overview (development build after beta 6)
+## Results overview (beta 7)
 
 The results overview provides horizontal bar charts for speed, word error rate
 and sampled app RAM. Each bar starts at zero and includes its exact value.
@@ -30,7 +30,7 @@ order. Missing measurements sort last. Timing and resource values use aligned
 label/value tables; shared reference text appears once under Recordings and
 references. Detailed repeated passes retain timings and differing transcripts
 without repeating identical transcripts and summary values. Raw exports retain
-every observation. These UI changes are not included in published beta 6.
+every observation. These UI changes are included beginning with beta 7.
 
 Local verification: dev-debug and Android-test assembly, lint and 24 benchmark
 JVM tests passed. All 18 comparison UI/flow tests passed on the Android emulator,

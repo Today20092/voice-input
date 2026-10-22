@@ -336,6 +336,7 @@
     <string name="download_compressed_space_explanation">Free space is needed for both the saved download and the extracted model. Interrupted downloads resume when you retry.</string>
     <string name="download_retry">Retry download</string>
     <string name="download_verifying">Download received. Verifying and installing model files…</string>
+    <string name="download_installing">Download received. Installing model files: %1$d%%. Large compressed models can take several minutes. Keep this screen open.</string>
     <string name="download_archive_failed">Model archive download or installation failed: %1$s</string>
     <string name="unobtrusive_recognizer">Unobtrusive recognizer popup (beta)</string>
     <string name="unobtrusive_recognizer_subtitle">Move the speech recognition popup near the bottom without dimming the app behind it. Does not change the voice keyboard layout.</string>

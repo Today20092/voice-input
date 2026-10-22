@@ -18,13 +18,14 @@ internal fun downloadModelArchive(
     archiveRoot: String,
     artifacts: List<RecognitionModelArtifact>,
     onRestart: () -> Unit = {},
+    onInstallationProgress: (Float) -> Unit = {},
     onProgress: (Long) -> Unit = {}
 ) {
     require(archive.sizeBytes > 0)
     downloadSequentialFile(client, archive.url, savedArchive, archive.sizeBytes, archive.sha256,
         onRestart, onProgress)
     savedArchive.inputStream().use { input ->
-        extractModelArchive(input, targetDirectory, archiveRoot, artifacts, archive.sha256)
+        extractModelArchive(input, targetDirectory, archiveRoot, artifacts, archive.sha256, onInstallationProgress)
     }
     savedArchive.delete()
 }
@@ -34,7 +35,8 @@ internal fun extractModelArchive(
     targetDirectory: File,
     archiveRoot: String,
     artifacts: List<RecognitionModelArtifact>,
-    expectedArchiveSha256: String
+    expectedArchiveSha256: String,
+    onInstallationProgress: (Float) -> Unit = {}
 ) {
     val digest = MessageDigest.getInstance("SHA-256")
     val parent = requireNotNull(targetDirectory.parentFile)
@@ -44,6 +46,9 @@ internal fun extractModelArchive(
         File(stagingDirectory, it.name)
     }
     val extracted = mutableSetOf<RecognitionModelArtifact>()
+    val totalBytes = artifacts.sumOf { it.sizeBytes }
+    require(totalBytes > 0)
+    var installedBytes = 0L
 
     if (previousDirectory.exists() && !targetDirectory.exists()) {
         check(previousDirectory.renameTo(targetDirectory)) { "Failed to restore interrupted model update" }
@@ -51,6 +56,7 @@ internal fun extractModelArchive(
     stagingDirectory.deleteRecursively()
     check(stagingDirectory.mkdirs()) { "Failed to create model staging directory" }
     try {
+        onInstallationProgress(0f)
         // Buffer outside the digest so format detection and byte reads hash each block once.
         DigestInputStream(input, digest).buffered(128 * 1024).use { verifiedInput ->
             TarArchiveInputStream(CompressorStreamFactory().createCompressorInputStream(verifiedInput)).use { archive ->
@@ -59,8 +65,17 @@ internal fun extractModelArchive(
                     val relativeName = entry.name.removePrefix("$archiveRoot/")
                     val artifact = artifacts.firstOrNull { it.name == relativeName } ?: continue
                     require(!entry.isDirectory) { "Expected ${artifact.name} to be a file" }
+                    require(entry.size == artifact.sizeBytes) { "Unexpected size for ${artifact.name}" }
+                    require(artifact !in extracted) { "Duplicate model file in archive" }
                     temporaryFiles.getValue(artifact).outputStream().use { output ->
-                        archive.copyTo(output)
+                        val buffer = ByteArray(128 * 1024)
+                        while (true) {
+                            val read = archive.read(buffer)
+                            if (read < 0) break
+                            output.write(buffer, 0, read)
+                            installedBytes += read
+                            onInstallationProgress(installedBytes.toFloat() / totalBytes / 2)
+                        }
                     }
                     extracted += artifact
                 }
@@ -76,6 +91,8 @@ internal fun extractModelArchive(
             val file = temporaryFiles.getValue(artifact)
             require(file.length() == artifact.sizeBytes) { "Unexpected size for ${artifact.name}" }
             require(sha256(file) == artifact.sha256) { "Checksum mismatch for ${artifact.name}" }
+            installedBytes += artifact.sizeBytes
+            onInstallationProgress((installedBytes.toFloat() / totalBytes / 2).coerceAtMost(0.99f))
         }
         previousDirectory.deleteRecursively()
         val hadPreviousInstall = targetDirectory.exists()
@@ -92,6 +109,7 @@ internal fun extractModelArchive(
             throw error
         }
         previousDirectory.deleteRecursively()
+        onInstallationProgress(1f)
     } catch (error: Throwable) {
         stagingDirectory.deleteRecursively()
         throw error

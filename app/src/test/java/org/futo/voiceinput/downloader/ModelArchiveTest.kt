@@ -156,6 +156,43 @@ class ModelArchiveTest {
         org.junit.Assert.assertTrue(store.completeInstall(model))
     }
 
+    @Test fun installationReportsWorkAfterTransferAndCompletesOnlyAfterValidatedFilesAreInstalled() {
+        val contents = ByteArray(512 * 1024).also { java.util.Random(42).nextBytes(it) }
+        val bytes = archive("model/model.bin", contents)
+        val target = temporaryFolder.root.resolve("progress-model")
+        val progress = mutableListOf<Float>()
+        val artifact = RecognitionModelArtifact("model.bin", "https://example.com/model", contents.size.toLong(), sha256(contents))
+        extractModelArchive(ByteArrayInputStream(bytes), target, "model", listOf(artifact), sha256(bytes)) {
+            progress += it
+            if (it == 1f) assertEquals(sha256(contents), sha256(target.resolve("model.bin").readBytes()))
+        }
+        assertEquals(0f, progress.first(), 0f)
+        assertEquals(1f, progress.last(), 0f)
+        assertTrue(progress.any { it > 0 && it < 0.5f })
+        assertTrue(progress.zipWithNext().all { (a, b) -> a <= b })
+    }
+
+    @Test fun cancellingUnpackingRetainsTheInstalledModelAndCompleteArchiveForRetry() {
+        val contents = ByteArray(512 * 1024).also { java.util.Random(42).nextBytes(it) }
+        val bytes = archive("model/model.bin", contents)
+        val saved = temporaryFolder.root.resolve("archive.download").apply { writeBytes(bytes) }
+        val target = temporaryFolder.newFolder("cancel-model")
+        target.resolve("model.bin").writeText("previous working model")
+        val artifact = RecognitionModelArtifact("model.bin", "https://example.com/model", contents.size.toLong(), sha256(contents))
+        val packed = artifact.copy(name = "model.tar.bz2", sizeBytes = bytes.size.toLong(), sha256 = sha256(bytes))
+        val client = OkHttpClient.Builder().addInterceptor { error("Saved archive must not be downloaded again") }.build()
+        assertThrows(kotlinx.coroutines.CancellationException::class.java) {
+            downloadModelArchive(client, packed, saved, target, "model", listOf(artifact), onInstallationProgress = {
+                if (it > 0) throw kotlinx.coroutines.CancellationException("Cancelled")
+            })
+        }
+        assertEquals("previous working model", target.resolve("model.bin").readText())
+        assertTrue(saved.isFile)
+        assertTrue(!temporaryFolder.root.resolve(".cancel-model.download").exists())
+        downloadModelArchive(client, packed, saved, target, "model", listOf(artifact))
+        assertEquals(sha256(contents), sha256(target.resolve("model.bin").readBytes()))
+    }
+
     @Test
     fun validatesArchiveBeforeReplacingInstalledFiles() {
         val archive = archive("model/model.bin", "valid".toByteArray())
