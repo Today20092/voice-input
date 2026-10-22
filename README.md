@@ -22,7 +22,7 @@ Stable [1.4.6](https://github.com/Today20092/voice-input/releases/tag/v1.4.6)
 promotes the tested Share beta 7 code, with clearer Model Options, Parakeet Redux
 and the Nemotron download fix.
 
-Beta [1.4.7-beta.7](https://github.com/Today20092/voice-input/releases/tag/v1.4.7-beta.7)
+Beta [1.4.7-beta.8](https://github.com/Today20092/voice-input/releases/tag/v1.4.7-beta.8)
 includes the redesigned **Advanced settings → Model comparison** page: record or
 import audio and compare selected models, including experimental 16.9 MB Whistle.
 It also retains Phonon 2, ASR4ALL dictation and the earlier beta improvements.
