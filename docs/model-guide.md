@@ -3,25 +3,34 @@
 [Back to the README](../README.md)
 
 
-Start with **Orukeet**, the default. For words while speaking, choose a streaming model. Compare the same short recording on your phone before downloading several large models.
+Start with **Orukeet**, the default, then try **Advanced settings → Model comparison**.
+We recommend comparing two or three typical passages on your own phone before
+choosing a daily model. Speed, recognition quality and memory use depend on the
+device, language and speech. See the [comparison instructions](model-comparison.md).
 
 ## Model Options screenshots
 
-The current interface shows the selected model, groups models by when text
-appears, and lists download and unpacked model sizes. Details link to model
-information and the package used by the app.
+The current interface shows the selected model and expandable model families.
+Open a family to see variants, language coverage, download and unpacked model
+sizes. Details link to model information and the package used by the app.
+
+<img src="screenshots/v1.4.7/models-overview.png" alt="Expandable model families with Orukeet selected" width="280">
+
+Captured in the Android emulator from the beta 8 implementation promoted to
+1.4.7. Model size means files on disk, not runtime RAM.
+
+The following historical screenshots show the 1.4.6 layout before model families
+became expandable:
 
 <img src="screenshots/v1.4.6-share-beta.7/models-overview.png" alt="Model Options with Orukeet selected and Moonshine streaming model cards" width="280">
 <img src="screenshots/v1.4.6-share-beta.7/models-final-only.png" alt="Whisper and Parakeet Redux cards showing download and unpacked model sizes" width="280">
 <img src="screenshots/v1.4.6-share-beta.7/model-details.png" alt="Parakeet Redux details with model information, package source, transcription mode and languages" width="280">
 
-Captured on a Samsung Galaxy S25 Ultra running Android 16 for beta 7, whose
-interface is unchanged in stable 1.4.6. Model size means unpacked files on disk,
-not RAM used during transcription.
+Captured on a Samsung Galaxy S25 Ultra running Android 16 for 1.4.6 Share beta 7.
 
 ## Compare models
 
-1.4.7 beta builds also include **ASR4ALL Small, Medium and Large** for live
+1.4.7 includes **ASR4ALL Small, Medium and Large** for live
 English dictation. They add punctuation, capital letters and small corrections
 with built-in PCEC, so S1-mini is skipped for these models. Downloads are about
 38.6, 72.5 and 123.1 MB. All three use the low-latency `c16r4` streaming tier;
@@ -33,10 +42,13 @@ for pinned sources, timings and test limits.
 | --- | --- | --- |
 | Everyday dictation in a supported European language | Orukeet | Parakeet TDT V3 |
 | Live English text with a lighter model | Moonshine Small | Moonshine Medium, then Nemotron English |
+| Live English text with built-in formatting | ASR4ALL Small | ASR4ALL Medium or Large if your phone handles them well |
+| A very small multilingual download | Whistle, experimental | Check first-run speed on your phone; it reloads each recording |
 | Live multilingual text | Nemotron 3.5 Multilingual | Orukeet if final-only text is acceptable |
 | Arabic dictation | Cohere Transcribe with Arabic selected | Whisper multilingual |
 | A smaller multilingual download to experiment with | Parakeet Redux | Orukeet; Redux still needs Android device validation |
-| The original FUTO recognition path | Whisper | A model matching your language and live-text needs above |
+| Optional English legacy fallback | Whisper English | A live English model or Orukeet; Whisper is not required for normal English dictation |
+| Languages beyond the other models' coverage | Whisper multilingual | Check the language and model results before relying on it |
 
 We keep several models because language coverage, live text, download size and recognition results differ. Alternatives let you find one that suits your speech and phone; Whisper preserves the original FUTO path. S1-mini is optional English text cleanup after recognition, a separate choice from the speech model. This guide is a starting point, not a phone benchmark or an accuracy ranking.
 
@@ -45,6 +57,11 @@ These are the options exposed by this app, not every capability of the upstream 
 | Model | Languages in the app | Text appears | Purpose and trade-off | Model source |
 | --- | --- | --- | --- | --- |
 | **Orukeet · default** | 25 European languages | After Stop | Starting point for everyday dictation. A Parakeet-derived model with multilingual and accent-focused adaptation; no live partials. | [Oruk AI](https://huggingface.co/oruk/orukeet) |
+| **ASR4ALL Small** | English | Live | Smallest ASR4ALL option, with built-in PCEC punctuation, capitalization and small corrections. S1-mini is skipped. | [FUTO Small](https://huggingface.co/futo-org/asr4all-s) |
+| **ASR4ALL Medium** | English | Live | Middle ASR4ALL size with the same PCEC stage; uses more storage and processing than Small. | [FUTO Medium](https://huggingface.co/futo-org/asr4all-m) |
+| **ASR4ALL Large** | English | Live | Largest ASR4ALL option with PCEC; compare accuracy gains against the extra resource use. | [FUTO Large](https://huggingface.co/futo-org/asr4all-l) |
+| **Whistle, experimental** | English, German, French, Spanish, Italian, Dutch, Polish; auto-detect | After Stop | Very small download; separate CPU worker loads for every recording. Live text and manual language selection are not exposed by this app. | [Cactus Compute](https://huggingface.co/Cactus-Compute/whistle) |
+| **Phonon 2, experimental** | English | After Stop | Punctuation and capitalization; separate CPU runtime. Android performance varies and has no controlled ranking here. | [Fermion Research](https://www.fermionresearch.com/models/phonon-2/) · [app package/runtime](https://huggingface.co/eschmidbauer/phonon-2-c) |
 | **Parakeet Redux** | 25 European languages | After Stop | Compact packed ternary CPU model, about 213 MB. Android speed is unmeasured; publisher results show a noise-accuracy trade-off. | [Moondream](https://huggingface.co/moondream/parakeet-redux) · [packed GGUF](https://huggingface.co/mudler/parakeet-cpp-gguf) |
 | **Moonshine Small** | English | Live | Lighter English streaming option when resource use matters. | [Moonshine AI](https://github.com/moonshine-ai/moonshine) |
 | **Moonshine Medium** | English | Live | Larger English streaming option intended to favor accuracy, with greater resource use than Small. | [Moonshine AI](https://github.com/moonshine-ai/moonshine) |
@@ -61,6 +78,73 @@ Nemotron English's 80, 160, and 560 ms profile values describe audio chunks, not
 See the [Redux, Ultra, and Orukeet comparison](parakeet-redux-comparison.md) for published accuracy, CPU measurements, storage, and their limits. Redux uses a pinned MIT parakeet.cpp runtime and converted CC BY 4.0 weights by Moondream, derived from NVIDIA Parakeet. Ultra is compared there but is not an app option.
 
 Cohere download and recognition, history improvements, and the popup were manually tried on a Samsung Galaxy S25 Ultra. No comparative speed, memory, or accuracy benchmark was collected. Cohere has no automatic language detection, and mixed-language dictation can be inaccurate.
+
+## Files and RAM
+
+Sizes below are decimal MB from the app's pinned catalog, rounded to one decimal.
+An archive needs temporary space alongside its extracted files. RAM is additional;
+unknown means no comparable measurement is available, not zero usage.
+
+| Model or variant | Download MB | Installed model files MB | Available RAM evidence |
+| --- | ---: | ---: | --- |
+| ASR4ALL Small | 38.6 | 38.6 | 273 MiB sampled app/test PSS on one S25 Ultra fixture |
+| ASR4ALL Medium | 72.5 | 72.5 | 324 MiB on the same fixture |
+| ASR4ALL Large | 123.1 | 123.1 | 422 MiB on the same fixture |
+| Whistle | 16.9 | 16.9 | Unknown; comparison excludes its separate worker |
+| Phonon 2 | 186.6 | 255.4 | Unknown; measure sampled app RAM on your device |
+| Orukeet | 486.8 | 671.6 | Unknown across devices; use Model comparison |
+| Parakeet Redux | 213.3 | 213.3 | Unknown across devices |
+| Moonshine Small | 246.1 | 246.1 | Unknown across devices |
+| Moonshine Medium | 449.5 | 449.5 | Unknown across devices |
+| Parakeet TDT V3 | 670.5 | 670.5 | Unknown across devices |
+| Parakeet Unified EN | 663.0 | 663.0 | Unknown across devices |
+| Nemotron English, each 80/160/560 ms profile | 463.9 | 661.9 | Unknown across devices; profiles have separate packages |
+| Nemotron 3.5 Multilingual | 682.2 | 682.2 | Unknown across devices |
+| Whisper English-39 / -74 / -244 | Included / 81.8 / 264.5 | 43.6 / 81.8 / 264.5 | Unknown across devices |
+| Whisper multilingual tiny / base / small | 43.5 / 81.8 / 264.5 | 43.5 / 81.8 / 264.5 | Unknown across devices |
+| S1-mini, optional text cleanup | 484.2 | 484.2 | Separate from recognition; unknown across devices |
+
+The ASR4ALL figures include UI and instrumentation overhead. They came from an
+11-second English fixture on a Samsung Galaxy S25 Ultra, Android 16, with the
+c16r4 INT8 package. They are sampled PSS, not model-only allocations or guarantees.
+See the [full device report](research/ticket-26-asr4all-feasibility-2026-10-09.md).
+
+## Performance evidence and its limits
+
+| Evidence | What it measures | How to use it |
+| --- | --- | --- |
+| This app's [ASR4ALL device report](research/ticket-26-asr4all-feasibility-2026-10-09.md) | S25 Ultra, 11-second fixture, paced input and whole-file decoding; whole-file times 523/920/1,544 ms for Small/Medium/Large | Checks one clean fixture and the integration, not a general accuracy ranking |
+| [FUTO ASR4ALL Small model card](https://huggingface.co/futo-org/asr4all-s#benchmark-results) | Publisher single-thread acoustic throughput, median of three 120-second clips: c16r4 INT8 14.6× realtime on Pixel 4 and 32.4× on Pixel 10 | PCEC is extra work; published WER uses a different c256r64 profile from this app |
+| [Fermion Phonon 2 evaluation](https://www.fermionresearch.com/models/phonon-2/#evaluation) | Publisher 5.21% average WER across seven Open ASR Leaderboard English sets; speed on Apple hardware, Zen 5 CPU and H100 | Different package and runtime from this app's Android CPU integration |
+| [Cactus Whistle benchmarks](https://huggingface.co/Cactus-Compute/whistle#benchmarks) | Publisher WER across full test splits; speed uses ten seconds of audio on Apple M4 Pro | Does not establish Android speed, warm-model timing or RAM |
+| [Redux/Orukeet/Parakeet source comparison](parakeet-redux-comparison.md) and model cards above | Publisher datasets, desktop/runtime conditions and known packaging differences | Follow the source conditions; different datasets and runtimes cannot rank Android models fairly |
+
+There is no controlled cross-model phone leaderboard for this release. For the
+other variants, comparable Android speed and accuracy remain unknown. Use the
+same audio, correct references and the same device to compare them yourself.
+
+## Practical starting choices
+
+- On a slower phone or with limited storage, try ASR4ALL Small for live English
+  or Whistle for its supported languages if final-only text is acceptable.
+  These are starting points based on package size and deployment design; compare
+  speed and accuracy on the actual device before relying on either.
+- For English with built-in formatting, compare ASR4ALL sizes. For live text
+  without that PCEC stage, compare Moonshine and Nemotron English. For final-only
+  English, include Orukeet, Phonon 2 and the Parakeet variants.
+- For Spanish and supported European languages, start with Orukeet and compare
+  Parakeet TDT V3 or Redux. Whistle supports Spanish plus six other languages.
+  Nemotron Multilingual provides live text and optional automatic detection.
+- For Arabic, compare Cohere with Arabic selected, Nemotron Multilingual and
+  multilingual Whisper. For languages outside a model's supported list, choose
+  one that actually covers them; automatic detection does not add languages.
+- A stronger phone can make larger ASR4ALL, Moonshine, Nemotron or Cohere options
+  practical, but extra size does not guarantee a better result for your speech.
+  Compare both first-run wait and already-loaded time. Keep Whisper English as
+  an optional legacy fallback; use multilingual Whisper for its broader coverage.
+
+Try ordinary microphone dictation after the fixed-audio comparison. Live update
+cadence, keyboard behavior, sustained heat and battery use require that check.
 
 ## Model downloads
 
@@ -80,7 +164,7 @@ next nonempty Whistle run or by Android's cache cleanup. Audio history remains a
 separate setting. Runtime logs are discarded.
 
 Text appears after Stop; live transcription and manual language selection are not
-exposed in this beta. English cleanup only runs when English is established by
+exposed in this app. English cleanup only runs when English is established by
 recognition. The Light rating is advisory: Android speed, RAM, accuracy and
 performance on older phones have not been measured. Each recording includes a
 cold model load; the publisher's desktop timings do not measure this app.

@@ -23,7 +23,7 @@ or the release notes' working draft, with an explicit done/pending state. Use
 those notes as the stable-promotion inventory instead of reconstructing changes
 from memory. Update the full documentation at stable promotion, as requested.
 
-For the 1.4.7 cycle, the full documentation refresh is pending:
+The following 1.4.7 documentation refresh was completed for stable promotion:
 
 - README model starting points and source links.
 - Complete model-guide table, including ASR4ALL choices and English Whisper's
@@ -31,6 +31,11 @@ For the 1.4.7 cycle, the full documentation refresh is pending:
 - Current screenshots and explanations for expandable Model Options, Basic
   text cleanup/AI rewrite, and the compact panel/bar waveform.
 - Consolidated stable notes, including fixes added after the initial beta.
+
+Completed in `docs/releases/v1.4.7.md`, README, the model/user/comparison guides
+and the `docs/screenshots/v1.4.7/` gallery. Stable 1.4.7 promotes beta 8 after
+the maintainer's explicit approval. Remaining device-coverage limits stay in
+the release notes; promotion does not close unrelated issue acceptance criteria.
 
 ### Model-guide comparison requested by the maintainer
 

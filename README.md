@@ -16,23 +16,18 @@ This personal fork keeps [FUTO Voice Input](https://github.com/futo-org/voice-in
 voice keyboard and speech-recognition activity. Orukeet is the default recognizer.
 Models download separately; recognition and cleanup then run on your phone.
 
-[Download the APK](https://github.com/Today20092/voice-input/releases/latest) · [What differs from FUTO](#compared-with-original-futo-voice-input) · [Model guide](docs/model-guide.md) · [Release notes](docs/releases/v1.4.6.md) · [Report a problem](https://github.com/Today20092/voice-input/issues)
+[Download the APK](https://github.com/Today20092/voice-input/releases/latest) · [Compare models on your phone](docs/model-comparison.md) · [Model guide](docs/model-guide.md) · [Release notes](docs/releases/v1.4.7.md) · [Report a problem](https://github.com/Today20092/voice-input/issues)
 
-Stable [1.4.6](https://github.com/Today20092/voice-input/releases/tag/v1.4.6)
-promotes the tested Share beta 7 code, with clearer Model Options, Parakeet Redux
-and the Nemotron download fix.
+Stable [1.4.7](https://github.com/Today20092/voice-input/releases/tag/v1.4.7)
+promotes the maintainer-tested beta 8. It adds ASR4ALL Small, Medium and Large,
+Phonon 2 and Whistle, plus Model comparison with speed, word-error and RAM charts.
+It also includes the Transcript Cleanup redesign, compact recording panel and
+clearer model installation progress. Orukeet remains the default.
 
-Beta [1.4.7-beta.8](https://github.com/Today20092/voice-input/releases/tag/v1.4.7-beta.8)
-includes the redesigned **Advanced settings → Model comparison** page: record or
-import audio and compare selected models, including experimental 16.9 MB Whistle.
-It also retains Phonon 2, ASR4ALL dictation and the earlier beta improvements.
-The passage now stays in place when recording starts, with Stop and Cancel below it.
-Reuse saved comparison audio with different models, and see loading, first-run
-and already-loaded transcription timings separately.
-Results now include speed, word-error and sampled RAM charts, sortable model
-details and aligned metric tables. Large model downloads show separate installation
-progress after receiving the archive, instead of appearing stuck at 100%.
-Install the beta APK directly if you want to try these changes.
+We recommend **Advanced settings → Model comparison** before settling on a model.
+Record two or three passages you actually dictate and compare the same audio
+across models. The best balance of speed, recognition quality and memory use
+depends on your device, language and speech. [How to compare](docs/model-comparison.md).
 
 ## Get started
 
@@ -67,6 +62,7 @@ This fork keeps FUTO's Android voice-input flow and adds:
 - Personal dictionary corrections, bulk paste and text-file imports.
 - Optional local English cleanup with S1-mini by Superwhisper and Harper.
 - A microphone waveform, an optional bottom-positioned popup and local diagnostics.
+- On-device model comparison with reusable recordings, charts and saved reports.
 
 Upstream also develops multiple recognition models and streaming.
 The [dated upstream comparison](docs/fork-background.md#comparison-with-futo-voice-input)
@@ -76,28 +72,31 @@ speed or accuracy advantage.
 
 ## Choose a model
 
-Start with Orukeet. If you want text while speaking, choose a streaming model.
-Try the same recording with different models before downloading several large ones.
+Start with Orukeet, then use Model comparison to find what works best on your
+phone. If you want text while speaking, choose a streaming model and also try
+ordinary dictation; fixed-audio timings do not measure live update latency.
 
 | Your use | Starting option |
 | --- | --- |
 | Everyday dictation in a supported European language | Orukeet |
 | Live English text | Moonshine Small |
-| Live English text with built-in cleanup (1.4.7 beta) | ASR4ALL Small, Medium or Large |
+| Live English text with built-in cleanup | ASR4ALL Small, Medium or Large |
 | Live multilingual text | Nemotron 3.5 Multilingual |
 | Experimental final-only English recognition | Phonon 2 (186.6 MB download; separate CPU runtime) |
+| Very small multilingual download to test | Whistle (16.9 MB; final-only, seven languages) |
 | Arabic dictation | Cohere Transcribe with Arabic selected |
-| Original FUTO recognition path | Legacy Whisper |
+| Optional legacy fallback or comparison | Whisper English; multilingual Whisper for broader language needs |
 
-<img src="docs/screenshots/v1.4.6-share-beta.7/models-overview.png" alt="Model Options with Orukeet selected and Moonshine streaming model cards" width="280">
+<img src="docs/screenshots/v1.4.7/models-overview.png" alt="Model Options with Orukeet selected and expandable model families" width="280">
+<img src="docs/screenshots/v1.4.7/comparison-speed.png" alt="Model comparison speed chart with illustrative test values" width="280">
 
-Model Options shows languages, download size, unpacked model size and readiness.
-The screenshot was captured on a Samsung Galaxy S25 Ultra for beta 7; the
-interface is unchanged in stable 1.4.6.
+Model Options shows expandable families, languages, download size, unpacked model
+size and readiness. These Android emulator captures show the release interface;
+comparison values are synthetic examples, not performance claims.
 
-The [full model guide](docs/model-guide.md) includes all models, source links,
-storage requirements and the other two screenshots. Download size and installed
-model size are different from RAM use.
+The [full model guide](docs/model-guide.md) compares all models, source links,
+storage requirements and available measurement evidence. Download size and
+installed model size are different from RAM use.
 
 ## Privacy and everyday use
 
@@ -121,7 +120,7 @@ cover imports, language handling and Harper settings.
 The maintainer uses a Samsung Galaxy S25 Ultra. Testing on that phone does not
 establish compatibility with every phone, model, keyboard or headset.
 
-- The dedicated FUTO Keyboard provider setup entry is hidden in 1.4.6 pending
+- The dedicated FUTO Keyboard provider setup entry remains hidden pending
   upstream support. See [keyboard setup](docs/user-guide.md#keyboard-setup).
 - Redux Android inference and comparative model benchmarks still need device
   validation.
@@ -133,7 +132,7 @@ editor, reproduction steps and what happened.
 [Export a diagnostic report](docs/diagnostics.md) if useful, and review it before
 sharing. Do not attach private audio or transcripts unintentionally.
 
-The [release notes](docs/releases/v1.4.6.md) record verification and remaining
+The [release notes](docs/releases/v1.4.7.md) record verification and remaining
 limits. [GitHub Issues](https://github.com/Today20092/voice-input/issues) tracks
 bugs and planned work.
 
@@ -155,6 +154,7 @@ explains the workflow and preserves upstream and third-party attribution.
 - [User guide](docs/user-guide.md): installation, keyboards, history, dictionary,
   cleanup, popup and diagnostics.
 - [Model guide](docs/model-guide.md): model catalog, downloads and screenshots.
+- [Model comparison](docs/model-comparison.md): compare recordings on your device.
 - [Development guide](docs/development.md): builds, contributions and releases.
 - [Fork background](docs/fork-background.md): upstream comparison, project history,
   AI development and attribution.

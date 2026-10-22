@@ -1,10 +1,41 @@
 # Model comparison
 
-ADB runs accept `-WarmRepetitions 2` for an initial comparison (default five, range one to five). The saved JSON and Markdown record the count; existing reports without the field retain the five-repeat interpretation. With three clips, two repeats produce seven timed observations and three untimed warmups per model. Resuming a run keeps its saved protocol. To collect the deferred three repeats later, start a separate run with the same suite and model IDs and `-WarmRepetitions 3`; retain both reports and compare their build/device conditions before combining timings. Completed five-repeat models need no supplemental run.
+[Back to the README](../README.md)
 
-Open Advanced settings, then Model comparison. Record one or more passages or import audio, listen back, and edit each reference to match the words actually spoken. Choose installed or downloadable models. The confirmation shows the additional download and installed storage. Model downloads use the existing downloader with daily-model selection disabled. Models run sequentially against the same saved canonical audio.
+We recommend comparing models on your own phone before choosing a daily model.
+The best balance of speed, recognition quality and RAM use depends on your
+hardware, language and speech. This feature is available in stable 1.4.7.
 
-## Results overview (beta 7)
+## Compare a few passages
+
+1. Open **Advanced settings → Model comparison** and choose the recording language.
+2. Choose a passage or enter your own. Tap **Record**, read it, then **Stop recording**.
+   You can also **Import audio**. The passage box expands to fit the full text.
+3. Listen back and edit **Words spoken** to match the actual recording, including
+   fillers. Leave the reference blank if you only want transcripts and timings.
+4. Choose another passage and tap **Record another**. Repeat for two or three
+   passages typical of your dictation. Up to eight recordings can be included,
+   each with its own reference. Imports can be added in the same way.
+5. Select the models directly. **Select none**, **Select all** and **Installed only**
+   help manage the list. Tap **Compare selected models**, review the recording
+   count and download/storage totals, and confirm. Every selected model receives
+   all recordings. Keep the screen open; large models can take several minutes.
+6. Review the charts and transcripts. Sort details by speed, size, errors or RAM.
+   **Use as daily model** explicitly applies a choice; running a comparison alone
+   keeps your daily model unchanged.
+7. Use **Compare these recordings again** to reuse the audio with another selection.
+   Earlier results stay saved, and the reused audio has its own copy. Results can
+   be reopened or exported as JSON and Markdown.
+
+Recordings remain available after comparison. The duration beside **Recording 1**
+is audio length, not model processing time. Check normal microphone dictation
+after choosing a model; a fixed-audio comparison does not measure live update
+cadence, keyboard behavior, battery use or sustained heat.
+
+Audio and results stay in private comparison storage. Exported reports include
+references and transcripts, but no audio. Nothing uploads automatically.
+
+## Results overview
 
 The results overview provides horizontal bar charts for speed, word error rate
 and sampled app RAM. Each bar starts at zero and includes its exact value.
@@ -30,28 +61,29 @@ order. Missing measurements sort last. Timing and resource values use aligned
 label/value tables; shared reference text appears once under Recordings and
 references. Detailed repeated passes retain timings and differing transcripts
 without repeating identical transcripts and summary values. Raw exports retain
-every observation. These UI changes are included beginning with beta 7.
+every observation.
 
-Local verification: dev-debug and Android-test assembly, lint and 24 benchmark
-JVM tests passed. All 18 comparison UI/flow tests passed on the Android emulator,
-including chart controls, sorting controls, worker exclusions, shared references
-and 320 dp / 200% text tables. Light and dark screenshots were inspected. Chart
-preview values are synthetic test fixtures, not measurements of model performance.
+<img src="screenshots/v1.4.7/comparison-speed.png" alt="Speed chart and sortable model details with synthetic example values" width="360">
 
-## In-app comparison on beta 3
+Android emulator UI fixture. Values are illustrative, not measured model rankings.
 
-The integration branch `codex/model-comparison-beta3` starts from released `v1.4.7-beta.3` (`9312d1c`) and includes its Phonon 2 backend. This is a local test build, not a published beta release.
+Beta 8 verification passed app/test assembly, lint and all 21 comparison UI/flow
+tests in the emulator, including charts, sorting, worker exclusions, reusable
+recordings and 320 dp / 200% text layouts. Screenshots were inspected.
 
-1. Open **Advanced → Model comparison** in **Voice Input Dev**.
-2. Choose a passage or enter your own prompt. Tap **Record**, read it, then **Stop recording**. You can leave the reference blank for an output-and-speed comparison without accuracy scores.
-3. Tap **Listen** and correct **Words actually spoken** if needed. **Remove recording** lets you discard a take and record again.
-4. Check two or more models. Installed models are selected initially; missing models show their download and storage requirements. Unsupported recording languages are skipped without downloading those models.
-5. Tap **Compare selected models**, review the download totals, and confirm. Keep the screen open while each model processes the same audio. Each model makes a first pass, one untimed warm-up, and five timed passes; large models can take several minutes.
-6. Read each transcript, word/character error rate, model loading time and warm timing range. Expand individual measurements if outputs differ. Reports remain on the phone and can be exported as JSON or Markdown. **Use as daily model** applies a choice explicitly.
+## Measurement details
+
+The in-app comparison first shipped during the 1.4.7 beta cycle. Stable 1.4.7
+includes its later charts, reusable recordings and passage-layout fixes.
+
+Unsupported recording languages are skipped without downloading those models.
+Each model makes a first pass, an untimed warm-up and five timed passes per
+recording. Whistle's separate worker reloads for every pass.
 
 Recording and comparison keep the screen awake. Rotating during a model download retains its pending result. Leaving the screen while recording stops and saves the take; native decoding may finish its current call before cancellation takes effect. The in-app screen exposes the fixed-recording comparison; guided live readings and the comprehensive USB/ADB suite are deferred.
 
-The dev APK installs alongside the regular app and has separate models, settings and recordings. Existing compatible Voice Input Dev installations can be updated in place; the regular release's model downloads are not shared with it.
+Developer APKs install alongside the regular app with separate models, settings
+and recordings. The regular release's downloads are not shared with them.
 
 Input is limited to 180 seconds and 64 MiB per clip. The import path supports AAC in M4A containers and 16-bit little-endian PCM WAV, mono or stereo at 8 to 48 kHz. It rejects unsupported codecs, changing formats, corrupt/empty samples, oversized files and overlong recordings. Stereo is averaged before conversion. A 32-tap windowed-sinc low-pass filter with 1024 fractional phases produces 16 kHz mono float32 little-endian samples. Conversion, defensive input copying, scoring and report writes are excluded from measured decode time. Originals and canonical inputs remain in private benchmark storage.
 
@@ -61,7 +93,7 @@ Each independent recognizer measures construction/loading, one first decode on t
 
 The scoring policy `nfkc-root-lower-punctuation-v1` uses Unicode NFKC, locale-independent upper/lower case folding with dotless-i preserved and final sigma folded, removes straight/curly apostrophes, converts other Unicode punctuation/symbols to word boundaries and collapses whitespace. CER counts Unicode code points including normalized spaces. Word and character edit paths prefer substitution, then deletion, then insertion on ties. Numbers remain literal, fillers remain present and punctuation/capitalization are not spoken-word errors. WER can exceed 100% because of insertions. Empty or missing reference has unavailable accuracy; empty successful output is scored as deletions. Recognition failure is never scored as empty successful output. Unverified supplied references have unavailable accuracy until explicitly reviewed.
 
-Reference text, audio hashes, actual sample counts, conversion settings, model/artifact identities, runtime versions, execution order and device/build metadata accompany results. Memory is sampled process PSS in KiB at a requested 250 ms interval. Scheduling and native work can delay sampling, so it is not an exact allocation peak. Thermal, battery and power state are captured before and after each case where the Android API supports them. Startup overhead and energy consumption are unavailable. The app revision identifies the checkout commit; local edits require retaining the tested APK and its hash with published evidence.
+Reference text, audio hashes, actual sample counts, conversion settings, model/artifact identities, runtime versions, execution order and device/build metadata accompany results. Memory is sampled process PSS in KiB at a requested 250 ms interval. Scheduling and native work can delay sampling, so it is not an exact allocation peak. Thermal, battery and power state are captured before and after each case where the Android API supports them. Energy consumption is unavailable. Loading and first-decode times are reported separately where the runtime permits. The app revision identifies the checkout commit; local edits require retaining the tested APK and its hash with published evidence.
 
 Downloads, cancellation and load failures retain partial results. A model-load failure does not invalidate the installed marker or change the daily model. Completed/failed cases are immutable within a saved run. Start a new comparison to repeat a case. A process interruption marks in-progress results as interrupted on recovery. Missing models produce skipped rows and do not block installed models. Benchmark ownership blocks simultaneous dictation, duplicate fixed-audio runs, model deletion and replacement.
 
