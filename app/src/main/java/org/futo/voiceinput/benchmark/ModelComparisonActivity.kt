@@ -142,14 +142,14 @@ class ModelComparisonActivity : ComponentActivity() {
                 if (model.report == null) {
                     ComparisonCard {
                         ComparisonHeading("Audio")
-                        ComparisonText("Record a passage or import audio. Every selected model receives the same recording.")
+                        ComparisonText("Add up to 8 recordings. Record a passage, then choose another and record again. Every selected model runs on all recordings.")
                         OutlinedButton(onClick = { showLanguages = true }, enabled = !model.busy && model.clips.isEmpty(),
                             modifier = Modifier.fillMaxWidth()) {
                             Text("Language: ${org.futo.voiceinput.LANGUAGE_LIST.firstOrNull { it.id == model.language }?.name ?: model.language}")
                         }
                         OutlinedTextField(reference, { if (it.length <= 6000) reference = it },
                             label = { Text("Passage") }, supportingText = { Text("Optional") },
-                            modifier = Modifier.fillMaxWidth(), readOnly = model.busy, maxLines = 6)
+                            modifier = Modifier.fillMaxWidth(), readOnly = model.busy)
                         TextButton(onClick = { showPrompts = true }, enabled = !model.busy) { Text("Choose a passage") }
                         if (model.recording) Button(onClick = model::stopRecording, modifier = Modifier.fillMaxWidth(),
                             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary, contentColor = MaterialTheme.colorScheme.onSecondary)) { Text("Stop recording") }
@@ -160,7 +160,7 @@ class ModelComparisonActivity : ComponentActivity() {
                                 if (ContextCompat.checkSelfPermission(this@ModelComparisonActivity, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) model.record(reference)
                                 else permission.launch(Manifest.permission.RECORD_AUDIO)
                             }, enabled = !model.busy && model.clips.size < 8, modifier = Modifier.weight(1f).widthIn(min = 128.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary, contentColor = MaterialTheme.colorScheme.onSecondary)) { Text("Record") }
+                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary, contentColor = MaterialTheme.colorScheme.onSecondary)) { Text(if (model.clips.isEmpty()) "Record" else "Record another") }
                             OutlinedButton(onClick = { importer.launch(arrayOf("audio/*")) },
                                 enabled = !model.busy && model.clips.size < 8, modifier = Modifier.weight(1f).widthIn(min = 128.dp)) { Text("Import audio") }
                         }
@@ -173,7 +173,7 @@ class ModelComparisonActivity : ComponentActivity() {
                             }
                         }
                         if (model.clips.isEmpty()) ComparisonText("No recordings yet. Add audio to start a comparison.")
-                        else ComparisonText("${model.clips.size} of 8 recordings added. Listen back and check the words below.")
+                        else ComparisonText("${model.clips.size} of 8 recordings added. ${if (model.clips.size < 8) "Add another passage above, or compare all recordings below." else "Ready to compare all recordings below."} Listen back and check each recording’s words.")
                         ComparisonDetails("Recording tips and file limits") {
                             ComparisonText("The reference must match the words actually spoken, including fillers. Edit it after listening, or leave it blank to compare transcripts without an accuracy score.")
                             ComparisonText("Use one language per comparison. English-only models are skipped for other languages; automatic-detection models report that configuration.")
@@ -184,10 +184,10 @@ class ModelComparisonActivity : ComponentActivity() {
                         key(clip.id) {
                             ComparisonCard {
                                 ComparisonHeading("Recording ${index + 1}")
-                                ComparisonText("%.1f seconds".format(clip.durationSeconds))
+                                ComparisonText("Audio length: %.1f seconds".format(clip.durationSeconds))
                                 OutlinedButton(onClick = { preview(model.draftId, clip) }, enabled = !model.busy) { Text("Listen") }
                                 OutlinedTextField(clip.reference.orEmpty(), { model.reference(clip.id, it) },
-                                    label = { Text("Words spoken") }, modifier = Modifier.fillMaxWidth(), enabled = !model.busy, maxLines = 6)
+                                    label = { Text("Words spoken") }, modifier = Modifier.fillMaxWidth(), enabled = !model.busy)
                                 TextButton(onClick = { player?.release(); player = null; model.removeClip(clip.id) }, enabled = !model.busy,
                                     colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Text("Remove recording") }
                             }
@@ -243,7 +243,7 @@ class ModelComparisonActivity : ComponentActivity() {
                         }
                         ComparisonDetails("Recordings and references") {
                             report.clips.forEachIndexed { index, clip ->
-                                ComparisonHeading("Recording ${index + 1} · %.1f seconds".format(clip.durationSeconds))
+                                ComparisonHeading("Recording ${index + 1} · %.1f s audio".format(clip.durationSeconds))
                                 Text(clip.reference ?: "No reference provided", style = MaterialTheme.typography.bodyMedium)
                             }
                         }
@@ -263,7 +263,7 @@ class ModelComparisonActivity : ComponentActivity() {
                                 report.clips.forEachIndexed { index, clip ->
                                     val observations = result.observations.toList().filter { it.clipId == clip.id }
                                     val warm = observations.filter { it.phase == "warm" }.map { it.elapsedNs }.sorted()
-                                    ComparisonHeading("Recording ${index + 1} · %.1f seconds".format(clip.durationSeconds))
+                                    ComparisonHeading("Recording ${index + 1} · %.1f s audio".format(clip.durationSeconds))
                                     val metrics = mutableListOf<Pair<String, String>>()
                                     if (warm.isNotEmpty()) metrics += (if (result.loadsEveryPass) "Median incl. worker load" else "Loaded median") to "${ms(warm.medianNs())} ms"
                                     observations.firstOrNull { it.phase == "first" }?.let { first ->
@@ -361,6 +361,7 @@ class ModelComparisonActivity : ComponentActivity() {
         }, confirmButton = { TextButton(onClick = { showLanguages = false }) { Text("Close") } })
         if (confirmRun) AlertDialog(onDismissRequest = { confirmRun = false }, title = { Text("Start comparison?") },
             text = { Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text("Every selected model will transcribe all ${model.clips.size} recordings.")
                 Text("Check that each reference matches the words spoken. Leave it blank to compare transcripts without an accuracy score.")
                 Text("Download ${mib(model.downloadBytes)} MiB and retain ${mib(model.storageBytes)} MiB of additional models. Your daily model stays selected.")
                 ComparisonText("Each model runs sequentially: a first pass, an untimed warm-up and five timed passes. Large models can take several minutes. Failed or missing models are listed in the results.")

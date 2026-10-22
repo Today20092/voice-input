@@ -163,6 +163,50 @@ class ModelComparisonUiTest {
 
     @Test fun recordingKeepsPassageInPlace() = checkRecordingPassagePosition()
 
+    @Test fun longPassagesExpandWithoutInternalScrolling() = checkPassageExpansion()
+
+    @Test fun longPassagesExpandAtLargeText() = checkPassageExpansion(320, 2f)
+
+    private fun checkPassageExpansion(width: Int? = null, fontScale: Float = 1f) =
+        withComparison(DevThemeYellow, width, fontScale) { activity, model ->
+            val text = (1..12).joinToString("\n") { "Passage line $it" }
+            compose.onNodeWithText("Passage").performScrollTo().performTextReplacement(text)
+            androidx.test.espresso.Espresso.closeSoftKeyboard()
+            compose.runOnIdle {
+                model.clips = listOf(BenchmarkClip("long", "original", "canonical", 16000, text, "reference"))
+            }
+            for (label in listOf("Passage", "Words spoken")) {
+                val field = compose.onNodeWithText(label)
+                field.performScrollTo()
+                val layouts = mutableListOf<TextLayoutResult>()
+                field.performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
+                val layout = layouts.single()
+                assertTrue("Expected a long reference", layout.lineCount >= 12)
+                assertTrue("$label must expand to fit every line",
+                    field.fetchSemanticsNode().layoutInfo.height >= layout.size.height)
+            }
+            compose.onNodeWithText("Passage").performScrollTo()
+            capture(activity, "expanded-passage")
+        }
+
+    @Test fun multiplePassagesExplainThatEveryRecordingIsCompared() = withComparison(DevThemeYellow) { _, model ->
+        compose.runOnIdle {
+            model.clips = (1..3).map { index ->
+                BenchmarkClip("clip-$index", "original", "canonical", 16000, "Passage $index", "reference")
+            }
+            model.selected = setOf(model.models.first { it.supportsLanguage(model.language) }.id)
+        }
+        compose.onNodeWithText("Record another").performScrollTo().assertIsEnabled()
+        compose.onNodeWithText("3 of 8 recordings added.", substring = true).assertExists()
+        for (index in 1..3) {
+            compose.onNodeWithText("Recording $index").performScrollTo().assertIsDisplayed()
+            compose.onNodeWithText("Passage $index").performScrollTo().assertIsDisplayed()
+        }
+        compose.onNodeWithText("Compare selected models").performScrollTo().performClick()
+        compose.onNodeWithText("Every selected model will transcribe all 3 recordings.").assertIsDisplayed()
+        compose.onNodeWithText("Cancel").performClick()
+    }
+
     @Test fun recordingKeepsLargeTextPassageInPlace() = checkRecordingPassagePosition(320, 2f)
 
     private fun checkRecordingPassagePosition(width: Int? = null, fontScale: Float = 1f) =
