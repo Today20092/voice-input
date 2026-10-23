@@ -1031,7 +1031,8 @@ abstract class RecordingSession {
 
         val streamingChunk = if (streamingAudio.isEnabled()) FloatArray(nRead) else null
         for(i in 0 until nRead) {
-            val sample = samples[i].toFloat() / Short.MAX_VALUE.toFloat()
+            // PCM16 is asymmetric: -32768 must remain within the recognizers' [-1, 1] range.
+            val sample = samples[i].toFloat() / 32768f
             floatSamples.put(sample)
             streamingChunk?.set(i, sample)
         }

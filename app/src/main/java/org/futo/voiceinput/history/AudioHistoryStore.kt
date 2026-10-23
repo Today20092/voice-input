@@ -182,7 +182,7 @@ class AudioHistoryStore(private val root: File) {
                 val low = input.read()
                 val high = input.read()
                 check(low >= 0 && high >= 0) { "Recording was truncated" }
-                samples[index] = ((high shl 8) or low).toShort().toFloat() / Short.MAX_VALUE
+                samples[index] = ((high shl 8) or low).toShort().toFloat() / 32768f
             }
         }
         return samples

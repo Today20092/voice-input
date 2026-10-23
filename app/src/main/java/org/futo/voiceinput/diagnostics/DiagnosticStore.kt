@@ -3,6 +3,8 @@ package org.futo.voiceinput.diagnostics
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import org.futo.voiceinput.phonon.PhononAudioException
+import org.futo.voiceinput.phonon.PhononInferenceException
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
@@ -36,6 +38,8 @@ data class DiagnosticFailure(val kind: String, val frames: List<String>) {
         // Never call Throwable.toString(), message, cause.toString(), or stackTraceToString().
         fun from(error: Throwable): DiagnosticFailure {
             val kind = when (error) {
+                is PhononAudioException -> "phonon_invalid_audio"
+                is PhononInferenceException -> "phonon_inference"
                 is OutOfMemoryError -> "out_of_memory"
                 is SecurityException -> "permission"
                 is java.io.IOException -> "io"

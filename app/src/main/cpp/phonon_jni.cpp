@@ -116,20 +116,29 @@ Java_org_futo_voiceinput_phonon_PhononNative_transcribe(
         env->GetFloatArrayRegion(samples, 0, static_cast<jsize>(pcm.size()), pcm.data());
         if (env->ExceptionCheck()) return nullptr;
         for (float value : pcm) {
-            if (!std::isfinite(value) || value < -1.0f || value > 1.0f)
-                throw std::runtime_error("Invalid audio");
+            if (!std::isfinite(value) || value < -1.0f || value > 1.0f) {
+                env->ThrowNew(env->FindClass("org/futo/voiceinput/phonon/PhononAudioException"),
+                              "Phonon received invalid audio samples");
+                return nullptr;
+            }
         }
         PoolScope pool(session->api, session->pool);
         P2Result result{};
         auto release = [&session](P2Result* r) { session->api.freeResult(r); };
         std::unique_ptr<P2Result, decltype(release)> cleanup(&result, release);
         if (session->api.transcribe(session->engine, pcm.data(), static_cast<int>(pcm.size()),
-                                   16000, &result) != 0 || !result.text)
-            throw std::runtime_error("Phonon transcription failed");
+                                   16000, &result) != 0 || !result.text) {
+            env->ThrowNew(env->FindClass("org/futo/voiceinput/phonon/PhononInferenceException"),
+                          "Phonon transcription failed");
+            return nullptr;
+        }
         const auto length = static_cast<jsize>(std::strlen(result.text));
         auto bytes = env->NewByteArray(length);
         if (bytes) env->SetByteArrayRegion(bytes, 0, length, reinterpret_cast<const jbyte*>(result.text));
         return bytes;
+    } catch (const std::bad_alloc&) {
+        env->ThrowNew(env->FindClass("java/lang/OutOfMemoryError"), "Phonon audio allocation failed");
+        return nullptr;
     } catch (const std::exception&) {
         fail(env, "Phonon 2 could not transcribe this recording");
         return nullptr;

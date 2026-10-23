@@ -13,6 +13,19 @@ import java.io.File
 class AudioHistoryStoreTest {
     @get:Rule val temporary = TemporaryFolder()
 
+    @Test fun fullScalePcmRemainsValidForPhononDuringRetranscription() = runBlocking {
+        val store = AudioHistoryStore(temporary.newFolder())
+        val pcm = shortArrayOf(0, Short.MIN_VALUE, Short.MAX_VALUE)
+        val capture = store.begin().apply { append(pcm, pcm.size); close() }
+        store.retranscribe(capture.id) { samples ->
+            assertTrue("Phonon rejects the entire recording if any sample is outside [-1, 1]",
+                samples.all { it.isFinite() && it >= -1f && it <= 1f })
+            assertArrayEquals(floatArrayOf(0f, -1f, 32767f / 32768f), samples, 0f)
+            "Recovered text"
+        }
+        assertEquals("Recovered text", store.transcript(capture.id))
+    }
+
     @Test fun previewIsBoundedWithoutTruncatingTheSavedTranscript() {
         val store = AudioHistoryStore(temporary.newFolder())
         val capture = store.begin().apply { append(shortArrayOf(1), 1); close() }
@@ -96,7 +109,7 @@ class AudioHistoryStoreTest {
         assertEquals("Previous text", store.transcript(capture.id))
         assertFalse(store.entries().single().busy)
         assertEquals("Recovered text", store.retranscribe(capture.id) { samples ->
-            assertArrayEquals(floatArrayOf(1f), samples, 0f)
+            assertArrayEquals(floatArrayOf(32767f / 32768f), samples, 0f)
             store.purge(1, 1000 + 2 * 3_600_000L)
             assertTrue(store.entries().single().busy)
             "Recovered text"
@@ -127,7 +140,7 @@ class AudioHistoryStoreTest {
         File(root, "${capture.id}.pcm").appendBytes(byteArrayOf(12))
         val reopened = AudioHistoryStore(root)
         reopened.retranscribe(capture.id) { samples ->
-            assertArrayEquals(floatArrayOf(Short.MIN_VALUE.toFloat() / Short.MAX_VALUE, 0f, 1f), samples, 0f)
+            assertArrayEquals(floatArrayOf(-1f, 0f, 32767f / 32768f), samples, 0f)
             "Recovered words"
         }
         assertFalse(reopened.entries().single().busy)

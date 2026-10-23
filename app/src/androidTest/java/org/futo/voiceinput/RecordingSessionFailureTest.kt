@@ -22,6 +22,20 @@ import org.junit.Test
 import java.nio.FloatBuffer
 
 class RecordingSessionFailureTest {
+    @Test fun fullScaleRecordingSamplesStayWithinRecognizerRange() {
+        val session = newSession()
+        try {
+            session.setField("floatSamples", FloatBuffer.allocate(3))
+            val pcm = shortArrayOf(Short.MIN_VALUE, 0, Short.MAX_VALUE)
+            RecordingSession::class.java.getDeclaredMethod("appendSamples",
+                ShortArray::class.java, Int::class.javaPrimitiveType, Long::class.javaPrimitiveType)
+                .apply { isAccessible = true }.invoke(session, pcm, pcm.size, 0L)
+            assertArrayEquals(floatArrayOf(-1f, 0f, 32767f / 32768f), session.samples(), 0f)
+        } finally {
+            session.lifecycleScope.cancel()
+        }
+    }
+
     @Test fun loadingOomIsTerminalWithoutReload() = runBlocking {
         val failure = OutOfMemoryError("injected model load")
         val session = newSession()
