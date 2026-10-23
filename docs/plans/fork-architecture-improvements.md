@@ -40,4 +40,3 @@ The user explicitly delegated test choices. Use focused vertical TDD cycles at t
 ## Existing decisions to retain
 
 ADR 0001: maintained Sherpa runtime; separate native implementations where needed for compatibility. ADR 0002: optional S1 cleanup with CPU/OpenCL choices in a private process. ADR 0003 and CONTEXT.md: standard diagnostics stay content-free; explicit transcript captures and audio history have separate retention/consent.
-
