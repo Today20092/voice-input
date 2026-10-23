@@ -81,12 +81,11 @@ class BenchmarkRunner(
     private val warmRepetitions: Int = 5
 ) {
     suspend fun runCase(
-        result: BenchmarkCaseResult, clips: List<Pair<BenchmarkClip, FloatArray>>,
+        result: BenchmarkCaseResult, clips: List<BenchmarkClip>, readAudio: (BenchmarkClip) -> FloatArray,
         factory: () -> BenchmarkRecognizer, persist: () -> Unit
     ) {
         require(clips.isNotEmpty())
         require(warmRepetitions in 1..5)
-        clips.forEach { (clip, samples) -> require(samples.size == clip.sampleCount && samples.isNotEmpty()) }
         var recognizer: BenchmarkRecognizer? = null
         result.before = environment()
         persist()
@@ -108,12 +107,17 @@ class BenchmarkRunner(
                     else Accuracy(unavailable = "Spoken reference has not been verified")))
                 persist()
             }
-            clips.first().let { (clip, audio) -> decode(clip, audio, "first", 0) }
-            clips.forEach { (clip, audio) ->
+            suspend fun runClip(clip: BenchmarkClip, first: Boolean) {
+                currentCoroutineContext().ensureActive()
+                val audio = readAudio(clip)
+                require(audio.size == clip.sampleCount && audio.isNotEmpty())
+                if (first) decode(clip, audio, "first", 0)
                 currentCoroutineContext().ensureActive()
                 recognizer.transcribe(audio.copyOf())
                 repeat(warmRepetitions) { decode(clip, audio, "warm", it + 1) }
             }
+            // A separate suspend scope drops this recording before loading the next one.
+            clips.forEachIndexed { index, clip -> runClip(clip, index == 0) }
             result.status = "completed"
         } catch (cancelled: CancellationException) {
             result.status = "cancelled"
