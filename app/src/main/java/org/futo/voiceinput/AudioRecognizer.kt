@@ -59,7 +59,7 @@ import org.futo.voiceinput.parakeet.ParakeetEngineLease
 import org.futo.voiceinput.parakeet.parakeetUnifiedRecognitionModel
 import org.futo.voiceinput.backend.SpeechBackend
 import org.futo.voiceinput.backend.StreamingSpeechBackend
-import org.futo.voiceinput.backend.finishRecording
+import org.futo.voiceinput.backend.prepareRecordingFinalization
 import org.futo.voiceinput.recognition.RecognitionModel
 import org.futo.voiceinput.recognition.RecognitionModelLifecycle
 import org.futo.voiceinput.recognition.RecognitionModelSelection
@@ -1176,6 +1176,7 @@ abstract class RecordingSession {
         val vadEnabled = context.getSetting(IS_VAD_ENABLED) &&
             (backendType != SpeechBackendType.Parakeet || context.getSetting(PARAKEET_USE_VAD))
         val sampleCount = floatSamples.position()
+        val finalizeRecording = runBackend.prepareRecordingFinalization(floatSamples)
         if (BuildConfig.DEBUG) {
             var sumSquares = 0.0
             var peak = 0.0f
@@ -1198,7 +1199,7 @@ abstract class RecordingSession {
             val recognitionStarted = SystemClock.elapsedRealtime()
             report?.event(DiagnosticEvent.RECOGNITION_STARTED,
                 mapOf(DiagnosticMetric.AUDIO_MS to sampleCount.toLong() * 1000 / AUDIO_SAMPLE_RATE))
-            val rawText = runBackend.finishRecording(floatSamples)
+            val rawText = finalizeRecording()
             liveBenchmarkSession?.raw(rawText)
             if (liveBenchmarkSession != null) return@run rawText
             report?.event(DiagnosticEvent.RECOGNITION_FINISHED, mapOf(

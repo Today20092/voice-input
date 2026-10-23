@@ -3,9 +3,11 @@ package org.futo.voiceinput.backend
 import android.content.Context
 import java.nio.FloatBuffer
 
-internal suspend fun SpeechBackend.finishRecording(samples: FloatBuffer): String {
-    return (this as? StreamingSpeechBackend)?.finishStreaming()
-        ?: transcribe(samples.array().copyOf(samples.position()))
+// Keep required snapshot allocation outside the caller's recognition timer.
+internal fun SpeechBackend.prepareRecordingFinalization(samples: FloatBuffer): suspend () -> String {
+    if (this is StreamingSpeechBackend) return { finishStreaming() }
+    val snapshot = samples.array().copyOf(samples.position())
+    return { transcribe(snapshot) }
 }
 
 interface SpeechBackend {

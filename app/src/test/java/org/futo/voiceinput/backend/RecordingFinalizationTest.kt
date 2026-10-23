@@ -22,7 +22,7 @@ class RecordingFinalizationTest {
             override suspend fun finishStreaming() = "Raw final transcript"
             override suspend fun close() = Unit
         }
-        assertEquals("Raw final transcript", backend.finishRecording(samples))
+        assertEquals("Raw final transcript", backend.prepareRecordingFinalization(samples)())
         assertEquals(3, samples.position())
     }
 
@@ -37,7 +37,7 @@ class RecordingFinalizationTest {
                 return "Raw final transcript"
             }
         }
-        assertEquals("Raw final transcript", backend.finishRecording(samples))
+        assertEquals("Raw final transcript", backend.prepareRecordingFinalization(samples)())
         assertEquals(3, samples.position())
         assertArrayEquals(floatArrayOf(-1f, 0f, 32767f / 32768f), samples.array().copyOf(3), 0f)
     }
@@ -53,8 +53,24 @@ class RecordingFinalizationTest {
                 override suspend fun finishStreaming(): String = throw failure
             }
             val samples = FloatBuffer.allocate(1).asReadOnlyBuffer().apply { position(1) }
-            val thrown = assertThrows(failure.javaClass) { runBlocking { backend.finishRecording(samples) } }
+            val thrown = assertThrows(failure.javaClass) { runBlocking { backend.prepareRecordingFinalization(samples)() } }
             assertSame(failure, thrown)
         }
+    }
+
+    @Test fun finalOnlySnapshotIsPreparedBeforeTheRecognitionOperationBegins() = runBlocking {
+        val samples = FloatBuffer.allocate(3).apply { put(floatArrayOf(-1f, 0f, 32767f / 32768f)) }
+        val backend = object : SpeechBackend {
+            override suspend fun load(context: Context) = Unit
+            override suspend fun close() = Unit
+            override suspend fun transcribe(samples: FloatArray): String {
+                assertArrayEquals(floatArrayOf(-1f, 0f, 32767f / 32768f), samples, 0f)
+                return "Prepared audio"
+            }
+        }
+        val recognize = backend.prepareRecordingFinalization(samples)
+        // This happens before the timed recognition operation, after required input preparation.
+        samples.array().fill(42f)
+        assertEquals("Prepared audio", recognize())
     }
 }
