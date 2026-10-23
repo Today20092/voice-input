@@ -105,6 +105,7 @@ android {
     buildTypes {
         release {
             minifyEnabled false
+            ndk.debugSymbolLevel 'FULL'
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             signingConfig releaseSigning
         }
@@ -149,7 +150,8 @@ android {
         }
         jniLibs {
             useLegacyPackaging true
-            keepDebugSymbols += '**/*.so'
+            // Whistle is a hash-pinned executable; even stripping debug data changes it.
+            keepDebugSymbols += '**/libwhistle_runner.so'
         }
     }
 
