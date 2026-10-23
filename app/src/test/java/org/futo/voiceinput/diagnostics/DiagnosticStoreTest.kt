@@ -4,9 +4,25 @@ import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
+import org.futo.voiceinput.phonon.PhononAudioException
+import org.futo.voiceinput.phonon.PhononInferenceException
 
 class DiagnosticStoreTest {
     @get:Rule val temporary = TemporaryFolder()
+
+    @Test fun `phonon failures retain a specific category without native messages`() {
+        val store = DiagnosticStore(temporary.newFolder())
+        listOf(PhononAudioException("private audio"), PhononInferenceException("private transcript"),
+            OutOfMemoryError("private allocation")).forEach {
+            store.record(DiagnosticEvent.SESSION_FAILED, error = it)
+        }
+        val records = store.snapshot().records
+        assertEquals(listOf("phonon_invalid_audio", "phonon_inference", "out_of_memory"),
+            records.map { it.failure?.kind })
+        records.forEach {
+            assertFalse(DiagnosticStore.json.encodeToString(DiagnosticRecord.serializer(), it).contains("private"))
+        }
+    }
 
     @Test fun `standard records exclude error messages and unrecognized identifiers`() {
         val store = DiagnosticStore(temporary.newFolder())
