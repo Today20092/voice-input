@@ -18,7 +18,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.futo.voiceinput.BuildConfig
-import org.futo.voiceinput.PersonalVocabulary
+import org.futo.voiceinput.TranscriptFinalizer
 import org.futo.voiceinput.diagnostics.AppDiagnostics
 import org.futo.voiceinput.diagnostics.DiagnosticEvent
 import org.futo.voiceinput.diagnostics.DiagnosticMetric
@@ -27,7 +27,6 @@ import org.futo.voiceinput.selectedWhisperModelsForCurrentSettings
 import org.futo.voiceinput.recognition.RecognitionModelLifecycle
 import org.futo.voiceinput.recognition.RecognitionModelSelection
 import org.futo.voiceinput.recognition.RecognitionRuntimeCallbacks
-import org.futo.voiceinput.s1.S1MiniTranscriptCleaner
 import org.futo.voiceinput.settings.*
 import java.io.File
 
@@ -81,18 +80,13 @@ suspend fun Context.retranscribeAudio(id: String, scope: LifecycleCoroutineScope
                             DiagnosticMetric.CHARACTERS to raw.length.toLong()))
                     AppDiagnostics.sample(report.id, report.model, detailed = true)
                     check(raw.isNotBlank()) { "No speech was recognized. The audio is still saved." }
-                    val cleanupStarted = SystemClock.elapsedRealtime()
-                    report.event(DiagnosticEvent.CLEANUP_STARTED)
-                    val cleaned = S1MiniTranscriptCleaner.clean(this@retranscribeAudio, raw,
-                        selection.runtimeId.toSpeechBackendType(), backend.detectedLanguage, null, {})
-                    report.event(DiagnosticEvent.CLEANUP_FINISHED,
-                        mapOf(DiagnosticMetric.DURATION_MS to SystemClock.elapsedRealtime() - cleanupStarted,
-                            DiagnosticMetric.APPLIED to if (cleaned.applied) 1L else 0L))
-                    val text = PersonalVocabulary.apply(cleaned.text, getSetting(PERSONAL_DICTIONARY))
-                    check(text.isNotBlank() || cleaned.validEmpty) {
+                    val finalized = TranscriptFinalizer.clean(this@retranscribeAudio, raw,
+                        selection.runtimeId.toSpeechBackendType(), backend.detectedLanguage, null,
+                        getSetting(PERSONAL_DICTIONARY), report)
+                    check(finalized.text.isNotBlank() || finalized.validEmpty) {
                         "No speech was recognized. The audio is still saved."
                     }
-                    text
+                    finalized.text
                 } finally {
                     withContext(NonCancellable) { lifecycle.release(backend, scope) }
                 }

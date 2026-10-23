@@ -1,18 +1,8 @@
 package org.futo.voiceinput.harper
 
-import android.content.Context
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import org.futo.voiceinput.settings.HARPER_ENABLED
-import org.futo.voiceinput.settings.HARPER_EXPLICIT_ENGLISH
-import org.futo.voiceinput.settings.LANGUAGE_TOGGLES
-import org.futo.voiceinput.settings.NEMOTRON_MULTILINGUAL_LANGUAGE
-import org.futo.voiceinput.settings.NEMOTRON_PROFILE
-import org.futo.voiceinput.settings.SpeechBackendType
-import org.futo.voiceinput.settings.getSetting
 
 internal object HarperNative {
     init { System.loadLibrary("harper") }
@@ -33,20 +23,6 @@ data class HarperCleanupResult(val text: String, val edits: Int = 0, val outcome
 object HarperTranscriptCleaner {
     @Serializable
     private data class NativeResult(val text: String, val edits: Int)
-
-    suspend fun clean(
-        context: Context, text: String, vocabulary: String, backend: SpeechBackendType,
-        detectedLanguage: String?, forcedLanguage: String?
-    ): HarperCleanupResult {
-        val enabled = context.getSetting(HARPER_ENABLED)
-        if (!enabled) return clean(text, vocabulary, enabled = false, english = false)
-        val english = HarperEnglishGate.isEstablishedEnglish(
-            backend, detectedLanguage, forcedLanguage,
-            context.getSetting(NEMOTRON_PROFILE), context.getSetting(NEMOTRON_MULTILINGUAL_LANGUAGE),
-            context.getSetting(LANGUAGE_TOGGLES), context.getSetting(HARPER_EXPLICIT_ENGLISH)
-        )
-        return withContext(Dispatchers.Default) { clean(text, vocabulary, enabled, english) }
-    }
 
     // Production and CI cross the same cleanup interface. Only the native adapter varies.
     internal fun clean(

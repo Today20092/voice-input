@@ -38,7 +38,6 @@ import org.futo.voiceinput.diagnostics.DiagnosticEvent
 import org.futo.voiceinput.diagnostics.DiagnosticMetric
 import org.futo.voiceinput.diagnostics.DiagnosticSession
 import org.futo.voiceinput.history.AudioHistoryStore
-import org.futo.voiceinput.harper.HarperTranscriptCleaner
 import org.futo.voiceinput.history.audioHistory
 import org.futo.voiceinput.settings.AUDIO_HISTORY_ENABLED
 import org.futo.voiceinput.settings.AUDIO_HISTORY_RETENTION_HOURS
@@ -66,9 +65,6 @@ import org.futo.voiceinput.recognition.RecognitionModelLifecycle
 import org.futo.voiceinput.recognition.RecognitionModelSelection
 import org.futo.voiceinput.recognition.RecognitionRuntimeCallbacks
 import org.futo.voiceinput.recognition.loadOrCloseOnFailure
-import org.futo.voiceinput.s1.S1MiniCleanupResult
-import org.futo.voiceinput.s1.S1MiniDiagnostics
-import org.futo.voiceinput.s1.S1MiniTranscriptCleaner
 import org.futo.voiceinput.settings.toSpeechBackendType
 import org.futo.voiceinput.settings.toEndOfSpeechProfile
 import java.nio.FloatBuffer
@@ -1196,7 +1192,7 @@ abstract class RecordingSession {
         }
 
         yield()
-        var cleanupResult = S1MiniCleanupResult("", applied = false)
+        var validEmpty = false
         val text = run {
             val recognitionStarted = SystemClock.elapsedRealtime()
             report?.event(DiagnosticEvent.RECOGNITION_STARTED,
@@ -1209,47 +1205,11 @@ abstract class RecordingSession {
                 DiagnosticMetric.DURATION_MS to SystemClock.elapsedRealtime() - recognitionStarted,
                 DiagnosticMetric.CHARACTERS to rawText.length.toLong()))
             saveBackupTranscript(savedAudioId, rawText)
-            val cleanupStarted = SystemClock.elapsedRealtime()
-            report?.event(DiagnosticEvent.CLEANUP_STARTED)
-            cleanupResult = S1MiniTranscriptCleaner.clean(
-                context = context,
-                rawTranscript = rawText,
-                backend = backendType,
-                detectedLanguage = runBackend.detectedLanguage,
-                forcedLanguage = forcedLanguage,
-                onCleaning = { withContext(Dispatchers.Main) { cleaning() } }
-            )
-            report?.event(DiagnosticEvent.CLEANUP_FINISHED, mapOf(
-                DiagnosticMetric.DURATION_MS to SystemClock.elapsedRealtime() - cleanupStarted,
-                DiagnosticMetric.APPLIED to if (cleanupResult.applied) 1L else 0L))
-            val harperStarted = SystemClock.elapsedRealtime()
-            val harperResult = HarperTranscriptCleaner.clean(
-                context, cleanupResult.text, personalVocabulary, backendType,
-                runBackend.detectedLanguage, forcedLanguage
-            )
-            report?.event(DiagnosticEvent.HARPER_FINISHED, mapOf(
-                DiagnosticMetric.DURATION_MS to SystemClock.elapsedRealtime() - harperStarted,
-                DiagnosticMetric.APPLIED to if (harperResult.edits > 0) 1L else 0L,
-                DiagnosticMetric.HARPER_EDITS to harperResult.edits.toLong(),
-                DiagnosticMetric.HARPER_OUTCOME to harperResult.outcome.toLong()))
-            val finalDeliveredText = PersonalVocabulary.apply(harperResult.text, personalVocabulary)
-            val diagnosticReportId = cleanupResult.diagnosticReportId
-            if (
-                diagnosticReportId != null &&
-                context.getSetting(S1_MINI_TRANSCRIPT_DIAGNOSTICS)
-            ) {
-                runCatching {
-                    S1MiniDiagnostics.recordTranscript(
-                        context = context,
-                        reportId = diagnosticReportId,
-                        rawTranscript = rawText,
-                        cleanedTranscript = cleanupResult.text.takeIf { cleanupResult.applied },
-                        finalDeliveredTranscript = finalDeliveredText,
-                        failureOrBypassReason = cleanupResult.fallbackCategory
-                    )
-                }
-            }
-            finalDeliveredText
+            val finalized = TranscriptFinalizer.clean(context, rawText, backendType,
+                runBackend.detectedLanguage, forcedLanguage, personalVocabulary, report,
+                onCleaning = { withContext(Dispatchers.Main) { cleaning() } })
+            validEmpty = finalized.validEmpty
+            finalized.text
         }
 
         if (runGeneration != recognitionGeneration) {
@@ -1269,7 +1229,7 @@ abstract class RecordingSession {
         withContext(Dispatchers.Main) {
             if (runGeneration != recognitionGeneration) return@withContext
             runBackend.detectedLanguage?.let(::languageDetected)
-            if (text.isBlank() && !cleanupResult.validEmpty) {
+            if (text.isBlank() && !validEmpty) {
                 failRecognition(NoSpeechRecognizedException(), runGeneration)
             } else {
                 report?.event(DiagnosticEvent.RESULT_READY,
