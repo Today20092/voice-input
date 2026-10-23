@@ -6,18 +6,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.futo.voiceinput.*
 import org.futo.voiceinput.backend.SpeechBackend
-import org.futo.voiceinput.cohere.CohereBackend
 import org.futo.voiceinput.downloader.EXTRA_PRESERVE_MODEL_SELECTION
 import org.futo.voiceinput.downloader.recognitionModelDownloadIntent
 import org.futo.voiceinput.ggml.DecodingMode
 import org.futo.voiceinput.ggml.WhisperGGML
 import org.futo.voiceinput.ml.loadGGMLModel
-import org.futo.voiceinput.moonshine.MoonshineBackend
-import org.futo.voiceinput.moonshine.toMoonshineModelVariant
-import org.futo.voiceinput.nemotron.SherpaStreamingBackend
-import org.futo.voiceinput.parakeet.ParakeetBackend
-import org.futo.voiceinput.parakeet.orukeetBackend
-import org.futo.voiceinput.parakeet.parakeetUnifiedBackend
 import org.futo.voiceinput.recognition.*
 import org.futo.voiceinput.settings.*
 import java.io.File
@@ -88,22 +81,7 @@ data class BenchmarkModel(val id: String, val name: String, val managed: Recogni
             override suspend fun close() { engine?.close(); engine = null }
         }
         val model = requireNotNull(managed)
-        return when (model.runtimeId) {
-                    "parakeet" -> ParakeetBackend()
-                    "orukeet" -> orukeetBackend()
-                    "parakeet_unified" -> parakeetUnifiedBackend()
-                    "parakeet_redux" -> org.futo.voiceinput.redux.ReduxBackend()
-                    "phonon" -> org.futo.voiceinput.phonon.PhononBackend()
-                    "whistle" -> org.futo.voiceinput.whistle.WhistleBackend()
-                    "moonshine" -> MoonshineBackend(requireNotNull(model.variantId).toMoonshineModelVariant())
-                    "cohere" -> CohereBackend(languageOverride = language)
-                    "nemotron" -> SherpaStreamingBackend(
-                        modelDirectory = { RecognitionModelStore(it.filesDir).modelDirectory(model) },
-                        languageOverride = language
-                    )
-                    "asr4all" -> org.futo.voiceinput.asr4all.asr4allBackend(context, requireNotNull(model.variantId))
-                    else -> error("Unsupported recognition runtime")
-        }
+        return managedRecognitionBackend(context, model.selection(), languageOverride = language)
     }
 
     suspend fun select(context: Context) {
