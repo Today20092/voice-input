@@ -6,8 +6,24 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.nio.file.Files
+import java.io.IOException
+import org.junit.Assert.assertThrows
 
 class S1MiniTranscriptCaptureStoreTest {
+    @Test
+    fun inaccessibleCaptureDirectoryIsAnErrorInsteadOfAnEmptyList() {
+        val file = Files.createTempFile("s1-transcript-not-directory", ".tmp").toFile()
+        try {
+            assertThrows(IOException::class.java) {
+                S1MiniTranscriptCaptureStore.load(file, 1_000L)
+            }
+            assertThrows(IOException::class.java) { S1MiniTranscriptCaptureStore.clear(file) }
+            assertTrue(file.exists())
+        } finally {
+            file.delete()
+        }
+    }
+
     @Test
     fun failedCleanupKeepsActualStagesAndMarksCleanupNotProduced() {
         val directory = Files.createTempDirectory("s1-transcript-capture").toFile()
@@ -61,10 +77,38 @@ class S1MiniTranscriptCaptureStoreTest {
                     nowEpochMs = capturedAt
                 )
             }
-            assertEquals(10, S1MiniTranscriptCaptureStore.load(directory, 2_000L).captures.size)
+            assertEquals((11 downTo 2).map { "report-$it" },
+                S1MiniTranscriptCaptureStore.load(directory, 2_000L).captures.map { it.reportId })
 
             val expiredAt = 1_011L + S1MiniTranscriptCapture.RETENTION_MS
             assertTrue(S1MiniTranscriptCaptureStore.load(directory, expiredAt).captures.isEmpty())
+        } finally {
+            directory.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun loadExpiresOldCorruptionButKeepsRecentCorruptionAndClearSurvivesReopening() {
+        val directory = Files.createTempDirectory("s1-transcript-reopen").toFile()
+        val now = S1MiniTranscriptCapture.RETENTION_MS + 10_000L
+        try {
+            S1MiniTranscriptCaptureStore.save(directory, capture("expired", 1L), 1L)
+            S1MiniTranscriptCaptureStore.save(directory, capture("retained", now), 1L)
+            directory.resolve("recent.json").writeText("broken")
+            directory.resolve("old.json").apply {
+                writeText("broken")
+                assertTrue(setLastModified(1L))
+            }
+            val reopenedDirectory = java.io.File(directory.absolutePath)
+            val loaded = S1MiniTranscriptCaptureStore.load(reopenedDirectory, now)
+            assertEquals(listOf("retained"), loaded.captures.map { it.reportId })
+            assertEquals(1, loaded.unreadableCount)
+            assertFalse(directory.resolve("old.json").exists())
+            assertEquals(2, directory.listFiles()!!.size)
+            S1MiniTranscriptCaptureStore.clear(reopenedDirectory)
+            assertFalse(S1MiniTranscriptCaptureStore.load(directory, now).hasExportableEvidence)
+            S1MiniTranscriptCaptureStore.save(directory, capture("new", now), now)
+            assertEquals("new", S1MiniTranscriptCaptureStore.load(directory, now).captures.single().reportId)
         } finally {
             directory.deleteRecursively()
         }

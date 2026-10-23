@@ -9,6 +9,8 @@ import android.os.Build
 import android.os.Debug
 import android.os.PowerManager
 import androidx.core.content.FileProvider
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -132,19 +134,19 @@ object S1MiniDiagnostics {
         }
     }
 
-    fun copyLatest(context: Context): Boolean {
-        val report = latestText(context) ?: return false
+    suspend fun copyLatest(context: Context): Boolean {
+        val report = withContext(Dispatchers.IO) { latestText(context) } ?: return false
         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         clipboard.setPrimaryClip(ClipData.newPlainText("S1-mini diagnostic report", report))
         return true
     }
 
-    fun exportZip(context: Context, includeTranscripts: Boolean = false): File? {
+    suspend fun exportZip(context: Context, includeTranscripts: Boolean = false): File? = withContext(Dispatchers.IO) {
         purgeStandard(context)
         val runs = runsFile(context).takeIf { it.isFile }?.readText().orEmpty()
         val transcriptResult = if (includeTranscripts) transcriptCaptures(context) else null
-        if (includeTranscripts && transcriptResult?.hasExportableEvidence != true) return null
-        if (!includeTranscripts && runs.isBlank() && !benchmarkFile(context).isFile) return null
+        if (includeTranscripts && transcriptResult?.hasExportableEvidence != true) return@withContext null
+        if (!includeTranscripts && runs.isBlank() && !benchmarkFile(context).isFile) return@withContext null
         val exportDir = File(context.cacheDir, "s1-diagnostics-export").apply { mkdirs() }
         exportDir.listFiles()?.forEach { it.delete() }
         val suffix = SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(Date())
@@ -166,12 +168,14 @@ object S1MiniDiagnostics {
             }?.let { if (it.isEmpty()) it else "$it\n" },
             unreadableTranscriptCaptures = transcriptResult?.unreadableCount ?: 0
         )
-        return output
+        output
     }
 
-    fun shareZip(context: Context, includeTranscripts: Boolean = false): Boolean {
+    suspend fun shareZip(context: Context, includeTranscripts: Boolean = false): Boolean {
         val file = exportZip(context, includeTranscripts) ?: return false
-        val uri = FileProvider.getUriForFile(context, "${BuildConfig.APPLICATION_ID}.files", file)
+        val uri = withContext(Dispatchers.IO) {
+            FileProvider.getUriForFile(context, "${BuildConfig.APPLICATION_ID}.files", file)
+        }
         context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
             type = "application/zip"
             putExtra(Intent.EXTRA_STREAM, uri)
@@ -183,10 +187,11 @@ object S1MiniDiagnostics {
         return true
     }
 
-    fun clear(context: Context) {
-        directory(context).deleteRecursively()
+    suspend fun clear(context: Context) = withContext(Dispatchers.IO) {
+        check(directory(context).deleteRecursively()) { "Unable to clear S1-mini reports" }
         clearTranscriptCaptures(context)
-        File(context.cacheDir, "s1-diagnostics-export").deleteRecursively()
+        val exports = File(context.cacheDir, "s1-diagnostics-export")
+        check(!exports.exists() || exports.deleteRecursively()) { "Unable to clear S1-mini exports" }
     }
 
     @Synchronized
@@ -275,24 +280,26 @@ object S1MiniDiagnostics {
         }
     }
 
-    fun transcriptCaptures(
+    suspend fun transcriptCaptures(
         context: Context,
         nowEpochMs: Long = System.currentTimeMillis()
-    ): S1MiniTranscriptCaptureLoadResult =
+    ): S1MiniTranscriptCaptureLoadResult = withContext(Dispatchers.IO) {
         S1MiniTranscriptCaptureStore.load(transcriptDirectory(context), nowEpochMs)
+    }
 
-    fun deleteTranscriptCapture(context: Context, reportId: String): Boolean =
+    suspend fun deleteTranscriptCapture(context: Context, reportId: String): Boolean = withContext(Dispatchers.IO) {
         S1MiniTranscriptCaptureStore.delete(
             transcriptDirectory(context),
             reportId,
             System.currentTimeMillis()
         )
+    }
 
-    fun clearTranscriptCaptures(context: Context) {
+    suspend fun clearTranscriptCaptures(context: Context) = withContext(Dispatchers.IO) {
         S1MiniTranscriptCaptureStore.clear(transcriptDirectory(context))
     }
 
-    fun purgeTranscriptCaptures(context: Context) {
+    suspend fun purgeTranscriptCaptures(context: Context) {
         transcriptCaptures(context)
     }
 

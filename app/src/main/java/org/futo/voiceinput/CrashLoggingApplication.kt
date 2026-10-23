@@ -18,9 +18,11 @@ class CrashLoggingApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         org.futo.voiceinput.diagnostics.AppDiagnostics.initialize(this)
-        runCatching { S1MiniDiagnostics.purgeTranscriptCaptures(this) }
         runCatching { AudioHistoryCleanupService.schedule(this) }
-        CoroutineScope(Dispatchers.IO).launch { runCatching { purgeAudioHistory() } }
+        CoroutineScope(Dispatchers.IO).launch {
+            runCatching { S1MiniDiagnostics.purgeTranscriptCaptures(this@CrashLoggingApplication) }
+            runCatching { purgeAudioHistory() }
+        }
     }
 
     override fun attachBaseContext(base: Context?) {
