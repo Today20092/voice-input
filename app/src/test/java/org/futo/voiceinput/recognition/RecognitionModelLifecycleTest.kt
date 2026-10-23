@@ -115,6 +115,19 @@ class RecognitionModelLifecycleTest {
     }
 
     @Test
+    fun everyCatalogVariantRoundTripsThroughProductionSelectionAndReadiness() {
+        val lifecycle = RecognitionModelLifecycle.create(temporaryFolder.root, parakeetBundled = false)
+        RecognitionModelCatalog.models.forEach { model ->
+            val selection = lifecycle.selectionFor(model)
+            assertEquals(model, requireNotNull(lifecycle.readiness(selection)).model)
+            assertEquals(model.runtimeId, selection.runtimeId)
+            assertEquals(listOfNotNull(model.variantId), listOfNotNull(
+                selection.moonshineVariantId, selection.nemotronVariantId, selection.asr4allVariantId
+            ))
+        }
+    }
+
+    @Test
     fun failedBackendLoadClosesTheBackend() = runBlocking {
         val backend = FailingBackend()
 
