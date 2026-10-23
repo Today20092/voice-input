@@ -53,13 +53,13 @@ import org.futo.voiceinput.settings.PARAKEET_KEEP_WARM_TIMEOUT_MS
 import org.futo.voiceinput.settings.PARAKEET_USE_VAD
 import org.futo.voiceinput.settings.PERSONAL_DICTIONARY
 import org.futo.voiceinput.settings.SPEECH_BACKEND
-import org.futo.voiceinput.settings.S1_MINI_TRANSCRIPT_DIAGNOSTICS
 import org.futo.voiceinput.settings.SpeechBackendType
 import org.futo.voiceinput.settings.getSetting
 import org.futo.voiceinput.parakeet.ParakeetEngineLease
 import org.futo.voiceinput.parakeet.parakeetUnifiedRecognitionModel
 import org.futo.voiceinput.backend.SpeechBackend
 import org.futo.voiceinput.backend.StreamingSpeechBackend
+import org.futo.voiceinput.backend.prepareRecordingFinalization
 import org.futo.voiceinput.recognition.RecognitionModel
 import org.futo.voiceinput.recognition.RecognitionModelLifecycle
 import org.futo.voiceinput.recognition.RecognitionModelSelection
@@ -1175,19 +1175,21 @@ abstract class RecordingSession {
         val backendType = (liveBenchmarkSession?.selection?.runtimeId ?: context.getSetting(SPEECH_BACKEND)).toSpeechBackendType()
         val vadEnabled = context.getSetting(IS_VAD_ENABLED) &&
             (backendType != SpeechBackendType.Parakeet || context.getSetting(PARAKEET_USE_VAD))
-        val floatArray = floatSamples.array().sliceArray(0 until floatSamples.position())
+        val sampleCount = floatSamples.position()
+        val finalizeRecording = runBackend.prepareRecordingFinalization(floatSamples)
         if (BuildConfig.DEBUG) {
             var sumSquares = 0.0
             var peak = 0.0f
-            for (sample in floatArray) {
+            for (index in 0 until sampleCount) {
+                val sample = floatSamples[index]
                 val abs = kotlin.math.abs(sample)
                 if (abs > peak) peak = abs
                 sumSquares += (sample * sample).toDouble()
             }
-            val rms = if (floatArray.isNotEmpty()) sqrt(sumSquares / floatArray.size).toFloat() else 0.0f
+            val rms = if (sampleCount > 0) sqrt(sumSquares / sampleCount).toFloat() else 0.0f
             Log.d(
                 "AudioRecognizer",
-                "capture samples=${floatArray.size} durationSec=${"%.2f".format(floatArray.size.toFloat() / AUDIO_SAMPLE_RATE)} rms=${"%.5f".format(rms)} peak=${"%.5f".format(peak)} stopReason=$finalStopReason backend=$backendType vadEnabled=$vadEnabled"
+                "capture samples=$sampleCount durationSec=${"%.2f".format(sampleCount.toFloat() / AUDIO_SAMPLE_RATE)} rms=${"%.5f".format(rms)} peak=${"%.5f".format(peak)} stopReason=$finalStopReason backend=$backendType vadEnabled=$vadEnabled"
             )
         }
 
@@ -1196,9 +1198,8 @@ abstract class RecordingSession {
         val text = run {
             val recognitionStarted = SystemClock.elapsedRealtime()
             report?.event(DiagnosticEvent.RECOGNITION_STARTED,
-                mapOf(DiagnosticMetric.AUDIO_MS to floatArray.size.toLong() * 1000 / AUDIO_SAMPLE_RATE))
-            val rawText = (runBackend as? StreamingSpeechBackend)?.finishStreaming()
-                ?: runBackend.transcribe(floatArray)
+                mapOf(DiagnosticMetric.AUDIO_MS to sampleCount.toLong() * 1000 / AUDIO_SAMPLE_RATE))
+            val rawText = finalizeRecording()
             liveBenchmarkSession?.raw(rawText)
             if (liveBenchmarkSession != null) return@run rawText
             report?.event(DiagnosticEvent.RECOGNITION_FINISHED, mapOf(
