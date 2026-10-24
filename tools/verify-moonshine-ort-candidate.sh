@@ -21,6 +21,15 @@ grep -q 'Machine:.*AArch64' "$temporary/header"
 grep -q 'SONAME.*\[libonnxruntime.so\]' "$temporary/dynamic"
 "$readelf" --version-info "$runtime" > "$temporary/versions"
 grep -q 'Name: VERS_1.23.0' "$temporary/versions"
+"$readelf" --program-headers --wide "$runtime" > "$temporary/segments"
+awk '$1 == "LOAD" {print $NF}' "$temporary/segments" > "$temporary/alignment"
+test -s "$temporary/alignment"
+while IFS= read -r alignment; do
+    if (( alignment < 0x4000 )); then
+        echo 'Rejected runtime: LOAD alignment is less than 16 KiB' >&2
+        exit 1
+    fi
+done < "$temporary/alignment"
 
 "$readelf" --dyn-syms --wide "$temporary/libmoonshine.so" > "$temporary/imports"
 "$readelf" --dyn-syms --wide "$runtime" > "$temporary/exports"

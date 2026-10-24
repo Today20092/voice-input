@@ -1,0 +1,39 @@
+name: Moonshine ARM64 runtime candidate
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/moonshine-runtime-candidate.yml'
+      - 'tools/build-moonshine-ort-candidate.sh'
+      - 'tools/verify-moonshine-ort-candidate.sh'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: moonshine-runtime-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  candidate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+      - name: Install pinned NDK and build dependencies
+        run: |
+          sdkmanager 'ndk;28.2.13676358'
+          python3 -m pip install 'numpy==2.2.6' 'packaging==25.0'
+      - name: Build and verify test-only candidate
+        run: bash tools/build-moonshine-ort-candidate.sh "$RUNNER_TEMP/moonshine-candidate"
+      - name: Upload candidate, license and provenance
+        uses: actions/upload-artifact@v4
+        with:
+          name: moonshine-ort-no-kleidiai-${{ github.sha }}
+          path: ${{ runner.temp }}/moonshine-candidate/output/*
+          if-no-files-found: error
+          retention-days: 14
