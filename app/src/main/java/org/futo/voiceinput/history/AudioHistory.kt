@@ -22,6 +22,7 @@ import org.futo.voiceinput.TranscriptFinalizer
 import org.futo.voiceinput.diagnostics.AppDiagnostics
 import org.futo.voiceinput.diagnostics.DiagnosticEvent
 import org.futo.voiceinput.diagnostics.DiagnosticMetric
+import org.futo.voiceinput.diagnostics.DiagnosticConfiguration
 import org.futo.voiceinput.modelNeedsDownloading
 import org.futo.voiceinput.selectedWhisperModelsForCurrentSettings
 import org.futo.voiceinput.recognition.RecognitionModelLifecycle
@@ -46,9 +47,11 @@ suspend fun Context.retranscribeAudio(id: String, scope: LifecycleCoroutineScope
         val report = AppDiagnostics.session(readiness?.model?.id ?: selection.runtimeId)
         report?.event(DiagnosticEvent.SESSION_STARTED, mapOf(DiagnosticMetric.RETRANSCRIPTION to 1L))
         report?.let { AppDiagnostics.sample(it.id, it.model) }
+        var operation = 14L
         try {
             val store = audioHistory()
             store.purge(getSetting(AUDIO_HISTORY_RETENTION_HOURS))
+            operation = 15L
             val result = store.retranscribe(id) { samples ->
                 check(readiness?.isReady != false) {
                     "Download the selected model in Model Options first."
@@ -59,7 +62,9 @@ suspend fun Context.retranscribeAudio(id: String, scope: LifecycleCoroutineScope
                     }
                 }
                 val loadStarted = SystemClock.elapsedRealtime()
-                report?.event(DiagnosticEvent.MODEL_LOAD_STARTED)
+                runCatching { report?.event(DiagnosticEvent.MODEL_LOAD_STARTED,
+                    configuration = DiagnosticConfiguration(runtime = selection.runtimeId,
+                        modelVersion = readiness?.installedModel?.version)) }
                 val backend = try {
                     lifecycle.load(this@retranscribeAudio, selection, RecognitionRuntimeCallbacks({}, {}, { null }))
                 } catch (failure: CancellationException) { throw failure
@@ -77,8 +82,10 @@ suspend fun Context.retranscribeAudio(id: String, scope: LifecycleCoroutineScope
                     val raw = backend.transcribe(samples)
                     report?.event(DiagnosticEvent.RECOGNITION_FINISHED,
                         mapOf(DiagnosticMetric.DURATION_MS to SystemClock.elapsedRealtime() - recognitionStarted,
-                            DiagnosticMetric.CHARACTERS to raw.length.toLong()))
+                            DiagnosticMetric.CHARACTERS to raw.length.toLong()),
+                        configuration = DiagnosticConfiguration(language = backend.detectedLanguage))
                     report?.let { AppDiagnostics.sample(it.id, it.model, detailed = true) }
+                    if (raw.isBlank()) report?.event(DiagnosticEvent.NO_SPEECH)
                     check(raw.isNotBlank()) { "No speech was recognized. The audio is still saved." }
                     val finalized = TranscriptFinalizer.clean(this@retranscribeAudio, raw,
                         selection.runtimeId.toSpeechBackendType(), backend.detectedLanguage, null,
@@ -97,6 +104,8 @@ suspend fun Context.retranscribeAudio(id: String, scope: LifecycleCoroutineScope
             report?.end(DiagnosticEvent.SESSION_CANCELLED)
             throw failure
         } catch (failure: Throwable) {
+            runCatching { report?.event(DiagnosticEvent.HISTORY_OPERATION_FAILED,
+                mapOf(DiagnosticMetric.OPERATION to operation), error = failure) }
             report?.end(DiagnosticEvent.SESSION_FAILED, failure)
             throw failure
         }
@@ -114,6 +123,8 @@ class AudioHistoryCleanupService : JobService() {
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (failure: Exception) {
+                AppDiagnostics.event(DiagnosticEvent.HISTORY_OPERATION_FAILED,
+                    metrics = mapOf(DiagnosticMetric.OPERATION to 14L), error = failure)
                 false
             }
             jobFinished(params, !success)

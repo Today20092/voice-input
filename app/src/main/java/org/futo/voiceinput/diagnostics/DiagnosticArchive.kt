@@ -33,7 +33,7 @@ object DiagnosticArchive {
         var retained = snapshot
         var omitted = 0L
         do {
-            writeArchive(output, retained, environmentJson, settingsJson, happened, expected, s1Reports, droppedEvents + omitted)
+            writeArchive(output, retained, environmentJson, settingsJson, happened, expected, s1Reports, droppedEvents, omitted)
             if (output.length() <= CACHE_BYTES) break
             check(retained.records.isNotEmpty()) { "Diagnostic metadata exceeds export budget" }
             val remove = maxOf(1, retained.records.size / 4)
@@ -53,14 +53,15 @@ object DiagnosticArchive {
     }
 
     private fun writeArchive(output: File, snapshot: DiagnosticSnapshot, environmentJson: String,
-        settingsJson: String, happened: String, expected: String, s1Reports: Map<String, String>, droppedEvents: Long) {
+        settingsJson: String, happened: String, expected: String, s1Reports: Map<String, String>, droppedEvents: Long,
+        omitted: Long) {
         ZipOutputStream(output.outputStream().buffered()).use { zip ->
             fun entry(name: String, text: String) {
                 zip.putNextEntry(ZipEntry(name))
                 zip.write(text.toByteArray(Charsets.UTF_8))
                 zip.closeEntry()
             }
-            entry("README.txt", "Voice Input standard bug report (schema 1).\n" +
+            entry("README.txt", "Voice Input standard bug report (schema 2; older records may use schema 1).\n" +
                 "Technical records exclude audio, transcripts, vocabulary, clipboard/surrounding text, " +
                 "receiving-app names, raw Logcat, and exception messages.\n" +
                 "notes.txt contains the reporter's own text, if supplied. Review it before posting publicly.\n" +
@@ -68,8 +69,20 @@ object DiagnosticArchive {
                 "DELIVERY_ACCEPTED means Android accepted the handoff, not that text was displayed.\n" +
                 "Durations use a monotonic clock; timestampMs is wall-clock time. Memory is sampled, not a peak guarantee.\n" +
                 "S1-mini reports are included when available, with free-form native messages omitted.\n" +
-                "Dropped events counts writer drops and oldest events omitted to fit the export budget.\n")
-            entry("summary.txt", summary(snapshot, droppedEvents))
+                "collectorId + sequence orders records within one collector lifetime; wall-clock time may change.\n" +
+                "collection-modes.json retains at most 32 transitions from seven days. A detailed deadline marks automatic expiry even without a later event.\n" +
+                "Unavailable metrics are omitted, never zero. Missing configuration/reportId may mean older records, bypass or failed collection.\n" +
+                "Historical writer drops before process death are unavailable; sequence gaps may also reflect rejected records or retention.\n" +
+                "DURATION_MS/ELAPSED_MS/AUDIO_MS/PROCESS_CPU_MS are milliseconds; timestampMs/EXIT_TIMESTAMP/mode deadlines are epoch milliseconds.\n" +
+                "PSS_KB/RSS_KB use KiB; JAVA_BYTES/NATIVE_BYTES/AVAILABLE_BYTES/BYTES/EXPECTED_BYTES use bytes. EXPECTED_BYTES is planned asset size, not transferred bytes.\n" +
+                "CAPTURED_SAMPLES/DRAIN_SAMPLES count real PCM16 samples at 16000 Hz, excluding synthetic final silence. DRAIN_REQUESTED_MS is the requested drain bound. VAD frames are evaluated 480-sample (30 ms) frames, not all captured audio; paused/skipped VAD has fewer frames. Speech decisions are not transcript evidence.\n" +
+                "STOP_REASON: 0 manual, 1 VAD, 2 duration limit, 3 cancel, 4 capture failure, -1 unknown. NO_SPEECH means empty recognition, not proof the microphone captured silence.\n" +
+                "OPERATION: 0 unknown history write, 1 model activation, 2 model deletion, 3 model invalidation, 10 history open/purge, 11 history append, 12 history finish, 13 history transcript save, 14 history purge, 15 history retranscription.\n" +
+                "RESOURCE_UNAVAILABLE=1 means resource collection failed; unsupported Android fields are absent. APPLIED/LOW_MEMORY/CATCHING_UP are 0/1.\n" +
+                "THERMAL_STATUS and EXIT_REASON/EXIT_STATUS follow Android PowerManager/ApplicationExitInfo codes; MICROPHONE_* codes follow app microphone routing categories.\n" +
+                "S1 reportId is a random local join key, unrelated to transcript text or recording IDs.\n")
+            entry("summary.txt", summary(snapshot, droppedEvents, omitted))
+            entry("collection-modes.json", DiagnosticStore.json.encodeToString(snapshot.modes))
             entry("environment.json", environmentJson)
             entry("settings.json", settingsJson)
             entry("events.jsonl", snapshot.records.joinToString("\n", postfix = "\n") {
@@ -90,11 +103,17 @@ object DiagnosticArchive {
         }
     }
 
-    private fun summary(snapshot: DiagnosticSnapshot, dropped: Long) = buildString {
+    private fun summary(snapshot: DiagnosticSnapshot, dropped: Long, omitted: Long) = buildString {
         appendLine("Voice Input diagnostic summary")
         appendLine("Records: ${snapshot.records.size}")
         appendLine("Unreadable records skipped: ${snapshot.unreadableRecords}")
-        appendLine("Dropped events: $dropped")
+        appendLine("Unreadable segments skipped: ${snapshot.unreadableSegments}")
+        appendLine("Writer drops (current process): $dropped")
+        appendLine("Records rejected by size limit: ${snapshot.rejectedRecords}")
+        appendLine("Records omitted for export budget: $omitted")
+        appendLine("Diagnostic collection unavailable: ${snapshot.collectionUnavailable}")
+        appendLine("Retained collection-mode transitions: ${snapshot.modes.size} (maximum 32; earlier transitions may be unavailable)")
+        if (snapshot.records.none { it.sessionId != null }) appendLine("No session evidence available; collection, retention or interruption may explain absence.")
         appendLine("No dictated text or audio is included.")
         appendLine()
         appendLine("Event counts:")
@@ -126,6 +145,17 @@ object DiagnosticArchive {
                     }
                     appendLine("      Harper: $outcome; edits=${it.metrics[DiagnosticMetric.HARPER_EDITS] ?: 0}")
                 }
+            }
+            records.filter { it.configuration != null }.forEach {
+                appendLine("    ${it.event} effective configuration: ${it.configuration}")
+            }
+            if (records.none { it.configuration != null }) appendLine("    Effective configuration unavailable")
+            records.mapNotNull { it.reportId }.distinct().forEach { appendLine("    S1 reportId: $it") }
+            records.filter { it.event == DiagnosticEvent.CAPTURE_SUMMARY }.forEach {
+                appendLine("    Captured samples: ${it.metrics[DiagnosticMetric.CAPTURED_SAMPLES] ?: "unavailable"}; " +
+                    "VAD speech frames: ${it.metrics[DiagnosticMetric.VAD_SPEECH_FRAMES] ?: "unavailable"}; " +
+                    "Drained samples: ${it.metrics[DiagnosticMetric.DRAIN_SAMPLES] ?: "unavailable"}; " +
+                    "stop reason: ${it.metrics[DiagnosticMetric.STOP_REASON] ?: "unavailable"}")
             }
             val stop = records.firstOrNull { it.event == DiagnosticEvent.RECORDING_STOPPED }
                 ?.metrics?.get(DiagnosticMetric.ELAPSED_MS)
