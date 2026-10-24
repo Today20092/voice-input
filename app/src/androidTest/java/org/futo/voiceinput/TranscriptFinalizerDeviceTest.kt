@@ -7,10 +7,36 @@ import androidx.test.core.app.ApplicationProvider
 import kotlinx.coroutines.runBlocking
 import org.futo.voiceinput.settings.*
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
 
 class TranscriptFinalizerDeviceTest {
+    @Test fun preparingTextDoesNotPersistAnUndeliveredTranscript() = runBlocking {
+        val base = ApplicationProvider.getApplicationContext<Context>()
+        val directory = File(base.cacheDir, "prepared-transcript-${System.nanoTime()}").apply { mkdirs() }
+        val context = object : ContextWrapper(base) {
+            override fun getFilesDir() = directory
+        }
+        val enabled = base.getSetting(S1_MINI_ENABLED)
+        val captureEnabled = base.getSetting(S1_MINI_TRANSCRIPT_DIAGNOSTICS)
+        val harper = base.getSetting(HARPER_ENABLED)
+        try {
+            base.setSetting(S1_MINI_ENABLED, true)
+            base.setSetting(S1_MINI_TRANSCRIPT_DIAGNOSTICS, true)
+            base.setSetting(HARPER_ENABLED, false)
+            val result = TranscriptFinalizer.clean(context, "Prepared text", SpeechBackendType.Phonon,
+                "en", null, "", null)
+            assertEquals("Prepared text", result.text)
+            assertTrue(org.futo.voiceinput.s1.S1MiniDiagnostics.transcriptCaptures(context).captures.isEmpty())
+        } finally {
+            base.setSetting(S1_MINI_ENABLED, enabled)
+            base.setSetting(S1_MINI_TRANSCRIPT_DIAGNOSTICS, captureEnabled)
+            base.setSetting(HARPER_ENABLED, harper)
+            directory.deleteRecursively()
+        }
+    }
+
     @Test fun diagnosticResourceFailureDoesNotReplaceMissingModelFallback() = runBlocking {
         val base = ApplicationProvider.getApplicationContext<Context>()
         val directory = File(base.cacheDir, "diagnostic-isolation-${System.nanoTime()}").apply { mkdirs() }
