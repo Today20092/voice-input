@@ -196,16 +196,17 @@ class DiagnosticStore(
 
     @Synchronized
     fun snapshot(): DiagnosticSnapshot {
+        if (policy.modeChanges.any { it.timestampMs < now() - retentionMs }) savePolicy(policy)
         var unreadable = 0
         var unreadableSegments = 0
         val records = prune().flatMap { file ->
             runCatching {
-            file.useLines { lines -> lines.mapNotNull { line ->
-                runCatching { json.decodeFromString<DiagnosticRecord>(line) }.getOrElse {
-                    unreadable++
-                    null
-                }?.takeIf { it.timestampMs in (now() - retentionMs)..now() }
-            }.toList() }
+                file.useLines { lines -> lines.mapNotNull { line ->
+                    runCatching { json.decodeFromString<DiagnosticRecord>(line) }.getOrElse {
+                        unreadable++
+                        null
+                    }?.takeIf { it.timestampMs in (now() - retentionMs)..now() }
+                }.toList() }
             }.getOrElse { unreadableSegments++; emptyList() }
         }
         return DiagnosticSnapshot(records, unreadable, policy.modeChanges, unreadableSegments, policy.rejectedRecords)
