@@ -296,7 +296,9 @@ object S1MiniDiagnostics {
         )
     }
 
+    @Synchronized
     fun recordTranscript(context: Context, capture: S1MiniTranscriptCapture) {
+        S1MiniDiagnosticArchive.invalidateTranscripts(exportDirectory(context))
         S1MiniTranscriptCaptureStore.save(transcriptDirectory(context), capture, System.currentTimeMillis())
     }
 

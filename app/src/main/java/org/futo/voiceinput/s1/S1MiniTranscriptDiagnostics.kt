@@ -100,7 +100,7 @@ data class S1MiniTranscriptCaptureLoadResult(
 
 object S1MiniTranscriptCaptureStore {
     private const val MAX_CAPTURES = 10
-    private const val MAX_CAPTURE_BYTES = 2L * 1024 * 1024
+    private const val MAX_CAPTURE_BYTES = 3L * 1024 * 1024
     private val json = Json { encodeDefaults = true; ignoreUnknownKeys = true }
 
     @Synchronized
