@@ -13,6 +13,8 @@ import android.os.SystemClock
 import androidx.core.content.FileProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
@@ -85,14 +87,16 @@ object AppDiagnostics {
         model: String? = null,
         metrics: Map<DiagnosticMetric, Long> = emptyMap(),
         error: Throwable? = null,
-        detailed: Boolean = false
+        detailed: Boolean = false,
+        configuration: DiagnosticConfiguration? = null,
+        reportId: String? = null
     ) {
         runCatching {
             if (store?.policy()?.enabled == false) return
             if (detailed && detailedRemainingMs() == 0L) return
             val copiedMetrics = metrics.toMap()
             queue.execute {
-                runCatching { store?.record(event, sessionId, model, copiedMetrics, error, detailed) }
+                runCatching { store?.record(event, sessionId, model, copiedMetrics, error, detailed, configuration, reportId) }
                     .onFailure { dropped.incrementAndGet() }
             }
         }.onFailure { dropped.incrementAndGet() }
@@ -139,20 +143,29 @@ object AppDiagnostics {
                     if (Build.VERSION.SDK_INT >= 29) metrics[DiagnosticMetric.THERMAL_STATUS] =
                         (context.getSystemService(Context.POWER_SERVICE) as PowerManager).currentThermalStatus.toLong()
                     store?.record(DiagnosticEvent.RESOURCE_SAMPLE, sessionId, model, metrics, detailed = detailed)
-                }.onFailure { dropped.incrementAndGet() }
+                }.onFailure { failure ->
+                    dropped.incrementAndGet()
+                    runCatching { store?.record(DiagnosticEvent.RESOURCE_SAMPLE, sessionId, model,
+                        mapOf(DiagnosticMetric.RESOURCE_UNAVAILABLE to 1L), error = failure, detailed = detailed) }
+                }
             }
         }.onFailure { dropped.incrementAndGet() }
     }
 
     suspend fun export(context: Context, happened: String, expected: String): File = withContext(Dispatchers.IO) {
         flush()
-        val snapshot = requireNotNull(store) { "Diagnostics not ready" }.snapshot()
+        val snapshot = runCatching { store?.snapshot() }.getOrNull()
+            ?: DiagnosticSnapshot(emptyList(), 0, collectionUnavailable = true)
         val directory = File(context.cacheDir, "app-diagnostics-export").apply { mkdirs() }
         DiagnosticArchive.purgePrepared(directory)
         val output = File(directory, "voice-input-diagnostics-${System.currentTimeMillis()}.zip")
         try {
-            DiagnosticArchive.write(output, snapshot, environment(context).toString(), settings(context).toString(),
-                happened, expected, S1MiniDiagnostics.standardReportEntries(context), dropped.get())
+            val settings = runCatching { settings(context).toString() }.getOrElse { "{\"unavailable\":true}" }
+            val environment = runCatching { environment(context).toString() }.getOrElse { "{\"unavailable\":true}" }
+            val s1Reports = runCatching { S1MiniDiagnostics.standardReportEntries(context) }.getOrElse { emptyMap() }
+            currentCoroutineContext().ensureActive()
+            DiagnosticArchive.write(output, snapshot, environment, settings,
+                happened, expected, s1Reports, dropped.get())
             DiagnosticArchive.purgePrepared(directory)
             check(output.exists()) { "Report evidence expired; prepare another report" }
             output
@@ -257,10 +270,12 @@ class DiagnosticSession internal constructor(val model: String?) {
         private set
 
     fun event(event: DiagnosticEvent, metrics: Map<DiagnosticMetric, Long> = emptyMap(),
-              error: Throwable? = null, detailed: Boolean = false) {
+              error: Throwable? = null, detailed: Boolean = false,
+              configuration: DiagnosticConfiguration? = null, reportId: String? = null) {
         runCatching {
             AppDiagnostics.event(event, id, model,
-                metrics + (DiagnosticMetric.ELAPSED_MS to (SystemClock.elapsedRealtime() - started)), error, detailed)
+                metrics + (DiagnosticMetric.ELAPSED_MS to (SystemClock.elapsedRealtime() - started)), error, detailed,
+                configuration, reportId)
         }
     }
 

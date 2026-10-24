@@ -41,11 +41,12 @@ class DiagnosticArchiveTest {
         DiagnosticArchive.write(output, snapshot, "{}", "{}", "It stopped", "Finish dictation", emptyMap(), 2)
         ZipFile(output).use { zip ->
             val names = zip.entries().asSequence().map { it.name }.toSet()
-            assertEquals(setOf("README.txt", "summary.txt", "environment.json", "settings.json", "events.jsonl", "notes.txt"), names)
+            assertEquals(setOf("README.txt", "summary.txt", "environment.json", "settings.json", "events.jsonl", "notes.txt", "collection-modes.json"), names)
             val summary = zip.getInputStream(zip.getEntry("summary.txt")).bufferedReader().readText()
             assertTrue(summary.contains("MODEL_LOAD_FAILED"))
             assertTrue(summary.contains("Unreadable records skipped: 1"))
-            assertTrue(summary.contains("Dropped events: 2"))
+            assertTrue(summary.contains("Writer drops (current process): 2"))
+            assertTrue(summary.contains("Records omitted for export budget: 0"))
             val contents = zip.entries().asSequence().joinToString { zip.getInputStream(it).bufferedReader().readText() }
             assertFalse(contents.contains("SECRET"))
             assertTrue(contents.contains("It stopped"))
