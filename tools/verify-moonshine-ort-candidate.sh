@@ -33,11 +33,11 @@ done < "$temporary/alignment"
 
 "$readelf" --dyn-syms --wide "$temporary/libmoonshine.so" > "$temporary/imports"
 "$readelf" --dyn-syms --wide "$runtime" > "$temporary/exports"
-awk '$7 == "UND" && $8 ~ /@VERS_1\.23\.0/ {sub(/@.*/, "", $8); print $8}' \
+awk '$7 == "UND" && $8 ~ /@VERS_1\.23\.0$/ {print $8}' \
     "$temporary/imports" | sort -u > "$temporary/required"
 test -s "$temporary/required"
 while IFS= read -r symbol; do
-    if ! awk -v symbol="$symbol" '$7 != "UND" {sub(/@.*/, "", $8); if ($8 == symbol) found=1} END {exit !found}' \
+    if ! awk -v symbol="$symbol" '$7 != "UND" {sub(/@@/, "@", $8); if ($8 == symbol) found=1} END {exit !found}' \
         "$temporary/exports"; then
         echo "Missing Moonshine runtime import: $symbol" >&2
         exit 1
