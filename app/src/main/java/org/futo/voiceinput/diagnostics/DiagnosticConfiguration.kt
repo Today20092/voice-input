@@ -12,8 +12,7 @@ data class DiagnosticConfiguration(
     val language: String? = null,
     val threads: Int? = null,
     val vadEnabled: Boolean? = null,
-    val durationLimitEnabled: Boolean? = null,
-    val manualStopDrainMs: Int? = null
+    val durationLimitEnabled: Boolean? = null
 ) {
     fun sanitized() = copy(
         runtime = runtime?.takeIf { it in runtimes },
@@ -23,8 +22,7 @@ data class DiagnosticConfiguration(
             it == "auto" || (it.substringBefore('-') in languages &&
                 (it.indexOf('-') == -1 || it.substringAfter('-') in countries))
         },
-        threads = threads?.takeIf { it in 1..256 },
-        manualStopDrainMs = manualStopDrainMs?.takeIf { it in 0..2000 }
+        threads = threads?.takeIf { it in 1..256 }
     )
 
     companion object {
