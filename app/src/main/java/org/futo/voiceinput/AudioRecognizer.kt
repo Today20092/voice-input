@@ -1286,6 +1286,7 @@ abstract class RecordingSession {
                 if (runGeneration != recognitionGeneration) return@withContext
                 runBackend.detectedLanguage?.let(::languageDetected)
                 if (text.isBlank() && !validEmpty) {
+                    delivery = S1MiniTranscriptDelivery.Prepared
                     report?.event(DiagnosticEvent.NO_SPEECH)
                     failRecognition(NoSpeechRecognizedException(), runGeneration)
                 } else {

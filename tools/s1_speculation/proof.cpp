@@ -90,7 +90,7 @@ static void failure_case(llama_model * model, const std::vector<llama_token> & i
     if (expected == "cancelled") cancelled = true;
     if (expected == "decode_failed" || expected == "cancelled_during_decode") abort.armed = true;
     if (expected == "cancelled_during_decode") abort.cancel = true;
-    if (expected == "input_too_long") tokens.resize(llama_n_ctx(ctx), tokens.front());
+    if (expected == "input_too_long") tokens.resize(llama_n_ctx(ctx.get()), tokens.front());
     bool caught = false;
     try {
         s1_ngram_generate(ctx.get(), llama_model_get_vocab(model), sampler.get(), tokens, 256, cancelled);

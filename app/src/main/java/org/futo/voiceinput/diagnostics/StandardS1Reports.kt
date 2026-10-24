@@ -15,7 +15,7 @@ object StandardS1Reports {
         "inputApproxWords", "outputCharacters", "chunkCount", "totalMs", "pssKb", "nativeHeapBytes",
         "javaUsedBytes", "thermalStatus", "warmTimeoutMs")
     private val nativeNumbers = setOf("loadMs", "tokenizeMs", "prefillMs", "decodeMs", "totalMs",
-        "inputTokens", "outputTokens", "threads")
+        "inputTokens", "outputTokens", "threads", "draftedTokens", "acceptedDraftTokens", "decodeCalls", "ngramPoolBytes")
     private val categories = mapOf(
         "runtimeRequested" to setOf("auto", "cpu", "opencl"),
         "runtimeSelected" to setOf("cpu", "opencl"),

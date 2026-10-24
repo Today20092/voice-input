@@ -18,7 +18,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
           submodules: recursive
       - name: Check pinned runtime and download public model on runner
         run: |
@@ -30,9 +29,8 @@ jobs:
           echo "3b41ebe2502cbd03e811d5d16b022f5ab551eda58d62597d152f89535003c634  $RUNNER_TEMP/s1-proof/s1-mini.gguf" | sha256sum --check
       - name: Establish red baseline using original single-token generation
         run: |
-          git show 407abb61e69b2724bc6ad02764cdd08485711517:app/src/main/cpp/s1mini_ngram.cpp > "$RUNNER_TEMP/s1-proof/plain.cpp"
           cmake -S tools/s1_speculation -B "$RUNNER_TEMP/s1-proof/build" \
-            -DCMAKE_BUILD_TYPE=Release "-DS1_NGRAM_IMPLEMENTATION=$RUNNER_TEMP/s1-proof/plain.cpp"
+            -DCMAKE_BUILD_TYPE=Release "-DS1_NGRAM_IMPLEMENTATION=$GITHUB_WORKSPACE/tools/s1_speculation/greedy_baseline.cpp"
           cmake --build "$RUNNER_TEMP/s1-proof/build" --target s1_speculation_proof --parallel 2
           if "$RUNNER_TEMP/s1-proof/build/s1_speculation_proof" "$RUNNER_TEMP/s1-proof/s1-mini.gguf" > "$RUNNER_TEMP/s1-proof/red.log" 2>&1; then
             echo 'Original generation unexpectedly satisfied speculative acceptance checks.' >&2

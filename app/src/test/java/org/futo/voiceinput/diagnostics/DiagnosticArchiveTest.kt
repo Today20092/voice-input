@@ -5,9 +5,31 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import java.util.zip.ZipFile
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonPrimitive
 
 class DiagnosticArchiveTest {
     @get:Rule val temporary = TemporaryFolder()
+
+    @Test fun `S1 speculation counters survive the public privacy projection without native messages`() {
+        val metrics = """[{"draftedTokens":9,"acceptedDraftTokens":7,"decodeCalls":4,"ngramPoolBytes":8192,"unknown":"Avery cobalt orchard","threads":"private message"}]"""
+        val source = """{"nativeMetricsJson":${JsonPrimitive(metrics)}}"""
+        val projected = requireNotNull(StandardS1Reports.project(source))
+        val repeated = requireNotNull(StandardS1Reports.project(projected))
+        val safe = Json.parseToJsonElement(Json.parseToJsonElement(repeated).jsonObject
+            .getValue("nativeMetricsJson").jsonPrimitive.content).jsonArray.single().jsonObject
+
+        assertEquals("9", safe.getValue("draftedTokens").toString())
+        assertEquals("7", safe.getValue("acceptedDraftTokens").toString())
+        assertEquals("4", safe.getValue("decodeCalls").toString())
+        assertEquals("8192", safe.getValue("ngramPoolBytes").toString())
+        assertEquals(setOf("draftedTokens", "acceptedDraftTokens", "decodeCalls", "ngramPoolBytes"), safe.keys)
+        assertFalse(repeated.contains("Avery"))
+        assertFalse(repeated.contains("private message"))
+    }
 
     @Test fun `history completion is terminal and distinct from live dictation`() {
         val output = temporary.newFile("history.zip")

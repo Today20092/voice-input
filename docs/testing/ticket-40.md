@@ -54,8 +54,9 @@ The manually dispatched reusable workflow `s1-speculation-proof.yml`:
 
 1. Checks the exact llama.cpp commit and downloads the pinned S1 GGUF on GitHub's
    runner, verifying its catalog SHA-256. No local model download is required.
-2. Replays the original single-token implementation from tests-only commit
-   `407abb61e69b2724bc6ad02764cdd08485711517`. The positive speculative-acceptance
+2. Replays the original single-token implementation preserved in
+   `tools/s1_speculation/greedy_baseline.cpp`, independent of temporary branch
+   ancestry or squash merges. The positive speculative-acceptance
    assertion must fail with `no_speculative_tokens_were_verified`.
 3. Rebuilds only the changed generator against the same llama libraries and
    requires exact output-token/EOS parity on five synthetic public transcripts,
