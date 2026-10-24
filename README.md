@@ -16,11 +16,12 @@ This personal fork keeps [FUTO Voice Input](https://github.com/futo-org/voice-in
 voice keyboard and speech-recognition activity. Orukeet is the default recognizer.
 Models download separately; recognition and cleanup then run on your phone.
 
-[Download the APK](https://github.com/Today20092/voice-input/releases/latest) · [Compare models on your phone](docs/model-comparison.md) · [Model guide](docs/model-guide.md) · [Release notes](docs/releases/v1.4.8.md) · [Report a problem](https://github.com/Today20092/voice-input/issues)
+[Download the APK](https://github.com/Today20092/voice-input/releases/latest) · [Compare models on your phone](docs/model-comparison.md) · [Model guide](docs/model-guide.md) · [Release notes](docs/releases/v1.4.9.md) · [Report a problem](https://github.com/Today20092/voice-input/issues)
 
-Stable [1.4.8](https://github.com/Today20092/voice-input/releases/tag/v1.4.8)
-fixes Phonon failures on full-volume negative audio samples in live recording
-and saved history, and adds more precise content-free failure diagnostics.
+Stable [1.4.9](https://github.com/Today20092/voice-input/releases/tag/v1.4.9)
+ships a smaller APK, reduces avoidable audio allocations, applies consistent
+cleanup to saved recordings, and moves transcript-capture storage off the UI thread.
+It retains 1.4.8's Phonon recording fix and precise content-free failure diagnostics.
 It retains 1.4.7's ASR4ALL Small, Medium and Large,
 Phonon 2 and Whistle, plus Model comparison with speed, word-error and RAM charts.
 It also includes the Transcript Cleanup redesign, compact recording panel and
@@ -134,7 +135,7 @@ editor, reproduction steps and what happened.
 [Export a diagnostic report](docs/diagnostics.md) if useful, and review it before
 sharing. Do not attach private audio or transcripts unintentionally.
 
-The [release notes](docs/releases/v1.4.8.md) record verification and remaining
+The [release notes](docs/releases/v1.4.9.md) record verification and remaining
 limits. [GitHub Issues](https://github.com/Today20092/voice-input/issues) tracks
 bugs and planned work.
 
