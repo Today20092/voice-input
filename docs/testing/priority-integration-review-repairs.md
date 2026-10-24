@@ -10,6 +10,8 @@ The Standards and Spec reviews of integration `c294ccf` identified the same no-s
 
 `git diff --check` passes. Current-head JVM/lint/native/APK checks and instrumentation execution are not claimed from these source checks.
 
+The first [S1 proof run 40114245629](https://github.com/Today20092/voice-input/actions/runs/40114245629) failed at host compilation: `proof.cpp` passed its owning `unique_ptr` to `llama_n_ctx`, which requires a raw context pointer. The repair uses `ctx.get()`, consistent with the other owning-context call sites and the pinned `llama.h`. All proof/helper llama context/model/sampler calls were inspected for the same mismatch. This job did **not** execute the semantic negative control; rerun it before claiming an S1 red/green proof. No native build ran locally.
+
 Earlier evidence remains revision-bound: [integration CI 40112986427](https://github.com/Today20092/voice-input/actions/runs/40112986427) passed 267 JVM tests, release lint, Android-test compilation and release/native/package/signature/symbol checks at `d9097f5`, preceding subsequent work. [Old-code regression CI 40112697133](https://github.com/Today20092/voice-input/actions/runs/40112697133) executed 263 tests with three intended assertion failures for sensitive export metadata, abandoned/corrupt count bounds and oversized captures. These are actual earlier red/green observations, not proof that the repaired integration passes.
 
 No local Gradle, Android/native compilation, emulator, inference or model download was used. Final integration CI and affected-phone/package verification remain required, including failed/valid-empty/accepted/rejected/canceled delivery and candidate CPU/OpenCL parity/performance.
