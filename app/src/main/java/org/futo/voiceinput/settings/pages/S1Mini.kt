@@ -379,6 +379,7 @@ private fun DiagnosticOptions() {
                 Column(Modifier.verticalScroll(rememberScrollState())) {
                     TranscriptStage("Raw transcript", capture.raw.status, capture.raw.text)
                     TranscriptStage("Cleaned transcript", capture.cleaned.status, capture.cleaned.text)
+                    TranscriptStage("Prepared transcript", capture.prepared.status, capture.prepared.text)
                     TranscriptStage(
                         if (capture.delivery == org.futo.voiceinput.s1.S1MiniTranscriptDelivery.Unknown)
                             "Final text (delivery unverified)" else "Final delivered transcript",
