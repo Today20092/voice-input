@@ -10,6 +10,10 @@ on:
       - "v*"
   workflow_dispatch:
     inputs:
+      build_benchmark_apks:
+        description: Build paired dev app and instrumentation APKs for physical-phone benchmarking
+        type: boolean
+        default: false
       build_moonshine_candidate:
         description: 'Also build the experimental #41 ARM64 runtime and debug APK'
         type: boolean
@@ -191,6 +195,24 @@ jobs:
         with:
           name: futo-voice-input-moonshine-apk
           path: release/*.apk
+
+      - name: Build benchmark device APKs
+        if: github.event_name == 'workflow_dispatch' && inputs.build_benchmark_apks
+        run: |
+          ./gradlew --max-workers=2 '-Dorg.gradle.jvmargs=-Xmx4096m -Dfile.encoding=UTF-8' :app:assembleDevDebug :app:assembleDevDebugAndroidTest --stacktrace
+          sha256sum app/build/outputs/apk/dev/debug/*.apk app/build/outputs/apk/androidTest/dev/debug/*.apk \
+            > app/build/outputs/apk/benchmark-apk-sha256.txt
+
+      - name: Upload benchmark device APKs
+        if: github.event_name == 'workflow_dispatch' && inputs.build_benchmark_apks
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-device-apks-${{ github.sha }}
+          if-no-files-found: error
+          path: |
+            app/build/outputs/apk/dev/debug/*.apk
+            app/build/outputs/apk/androidTest/dev/debug/*.apk
+            app/build/outputs/apk/benchmark-apk-sha256.txt
 
       - name: Create GitHub Release
         if: startsWith(github.ref, 'refs/tags/')
