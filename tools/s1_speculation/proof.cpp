@@ -27,14 +27,24 @@ static std::string prompt(const std::string & text) {
         "<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n";
 }
 
+struct Timing {
+    long prefill_ms = 0, decode_ms = 0, total_ms = 0;
+};
+
+static long elapsed(Clock::time_point started) {
+    return std::chrono::duration_cast<std::chrono::milliseconds>(Clock::now() - started).count();
+}
+
 static S1NgramResult generate(llama_model * model, const std::vector<llama_token> & input,
-        int limit, bool speculative, std::atomic_bool & cancelled) {
+        int limit, bool speculative, std::atomic_bool & cancelled, int threads = 2,
+        Timing * timing = nullptr) {
+    const auto started = Clock::now();
     auto params = llama_context_default_params();
     params.n_ctx = 2048;
     params.n_batch = 2048;
     params.n_ubatch = 512;
-    params.n_threads = 2;
-    params.n_threads_batch = 2;
+    params.n_threads = threads;
+    params.n_threads_batch = threads;
     params.abort_callback = [](void * value) { return static_cast<std::atomic_bool *>(value)->load(); };
     params.abort_callback_data = &cancelled;
     using Context = std::unique_ptr<llama_context, decltype(&llama_free)>;
@@ -44,12 +54,15 @@ static S1NgramResult generate(llama_model * model, const std::vector<llama_token
     Sampler sampler(llama_sampler_init_greedy(), llama_sampler_free);
     require(sampler != nullptr, "sampler_init_failed");
     auto mutable_input = input;
+    const auto prefill_started = Clock::now();
     require(llama_decode(ctx.get(), llama_batch_get_one(mutable_input.data(), mutable_input.size())) == 0,
         "prefill_failed");
+    if (timing) timing->prefill_ms = elapsed(prefill_started);
+    const auto decode_started = Clock::now();
     const auto * vocab = llama_model_get_vocab(model);
-    if (speculative) return s1_ngram_generate(ctx.get(), vocab, sampler.get(), input, limit, cancelled);
     S1NgramResult result;
-    for (int i = 0; i < limit; ++i) {
+    if (speculative) result = s1_ngram_generate(ctx.get(), vocab, sampler.get(), input, limit, cancelled);
+    else for (int i = 0; i < limit; ++i) {
         llama_token token = llama_sampler_sample(sampler.get(), ctx.get(), -1);
         if (llama_vocab_is_eog(vocab, token)) {
             result.ended = true;
@@ -59,7 +72,61 @@ static S1NgramResult generate(llama_model * model, const std::vector<llama_token
         result.tokens.push_back(token);
         ++result.decode_calls;
     }
+    if (timing) {
+        timing->decode_ms = elapsed(decode_started);
+        timing->total_ms = elapsed(started);
+    }
     return result;
+}
+
+static void benchmark(llama_model * model, std::vector<std::string> fixtures) {
+#if defined(__ANDROID__)
+    constexpr int threads = 6;
+#else
+    constexpr int threads = 2;
+#endif
+    fixtures.push_back(
+        "so for the next release we need to review the recording flow and make sure that people can "
+        "cancel a dictation and try again without losing the previous result please check the model "
+        "download screen as well because the connection sometimes drops before the last file finishes "
+        "after that we should compare the cleanup timings on the same phone using the same text each "
+        "time and keep the short examples separate from the longer notes if the new method changes "
+        "any punctuation record that as a mismatch rather than quietly ignoring it then send the "
+        "summary after everyone has reviewed the results tomorrow morning");
+    std::atomic_bool cancelled{false};
+    int drafted = 0, accepted = 0;
+    for (size_t i = 0; i < fixtures.size(); ++i) {
+        auto input = tokenize(llama_model_get_vocab(model), prompt(fixtures[i]));
+        // Each call creates a fresh context/table; warm-up cannot seed a later request's pool.
+        for (int pair = -1; pair < 4; ++pair) {
+            Timing timing[2];
+            S1NgramResult results[2];
+            const int first = pair >= 0 ? pair % 2 : 0;
+            for (int turn = 0; turn < 2; ++turn) {
+                const int mode = (first + turn) % 2;
+                results[mode] = generate(model, input, 256, mode == 1, cancelled, threads, &timing[mode]);
+            }
+            const bool parity = results[0].tokens == results[1].tokens && results[0].ended == results[1].ended;
+            std::cout << "case=" << i << " pair=" << pair << " warmup=" << (pair == -1)
+                << " first=" << (first ? "candidate" : "plain") << " threads=" << threads << " parity=" << parity
+                << " tokens=" << results[0].tokens.size()
+                << " plainPrefillMs=" << timing[0].prefill_ms << " candidatePrefillMs=" << timing[1].prefill_ms
+                << " plainDecodeMs=" << timing[0].decode_ms << " candidateDecodeMs=" << timing[1].decode_ms
+                << " plainTotalMs=" << timing[0].total_ms << " candidateTotalMs=" << timing[1].total_ms
+                << " plainDecodeCalls=" << results[0].decode_calls << " candidateDecodeCalls=" << results[1].decode_calls
+                << " drafted=" << results[1].drafted << " accepted=" << results[1].accepted << std::endl;
+            require(parity, "candidate_differs_from_greedy");
+            require(results[0].ended && !results[0].tokens.empty(), "benchmark_output_incomplete");
+            require(results[1].pool_bytes <= 64 * 1024 && results[1].peak_batch_tokens <= 17,
+                "speculation_memory_bound_exceeded");
+            if (pair >= 0) {
+                drafted += results[1].drafted;
+                accepted += results[1].accepted;
+            }
+        }
+    }
+    require(drafted > 0 && accepted > 0, "no_speculative_tokens_were_verified");
+    std::cout << "PASS: paired CPU tokens/EOS, four balanced-order pairs, fresh contexts/pools, threads=" << threads << '\n';
 }
 
 static void failure_case(llama_model * model, const std::vector<llama_token> & input,
@@ -102,7 +169,8 @@ static void failure_case(llama_model * model, const std::vector<llama_token> & i
 
 int main(int argc, char ** argv) {
     try {
-        require(argc == 2, "Usage: s1_speculation_proof PINNED_S1_MODEL");
+        const bool benchmark_mode = argc == 3 && std::string(argv[2]) == "--benchmark";
+        require(argc == 2 || benchmark_mode, "Usage: s1_speculation_proof PINNED_S1_MODEL [--benchmark]");
         llama_log_set([](ggml_log_level, const char *, void *) {}, nullptr);
         llama_backend_init();
         auto params = llama_model_default_params();
@@ -120,6 +188,10 @@ int main(int argc, char ** argv) {
             "the quick brown fox jumps over the lazy dog the quick brown fox jumps over the lazy dog "
             "the quick brown fox jumps over the lazy dog"
         };
+        if (benchmark_mode) {
+            benchmark(model.get(), fixtures);
+            return 0;
+        }
         std::atomic_bool cancelled{false};
         int drafted = 0, accepted = 0;
         for (size_t i = 0; i < fixtures.size(); ++i) {

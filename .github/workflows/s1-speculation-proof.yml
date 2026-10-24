@@ -46,6 +46,8 @@ jobs:
           set -o pipefail
           "$RUNNER_TEMP/s1-proof/build/s1_speculation_proof" "$RUNNER_TEMP/s1-proof/s1-mini.gguf" \
             | tee "$RUNNER_TEMP/s1-proof/proof.log"
+          "$RUNNER_TEMP/s1-proof/build/s1_speculation_proof" "$RUNNER_TEMP/s1-proof/s1-mini.gguf" --benchmark \
+            | tee "$RUNNER_TEMP/s1-proof/paired-host.log"
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -58,6 +60,12 @@ jobs:
           CMAKE_BUILD_PARALLEL_LEVEL: '2'
         run: |
           sdkmanager 'platforms;android-35' 'build-tools;35.0.0' 'ndk;28.2.13676358' 'cmake;3.22.1'
+          cmake -S tools/s1_speculation -B "$RUNNER_TEMP/s1-proof/android" \
+            -DCMAKE_BUILD_TYPE=Release \
+            "-DCMAKE_TOOLCHAIN_FILE=$ANDROID_HOME/ndk/28.2.13676358/build/cmake/android.toolchain.cmake" \
+            -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=android-26 -DANDROID_STL=c++_static
+          cmake --build "$RUNNER_TEMP/s1-proof/android" --target s1_speculation_proof --parallel 2
+          cp "$RUNNER_TEMP/s1-proof/android/s1_speculation_proof" "$RUNNER_TEMP/s1-proof/s1-speculation-arm64"
           rustup toolchain install 1.98.1 --profile minimal
           rustup target add --toolchain 1.98.1 aarch64-linux-android
           python3 tools/harper_notices.py
@@ -73,7 +81,7 @@ jobs:
           grep -q 'ngramPoolBytes' "$RUNNER_TEMP/s1-proof/native-strings.txt"
           cp "$APK" "$RUNNER_TEMP/s1-proof/voice-input-dev-s1-ngram-candidate.apk"
           cd "$RUNNER_TEMP/s1-proof"
-          sha256sum voice-input-dev-s1-ngram-candidate.apk > SHA256SUMS
+          sha256sum voice-input-dev-s1-ngram-candidate.apk s1-speculation-arm64 > SHA256SUMS
           printf 'App revision: %s\nllama.cpp: b19cbe925be361d229f0fe03435affe4a2717f37\nS1 GGUF: 3b41ebe2502cbd03e811d5d16b022f5ab551eda58d62597d152f89535003c634\nSpeculation: experimental ngram-mod, match 24, min 2, max 16, pool 65536 bytes\n' \
             "$GITHUB_SHA" > provenance.txt
       - name: Upload technical proof logs
@@ -84,6 +92,7 @@ jobs:
           path: |
             ${{ runner.temp }}/s1-proof/*.log
             ${{ runner.temp }}/s1-proof/*.apk
+            ${{ runner.temp }}/s1-proof/s1-speculation-arm64
             ${{ runner.temp }}/s1-proof/SHA256SUMS
             ${{ runner.temp }}/s1-proof/provenance.txt
           if-no-files-found: warn

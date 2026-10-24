@@ -10,6 +10,24 @@ existing single-token greedy loop byte-for-byte within its preprocessor branch.
 No additional model, user setting, JNI argument, or cleanup bypass is introduced.
 Keep #40 open until the remote proof and affected-phone checks have evidence.
 
+### October 24 follow-up
+
+The [corrected remote proof](https://github.com/Today20092/voice-input/actions/runs/40114736456)
+passed at the earlier candidate revision, including Android compilation and APK
+creation. Its five short CPU observations did not demonstrate a speedup.
+The [reporter's correction](https://github.com/Today20092/voice-input/issues/40#issuecomment-6388543625)
+invalidates the original 8.8-to-3.3-second desktop comparison: warm-up had seeded
+the shared server table with the exact outputs. Fresh-server measurements were
+9.7 seconds plain versus 6.9 seconds ngram-mod across twelve clips, with four
+slightly slower clips and one comma mismatch. Short clips had no overall gain.
+Android candidate runs exercised drafts on longer inputs but used different
+inputs from the baseline and did not check output parity. They establish neither
+a paired phone speedup nor identical output. The app default remains disabled.
+
+The follow-up harness below removes cross-request table reuse and fixed ordering
+from a same-input CPU comparison. Its new remote proof/build evidence is recorded
+below; Android device execution remains pending.
+
 The pinned runtime already provides a small standalone rolling-hash table in
 `common/ngram-mod.cpp`. Linking that file avoids the full common/speculation,
 server, draft-model and command-line infrastructure. The default server allocates
@@ -68,11 +86,72 @@ The manually dispatched reusable workflow `s1-speculation-proof.yml`:
    and dev native-packaging checks, and uploads an installable dev APK, SHA-256,
    provenance and technical proof logs. It does not run device instrumentation.
 
-Use the existing registered release workflow to start it on the integration ref:
+The workflow additionally runs the paired host mode, then cross-compiles the same
+harness as `s1-speculation-arm64` using the pinned NDK, static C++ runtime and a
+single ARM64 CPU backend. The executable and its SHA-256 join the existing
+artifact; the GGUF is not included. These builds run sequentially. See
+[the paired phone protocol](s1-speculation-device-protocol.md) before interpreting
+its timings. Building the executable does not run it on Android.
+
+The paired host mode uses two threads, matching the existing host proof; the
+Android executable uses six, matching the reporter's phone settings. Every row
+prints its actual thread count. An initial remote follow-up run spent over
+thirteen minutes in the new six-thread host comparison. Runner oversubscription
+was suspected but not established; this duration is not performance evidence.
+
+The [initial follow-up run 40140733977](https://github.com/Today20092/voice-input/actions/runs/40140733977)
+at `380b24d` passed the intended negative control and the original candidate
+semantic proof. It was deliberately canceled during the new paired benchmark:
+completed rows retained exact parity, but six-thread host decoding was unusually
+slow (about 13.9 seconds for six output tokens). The run was progressing, not
+stuck. It is an incomplete benchmark and neither a semantic failure nor a
+completed speed result. Revision `7a6c546` changes only the host benchmark thread
+count to two, retaining six on Android and every equality assertion.
+
+### Follow-up verification at 7a6c546
+
+[Run 40141896253](https://github.com/Today20092/voice-input/actions/runs/40141896253)
+passed the intended negative control, original real-model proof and complete
+paired host mode: all 24 measured pairs across six fixtures had exact token/EOS
+parity. Drafts were accepted. The host observations do not demonstrate an overall
+speed improvement: the new longest fixture's median candidate-minus-plain context/
+prefill/generation time was +134.5 ms (range +125 to +143 ms), while the other
+fixtures' median differences ranged from -4.5 to +40.5 ms. These are synthetic
+two-thread host observations, not phone performance or universal parity evidence.
+
+The same run cross-compiled the ARM64 executable and passed enabled-path Android
+unit testing, lint, instrumentation compilation and APK verification. The console
+did not expose an exact unit-test count; none is inferred. No instrumentation or
+paired executable was run on a device.
+
+Artifact `12579961194`, named
+`s1-speculation-proof-7a6c546f3cd1da2b7fa5347e38354cffbd68a2b4`, has GitHub archive
+digest `sha256:a6bcb2941ec64a837f6abf19d004961bd16b8ecd7d778c1fd1b07aa830a376c1`.
+Its manifest and downloaded file hashes agree:
+
+| File | SHA-256 |
+| --- | --- |
+| `voice-input-dev-s1-ngram-candidate.apk` | `792bb883aafd658eaf0d79116227ae2b184af5eae0ece563d75ae1e576d6d351` |
+| `s1-speculation-arm64` | `6e98619e9cb2157c057a73cb5a8952ad962a7a6941467a00712a41053156157d` |
+
+Provenance records source `7a6c546f3cd1da2b7fa5347e38354cffbd68a2b4`, pinned
+llama.cpp `b19cbe925be361d229f0fe03435affe4a2717f37` and the catalog GGUF hash.
+NDK `llvm-readelf` inspection of the downloaded executable confirmed ELF64
+AArch64 PIE with `/system/bin/linker64`, depending only on Android system
+`libm.so`, `libdl.so` and `libc.so`: no separate llama, ggml, C++ or OpenMP library
+must be copied. This is package inspection, not device execution. CI artifacts
+expire after 14 days. The verified APK, executable, logs and combined manifest
+are preserved in the
+[experimental prerelease](https://github.com/Today20092/voice-input/releases/tag/experiment-issues-40-41-7a6c546).
+GitHub's uploaded asset digests match the payload hashes above. This is a
+separate Dev experiment, not a production beta or a speedup claim.
+
+After pushing the reviewed changes, manually dispatch the proof workflow on that
+exact ref (replace `REVIEWED_REF`):
 
 ```powershell
-gh workflow run release-apk.yml --repo Today20092/voice-input `
-  --ref codex/ticket-priority-integration -f run_s1_speculation_proof=true
+gh workflow run s1-speculation-proof.yml --repo Today20092/voice-input `
+  --ref REVIEWED_REF
 ```
 
 Native compilation uses two workers; the Android stage uses one Gradle worker,
@@ -88,9 +167,12 @@ count drafted/accepted tokens, decode calls and table bytes without content.
 
 ## Checks and remaining gates
 
-Only source review and `git diff --check` ran locally. No local Gradle/native
-compilation, model inference/download, or emulator was started. Remote red/green
-results and APK build are pending until the workflow is actually executed.
+For this follow-up, source review, `git diff --check` and NDK Clang's ARM64
+`-fsyntax-only` check of `proof.cpp` against the pinned llama headers passed.
+No local Gradle/native build, model inference/download, or emulator was started.
+The remote checks above passed at `7a6c546`; subsequent source changes require
+their own verification. Affected-phone evidence remains required before enabling
+the app experiment.
 
 Before enabling production: retain the CI run/artifact hashes; compare exact
 output and termination on Android CPU and any supported OpenCL configuration;

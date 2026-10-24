@@ -31,7 +31,9 @@ jobs:
           sdkmanager 'platforms;android-35' 'build-tools;35.0.0' 'ndk;28.2.13676358' 'cmake;3.22.1'
           python3 -m pip install 'numpy==2.2.6' 'packaging==25.0'
       - name: Build and verify test-only candidate
-        run: bash tools/build-moonshine-ort-candidate.sh "$RUNNER_TEMP/moonshine-candidate"
+        run: |
+          bash tools/test-moonshine-ort-validator.sh
+          bash tools/build-moonshine-ort-candidate.sh "$RUNNER_TEMP/moonshine-candidate"
       - name: Build installable candidate alongside production
         env:
           CMAKE_BUILD_PARALLEL_LEVEL: '2'
