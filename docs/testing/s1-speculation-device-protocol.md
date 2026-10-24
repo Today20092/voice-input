@@ -71,4 +71,5 @@ The app's normal speculation default stays off. Keep issue 40 open until the
 Android output and performance gates in [ticket-40.md](ticket-40.md) are met.
 No build, model download/inference, or device run was performed locally while
 preparing this protocol. ARM64 NDK Clang syntax checking of the harness passed;
-linking and new remote/phone evidence remain required.
+remote linking and packaging passed at `7a6c546`, as recorded in
+[ticket-40.md](ticket-40.md). Phone evidence remains required.
