@@ -8,6 +8,27 @@ import java.util.zip.ZipFile
 
 class S1MiniDiagnosticArchiveTest {
     @Test
+    fun shortBypassReportKeepsRequestedPreferencesWithoutClaimingRuntimeExecution() {
+        val output = Files.createTempFile("s1-short-bypass", ".zip").toFile()
+        try {
+            S1MiniDiagnosticArchive.write(output, "{}",
+                """{"runtimeRequested":"auto","runtimeSelected":"cpu","threads":4,"warm":false,"nativeLibraryDirPresent":false,"backendLoaderErrors":[],"errorCategory":"short_transcript_bypass"}""",
+                null, null, 0)
+
+            ZipFile(output).use { zip ->
+                val report = zip.getInputStream(zip.getEntry("runs.jsonl")).bufferedReader().readText()
+                assertTrue("\"runtimeRequested\":\"auto\"" in report)
+                assertTrue("short_transcript_bypass" in report)
+                for (unobserved in listOf("runtimeSelected", "threads", "warm", "nativeLibraryDirPresent", "backendLoaderErrorCount")) {
+                    assertFalse("\"$unobserved\":" in report)
+                }
+            }
+        } finally {
+            output.delete()
+        }
+    }
+
+    @Test
     fun cachedTranscriptArchiveExpiresWithItsOldestEvidenceAndLegacyArchivesAreRemoved() {
         val directory = Files.createTempDirectory("s1-transcript-cache").toFile()
         val output = directory.resolve("s1-diagnostics-WITH-TRANSCRIPTS-current.zip")
