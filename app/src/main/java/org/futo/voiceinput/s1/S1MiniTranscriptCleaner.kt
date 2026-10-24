@@ -87,7 +87,8 @@ object S1MiniTranscriptCleaner {
             collectRuntimeDetails: Boolean = true
         ): String? = try {
             val nativeLibraryDir = if (collectRuntimeDetails) context.applicationInfo.nativeLibraryDir else ""
-            val packagedBackendLibraries = File(nativeLibraryDir).listFiles().orEmpty()
+            val packagedBackendLibraries = (if (collectRuntimeDetails) File(nativeLibraryDir).listFiles().orEmpty()
+                else emptyArray())
                 .map { it.name }
                 .filter { it.startsWith("libggml-") || it == "libs1mini.so" || it == "libllama.so" }
                 .sorted()

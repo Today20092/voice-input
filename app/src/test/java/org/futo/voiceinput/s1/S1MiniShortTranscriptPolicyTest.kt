@@ -25,6 +25,7 @@ class S1MiniShortTranscriptPolicyTest {
         assertTrue(S1MiniShortTranscriptPolicy.shouldSkip("I’m sure it's ready."))
         assertTrue(S1MiniShortTranscriptPolicy.shouldSkip("I'm sure it’s ready."))
         assertFalse(S1MiniShortTranscriptPolicy.shouldSkip("It’s it’s ready."))
+        assertFalse(S1MiniShortTranscriptPolicy.shouldSkip("It's it’s ready."))
         assertFalse(S1MiniShortTranscriptPolicy.shouldSkip("You KNOW; it’s ready."))
     }
 }

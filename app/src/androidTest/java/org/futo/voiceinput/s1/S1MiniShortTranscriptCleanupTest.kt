@@ -22,10 +22,12 @@ class S1MiniShortTranscriptCleanupTest {
         val enabled = base.getSetting(S1_MINI_ENABLED)
         val skip = base.getSetting(S1_MINI_SKIP_SHORT_TRANSCRIPTS)
         val harper = base.getSetting(HARPER_ENABLED)
+        val capture = base.getSetting(S1_MINI_TRANSCRIPT_DIAGNOSTICS)
         try {
             assertFalse(S1_MINI_SKIP_SHORT_TRANSCRIPTS.default)
             base.setSetting(S1_MINI_ENABLED, true)
             base.setSetting(HARPER_ENABLED, false)
+            base.setSetting(S1_MINI_TRANSCRIPT_DIAGNOSTICS, true)
             base.setSetting(S1_MINI_SKIP_SHORT_TRANSCRIPTS, false)
             suspend fun clean(text: String = "Sounds good, john", language: String = "en",
                 backend: SpeechBackendType = SpeechBackendType.Phonon) =
@@ -43,12 +45,17 @@ class S1MiniShortTranscriptCleanupTest {
             val final = TranscriptFinalizer.clean(context, "Sounds good, john", SpeechBackendType.Phonon,
                 "en", null, "john => Jon", null)
             assertEquals("Sounds good, Jon", final.text)
+            assertNotNull(final.capture)
+            assertEquals("Sounds good, john", final.capture!!.raw.text)
+            assertEquals(S1MiniTranscriptStageStatus.NotProduced, final.capture.cleaned.status)
+            assertEquals("short_transcript_bypass", final.capture.failureOrBypassReason)
             base.setSetting(S1_MINI_ENABLED, false)
             assertNull(clean().fallbackCategory)
         } finally {
             base.setSetting(S1_MINI_ENABLED, enabled)
             base.setSetting(S1_MINI_SKIP_SHORT_TRANSCRIPTS, skip)
             base.setSetting(HARPER_ENABLED, harper)
+            base.setSetting(S1_MINI_TRANSCRIPT_DIAGNOSTICS, capture)
             directory.deleteRecursively()
         }
     }
