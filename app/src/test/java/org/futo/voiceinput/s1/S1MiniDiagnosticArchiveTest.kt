@@ -8,6 +8,30 @@ import java.util.zip.ZipFile
 
 class S1MiniDiagnosticArchiveTest {
     @Test
+    fun ordinaryArchiveProjectsRawNativeAndExceptionMetadataBeforeSharing() {
+        val output = Files.createTempFile("s1-sensitive-metadata", ".zip").toFile()
+        val secret = "Avery Support says cobalt orchard 472"
+        try {
+            S1MiniDiagnosticArchive.write(
+                output, "{}",
+                """{"reportId":"12345678-1234-1234-1234-123456789abc","totalMs":900,"backendLoaderErrors":["$secret"],"nativeMetricsJson":"[{\"decodeMs\":123,\"error\":\"$secret\"}]"}""",
+                """{"failures":{"cpu/4":"$secret"}}""", secret, null, 0
+            )
+            ZipFile(output).use { zip ->
+                val allText = zip.entries().asSequence().joinToString("\n") {
+                    zip.getInputStream(it).bufferedReader().readText()
+                }
+                assertFalse(secret in allText)
+                assertTrue("900" in allText)
+                assertTrue("12345678-1234-1234-1234-123456789abc" in allText)
+                assertTrue("123" in allText)
+            }
+        } finally {
+            output.delete()
+        }
+    }
+
+    @Test
     fun standardArchiveNeverContainsTranscriptEntryOrText() {
         val output = Files.createTempFile("s1-standard", ".zip").toFile()
         try {

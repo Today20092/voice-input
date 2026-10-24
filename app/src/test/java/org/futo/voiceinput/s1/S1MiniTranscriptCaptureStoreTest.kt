@@ -11,6 +11,41 @@ import org.junit.Assert.assertThrows
 
 class S1MiniTranscriptCaptureStoreTest {
     @Test
+    fun abandonedWritesAreRemovedAndCorruptCapturesShareTheTenFileLimit() {
+        val directory = Files.createTempDirectory("s1-transcript-interruption").toFile()
+        try {
+            directory.resolve("interrupted.json.tmp").writeText("Avery Support says cobalt orchard 472")
+            repeat(12) { index ->
+                directory.resolve("corrupt-$index.json").apply {
+                    writeText("broken")
+                    assertTrue(setLastModified(1_000L + index))
+                }
+            }
+
+            val result = S1MiniTranscriptCaptureStore.load(directory, 2_000L)
+
+            assertFalse(directory.resolve("interrupted.json.tmp").exists())
+            assertEquals(10, result.unreadableCount)
+            assertEquals(10, directory.listFiles()!!.size)
+        } finally {
+            directory.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun oversizedCorruptionIsDeletedWithoutReadingItsContents() {
+        val directory = Files.createTempDirectory("s1-transcript-oversized").toFile()
+        try {
+            val oversized = directory.resolve("oversized.json")
+            java.io.RandomAccessFile(oversized, "rw").use { it.setLength(2L * 1024 * 1024 + 1) }
+            S1MiniTranscriptCaptureStore.load(directory, 1_000L)
+            assertFalse(oversized.exists())
+        } finally {
+            directory.deleteRecursively()
+        }
+    }
+
+    @Test
     fun inaccessibleCaptureDirectoryIsAnErrorInsteadOfAnEmptyList() {
         val file = Files.createTempFile("s1-transcript-not-directory", ".tmp").toFile()
         try {
