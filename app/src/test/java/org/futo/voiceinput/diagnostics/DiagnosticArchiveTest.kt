@@ -45,7 +45,8 @@ class DiagnosticArchiveTest {
             val summary = zip.getInputStream(zip.getEntry("summary.txt")).bufferedReader().readText()
             assertTrue(summary.contains("MODEL_LOAD_FAILED"))
             assertTrue(summary.contains("Unreadable records skipped: 1"))
-            assertTrue(summary.contains("Dropped events: 2"))
+            assertTrue(summary.contains("Writer drops (current process): 2"))
+            assertTrue(summary.contains("Records omitted for export budget: 0"))
             val contents = zip.entries().asSequence().joinToString { zip.getInputStream(it).bufferedReader().readText() }
             assertFalse(contents.contains("SECRET"))
             assertTrue(contents.contains("It stopped"))

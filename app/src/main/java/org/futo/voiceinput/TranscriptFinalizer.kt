@@ -35,7 +35,7 @@ internal object TranscriptFinalizer {
         currentCoroutineContext().ensureActive()
         report?.event(DiagnosticEvent.CLEANUP_FINISHED, mapOf(
             DiagnosticMetric.DURATION_MS to SystemClock.elapsedRealtime() - started,
-            DiagnosticMetric.APPLIED to if (s1.applied) 1L else 0L))
+            DiagnosticMetric.APPLIED to if (s1.applied) 1L else 0L), reportId = s1.diagnosticReportId)
         val harperStarted = SystemClock.elapsedRealtime()
         val enabled = context.getSetting(HARPER_ENABLED)
         val english = enabled && HarperEnglishGate.isEstablishedEnglish(
