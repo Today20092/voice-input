@@ -179,17 +179,22 @@ object S1MiniDiagnostics {
 
     suspend fun shareZip(context: Context, includeTranscripts: Boolean = false): Boolean {
         val file = exportZip(context, includeTranscripts) ?: return false
-        val uri = withContext(Dispatchers.IO) {
-            FileProvider.getUriForFile(context, "${BuildConfig.APPLICATION_ID}.files", file)
+        try {
+            val uri = withContext(Dispatchers.IO) {
+                FileProvider.getUriForFile(context, "${BuildConfig.APPLICATION_ID}.files", file)
+            }
+            context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
+                type = "application/zip"
+                putExtra(Intent.EXTRA_STREAM, uri)
+                clipData = ClipData.newRawUri("S1-mini diagnostics", uri)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }, if (includeTranscripts) "Share diagnostics with transcripts" else "Share S1-mini diagnostics").apply {
+                if (context !is android.app.Activity) addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            })
+        } catch (error: Throwable) {
+            runCatching { file.delete() }
+            throw error
         }
-        context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
-            type = "application/zip"
-            putExtra(Intent.EXTRA_STREAM, uri)
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            if (context !is android.app.Activity) addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        }, if (includeTranscripts) "Share diagnostics with transcripts" else "Share S1-mini diagnostics").apply {
-            if (context !is android.app.Activity) addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        })
         return true
     }
 
@@ -289,6 +294,12 @@ object S1MiniDiagnostics {
             ),
             nowEpochMs
         )
+    }
+
+    @Synchronized
+    fun recordTranscript(context: Context, capture: S1MiniTranscriptCapture) {
+        S1MiniDiagnosticArchive.invalidateTranscripts(exportDirectory(context))
+        S1MiniTranscriptCaptureStore.save(transcriptDirectory(context), capture, System.currentTimeMillis())
     }
 
     @Synchronized

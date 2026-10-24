@@ -37,9 +37,29 @@ class S1MiniTranscriptCaptureStoreTest {
         val directory = Files.createTempDirectory("s1-transcript-oversized").toFile()
         try {
             val oversized = directory.resolve("oversized.json")
-            java.io.RandomAccessFile(oversized, "rw").use { it.setLength(2L * 1024 * 1024 + 1) }
+            java.io.RandomAccessFile(oversized, "rw").use { it.setLength(3L * 1024 * 1024 + 1) }
             S1MiniTranscriptCaptureStore.load(directory, 1_000L)
             assertFalse(oversized.exists())
+        } finally {
+            directory.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun acceptedCaptureRetainsAllBoundedStagesWithEscapedCharacters() {
+        val directory = Files.createTempDirectory("s1-transcript-escaped").toFile()
+        try {
+            val text = "\u0001".repeat(100_000)
+            val capture = S1MiniTranscriptCapture.create(
+                "escaped", 1_000L, text, text, text, null
+            )
+            S1MiniTranscriptCaptureStore.save(directory, capture, 1_000L)
+
+            val stored = S1MiniTranscriptCaptureStore.load(directory, 1_000L).captures.single()
+            assertEquals(text, stored.raw.text)
+            assertEquals(text, stored.cleaned.text)
+            assertEquals(text, stored.prepared.text)
+            assertEquals(text, stored.finalDelivered.text)
         } finally {
             directory.deleteRecursively()
         }

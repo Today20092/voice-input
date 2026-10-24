@@ -41,6 +41,9 @@ data class S1MiniTranscriptStage(
 }
 
 @Serializable
+enum class S1MiniTranscriptDelivery { Unknown, Prepared, Accepted, Rejected, Canceled }
+
+@Serializable
 data class S1MiniTranscriptCapture(
     val schemaVersion: Int = 1,
     val reportId: String,
@@ -49,8 +52,16 @@ data class S1MiniTranscriptCapture(
     val raw: S1MiniTranscriptStage,
     val cleaned: S1MiniTranscriptStage,
     val finalDelivered: S1MiniTranscriptStage,
-    val failureOrBypassReason: String? = null
+    val failureOrBypassReason: String? = null,
+    val prepared: S1MiniTranscriptStage = S1MiniTranscriptStage.notProduced(),
+    val delivery: S1MiniTranscriptDelivery = S1MiniTranscriptDelivery.Unknown
 ) {
+    fun withDelivery(outcome: S1MiniTranscriptDelivery) = copy(
+        delivery = outcome,
+        finalDelivered = if (outcome == S1MiniTranscriptDelivery.Accepted) prepared
+            else S1MiniTranscriptStage.notProduced()
+    )
+
     companion object {
         internal const val RETENTION_MS = 7L * 24L * 60L * 60L * 1_000L
 
@@ -60,16 +71,21 @@ data class S1MiniTranscriptCapture(
             rawTranscript: String,
             cleanedTranscript: String?,
             finalDeliveredTranscript: String,
-            failureOrBypassReason: String?
+            failureOrBypassReason: String?,
+            delivery: S1MiniTranscriptDelivery = S1MiniTranscriptDelivery.Accepted
         ) = S1MiniTranscriptCapture(
+            schemaVersion = 2,
             reportId = reportId,
             capturedAtEpochMs = capturedAtEpochMs,
             expiresAtEpochMs = capturedAtEpochMs + RETENTION_MS,
             raw = S1MiniTranscriptStage.produced(rawTranscript),
             cleaned = cleanedTranscript?.let(S1MiniTranscriptStage::produced)
                 ?: S1MiniTranscriptStage.notProduced(),
-            finalDelivered = S1MiniTranscriptStage.produced(finalDeliveredTranscript),
-            failureOrBypassReason = failureOrBypassReason
+            finalDelivered = if (delivery == S1MiniTranscriptDelivery.Accepted)
+                S1MiniTranscriptStage.produced(finalDeliveredTranscript) else S1MiniTranscriptStage.notProduced(),
+            failureOrBypassReason = failureOrBypassReason,
+            prepared = S1MiniTranscriptStage.produced(finalDeliveredTranscript),
+            delivery = delivery
         )
     }
 }
@@ -84,7 +100,7 @@ data class S1MiniTranscriptCaptureLoadResult(
 
 object S1MiniTranscriptCaptureStore {
     private const val MAX_CAPTURES = 10
-    private const val MAX_CAPTURE_BYTES = 2L * 1024 * 1024
+    private const val MAX_CAPTURE_BYTES = 3L * 1024 * 1024
     private val json = Json { encodeDefaults = true; ignoreUnknownKeys = true }
 
     @Synchronized
