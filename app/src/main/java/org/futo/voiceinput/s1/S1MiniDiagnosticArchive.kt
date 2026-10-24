@@ -1,6 +1,7 @@
 package org.futo.voiceinput.s1
 
 import java.io.File
+import java.io.IOException
 import org.futo.voiceinput.diagnostics.StandardS1Reports
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
@@ -12,7 +13,8 @@ object S1MiniDiagnosticArchive {
         runsJsonl: String,
         benchmarkJson: String?,
         transcriptsJsonl: String?,
-        unreadableTranscriptCaptures: Int
+        unreadableTranscriptCaptures: Int,
+        transcriptExpiresAtEpochMs: Long? = null
     ) {
         val safeRuns = runsJsonl.lineSequence().mapNotNull(StandardS1Reports::project).joinToString("\n")
         ZipOutputStream(output.outputStream().buffered()).use { zip ->
@@ -45,5 +47,32 @@ object S1MiniDiagnosticArchive {
                 )
             }
         }
+        if (transcriptsJsonl != null) {
+            val expiresAt = transcriptExpiresAtEpochMs ?: System.currentTimeMillis()
+            if (!output.setLastModified(expiresAt)) {
+                output.delete()
+                throw IOException("Unable to set transcript export expiration")
+            }
+        }
+    }
+
+    @Synchronized
+    fun purgeExpired(directory: File, nowEpochMs: Long) {
+        transcriptExports(directory).filter { it.lastModified() <= nowEpochMs }.forEach(::delete)
+    }
+
+    @Synchronized
+    fun invalidateTranscripts(directory: File) {
+        transcriptExports(directory).forEach(::delete)
+    }
+
+    private fun transcriptExports(directory: File): List<File> {
+        if (!directory.exists()) return emptyList()
+        return directory.listFiles { file -> file.isFile && "WITH-TRANSCRIPTS" in file.name }?.toList()
+            ?: throw IOException("Unable to read transcript export cache")
+    }
+
+    private fun delete(file: File) {
+        if (!file.delete() && file.exists()) throw IOException("Unable to delete transcript export")
     }
 }
