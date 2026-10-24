@@ -17,6 +17,7 @@ object S1MiniDiagnosticArchive {
         transcriptExpiresAtEpochMs: Long? = null
     ) {
         val safeRuns = runsJsonl.lineSequence().mapNotNull(StandardS1Reports::project).joinToString("\n")
+        try {
         ZipOutputStream(output.outputStream().buffered()).use { zip ->
             fun entry(name: String, contents: String) {
                 zip.putNextEntry(ZipEntry(name))
@@ -53,6 +54,10 @@ object S1MiniDiagnosticArchive {
                 output.delete()
                 throw IOException("Unable to set transcript export expiration")
             }
+        }
+        } catch (error: Throwable) {
+            runCatching { output.delete() }
+            throw error
         }
     }
 

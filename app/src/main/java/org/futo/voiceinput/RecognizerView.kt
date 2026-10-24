@@ -1,5 +1,7 @@
 package org.futo.voiceinput
 
+import org.futo.voiceinput.diagnostics.DiagnosticFailure
+
 import android.content.Context
 import android.content.Intent
 import android.media.AudioAttributes
@@ -486,7 +488,7 @@ abstract class RecognizerView {
             liveBenchmarkSession?.failure("Recognition or delivery failed (${error.javaClass.simpleName})")
             presentation = presentation.end()
             diagnostics?.end(org.futo.voiceinput.diagnostics.DiagnosticEvent.SESSION_FAILED, error)
-            Log.e("RecognizerView", "Recognition did not produce a result", error)
+            Log.e("RecognizerView", "Recognition did not produce a result (${DiagnosticFailure.from(error).kind})")
             val message = if (error is NoSpeechRecognizedException) {
                 context.getString(R.string.no_speech_recognized)
             } else {
@@ -518,7 +520,6 @@ abstract class RecognizerView {
 
         override fun languageDetected(result: String) {
             detectedLanguage = result
-            Log.i("RecognizerView", "Detected recognition language: $result")
         }
 
         override fun partialResult(result: String) {

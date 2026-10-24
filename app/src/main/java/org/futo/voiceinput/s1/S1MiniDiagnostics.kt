@@ -22,6 +22,9 @@ import org.futo.voiceinput.diagnostics.AppDiagnostics
 import org.futo.voiceinput.diagnostics.DiagnosticStore
 import org.futo.voiceinput.diagnostics.StandardS1Reports
 import java.io.File
+import java.io.IOException
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -118,10 +121,7 @@ object S1MiniDiagnostics {
         val target = runsFile(context)
         val temporary = File(target.parentFile, "${target.name}.tmp")
         temporary.writeText(retained.joinToString("\n", postfix = if (retained.isEmpty()) "" else "\n"))
-        if (!temporary.renameTo(target)) {
-            target.delete()
-            check(temporary.renameTo(target)) { "Unable to replace S1-mini diagnostics" }
-        }
+        Files.move(temporary.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
     }
 
     fun latestText(context: Context): String? {
@@ -224,7 +224,7 @@ object S1MiniDiagnostics {
         val cutoff = System.currentTimeMillis() - DiagnosticStore.RETENTION_MS
         val runs = runsFile(context)
         if (runs.isFile) {
-            if (runs.lastModified() < cutoff || runs.length() > 768 * 1024) runs.delete()
+            if (runs.lastModified() < cutoff || runs.length() > 768 * 1024) deleteStandardFile(runs)
             else {
                 val legacyTimestamp = runs.lastModified()
                 val retained = runs.readLines().mapNotNull { line ->
@@ -237,23 +237,33 @@ object S1MiniDiagnostics {
                             ?.toString()?.let(StandardS1Reports::project)
                     }.getOrNull()
                 }
-                if (retained.isEmpty()) runs.delete()
+                if (retained.isEmpty()) deleteStandardFile(runs)
                 else {
                     val temporary = File(runs.parentFile, "runs.jsonl.tmp")
                     temporary.writeText(retained.joinToString("\n", postfix = "\n"))
-                    check(temporary.renameTo(runs)) { "Unable to purge diagnostics" }
+                    Files.move(temporary.toPath(), runs.toPath(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
                 }
             }
         }
         benchmarkFile(context).takeIf { it.isFile }?.let { benchmark ->
-            if (benchmark.lastModified() < cutoff || benchmark.length() > 256 * 1024) benchmark.delete()
+            if (benchmark.lastModified() < cutoff || benchmark.length() > 256 * 1024) deleteStandardFile(benchmark)
             else {
                 val projected = StandardS1Reports.project(benchmark.readText())
-                if (projected == null) benchmark.delete() else benchmark.writeText(projected)
+                if (projected == null) deleteStandardFile(benchmark) else {
+                    val timestamp = benchmark.lastModified()
+                    val temporary = File(benchmark.parentFile, "benchmark.json.tmp")
+                    temporary.writeText(projected)
+                    Files.move(temporary.toPath(), benchmark.toPath(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
+                    check(benchmark.setLastModified(timestamp)) { "Unable to retain benchmark timestamp" }
+                }
             }
         }
-        File(directory(context), "runs.jsonl.tmp").delete()
-        File(directory(context), "benchmark.json.tmp").delete()
+        deleteStandardFile(File(directory(context), "runs.jsonl.tmp"))
+        deleteStandardFile(File(directory(context), "benchmark.json.tmp"))
+    }
+
+    private fun deleteStandardFile(file: File) {
+        if (file.exists() && !file.delete()) throw IOException("Unable to delete expired S1-mini diagnostics")
     }
 
     @Synchronized
@@ -290,10 +300,7 @@ object S1MiniDiagnostics {
         val encoded = StandardS1Reports.project(json.encodeToString(diagnostic)) ?: return
         if (encoded.toByteArray().size > 256 * 1024) return
         temporary.writeText(encoded)
-        if (!temporary.renameTo(target)) {
-            target.delete()
-            check(temporary.renameTo(target)) { "Unable to replace S1-mini benchmark diagnostics" }
-        }
+        Files.move(temporary.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
     }
 
     suspend fun transcriptCaptures(

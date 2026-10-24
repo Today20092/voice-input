@@ -6,6 +6,8 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.io.File
 import java.io.IOException
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
 
 @Serializable
 enum class S1MiniTranscriptStageStatus {
@@ -94,7 +96,7 @@ object S1MiniTranscriptCaptureStore {
         val temporary = File(directory, "${target.name}.tmp")
         try {
             temporary.writeText(json.encodeToString(capture))
-            if (!temporary.renameTo(target)) throw IOException("Unable to save S1-mini transcript capture")
+            Files.move(temporary.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
         } finally {
             if (temporary.exists()) deleteFile(temporary)
         }
