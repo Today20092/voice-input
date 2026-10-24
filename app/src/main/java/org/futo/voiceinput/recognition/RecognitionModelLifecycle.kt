@@ -15,6 +15,10 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import org.futo.voiceinput.WhisperGGMLBackend
 import org.futo.voiceinput.backend.SpeechBackend
+import org.futo.voiceinput.diagnostics.AppDiagnostics
+import org.futo.voiceinput.diagnostics.DiagnosticConfiguration
+import org.futo.voiceinput.diagnostics.DiagnosticEvent
+import org.futo.voiceinput.diagnostics.DiagnosticMetric
 import org.futo.voiceinput.ml.RunState
 import org.futo.voiceinput.parakeet.acquireParakeetRuntime
 import org.futo.voiceinput.parakeet.releaseParakeetArtifacts
@@ -127,6 +131,9 @@ class RecognitionModelLifecycle(
                 if (activated) break
                 runtimeChanges.first { it != revision }
             }
+        } catch (failure: Throwable) {
+            recordOperationFailure(model, 1L, failure)
+            throw failure
         } finally {
             publishChange()
         }
@@ -148,11 +155,29 @@ class RecognitionModelLifecycle(
                 check(!modelInUse(model)) { "Model is in use by dictation" }
                 store.delete(model, selectedModelId, ::releaseRuntimeArtifacts)
             }
+        } catch (failure: Throwable) {
+            recordOperationFailure(model, 2L, failure)
+            throw failure
         } finally { publishChange() }
     }
 
     fun invalidateInstallation(model: RecognitionModel) {
-        try { store.invalidate(model) } finally { publishChange() }
+        try { store.invalidate(model)
+        } catch (failure: Throwable) {
+            recordOperationFailure(model, 3L, failure)
+            throw failure
+        } finally { publishChange() }
+    }
+
+    private fun recordOperationFailure(model: RecognitionModel, operation: Long, error: Throwable) {
+        if (error is CancellationException) return
+        runCatching {
+            AppDiagnostics.event(
+                DiagnosticEvent.MODEL_OPERATION_FAILED, model = model.id,
+                metrics = mapOf(DiagnosticMetric.OPERATION to operation),
+                error = error, configuration = DiagnosticConfiguration(
+                    runtime = model.runtimeId, modelVersion = model.version))
+        }
     }
 
     private suspend fun releaseRuntimeArtifacts(model: RecognitionModel) {

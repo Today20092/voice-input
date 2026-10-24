@@ -10,7 +10,7 @@ object StandardS1Reports {
         "no_discovered_gpu", "native_failure", "benchmark_validation_failed", "unclassified",
         "cpu_unavailable", "opencl_unavailable", "model_load_failed", "tokenize_overflow", "tokenize_failed",
         "input_too_long", "context_init_failed", "sampler_init_failed", "prefill_failed", "decode_failed",
-        "invalid_native_library_dir", "native_library_dir_changed", "built_in_cleanup_bypass")
+        "invalid_native_library_dir", "native_library_dir_changed", "built_in_cleanup_bypass", "short_transcript_bypass")
     private val numbers = setOf("schemaVersion", "capturedAtEpochMs", "recordedAtEpochMs", "threads",
         "inputApproxWords", "outputCharacters", "chunkCount", "totalMs", "pssKb", "nativeHeapBytes",
         "javaUsedBytes", "thermalStatus", "warmTimeoutMs")
@@ -96,6 +96,11 @@ object StandardS1Reports {
                 })
             }
             put("transcriptIncluded", false)
+        }.let { projected ->
+            if ((source["errorCategory"] as? JsonPrimitive)?.content == "short_transcript_bypass") {
+                JsonObject(projected.filterKeys { it !in setOf(
+                    "runtimeSelected", "threads", "warm", "nativeLibraryDirPresent", "backendLoaderErrorCount") })
+            } else projected
         }.toString()
     }.getOrNull()
 }

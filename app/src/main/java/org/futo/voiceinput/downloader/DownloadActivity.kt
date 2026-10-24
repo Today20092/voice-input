@@ -615,8 +615,8 @@ class DownloadActivity : ComponentActivity() {
         RecognitionModelLifecycle.publishChange()
         // The UI's message can contain URLs or file paths; never include it in a standard report.
         diagnosticDownload?.event(DiagnosticEvent.DOWNLOAD_FAILED,
-            mapOf(DiagnosticMetric.BYTES to (model.expectedSize ?: 0L),
-                DiagnosticMetric.ERROR_CODE to code.toLong()), error = error)
+            mapOf(DiagnosticMetric.ERROR_CODE to code.toLong()) +
+                listOfNotNull(model.expectedSize?.let { DiagnosticMetric.EXPECTED_BYTES to it }).toMap(), error = error)
         updateModelOnMain {
             model.errorMessage = message
             model.error = true
@@ -694,8 +694,9 @@ class DownloadActivity : ComponentActivity() {
 
     private fun finishSuccessfulDownload() {
         diagnosticDownload?.event(DiagnosticEvent.DOWNLOAD_FINISHED, mapOf(
-            DiagnosticMetric.DURATION_MS to SystemClock.elapsedRealtime() - downloadStartedMs,
-            DiagnosticMetric.BYTES to allRequestedFiles.sumOf { it.expectedSize ?: 0L }))
+            DiagnosticMetric.DURATION_MS to SystemClock.elapsedRealtime() - downloadStartedMs) +
+            if (allRequestedFiles.all { it.expectedSize != null }) mapOf(
+                DiagnosticMetric.EXPECTED_BYTES to allRequestedFiles.sumOf { it.expectedSize!! }) else emptyMap())
         if (intent.getBooleanExtra(EXTRA_ENABLE_S1_MINI_AFTER_DOWNLOAD, false)) {
             setSettingBlocking(S1_MINI_ENABLED.key, true)
         }
