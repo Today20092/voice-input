@@ -8,6 +8,30 @@ import java.util.zip.ZipFile
 
 class S1MiniDiagnosticArchiveTest {
     @Test
+    fun cachedTranscriptArchiveExpiresWithItsOldestEvidenceAndLegacyArchivesAreRemoved() {
+        val directory = Files.createTempDirectory("s1-transcript-cache").toFile()
+        val output = directory.resolve("s1-diagnostics-WITH-TRANSCRIPTS-current.zip")
+        try {
+            S1MiniDiagnosticArchive.write(output, "{}", "", null, "{}", 0,
+                transcriptExpiresAtEpochMs = 2_000L)
+            directory.resolve("s1-diagnostics-WITH-TRANSCRIPTS-legacy.zip").apply {
+                writeText("old dictated text")
+                assertTrue(setLastModified(1_000L))
+            }
+            val standard = directory.resolve("s1-diagnostics-standard.zip").apply { writeText("technical only") }
+
+            S1MiniDiagnosticArchive.purgeExpired(directory, 1_500L)
+            assertTrue(output.exists())
+            assertFalse(directory.resolve("s1-diagnostics-WITH-TRANSCRIPTS-legacy.zip").exists())
+            S1MiniDiagnosticArchive.purgeExpired(directory, 2_000L)
+            assertFalse(output.exists())
+            assertTrue(standard.exists())
+        } finally {
+            directory.deleteRecursively()
+        }
+    }
+
+    @Test
     fun ordinaryArchiveProjectsRawNativeAndExceptionMetadataBeforeSharing() {
         val output = Files.createTempFile("s1-sensitive-metadata", ".zip").toFile()
         val secret = "Avery Support says cobalt orchard 472"
