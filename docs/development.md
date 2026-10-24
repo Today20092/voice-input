@@ -12,6 +12,12 @@ For model testing, report recording length, time from Stop to final text, recogn
 
 For code changes, read [AGENTS.md](../AGENTS.md), link the relevant GitHub issue, keep changes focused and preserve upstream attribution and model notices. Follow the build steps below and run the unit tests and lint for affected code. Changes to microphone routing, text insertion or model inference also need device evidence; document any checks you could not perform. Do not commit signing keys, private recordings or local SDK configuration.
 
+## Low-memory workflow
+
+When the maintainer requests low memory or sets a RAM limit, perform compilation, tests, lint, native/model checks and APK assembly in GitHub CI. Keep local work to source edits and lightweight static checks. Use a connected phone, an emulator or local heavyweight builds only after the user explicitly allows their memory use; a connected device alone is not permission.
+
+After the applicable CI checks pass, publish the signed APK as a GitHub prerelease beta for the maintainer to install and test later. Retain the tested commit and CI links, and clearly list device/emulator checks that have not run. Compiling Android tests does not execute them or satisfy physical-device release gates. Keep the production application ID/signing configuration so installing the beta preserves existing data; stable promotion remains a separate decision.
+
 ## Build locally
 
 
