@@ -14,11 +14,13 @@ import org.futo.voiceinput.harper.HarperEnglishGate
 import org.futo.voiceinput.harper.HarperNative
 import org.futo.voiceinput.harper.HarperTranscriptCleaner
 import org.futo.voiceinput.s1.S1MiniCleanupResult
-import org.futo.voiceinput.s1.S1MiniDiagnostics
 import org.futo.voiceinput.s1.S1MiniTranscriptCleaner
+import org.futo.voiceinput.s1.S1MiniTranscriptCapture
+import org.futo.voiceinput.s1.S1MiniTranscriptDelivery
 import org.futo.voiceinput.settings.*
 
-internal data class FinalTranscript(val text: String, val validEmpty: Boolean, val harper: HarperCleanupResult)
+internal data class FinalTranscript(val text: String, val validEmpty: Boolean, val harper: HarperCleanupResult,
+    val capture: S1MiniTranscriptCapture? = null)
 
 /** Prepares text only; callers retain ownership of history replacement and delivery. */
 internal object TranscriptFinalizer {
@@ -33,7 +35,7 @@ internal object TranscriptFinalizer {
         currentCoroutineContext().ensureActive()
         report?.event(DiagnosticEvent.CLEANUP_FINISHED, mapOf(
             DiagnosticMetric.DURATION_MS to SystemClock.elapsedRealtime() - started,
-            DiagnosticMetric.APPLIED to if (s1.applied) 1L else 0L))
+            DiagnosticMetric.APPLIED to if (s1.applied) 1L else 0L), reportId = s1.diagnosticReportId)
         val harperStarted = SystemClock.elapsedRealtime()
         val enabled = context.getSetting(HARPER_ENABLED)
         val english = enabled && HarperEnglishGate.isEstablishedEnglish(
@@ -46,15 +48,15 @@ internal object TranscriptFinalizer {
             DiagnosticMetric.APPLIED to if (result.harper.edits > 0) 1L else 0L,
             DiagnosticMetric.HARPER_EDITS to result.harper.edits.toLong(),
             DiagnosticMetric.HARPER_OUTCOME to result.harper.outcome.toLong()))
-        if (s1.diagnosticReportId != null && context.getSetting(S1_MINI_TRANSCRIPT_DIAGNOSTICS)) {
-            withContext(Dispatchers.IO) {
-                runCatching {
-                    S1MiniDiagnostics.recordTranscript(context, s1.diagnosticReportId, raw,
-                        s1.text.takeIf { s1.applied }, result.text, s1.fallbackCategory)
-                }
-            }
-        }
-        return result
+        val capture = try {
+            if (s1.diagnosticReportId != null && context.getSetting(S1_MINI_TRANSCRIPT_DIAGNOSTICS)) {
+                S1MiniTranscriptCapture.create(s1.diagnosticReportId, System.currentTimeMillis(), raw,
+                    s1.text.takeIf { s1.applied }, result.text, s1.fallbackCategory,
+                    S1MiniTranscriptDelivery.Prepared)
+            } else null
+        } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled
+        } catch (_: Throwable) { null }
+        return result.copy(capture = capture)
     }
 
     // The native boundary varies in JVM tests; cleanup guards and vocabulary stay real.

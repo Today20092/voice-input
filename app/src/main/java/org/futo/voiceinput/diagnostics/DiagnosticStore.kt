@@ -20,7 +20,8 @@ enum class DiagnosticEvent {
     CLEANUP_STARTED, CLEANUP_FINISHED, HARPER_FINISHED, RESULT_READY, DELIVERY_ACCEPTED, DELIVERY_REJECTED,
     DOWNLOAD_STARTED, DOWNLOAD_FAILED, DOWNLOAD_FINISHED, DOWNLOAD_CANCELLED,
     RESOURCE_SAMPLE, MANAGED_CRASH, PROCESS_EXIT, RETRANSCRIPTION_FINISHED, WAVEFORM_FIRST_FRAME,
-    MICROPHONE_ROUTE_CHANGED
+    MICROPHONE_ROUTE_CHANGED, KEYBOARD_SWITCH_FAILED, CAPTURE_SUMMARY, NO_SPEECH,
+    HISTORY_OPERATION_FAILED, MODEL_OPERATION_FAILED
 }
 
 @Serializable
@@ -29,7 +30,9 @@ enum class DiagnosticMetric {
     STOP_REASON, APPLIED, CATCHING_UP, BYTES, FILE_COUNT, PSS_KB, JAVA_BYTES,
     NATIVE_BYTES, AVAILABLE_BYTES, LOW_MEMORY, THERMAL_STATUS, PROCESS_CPU_MS,
     EXIT_REASON, EXIT_STATUS, EXIT_TIMESTAMP, RSS_KB, CLEANUP_PROCESS, RETRANSCRIPTION,
-    MICROPHONE_ACTIVE, MICROPHONE_PENDING, MICROPHONE_FAILURE
+    MICROPHONE_ACTIVE, MICROPHONE_PENDING, MICROPHONE_FAILURE, CAPTURED_SAMPLES, VAD_FRAMES,
+    VAD_SPEECH_FRAMES, DRAIN_SAMPLES, ZERO_READS, READ_FAILURES, STOPPING_SILENCE_FRAMES,
+    OPERATION, EXPECTED_BYTES, RESOURCE_UNAVAILABLE, DRAIN_REQUESTED_MS
 }
 
 @Serializable
@@ -68,17 +71,32 @@ data class DiagnosticRecord(
     val sessionId: String? = null,
     val model: String? = null,
     val metrics: Map<DiagnosticMetric, Long> = emptyMap(),
-    val failure: DiagnosticFailure? = null
+    val failure: DiagnosticFailure? = null,
+    val collectorId: String? = null,
+    val sequence: Long? = null,
+    val collectionMode: DiagnosticCollectionMode? = null,
+    val configuration: DiagnosticConfiguration? = null,
+    val reportId: String? = null
 )
+
+@Serializable
+enum class DiagnosticCollectionMode { Standard, Detailed }
+
+@Serializable
+data class DiagnosticModeChange(val timestampMs: Long, val enabled: Boolean, val detailedUntilMs: Long)
 
 @Serializable
 data class DiagnosticPolicy(
     val enabled: Boolean = true,
     val detailedUntilMs: Long = 0L,
-    val collectSinceMs: Long = 0L
+    val collectSinceMs: Long = 0L,
+    val modeChanges: List<DiagnosticModeChange> = emptyList(),
+    val rejectedRecords: Long = 0L
 )
 
-data class DiagnosticSnapshot(val records: List<DiagnosticRecord>, val unreadableRecords: Int)
+data class DiagnosticSnapshot(val records: List<DiagnosticRecord>, val unreadableRecords: Int,
+    val modes: List<DiagnosticModeChange> = emptyList(), val unreadableSegments: Int = 0,
+    val rejectedRecords: Long = 0L, val collectionUnavailable: Boolean = false)
 
 /** Single-process store. Callers serialize IO off the recording/UI threads. */
 class DiagnosticStore(
@@ -96,8 +114,13 @@ class DiagnosticStore(
     }
 
     private val policyFile get() = File(directory, "policy.json")
+    private val collectorId = UUID.randomUUID().toString()
+    private var sequence = 0L
     @Volatile private var policy = runCatching {
-        if (policyFile.isFile) json.decodeFromString<DiagnosticPolicy>(policyFile.readText())
+        if (policyFile.isFile) {
+            check(policyFile.length() <= 16 * 1024) { "Diagnostic policy exceeds limit" }
+            json.decodeFromString<DiagnosticPolicy>(policyFile.readText())
+        }
         else DiagnosticPolicy(collectSinceMs = now())
     }.getOrElse { DiagnosticPolicy(enabled = false, collectSinceMs = now()) }
 
@@ -133,18 +156,26 @@ class DiagnosticStore(
         model: String? = null,
         metrics: Map<DiagnosticMetric, Long> = emptyMap(),
         error: Throwable? = null,
-        detailed: Boolean = false
+        detailed: Boolean = false,
+        configuration: DiagnosticConfiguration? = null,
+        reportId: String? = null
     ) {
         if (!policy.enabled || (detailed && detailedRemainingMs() == 0L)) return
         val safeSession = sessionId?.takeIf {
             it.matches(Regex("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"))
         }
-        val record = DiagnosticRecord(timestampMs = now(), event = event, sessionId = safeSession,
+        val record = DiagnosticRecord(schemaVersion = 2, timestampMs = now(), event = event, sessionId = safeSession,
             model = model?.takeIf(knownModels::contains), metrics = metrics,
-            failure = error?.let(DiagnosticFailure::from))
+            failure = error?.let(DiagnosticFailure::from), collectorId = collectorId, sequence = ++sequence,
+            collectionMode = if (detailedRemainingMs() > 0) DiagnosticCollectionMode.Detailed else DiagnosticCollectionMode.Standard,
+            configuration = configuration?.sanitized(),
+            reportId = reportId?.takeIf { it.matches(Regex("[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}")) })
         val line = json.encodeToString(record) + "\n"
         val bytes = line.toByteArray(Charsets.UTF_8)
-        if (bytes.size > 32 * 1024 || bytes.size > maxBytes) return
+        if (bytes.size > 32 * 1024 || bytes.size > maxBytes) {
+            savePolicy(policy.copy(rejectedRecords = policy.rejectedRecords + 1))
+            return
+        }
         val files = prune().toMutableList()
         var target = files.lastOrNull()?.takeIf {
             it.length() + bytes.size <= minOf(64 * 1024L, maxBytes) &&
@@ -165,22 +196,26 @@ class DiagnosticStore(
 
     @Synchronized
     fun snapshot(): DiagnosticSnapshot {
+        if (policy.modeChanges.any { it.timestampMs < now() - retentionMs }) savePolicy(policy)
         var unreadable = 0
+        var unreadableSegments = 0
         val records = prune().flatMap { file ->
-            file.useLines { lines -> lines.mapNotNull { line ->
-                runCatching { json.decodeFromString<DiagnosticRecord>(line) }.getOrElse {
-                    unreadable++
-                    null
-                }?.takeIf { it.timestampMs in (now() - retentionMs)..now() }
-            }.toList() }
+            runCatching {
+                file.useLines { lines -> lines.mapNotNull { line ->
+                    runCatching { json.decodeFromString<DiagnosticRecord>(line) }.getOrElse {
+                        unreadable++
+                        null
+                    }?.takeIf { it.timestampMs in (now() - retentionMs)..now() }
+                }.toList() }
+            }.getOrElse { unreadableSegments++; emptyList() }
         }
-        return DiagnosticSnapshot(records, unreadable)
+        return DiagnosticSnapshot(records, unreadable, policy.modeChanges, unreadableSegments, policy.rejectedRecords)
     }
 
     @Synchronized
     fun clear() {
         segments().forEach { check(it.delete()) { "Unable to clear diagnostics" } }
-        savePolicy(policy.copy(detailedUntilMs = 0, collectSinceMs = now()))
+        savePolicy(policy.copy(detailedUntilMs = 0, collectSinceMs = now(), modeChanges = emptyList(), rejectedRecords = 0))
     }
 
     private fun segments() = directory.listFiles().orEmpty()
@@ -204,10 +239,15 @@ class DiagnosticStore(
     }
 
     private fun savePolicy(next: DiagnosticPolicy) {
+        val modes = if (next.modeChanges.isEmpty() || next.enabled != policy.enabled ||
+            next.detailedUntilMs != policy.detailedUntilMs) {
+            next.modeChanges + DiagnosticModeChange(now(), next.enabled, next.detailedUntilMs)
+        } else next.modeChanges
+        val bounded = next.copy(modeChanges = modes.filter { it.timestampMs >= now() - retentionMs }.takeLast(32))
         directory.mkdirs()
         val temporary = File(directory, "policy.tmp")
-        temporary.writeText(json.encodeToString(next))
+        temporary.writeText(json.encodeToString(bounded))
         Files.move(temporary.toPath(), policyFile.toPath(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
-        policy = next
+        policy = bounded
     }
 }

@@ -57,8 +57,8 @@ android {
         applicationId "org.futo.voiceinput"
         minSdk 26
         targetSdk 35
-        versionCode 80
-        versionName "1.4.9"
+        versionCode 82
+        versionName "1.4.10"
         buildConfigField "boolean", "BUNDLE_PARAKEET_MODEL", bundleParakeetModel.toString()
         buildConfigField "String", "S1_LLAMA_COMMIT", '"b19cbe925be361d229f0fe03435affe4a2717f37"'
         buildConfigField "String", "GIT_REVISION", '"' + gitShortHash + '"'
@@ -71,6 +71,7 @@ android {
         externalNativeBuild {
             cmake {
                 cppFlags '-O3'
+                arguments "-DS1_NGRAM_SPECULATION=${project.findProperty('s1NgramSpeculation')?.toString()?.toBoolean() ? 'ON' : 'OFF'}"
             }
         }
 
@@ -305,7 +306,17 @@ dependencies {
     implementation 'com.squareup.okhttp3:okhttp:4.11.0'
     implementation 'org.apache.commons:commons-compress:1.28.0'
 
-    implementation 'ai.moonshine:moonshine-voice:0.0.68'
+    // Test-only #41 runtime candidate; normal builds retain the published dependency.
+    if (project.hasProperty('moonshineCandidateAar')) {
+        def candidate = file(project.property('moonshineCandidateAar'))
+        def expected = project.findProperty('moonshineCandidateAarSha256')?.toString()
+        if (!expected || !(expected ==~ /[0-9a-f]{64}/) || !candidate.isFile() || sha256(candidate) != expected) {
+            throw new GradleException('Moonshine candidate requires an existing AAR and its verified lowercase SHA-256')
+        }
+        implementation files(candidate)
+    } else {
+        implementation 'ai.moonshine:moonshine-voice:0.0.68'
+    }
     implementation 'org.pytorch:executorch-android:1.2.0'
     implementation sherpaOnnxFiles
 

@@ -86,7 +86,7 @@ class PaymentCompleteActivity : ComponentActivity() {
         if((targetData?.startsWith("futo-keyboard://license/") == true) || (targetData?.startsWith("futo-voice-input://license/") == true)) {
             onPaid(targetData)
         } else {
-            Log.e("PaymentCompleteActivity", "futo-voice-input launched with invalid targetData $targetData")
+            Log.e("PaymentCompleteActivity", "futo-voice-input launched with invalid payment data")
             finish()
         }
     }

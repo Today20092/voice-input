@@ -195,7 +195,10 @@ class VoiceInputMethodService : InputMethodService(), LifecycleOwner, ViewModelS
 
         override fun sendResult(result: String, detectedLanguage: String?): Boolean {
             if (inputSession.insertion?.finish(result, detectedLanguage) != true) return false
-            onCancel()
+            runCatching { onCancel() }.onFailure {
+                org.futo.voiceinput.diagnostics.AppDiagnostics.event(
+                    org.futo.voiceinput.diagnostics.DiagnosticEvent.KEYBOARD_SWITCH_FAILED, error = it)
+            }
             return true
         }
 

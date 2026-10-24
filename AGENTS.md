@@ -68,6 +68,8 @@ Hashes in `ParakeetModel.kt` and `app/build.gradle` are currently nullable/blank
 
 ## Build And Test Commands
 
+When the maintainer requests low memory or sets a RAM limit, follow [the low-memory workflow](docs/development.md#low-memory-workflow) before verification or release work.
+
 Prereqs: JDK 17+, Android SDK platform 35, NDK `28.2.13676358`.
 
 Common commands:

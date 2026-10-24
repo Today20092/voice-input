@@ -1,5 +1,8 @@
 package org.futo.voiceinput.migration
 
+import android.util.Log
+import org.futo.voiceinput.diagnostics.DiagnosticFailure
+
 import android.content.Context
 import kotlinx.coroutines.runBlocking
 import okhttp3.Call
@@ -52,7 +55,7 @@ fun downloadModels(context: Context, modelsToDownload: List<ModelInfo>, httpClie
                     } catch (e: Exception) {
                         println("url failed ${it.url}")
                         println(response.headers)
-                        e.printStackTrace()
+                        Log.e("MigrationUtils", "Model migration failed (${DiagnosticFailure.from(e).kind})")
                     }
 
                     val fileName = it.name + ".download"

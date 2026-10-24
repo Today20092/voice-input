@@ -1,5 +1,7 @@
 package org.futo.voiceinput.ml
 
+import org.futo.voiceinput.diagnostics.DiagnosticFailure
+
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
@@ -128,7 +130,7 @@ class WhisperModelWrapper(
                 primaryModelGGML?.close()
             }
 
-            Log.e("WhisperModel", "Exception during loading primary ggml model: ${e.stackTraceToString()}")
+            Log.e("WhisperModel", "Primary model load failed (${DiagnosticFailure.from(e).kind})")
             openMigrationIfModelIsLegacy(context, primaryModel)
             throw e
         }
@@ -141,7 +143,7 @@ class WhisperModelWrapper(
                     fallbackModelGGML?.close()
                 }
 
-                Log.e("WhisperModel", "Exception during loading fallback ggml model: ${e.stackTraceToString()}")
+                Log.e("WhisperModel", "Fallback model load failed (${DiagnosticFailure.from(e).kind})")
                 openMigrationIfModelIsLegacy(context, fallbackEnglishModel)
                 throw e
             }

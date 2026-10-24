@@ -40,6 +40,7 @@ import org.futo.voiceinput.s1.S1MiniTranscriptCaptureLoadResult
 import org.futo.voiceinput.s1.S1MiniTranscriptStageStatus
 import org.futo.voiceinput.settings.S1_MINI_CONTEXT
 import org.futo.voiceinput.settings.S1_MINI_ENABLED
+import org.futo.voiceinput.settings.S1_MINI_SKIP_SHORT_TRANSCRIPTS
 import org.futo.voiceinput.settings.S1_MINI_RUNTIME
 import org.futo.voiceinput.settings.S1_MINI_STRUCTURE
 import org.futo.voiceinput.settings.S1_MINI_STYLING
@@ -70,6 +71,7 @@ fun S1MiniOptions(showTitle: Boolean = true) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val enabled = useDataStore(S1_MINI_ENABLED)
+    val skipShort = useDataStore(S1_MINI_SKIP_SHORT_TRANSCRIPTS)
     val builtInCleanup = useDataStore(org.futo.voiceinput.settings.SPEECH_BACKEND).value == "asr4all"
     if (builtInCleanup) {
         if (showTitle) ScreenTitle("Transcript cleanup")
@@ -145,6 +147,8 @@ fun S1MiniOptions(showTitle: Boolean = true) {
         }
         CleanupText("${styling.label} · ${structure.label} · ${rewriteContext.label}")
         CleanupDetails("Rewrite preferences") {
+            CleanupToggle("Skip short transcripts", skipShort.value) { skipShort.setValue(it) }
+            CleanupText("Skips AI rewrite for fewer than 10 words unless they contain a filler, a correction phrase, or a repeated word. May miss other useful edits. Off by default.")
             CleanupRadio("Tone", S1MiniStyling.entries.map { it.id to it.label }, S1_MINI_STYLING)
             CleanupRadio("Structure", S1MiniStructure.entries.map { it.id to it.label }, S1_MINI_STRUCTURE)
             CleanupRadio("Context", S1MiniContext.entries.map { it.id to it.label }, S1_MINI_CONTEXT)
@@ -379,11 +383,14 @@ private fun DiagnosticOptions() {
                 Column(Modifier.verticalScroll(rememberScrollState())) {
                     TranscriptStage("Raw transcript", capture.raw.status, capture.raw.text)
                     TranscriptStage("Cleaned transcript", capture.cleaned.status, capture.cleaned.text)
+                    TranscriptStage("Prepared transcript", capture.prepared.status, capture.prepared.text)
                     TranscriptStage(
-                        "Final delivered transcript",
+                        if (capture.delivery == org.futo.voiceinput.s1.S1MiniTranscriptDelivery.Unknown)
+                            "Final text (delivery unverified)" else "Final delivered transcript",
                         capture.finalDelivered.status,
                         capture.finalDelivered.text
                     )
+                    Text("Delivery: ${capture.delivery.name}")
                     capture.failureOrBypassReason?.let { Text("Reason: $it") }
                 }
             },

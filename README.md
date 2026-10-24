@@ -16,16 +16,14 @@ This personal fork keeps [FUTO Voice Input](https://github.com/futo-org/voice-in
 voice keyboard and speech-recognition activity. Orukeet is the default recognizer.
 Models download separately; recognition and cleanup then run on your phone.
 
-[Download the APK](https://github.com/Today20092/voice-input/releases/latest) · [Compare models on your phone](docs/model-comparison.md) · [Model guide](docs/model-guide.md) · [Release notes](docs/releases/v1.4.9.md) · [Report a problem](https://github.com/Today20092/voice-input/issues)
+[Download the APK](https://github.com/Today20092/voice-input/releases/latest) · [Compare models on your phone](docs/model-comparison.md) · [Model guide](docs/model-guide.md) · [Release notes](docs/releases/v1.4.10.md) · [Report a problem](https://github.com/Today20092/voice-input/issues)
 
-Stable [1.4.9](https://github.com/Today20092/voice-input/releases/tag/v1.4.9)
-ships a smaller APK, reduces avoidable audio allocations, applies consistent
-cleanup to saved recordings, and moves transcript-capture storage off the UI thread.
-It retains 1.4.8's Phonon recording fix and precise content-free failure diagnostics.
-It retains 1.4.7's ASR4ALL Small, Medium and Large,
-Phonon 2 and Whistle, plus Model comparison with speed, word-error and RAM charts.
-It also includes the Transcript Cleanup redesign, compact recording panel and
-clearer model installation progress. Orukeet remains the default.
+Stable [1.4.10](https://github.com/Today20092/voice-input/releases/tag/v1.4.10)
+improves diagnostic privacy, records actual text-delivery outcomes, and explains
+recognition failures. An optional setting skips S1-mini for short English text
+without fillers, corrections or repeated words. The setting starts off.
+Existing models, recordings and cleanup preferences are preserved.
+Orukeet remains the default.
 
 We recommend **Advanced settings → Model comparison** before settling on a model.
 Record two or three passages you actually dictate and compare the same audio

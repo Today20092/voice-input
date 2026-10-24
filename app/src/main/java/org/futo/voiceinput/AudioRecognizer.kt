@@ -1,5 +1,7 @@
 package org.futo.voiceinput
 
+import org.futo.voiceinput.diagnostics.DiagnosticFailure
+
 import android.Manifest
 import android.content.Context
 import android.content.Intent
@@ -37,8 +39,13 @@ import org.futo.voiceinput.diagnostics.AppDiagnostics
 import org.futo.voiceinput.diagnostics.DiagnosticEvent
 import org.futo.voiceinput.diagnostics.DiagnosticMetric
 import org.futo.voiceinput.diagnostics.DiagnosticSession
+import org.futo.voiceinput.diagnostics.DiagnosticConfiguration
 import org.futo.voiceinput.history.AudioHistoryStore
 import org.futo.voiceinput.history.audioHistory
+import org.futo.voiceinput.s1.S1MiniDiagnostics
+import org.futo.voiceinput.s1.S1MiniTranscriptCapture
+import org.futo.voiceinput.s1.S1MiniTranscriptDelivery
+import org.futo.voiceinput.settings.S1_MINI_TRANSCRIPT_DIAGNOSTICS
 import org.futo.voiceinput.settings.AUDIO_HISTORY_ENABLED
 import org.futo.voiceinput.settings.AUDIO_HISTORY_RETENTION_HOURS
 import org.futo.voiceinput.settings.ENABLE_30S_LIMIT
@@ -242,8 +249,20 @@ abstract class RecordingSession {
     private var personalVocabulary = ""
     private var backup: Pair<Long, AudioHistoryStore.Capture>? = null
     private var backupId: Pair<Long, String>? = null
+    private class CaptureEvidence {
+        var samples = 0L
+        var vadFrames = 0L
+        var speechFrames = 0L
+        var drainSamples = 0L
+        var drainRequestedMs: Long? = null
+        var zeroReads = 0L
+        var failedReads = 0L
+    }
+    private var captureEvidence: Pair<Long, CaptureEvidence>? = null
 
-    private fun backupFailed() {
+    private fun backupFailed(operation: Long = 0L, error: Throwable? = null) {
+        runCatching { diagnostics?.event(DiagnosticEvent.HISTORY_OPERATION_FAILED,
+            mapOf(DiagnosticMetric.OPERATION to operation), error = error) }
         Handler(Looper.getMainLooper()).post {
             Toast.makeText(context, R.string.audio_history_save_failed, Toast.LENGTH_LONG).show()
         }
@@ -254,7 +273,7 @@ abstract class RecordingSession {
         try {
             context.audioHistory().saveTranscript(id, text)
         } catch (error: Exception) {
-            backupFailed()
+            backupFailed(13L, error)
         }
     }
     private val streamingAudio = StreamingAudioReplay()
@@ -294,7 +313,7 @@ abstract class RecordingSession {
     protected abstract val lifecycleScope: LifecycleCoroutineScope
 
     protected abstract fun cancelled()
-    protected abstract fun finished(result: String)
+    protected abstract fun finished(result: String): Boolean
     protected abstract fun failed(error: Throwable)
     protected abstract fun languageDetected(result: String)
     protected abstract fun partialResult(result: String)
@@ -354,12 +373,12 @@ abstract class RecordingSession {
                 current.stop()
             }
         } catch(e: Exception) {
-            e.printStackTrace()
+            Log.e("AudioRecognizer", "Recorder stop failed (${DiagnosticFailure.from(e).kind})")
         } finally {
             try {
                 current.release()
             } catch(e: Exception) {
-                e.printStackTrace()
+                Log.e("AudioRecognizer", "Recorder release failed (${DiagnosticFailure.from(e).kind})")
             } finally {
                 if (recorder === current) {
                     recorder = null
@@ -453,7 +472,7 @@ abstract class RecordingSession {
                 audioManager.requestAudioFocus(focusRequest!!)
             }
         }catch(e: Exception) {
-            e.printStackTrace()
+            Log.e("AudioRecognizer", "Recorder setup failed (${DiagnosticFailure.from(e).kind})")
         }
     }
     private fun unfocusAudio() {
@@ -466,7 +485,7 @@ abstract class RecordingSession {
                 focusRequest = null
             }
         }catch(e: Exception) {
-            e.printStackTrace()
+            Log.e("AudioRecognizer", "Recorder setup failed (${DiagnosticFailure.from(e).kind})")
         }
     }
 
@@ -477,7 +496,6 @@ abstract class RecordingSession {
         val loadGeneration = recognitionGeneration
         val report = diagnostics
         val loadStarted = SystemClock.elapsedRealtime()
-        report?.event(DiagnosticEvent.MODEL_LOAD_STARTED)
         try {
             val selection = liveBenchmarkSession?.selection ?: RecognitionModelSelection(
                 runtimeId = context.getSetting(SPEECH_BACKEND),
@@ -485,6 +503,15 @@ abstract class RecordingSession {
                 nemotronVariantId = context.getSetting(NEMOTRON_PROFILE),
                 asr4allVariantId = context.getSetting(ASR4ALL_VARIANT)
             )
+            runCatching {
+                report?.event(DiagnosticEvent.MODEL_LOAD_STARTED, configuration = DiagnosticConfiguration(
+                    runtime = selection.runtimeId,
+                    modelVersion = modelLifecycle.readiness(selection)?.installedModel?.version,
+                    runtimeVersion = if (selection.runtimeId in setOf("parakeet", "orukeet", "parakeet_unified", "nemotron", "cohere"))
+                        BuildConfig.SHERPA_ONNX_VERSION else null,
+                    language = forcedLanguage.takeIf { selection.runtimeId == "whisper_ggml" }
+                ))
+            }
             val loadedBackend = if (liveBenchmarkSession != null) {
                 modelLifecycle.acquireRuntime(selection, preserveInstallation = true) {
                     val independent = liveBenchmarkSession!!.model.backend(context, onPartial = { text ->
@@ -602,16 +629,18 @@ abstract class RecordingSession {
             }
             val report = AppDiagnostics.session(readiness?.model?.id ?: backendType.id)
             diagnostics = report
-            report.event(DiagnosticEvent.SESSION_STARTED)
-            AppDiagnostics.sample(report.id, report.model)
-            diagnosticSamplingJob = lifecycleScope.launch {
-                while (!report.terminal) {
-                    delay(5_000L)
-                    if (!report.terminal) AppDiagnostics.sample(report.id, report.model, detailed = true)
+            report?.event(DiagnosticEvent.SESSION_STARTED)
+            diagnosticSamplingJob = report?.let { activeReport ->
+                lifecycleScope.launch {
+                    AppDiagnostics.sample(activeReport.id, activeReport.model)
+                    while (!activeReport.terminal) {
+                        delay(5_000L)
+                        if (!activeReport.terminal) AppDiagnostics.sample(activeReport.id, activeReport.model, detailed = true)
+                    }
                 }
             }
             if (readiness != null && !readiness.isReady) {
-                report.event(DiagnosticEvent.MODEL_REQUIRED)
+                report?.event(DiagnosticEvent.MODEL_REQUIRED)
                 needRecognitionModelDownload(readiness.model)
                 return@launch
             }
@@ -628,14 +657,14 @@ abstract class RecordingSession {
                         it.name.substringBefore(" (")
                     }
                     if (requiredModels.any { context.modelNeedsDownloading(it) }) {
-                        report.event(DiagnosticEvent.MODEL_REQUIRED)
+                        report?.event(DiagnosticEvent.MODEL_REQUIRED)
                         needWhisperModelDownload(requiredModels)
                         return@launch
                     }
             }
 
             if (context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-                report.event(DiagnosticEvent.PERMISSION_REQUIRED)
+                report?.event(DiagnosticEvent.PERMISSION_REQUIRED)
                 needPermission()
             } else {
                 startRecordingWithModelSession()
@@ -730,7 +759,7 @@ abstract class RecordingSession {
                 }
             } catch(e: Exception) {
                 println("Failed to set preferred mic direction")
-                e.printStackTrace()
+                Log.e("AudioRecognizer", "Recorder start failed (${DiagnosticFailure.from(e).kind})")
             }
 
             recorder!!.startRecording()
@@ -738,6 +767,8 @@ abstract class RecordingSession {
             if (BuildConfig.DEBUG) Log.d("WaveformTiming", "recorder_started t=${SystemClock.elapsedRealtime()}")
             val activeRecorder = recorder!!
             val captureGeneration = recognitionGeneration
+            val evidence = CaptureEvidence()
+            captureEvidence = captureGeneration to evidence
 
             focusAudio()
             isRecording = true
@@ -793,7 +824,7 @@ abstract class RecordingSession {
                     } catch (error: CancellationException) {
                         throw error
                     } catch (error: Exception) {
-                        backupFailed()
+                        backupFailed(10L, error)
                         null
                     }
 
@@ -809,6 +840,7 @@ abstract class RecordingSession {
                             val nRead = readRecorder(activeRecorder, samples, AudioRecord.READ_BLOCKING)
 
                             if(nRead <= 0) {
+                                if (nRead == 0) evidence.zeroReads++ else evidence.failedReads++
                                 if (RecordingSessionPolicy.shouldReportRecorderReadFailure(nRead,
                                     stopReason != null || captureGeneration != recognitionGeneration || report?.terminal == true)) {
                                     report?.event(DiagnosticEvent.RECORDER_READ_FAILED,
@@ -840,6 +872,8 @@ abstract class RecordingSession {
                                 while(remainingSamples > 0) {
                                     if(!vadSampleBuffer.hasRemaining()) {
                                         val isSpeech = vad.isSpeech(vadSampleBuffer.array())
+                                        evidence.vadFrames++
+                                        if (isSpeech) evidence.speechFrames++
                                         if (isSpeech) liveBenchmarkSession?.speech()
                                         vadSampleBuffer.clear()
                                         vadSampleBuffer.rewind()
@@ -967,13 +1001,26 @@ abstract class RecordingSession {
                         report?.event(DiagnosticEvent.RECORDER_FAILED, error = error)
                         throw error
                     } finally {
+                        runCatching {
+                        report?.event(DiagnosticEvent.CAPTURE_SUMMARY, mapOf(
+                            DiagnosticMetric.CAPTURED_SAMPLES to evidence.samples,
+                            DiagnosticMetric.VAD_FRAMES to evidence.vadFrames,
+                            DiagnosticMetric.VAD_SPEECH_FRAMES to evidence.speechFrames,
+                            DiagnosticMetric.DRAIN_SAMPLES to evidence.drainSamples,
+                            DiagnosticMetric.ZERO_READS to evidence.zeroReads,
+                            DiagnosticMetric.READ_FAILURES to evidence.failedReads,
+                            DiagnosticMetric.STOPPING_SILENCE_FRAMES to numConsecutiveNonSpeech.toLong(),
+                            DiagnosticMetric.STOP_REASON to (stopReason?.ordinal ?: -1).toLong()) +
+                            listOfNotNull(evidence.drainRequestedMs?.let { DiagnosticMetric.DRAIN_REQUESTED_MS to it }).toMap(),
+                            configuration = DiagnosticConfiguration(vadEnabled = shouldUseVad, durationLimitEnabled = !canExpandSpace))
+                        }
                         try {
                             capture?.finishWriting()
                             if (stopReason == null || stopReason == StopReason.Cancel ||
                                 captureGeneration != recognitionGeneration) capture?.close()
                         } catch (error: Exception) {
                             runCatching { capture?.close() }
-                            backupFailed()
+                            backupFailed(12L, error)
                         }
                         stopAndReleaseRecorder(activeRecorder)
                     }
@@ -1012,7 +1059,7 @@ abstract class RecordingSession {
             } catch (error: Exception) {
                 backup = null
                 runCatching { capture.close() }
-                backupFailed()
+                backupFailed(11L, error)
             }
         }
 
@@ -1026,6 +1073,7 @@ abstract class RecordingSession {
         }
 
         val streamingChunk = if (streamingAudio.isEnabled()) FloatArray(nRead) else null
+        captureEvidence?.takeIf { it.first == captureGeneration }?.second?.let { it.samples += nRead }
         for(i in 0 until nRead) {
             // PCM16 is asymmetric: -32768 must remain within the recognizers' [-1, 1] range.
             val sample = samples[i].toFloat() / 32768f
@@ -1077,6 +1125,7 @@ abstract class RecordingSession {
             context.getSetting(SPEECH_BACKEND).toSpeechBackendType(),
             context.getSetting(MANUAL_STOP_DRAIN_MS)
         )
+        captureEvidence?.takeIf { it.first == captureGeneration }?.second?.drainRequestedMs = drainMs
 
         val deadline = System.currentTimeMillis() + drainMs
         while(drainMs > 0L && System.currentTimeMillis() < deadline && recorder.recordingState == AudioRecord.RECORDSTATE_RECORDING) {
@@ -1086,6 +1135,7 @@ abstract class RecordingSession {
                 if(appendSamples(scratch, nRead, captureGeneration) != AppendResult.Accepted) {
                     return
                 }
+                captureEvidence?.takeIf { it.first == captureGeneration }?.second?.let { it.drainSamples += nRead }
             } else {
                 delay(10L)
             }
@@ -1122,7 +1172,7 @@ abstract class RecordingSession {
             if (runGeneration != recognitionGeneration) {
                 return
             }
-            Log.e("AudioRecognizer", "Speech recognition failed", error)
+            Log.e("AudioRecognizer", "Speech recognition failed (${DiagnosticFailure.from(error).kind})")
             report?.end(DiagnosticEvent.SESSION_FAILED, error)
             try {
                 closeFailedBackend(runGeneration)
@@ -1195,6 +1245,7 @@ abstract class RecordingSession {
 
         yield()
         var validEmpty = false
+        var transcriptCapture: S1MiniTranscriptCapture? = null
         val text = run {
             val recognitionStarted = SystemClock.elapsedRealtime()
             report?.event(DiagnosticEvent.RECOGNITION_STARTED,
@@ -1204,12 +1255,14 @@ abstract class RecordingSession {
             if (liveBenchmarkSession != null) return@run rawText
             report?.event(DiagnosticEvent.RECOGNITION_FINISHED, mapOf(
                 DiagnosticMetric.DURATION_MS to SystemClock.elapsedRealtime() - recognitionStarted,
-                DiagnosticMetric.CHARACTERS to rawText.length.toLong()))
+                DiagnosticMetric.CHARACTERS to rawText.length.toLong()),
+                configuration = DiagnosticConfiguration(language = runBackend.detectedLanguage))
             saveBackupTranscript(savedAudioId, rawText)
             val finalized = TranscriptFinalizer.clean(context, rawText, backendType,
                 runBackend.detectedLanguage, forcedLanguage, personalVocabulary, report,
                 onCleaning = { withContext(Dispatchers.Main) { cleaning() } })
             validEmpty = finalized.validEmpty
+            transcriptCapture = finalized.capture
             finalized.text
         }
 
@@ -1227,15 +1280,35 @@ abstract class RecordingSession {
         }
         clearBackend(runGeneration, runBackend)
 
-        withContext(Dispatchers.Main) {
-            if (runGeneration != recognitionGeneration) return@withContext
-            runBackend.detectedLanguage?.let(::languageDetected)
-            if (text.isBlank() && !validEmpty) {
-                failRecognition(NoSpeechRecognizedException(), runGeneration)
-            } else {
-                report?.event(DiagnosticEvent.RESULT_READY,
-                    mapOf(DiagnosticMetric.CHARACTERS to text.length.toLong()))
-                finished(text)
+        var delivery = S1MiniTranscriptDelivery.Canceled
+        try {
+            withContext(Dispatchers.Main) {
+                if (runGeneration != recognitionGeneration) return@withContext
+                runBackend.detectedLanguage?.let(::languageDetected)
+                if (text.isBlank() && !validEmpty) {
+                    delivery = S1MiniTranscriptDelivery.Prepared
+                    report?.event(DiagnosticEvent.NO_SPEECH)
+                    failRecognition(NoSpeechRecognizedException(), runGeneration)
+                } else {
+                    report?.event(DiagnosticEvent.RESULT_READY,
+                        mapOf(DiagnosticMetric.CHARACTERS to text.length.toLong()))
+                    delivery = S1MiniTranscriptDelivery.Rejected
+                    delivery = if (finished(text)) S1MiniTranscriptDelivery.Accepted else S1MiniTranscriptDelivery.Rejected
+                }
+            }
+        } finally {
+            // A successful IME commit may synchronously reset/cancel this coroutine.
+            val captureToSave = transcriptCapture
+            if (delivery != S1MiniTranscriptDelivery.Canceled && captureToSave != null) {
+                withContext(NonCancellable) {
+                    withContext(Dispatchers.IO) {
+                        runCatching {
+                            if (context.getSetting(S1_MINI_TRANSCRIPT_DIAGNOSTICS)) {
+                                S1MiniDiagnostics.recordTranscript(context, captureToSave.withDelivery(delivery))
+                            }
+                        }
+                    }
+                }
             }
         }
     }
