@@ -71,6 +71,7 @@ android {
         externalNativeBuild {
             cmake {
                 cppFlags '-O3'
+                arguments "-DS1_NGRAM_SPECULATION=${project.findProperty('s1NgramSpeculation')?.toString()?.toBoolean() ? 'ON' : 'OFF'}"
             }
         }
 

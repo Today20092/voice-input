@@ -18,11 +18,19 @@ on:
         description: 'Also build the experimental #41 ARM64 runtime and debug APK'
         type: boolean
         default: false
+      run_s1_speculation_proof:
+        description: 'Also run the experimental #40 real-model CPU parity proof'
+        type: boolean
+        default: false
 
 permissions:
   contents: write
 
 jobs:
+  s1-speculation-proof:
+    if: github.event_name == 'workflow_dispatch' && inputs.run_s1_speculation_proof
+    uses: ./.github/workflows/s1-speculation-proof.yml
+
   moonshine-candidate:
     if: github.event_name == 'workflow_dispatch' && inputs.build_moonshine_candidate
     uses: ./.github/workflows/moonshine-runtime-candidate.yml

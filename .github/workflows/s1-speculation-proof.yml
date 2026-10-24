@@ -1,0 +1,92 @@
+name: S1 ngram speculation proof
+
+on:
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: s1-speculation-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  proof:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+      - name: Check pinned runtime and download public model on runner
+        run: |
+          test "$(git -C app/src/main/cpp/third_party/llama.cpp rev-parse HEAD)" = b19cbe925be361d229f0fe03435affe4a2717f37
+          mkdir -p "$RUNNER_TEMP/s1-proof"
+          curl --fail --location --retry 3 \
+            'https://huggingface.co/superwhisper/s1-mini-GGUF/resolve/ee2c0f56e56345f475749a44ff2893e21c3cb292/s1-mini-q4_k_m.gguf?download=true' \
+            -o "$RUNNER_TEMP/s1-proof/s1-mini.gguf"
+          echo "3b41ebe2502cbd03e811d5d16b022f5ab551eda58d62597d152f89535003c634  $RUNNER_TEMP/s1-proof/s1-mini.gguf" | sha256sum --check
+      - name: Establish red baseline using original single-token generation
+        run: |
+          git show 407abb61e69b2724bc6ad02764cdd08485711517:app/src/main/cpp/s1mini_ngram.cpp > "$RUNNER_TEMP/s1-proof/plain.cpp"
+          cmake -S tools/s1_speculation -B "$RUNNER_TEMP/s1-proof/build" \
+            -DCMAKE_BUILD_TYPE=Release "-DS1_NGRAM_IMPLEMENTATION=$RUNNER_TEMP/s1-proof/plain.cpp"
+          cmake --build "$RUNNER_TEMP/s1-proof/build" --target s1_speculation_proof --parallel 2
+          if "$RUNNER_TEMP/s1-proof/build/s1_speculation_proof" "$RUNNER_TEMP/s1-proof/s1-mini.gguf" > "$RUNNER_TEMP/s1-proof/red.log" 2>&1; then
+            echo 'Original generation unexpectedly satisfied speculative acceptance checks.' >&2
+            exit 1
+          fi
+          cat "$RUNNER_TEMP/s1-proof/red.log"
+          grep -q 'no_speculative_tokens_were_verified' "$RUNNER_TEMP/s1-proof/red.log"
+      - name: Verify candidate with the same real model and public fixtures
+        run: |
+          cmake -S tools/s1_speculation -B "$RUNNER_TEMP/s1-proof/build" \
+            "-DS1_NGRAM_IMPLEMENTATION=$GITHUB_WORKSPACE/app/src/main/cpp/s1mini_ngram.cpp"
+          cmake --build "$RUNNER_TEMP/s1-proof/build" --target s1_speculation_proof --parallel 2
+          set -o pipefail
+          "$RUNNER_TEMP/s1-proof/build/s1_speculation_proof" "$RUNNER_TEMP/s1-proof/s1-mini.gguf" \
+            | tee "$RUNNER_TEMP/s1-proof/proof.log"
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+      - name: Compile enabled Android path and build installable dev candidate
+        env:
+          CMAKE_BUILD_PARALLEL_LEVEL: '2'
+        run: |
+          sdkmanager 'platforms;android-35' 'build-tools;35.0.0' 'ndk;28.2.13676358' 'cmake;3.22.1'
+          rustup toolchain install 1.98.1 --profile minimal
+          rustup target add --toolchain 1.98.1 aarch64-linux-android
+          python3 tools/harper_notices.py
+          ./gradlew --no-daemon --max-workers=1 \
+            '-Dorg.gradle.jvmargs=-Xmx2560m -XX:ActiveProcessorCount=2 -Dfile.encoding=UTF-8' \
+            -Ps1NgramSpeculation=true \
+            :app:testDevDebugUnitTest :app:lintDevDebug :app:compileDevDebugAndroidTestKotlin :app:verifyDevDebugApk
+          APK="$(find app/build/outputs/apk/dev/debug -maxdepth 1 -name '*.apk' -print -quit)"
+          test -n "$APK"
+          unzip -p "$APK" lib/arm64-v8a/libs1mini.so > "$RUNNER_TEMP/s1-proof/s1mini.so"
+          "$ANDROID_HOME/ndk/28.2.13676358/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-strings" \
+            "$RUNNER_TEMP/s1-proof/s1mini.so" > "$RUNNER_TEMP/s1-proof/native-strings.txt"
+          grep -q 'ngramPoolBytes' "$RUNNER_TEMP/s1-proof/native-strings.txt"
+          cp "$APK" "$RUNNER_TEMP/s1-proof/voice-input-dev-s1-ngram-candidate.apk"
+          cd "$RUNNER_TEMP/s1-proof"
+          sha256sum voice-input-dev-s1-ngram-candidate.apk > SHA256SUMS
+          printf 'App revision: %s\nllama.cpp: b19cbe925be361d229f0fe03435affe4a2717f37\nS1 GGUF: 3b41ebe2502cbd03e811d5d16b022f5ab551eda58d62597d152f89535003c634\nSpeculation: experimental ngram-mod, match 24, min 2, max 16, pool 65536 bytes\n' \
+            "$GITHUB_SHA" > provenance.txt
+      - name: Upload technical proof logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: s1-speculation-proof-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/s1-proof/*.log
+            ${{ runner.temp }}/s1-proof/*.apk
+            ${{ runner.temp }}/s1-proof/SHA256SUMS
+            ${{ runner.temp }}/s1-proof/provenance.txt
+          if-no-files-found: warn
+          retention-days: 14
