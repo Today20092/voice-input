@@ -1,6 +1,7 @@
 package org.futo.voiceinput
 
 import android.content.Context
+import android.content.ContextWrapper
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleCoroutineScope
 import androidx.lifecycle.LifecycleOwner
@@ -14,14 +15,55 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.flow.first
 import org.futo.voiceinput.backend.StreamingSpeechBackend
 import org.futo.voiceinput.ml.RunState
 import org.futo.voiceinput.recognition.RecognitionModel
+import org.futo.voiceinput.s1.S1MiniDiagnostics
+import org.futo.voiceinput.s1.S1MiniTranscriptDelivery
+import org.futo.voiceinput.s1.S1MiniTranscriptStageStatus
+import org.futo.voiceinput.settings.*
 import org.junit.Assert.*
 import org.junit.Test
 import java.nio.FloatBuffer
+import java.io.File
 
 class RecordingSessionFailureTest {
+    @Test fun noSpeechRetainsFailedCleanupCaptureWithoutClaimingHandoffOrCancellation() = runBlocking {
+        val base = InstrumentationRegistry.getInstrumentation().targetContext
+        val saved = base.dataStore.data.first()
+        val temporary = File(base.cacheDir, "no-speech-capture-${System.nanoTime()}").apply { mkdirs() }
+        val context = object : ContextWrapper(base) {
+            override fun getFilesDir(): File = temporary
+            override fun getCacheDir(): File = File(temporary, "cache")
+        }
+        val session = newSession(context)
+        try {
+            base.setSetting(SPEECH_BACKEND, "orukeet")
+            base.setSetting(S1_MINI_ENABLED, true)
+            base.setSetting(S1_MINI_TRANSCRIPT_DIAGNOSTICS, true)
+            base.setSetting(S1_MINI_SKIP_SHORT_TRANSCRIPTS, false)
+            base.setSetting(HARPER_ENABLED, false)
+            session.attach(FailingBackend(null, result = ""))
+            withTimeout(10_000) { session.decode() }
+
+            assertEquals(0, session.finals)
+            assertEquals(0, session.cancellations)
+            assertTrue(session.failures.single() is NoSpeechRecognizedException)
+            val capture = S1MiniDiagnostics.transcriptCaptures(context).captures.single()
+            assertEquals(S1MiniTranscriptDelivery.Prepared, capture.delivery)
+            assertEquals(S1MiniTranscriptStageStatus.Produced, capture.raw.status)
+            assertEquals("", capture.raw.text)
+            assertEquals("model_not_installed", capture.failureOrBypassReason)
+            assertEquals(S1MiniTranscriptStageStatus.NotProduced, capture.cleaned.status)
+            assertEquals(S1MiniTranscriptStageStatus.NotProduced, capture.finalDelivered.status)
+        } finally {
+            session.lifecycleScope.cancel()
+            base.dataStore.updateData { saved }
+            temporary.deleteRecursively()
+        }
+    }
+
     @Test fun fullScaleRecordingSamplesStayWithinRecognizerRange() {
         val session = newSession()
         try {
@@ -173,7 +215,8 @@ class RecordingSessionFailureTest {
     private class FailingBackend(
         private val failure: Throwable?,
         private val closeFailure: Throwable? = null,
-        private val entered: CompletableDeferred<Unit>? = null
+        private val entered: CompletableDeferred<Unit>? = null,
+        private val result: String = "known final"
     ) : StreamingSpeechBackend {
         var finishes = 0
         var closes = 0
@@ -186,7 +229,7 @@ class RecordingSessionFailureTest {
             finishes++
             entered?.let { it.complete(Unit); CompletableDeferred<Unit>().await() }
             failure?.let { throw it }
-            return "known final"
+            return result
         }
         override suspend fun close() {
             closes++
@@ -195,21 +238,21 @@ class RecordingSessionFailureTest {
         }
     }
 
-    private fun newSession(): TestSession {
+    private fun newSession(context: Context = InstrumentationRegistry.getInstrumentation().targetContext): TestSession {
         lateinit var session: TestSession
         InstrumentationRegistry.getInstrumentation().runOnMainSync {
             val owner = object : LifecycleOwner {
                 override val lifecycle = LifecycleRegistry(this)
             }
             owner.lifecycle.currentState = Lifecycle.State.RESUMED
-            session = TestSession(owner.lifecycleScope)
+            session = TestSession(owner.lifecycleScope, context)
             session.attachLease(0L)
         }
         return session
     }
 
-    private class TestSession(public override val lifecycleScope: LifecycleCoroutineScope) : RecordingSession() {
-        override val context = InstrumentationRegistry.getInstrumentation().targetContext
+    private class TestSession(public override val lifecycleScope: LifecycleCoroutineScope,
+        override val context: Context) : RecordingSession() {
         val failures = mutableListOf<Throwable>()
         var finals = 0
         var finalText: String? = null
