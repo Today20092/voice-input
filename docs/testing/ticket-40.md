@@ -93,6 +93,12 @@ artifact; the GGUF is not included. These builds run sequentially. See
 [the paired phone protocol](s1-speculation-device-protocol.md) before interpreting
 its timings. Building the executable does not run it on Android.
 
+The paired host mode uses two threads, matching the existing host proof; the
+Android executable uses six, matching the reporter's phone settings. Every row
+prints its actual thread count. An initial remote follow-up run spent over
+thirteen minutes in the new six-thread host comparison. Runner oversubscription
+was suspected but not established; this duration is not performance evidence.
+
 After pushing the reviewed changes, manually dispatch the proof workflow on that
 exact ref (replace `REVIEWED_REF`):
 

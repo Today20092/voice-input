@@ -80,6 +80,11 @@ static S1NgramResult generate(llama_model * model, const std::vector<llama_token
 }
 
 static void benchmark(llama_model * model, std::vector<std::string> fixtures) {
+#if defined(__ANDROID__)
+    constexpr int threads = 6;
+#else
+    constexpr int threads = 2;
+#endif
     fixtures.push_back(
         "so for the next release we need to review the recording flow and make sure that people can "
         "cancel a dictation and try again without losing the previous result please check the model "
@@ -99,11 +104,11 @@ static void benchmark(llama_model * model, std::vector<std::string> fixtures) {
             const int first = pair >= 0 ? pair % 2 : 0;
             for (int turn = 0; turn < 2; ++turn) {
                 const int mode = (first + turn) % 2;
-                results[mode] = generate(model, input, 256, mode == 1, cancelled, 6, &timing[mode]);
+                results[mode] = generate(model, input, 256, mode == 1, cancelled, threads, &timing[mode]);
             }
             const bool parity = results[0].tokens == results[1].tokens && results[0].ended == results[1].ended;
             std::cout << "case=" << i << " pair=" << pair << " warmup=" << (pair == -1)
-                << " first=" << (first ? "candidate" : "plain") << " threads=6 parity=" << parity
+                << " first=" << (first ? "candidate" : "plain") << " threads=" << threads << " parity=" << parity
                 << " tokens=" << results[0].tokens.size()
                 << " plainPrefillMs=" << timing[0].prefill_ms << " candidatePrefillMs=" << timing[1].prefill_ms
                 << " plainDecodeMs=" << timing[0].decode_ms << " candidateDecodeMs=" << timing[1].decode_ms
@@ -121,7 +126,7 @@ static void benchmark(llama_model * model, std::vector<std::string> fixtures) {
         }
     }
     require(drafted > 0 && accepted > 0, "no_speculative_tokens_were_verified");
-    std::cout << "PASS: paired CPU tokens/EOS, four balanced-order pairs, fresh contexts/pools, threads=6\n";
+    std::cout << "PASS: paired CPU tokens/EOS, four balanced-order pairs, fresh contexts/pools, threads=" << threads << '\n';
 }
 
 static void failure_case(llama_model * model, const std::vector<llama_token> & input,

@@ -46,6 +46,8 @@ its own context and speculative table; earlier outputs cannot seed later tables.
 One CPU model is loaded once and only one context is alive at a time. Both modes
 use six threads and a 2048-token context. The ordinary proof remains available
 without `--benchmark`, including cancellation/error/recovery checks.
+The workflow's paired host comparison uses two threads to match its existing
+proof; compare modes within each platform, not host timings against phone timings.
 
 Compare paired `candidateTotalMs`/`plainTotalMs` differences per fixture, report
 the median and range of the four differences, and keep short and long cases
