@@ -30,7 +30,9 @@ object S1MiniDiagnosticArchive {
                 if (transcriptsJsonl != null) {
                     "WARNING: THIS ARCHIVE CONTAINS DICTATED TRANSCRIPTS.\n" +
                         "S1-mini by Superwhisper diagnostic bundle. Transcript included: true.\n" +
-                        "Unreadable transcript captures skipped: $unreadableTranscriptCaptures.\n"
+                        "Unreadable transcript captures skipped: $unreadableTranscriptCaptures.\n" +
+                        "Schema 1 delivery is unverified: its finalDelivered field was prepared before handoff.\n" +
+                        "Schema 2 accepted delivery means Android accepted the handoff, not that another app displayed it.\n"
                 } else {
                     "S1-mini by Superwhisper diagnostic bundle.\n" +
                         "Contains device/model/performance metadata only. Transcript included: false.\n"

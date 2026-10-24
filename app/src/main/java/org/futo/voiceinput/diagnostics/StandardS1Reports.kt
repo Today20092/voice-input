@@ -32,6 +32,18 @@ object StandardS1Reports {
             (source["reportId"] as? JsonPrimitive)?.content?.takeIf {
                 it.matches(Regex("[0-9a-fA-F]{8}(-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}"))
             }?.let { put("reportId", it) }
+            (source["appVersion"] as? JsonPrimitive)?.content?.takeIf {
+                it.matches(Regex("[0-9]+\\.[0-9]+\\.[0-9]+(?:-(?:share-)?beta\\.[0-9]+)?(?:-moonshine)?(?:-dev)?"))
+            }?.let { put("appVersion", it) }
+            (source["modelVersion"] as? JsonPrimitive)?.content?.takeIf {
+                it.matches(Regex("v[0-9]+-[0-9a-f]{40}"))
+            }?.let { put("modelVersion", it) }
+            (source["quantization"] as? JsonPrimitive)?.content?.takeIf { it == "Q4_K_M" }
+                ?.let { put("quantization", it) }
+            (source["backendLoaderErrors"] as? JsonArray)?.let { put("backendLoaderErrorCount", it.size) }
+            (source["backendLoaderErrorCount"] as? JsonPrimitive)?.longOrNull?.let {
+                put("backendLoaderErrorCount", it)
+            }
             numbers.forEach { key -> (source[key] as? JsonPrimitive)?.longOrNull?.let { put(key, it) } }
             listOf("warm", "nativeLibraryDirPresent").forEach { key ->
                 (source[key] as? JsonPrimitive)?.booleanOrNull?.let { put(key, it) }
