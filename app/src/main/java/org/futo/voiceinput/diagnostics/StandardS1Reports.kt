@@ -96,6 +96,11 @@ object StandardS1Reports {
                 })
             }
             put("transcriptIncluded", false)
+        }.let { projected ->
+            if ((source["errorCategory"] as? JsonPrimitive)?.content == "short_transcript_bypass") {
+                JsonObject(projected.filterKeys { it !in setOf(
+                    "runtimeSelected", "threads", "warm", "nativeLibraryDirPresent", "backendLoaderErrorCount") })
+            } else projected
         }.toString()
     }.getOrNull()
 }
