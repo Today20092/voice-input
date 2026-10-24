@@ -46,6 +46,7 @@ class TranscriptCleanupUiTest {
             it[HARPER_ENABLED.key] = false
             it[HARPER_EXPLICIT_ENGLISH.key] = false
             it[S1_MINI_ENABLED.key] = false
+            it[S1_MINI_SKIP_SHORT_TRANSCRIPTS.key] = false
             it[S1_MINI_STYLING.key] = S1MiniStyling.SemiFormal.id
         }
         Unit
@@ -111,6 +112,17 @@ class TranscriptCleanupUiTest {
         }
         compose.onNodeWithText("What can it rewrite?").performScrollTo().performClick()
         compose.onNodeWithText("English only. Assumes English", substring = true).performScrollTo().assertIsDisplayed()
+    }
+
+    @Test fun shortBypassIsOptInAndDoesNotEnableAiRewrite() {
+        show()
+        compose.onNodeWithText("Rewrite preferences").performScrollTo().performClick()
+        compose.onNodeWithText("Skip short transcripts").performScrollTo().assertIsOff().performClick()
+        awaitToggle("Skip short transcripts", true)
+        runBlocking {
+            assertEquals(true, compose.activity.getSetting(S1_MINI_SKIP_SHORT_TRANSCRIPTS))
+            assertEquals(false, compose.activity.getSetting(S1_MINI_ENABLED))
+        }
     }
 
     @Test fun combinedOrderAppearsOnlyWhenBothOptionsAreEnabled() {

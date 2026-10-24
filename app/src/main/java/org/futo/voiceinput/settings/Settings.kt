@@ -198,6 +198,7 @@ fun String.toS1MiniWarmDuration() =
     S1MiniWarmDuration.entries.firstOrNull { it.id == this } ?: S1MiniWarmDuration.TwoMinutes
 
 val S1_MINI_ENABLED = SettingsKey(booleanPreferencesKey("s1_mini_enabled"), false)
+val S1_MINI_SKIP_SHORT_TRANSCRIPTS = SettingsKey(booleanPreferencesKey("s1_mini_skip_short_transcripts"), false)
 val HARPER_ENABLED = SettingsKey(booleanPreferencesKey("harper_enabled"), false)
 val HARPER_EXPLICIT_ENGLISH = SettingsKey(booleanPreferencesKey("harper_explicit_english"), false)
 val S1_MINI_TRANSCRIPT_DIAGNOSTICS =

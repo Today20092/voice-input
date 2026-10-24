@@ -12,6 +12,7 @@ import org.futo.voiceinput.settings.S1_MINI_AUTO_BACKEND
 import org.futo.voiceinput.settings.S1_MINI_AUTO_THREADS
 import org.futo.voiceinput.settings.S1_MINI_CONTEXT
 import org.futo.voiceinput.settings.S1_MINI_ENABLED
+import org.futo.voiceinput.settings.S1_MINI_SKIP_SHORT_TRANSCRIPTS
 import org.futo.voiceinput.settings.S1_MINI_RUNTIME
 import org.futo.voiceinput.settings.S1_MINI_STRUCTURE
 import org.futo.voiceinput.settings.S1_MINI_STYLING
@@ -82,14 +83,16 @@ object S1MiniTranscriptCleaner {
             elapsedMs: Long,
             nativeMetrics: List<String>,
             outcome: String,
-            errorCategory: String?
+            errorCategory: String?,
+            collectRuntimeDetails: Boolean = true
         ): String? = try {
-            val nativeLibraryDir = context.applicationInfo.nativeLibraryDir
-            val packagedBackendLibraries = File(nativeLibraryDir).listFiles().orEmpty()
+            val nativeLibraryDir = if (collectRuntimeDetails) context.applicationInfo.nativeLibraryDir else ""
+            val packagedBackendLibraries = (if (collectRuntimeDetails) File(nativeLibraryDir).listFiles().orEmpty()
+                else emptyArray())
                 .map { it.name }
                 .filter { it.startsWith("libggml-") || it == "libs1mini.so" || it == "libllama.so" }
                 .sorted()
-            val backendDiscovery = try {
+            val backendDiscovery = if (!collectRuntimeDetails) S1MiniBackendDiscovery(emptyList(), emptyList()) else try {
                 withTimeout(2_000L) { S1MiniClient.discoverBackends(context) }
             } catch (_: TimeoutCancellationException) {
                 S1MiniBackendDiscovery(emptyList(), emptyList())
@@ -128,6 +131,14 @@ object S1MiniTranscriptCleaner {
             run.reportId
         } catch (cancelled: CancellationException) { throw cancelled
         } catch (_: Throwable) { null }
+
+        if (context.getSetting(S1_MINI_SKIP_SHORT_TRANSCRIPTS) &&
+            S1MiniShortTranscriptPolicy.shouldSkip(rawTranscript)) {
+            val reportId = recordDiagnostic(0, 0, 0, emptyList(), "fallback", "short_transcript_bypass",
+                collectRuntimeDetails = false)
+            return S1MiniCleanupResult(rawTranscript, applied = false,
+                fallbackCategory = "short_transcript_bypass", diagnosticReportId = reportId)
+        }
 
         if (!S1MiniModel.isInstalled(context)) {
             val reportId = recordDiagnostic(
