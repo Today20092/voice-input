@@ -69,4 +69,33 @@ class DiagnosticEvidenceTest {
             assertTrue(summary.contains("No session evidence available"))
         }
     }
+
+    @Test fun collectionModesAreBoundedAndOversizeRejectionsRemainVisibleAfterRestart() {
+        val directory = temporary.newFolder()
+        val store = DiagnosticStore(directory, now = { 1000L }, maxBytes = 128L)
+        repeat(50) { store.startDetailed(); store.stopDetailed() }
+        store.record(DiagnosticEvent.SESSION_STARTED)
+        val reopened = DiagnosticStore(directory, now = { 1000L }, maxBytes = 128L)
+        assertEquals(32, reopened.snapshot().modes.size)
+        assertEquals(1L, reopened.snapshot().rejectedRecords)
+        assertTrue(reopened.snapshot().records.isEmpty())
+    }
+
+    @Test fun readableCaptureEvidenceSeparatesRealSamplesFromEmptyRecognition() {
+        val output = temporary.newFile("capture.zip")
+        val store = DiagnosticStore(temporary.newFolder())
+        val session = "11111111-1111-1111-1111-111111111111"
+        store.record(DiagnosticEvent.CAPTURE_SUMMARY, session, metrics = mapOf(
+            DiagnosticMetric.CAPTURED_SAMPLES to 16000L, DiagnosticMetric.VAD_SPEECH_FRAMES to 20L,
+            DiagnosticMetric.DRAIN_SAMPLES to 1600L, DiagnosticMetric.STOP_REASON to 0L))
+        store.record(DiagnosticEvent.NO_SPEECH, session)
+        DiagnosticArchive.write(output, store.snapshot(), "{}", "{}", "", "", emptyMap(), 0)
+        ZipFile(output).use { zip ->
+            val summary = zip.getInputStream(zip.getEntry("summary.txt")).bufferedReader().readText()
+            assertTrue(summary.contains("Captured samples: 16000"))
+            assertTrue(summary.contains("VAD speech frames: 20"))
+            assertTrue(summary.contains("Drained samples: 1600"))
+            assertTrue(summary.contains("NO_SPEECH"))
+        }
+    }
 }
