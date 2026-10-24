@@ -163,6 +163,20 @@ jobs:
           fi
           cp "$APK_PATH" "release/${APK_NAME}-${VERSION}.apk"
 
+      - name: Verify stripped native payload and separate symbols
+        run: |
+          APK_PATH="$(find "$APK_DIR" -maxdepth 1 -type f -name '*.apk' | head -n 1)"
+          python3 tools/verify_native_packaging.py "$APK_PATH" \
+            app/build/outputs/native-debug-symbols/standaloneRelease/native-debug-symbols.zip \
+            --readelf "$ANDROID_HOME/ndk/28.2.13676358/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-readelf"
+
+      - name: Upload native debug symbols
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-debug-symbols-${{ github.sha }}
+          path: app/build/outputs/native-debug-symbols/standaloneRelease/native-debug-symbols.zip
+          if-no-files-found: error
+
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:

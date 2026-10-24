@@ -5,6 +5,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.io.File
+import java.io.IOException
 
 @Serializable
 enum class S1MiniTranscriptStageStatus {
@@ -94,58 +95,60 @@ object S1MiniTranscriptCaptureStore {
             temporary.delete()
             error("Unable to save S1-mini transcript capture")
         }
-        purge(directory, nowEpochMs)
+        retained(directory, nowEpochMs)
     }
 
     @Synchronized
     fun load(directory: File, nowEpochMs: Long): S1MiniTranscriptCaptureLoadResult {
-        purge(directory, nowEpochMs)
-        var unreadable = 0
-        val captures = captureFiles(directory).mapNotNull { file ->
-            runCatching { json.decodeFromString<S1MiniTranscriptCapture>(file.readText()) }
-                .getOrElse {
-                    unreadable += 1
-                    null
-                }
-        }.sortedByDescending { it.capturedAtEpochMs }
-        return S1MiniTranscriptCaptureLoadResult(captures, unreadable)
+        val retained = retained(directory, nowEpochMs)
+        return S1MiniTranscriptCaptureLoadResult(
+            captures = retained.mapNotNull { it.second }.sortedByDescending { it.capturedAtEpochMs },
+            unreadableCount = retained.count { it.second == null }
+        )
     }
 
     @Synchronized
     fun delete(directory: File, reportId: String, nowEpochMs: Long): Boolean {
-        purge(directory, nowEpochMs)
-        val file = captureFiles(directory).firstOrNull { candidate ->
-            runCatching {
-                json.decodeFromString<S1MiniTranscriptCapture>(candidate.readText()).reportId == reportId
-            }.getOrDefault(false)
-        } ?: return false
-        return file.delete()
+        val file = retained(directory, nowEpochMs).firstOrNull { it.second?.reportId == reportId }
+            ?.first ?: return false
+        deleteFile(file)
+        return true
     }
 
     @Synchronized
     fun clear(directory: File) {
-        directory.deleteRecursively()
+        if (!directory.exists()) return
+        if (!directory.isDirectory || !directory.deleteRecursively()) {
+            throw IOException("Unable to clear transcript captures")
+        }
     }
 
-    private fun purge(directory: File, nowEpochMs: Long) {
-        if (!directory.isDirectory) return
-        val valid = mutableListOf<Pair<File, S1MiniTranscriptCapture>>()
+    private fun retained(directory: File, nowEpochMs: Long): List<Pair<File, S1MiniTranscriptCapture?>> {
+        val retained = mutableListOf<Pair<File, S1MiniTranscriptCapture?>>()
         captureFiles(directory).forEach { file ->
             val capture = runCatching {
                 json.decodeFromString<S1MiniTranscriptCapture>(file.readText())
             }.getOrNull()
             when {
                 capture == null && file.lastModified() <= nowEpochMs - S1MiniTranscriptCapture.RETENTION_MS ->
-                    file.delete()
-                capture != null && capture.expiresAtEpochMs <= nowEpochMs -> file.delete()
-                capture != null -> valid += file to capture
+                    deleteFile(file)
+                capture != null && capture.expiresAtEpochMs <= nowEpochMs -> deleteFile(file)
+                else -> retained += file to capture
             }
         }
-        valid.sortedByDescending { it.second.capturedAtEpochMs }
+        val excess = retained.filter { it.second != null }.sortedByDescending { it.second!!.capturedAtEpochMs }
             .drop(MAX_CAPTURES)
-            .forEach { (file, _) -> file.delete() }
+        excess.forEach { (file, _) -> deleteFile(file) }
+        return retained - excess.toSet()
     }
 
-    private fun captureFiles(directory: File): List<File> =
-        directory.listFiles { file -> file.isFile && file.extension == "json" }.orEmpty().toList()
+    private fun captureFiles(directory: File): List<File> {
+        if (!directory.exists()) return emptyList()
+        return directory.listFiles { file -> file.isFile && file.extension == "json" }?.toList()
+            ?: throw IOException("Unable to read transcript capture directory")
+    }
+
+    private fun deleteFile(file: File) {
+        if (!file.delete() && file.exists()) throw IOException("Unable to delete transcript capture")
+    }
 }

@@ -51,7 +51,7 @@ class DeviceBenchmark(private val context: Context, val store: BenchmarkStore = 
             val wake = context.getSystemService(PowerManager::class.java).newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "voiceinput:benchmark")
             wake.acquire(60 * 60 * 1000L)
             try {
-                val clips = report.clips.map { it to store.readAudio(report.runId, it) }
+                val clips = report.clips
                 require(clips.isNotEmpty())
                 require(report.clips.map { it.language }.distinct().size == 1) { "Use one recording language per comparison" }
                 val language = report.clips.first().language
@@ -92,6 +92,7 @@ class DeviceBenchmark(private val context: Context, val store: BenchmarkStore = 
                         }
                         try {
                             BenchmarkRunner(environment = ::environment, warmRepetitions = report.warmRepetitions).runCase(result, clips,
+                                { store.readAudio(report.runId, it) },
                                 { model.recognizer(context, language) }, { store.save(report) })
                         } finally { sampler.cancelAndJoin() }
                     }

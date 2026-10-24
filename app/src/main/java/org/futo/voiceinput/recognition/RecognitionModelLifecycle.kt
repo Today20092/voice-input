@@ -15,14 +15,8 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import org.futo.voiceinput.WhisperGGMLBackend
 import org.futo.voiceinput.backend.SpeechBackend
-import org.futo.voiceinput.cohere.CohereBackend
 import org.futo.voiceinput.ml.RunState
-import org.futo.voiceinput.moonshine.MoonshineBackend
-import org.futo.voiceinput.moonshine.getSelectedMoonshineModelVariant
-import org.futo.voiceinput.nemotron.SherpaStreamingBackend
 import org.futo.voiceinput.parakeet.acquireParakeetRuntime
-import org.futo.voiceinput.parakeet.orukeetBackend
-import org.futo.voiceinput.parakeet.parakeetUnifiedBackend
 import org.futo.voiceinput.parakeet.releaseParakeetArtifacts
 import org.futo.voiceinput.parakeet.releaseParakeetRuntime
 import org.futo.voiceinput.settings.MOONSHINE_MODEL_VARIANT
@@ -138,12 +132,7 @@ class RecognitionModelLifecycle(
         }
     }
 
-    fun selectionFor(model: RecognitionModel) = RecognitionModelSelection(
-        runtimeId = model.runtimeId,
-        moonshineVariantId = model.variantId.takeIf { model.runtimeId == "moonshine" },
-        nemotronVariantId = model.variantId.takeIf { model.runtimeId == "nemotron" },
-        asr4allVariantId = model.variantId.takeIf { model.runtimeId == "asr4all" }
-    )
+    fun selectionFor(model: RecognitionModel) = model.selection()
 
     fun select(model: RecognitionModel, updateSelection: (RecognitionModelSelection) -> Unit) {
         check(!benchmarkOwned) { "Model comparison is running" }
@@ -176,22 +165,15 @@ class RecognitionModelLifecycle(
         callbacks: RecognitionRuntimeCallbacks
     ): SpeechBackend = acquireRuntime(selection) {
         context.updateRecognitionModelSelection(selection)
-        val backend = when (selection.runtimeId.toSpeechBackendType()) {
+        val runtime = selection.runtimeId.toSpeechBackendType()
+        val backend = when (runtime) {
             SpeechBackendType.Parakeet -> acquireParakeetRuntime(context)
-            SpeechBackendType.Orukeet -> orukeetBackend()
-            SpeechBackendType.ParakeetUnified -> parakeetUnifiedBackend()
-            SpeechBackendType.ParakeetRedux -> org.futo.voiceinput.redux.ReduxBackend()
-            SpeechBackendType.Phonon -> org.futo.voiceinput.phonon.PhononBackend()
-            SpeechBackendType.Whistle -> org.futo.voiceinput.whistle.WhistleBackend()
-            SpeechBackendType.Nemotron -> SherpaStreamingBackend()
-            SpeechBackendType.Asr4all -> org.futo.voiceinput.asr4all.asr4allBackend(context, selection.asr4allVariantId ?: "m")
-            SpeechBackendType.Cohere -> CohereBackend()
-            SpeechBackendType.Moonshine -> MoonshineBackend(context.getSelectedMoonshineModelVariant())
             SpeechBackendType.WhisperGGML -> WhisperGGMLBackend(
                 callbacks.onStatusUpdate,
                 callbacks.onPartialDecode,
                 callbacks.forceLanguageProvider
             )
+            else -> managedRecognitionBackend(context, selection.copy(runtimeId = runtime.id))
         }
         if (selection.runtimeId != SpeechBackendType.Parakeet.id) {
             models.firstOrNull { it.runtimeId == SpeechBackendType.Parakeet.id }?.let {

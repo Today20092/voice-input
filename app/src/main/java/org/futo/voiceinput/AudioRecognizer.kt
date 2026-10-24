@@ -38,7 +38,6 @@ import org.futo.voiceinput.diagnostics.DiagnosticEvent
 import org.futo.voiceinput.diagnostics.DiagnosticMetric
 import org.futo.voiceinput.diagnostics.DiagnosticSession
 import org.futo.voiceinput.history.AudioHistoryStore
-import org.futo.voiceinput.harper.HarperTranscriptCleaner
 import org.futo.voiceinput.history.audioHistory
 import org.futo.voiceinput.settings.AUDIO_HISTORY_ENABLED
 import org.futo.voiceinput.settings.AUDIO_HISTORY_RETENTION_HOURS
@@ -54,21 +53,18 @@ import org.futo.voiceinput.settings.PARAKEET_KEEP_WARM_TIMEOUT_MS
 import org.futo.voiceinput.settings.PARAKEET_USE_VAD
 import org.futo.voiceinput.settings.PERSONAL_DICTIONARY
 import org.futo.voiceinput.settings.SPEECH_BACKEND
-import org.futo.voiceinput.settings.S1_MINI_TRANSCRIPT_DIAGNOSTICS
 import org.futo.voiceinput.settings.SpeechBackendType
 import org.futo.voiceinput.settings.getSetting
 import org.futo.voiceinput.parakeet.ParakeetEngineLease
 import org.futo.voiceinput.parakeet.parakeetUnifiedRecognitionModel
 import org.futo.voiceinput.backend.SpeechBackend
 import org.futo.voiceinput.backend.StreamingSpeechBackend
+import org.futo.voiceinput.backend.prepareRecordingFinalization
 import org.futo.voiceinput.recognition.RecognitionModel
 import org.futo.voiceinput.recognition.RecognitionModelLifecycle
 import org.futo.voiceinput.recognition.RecognitionModelSelection
 import org.futo.voiceinput.recognition.RecognitionRuntimeCallbacks
 import org.futo.voiceinput.recognition.loadOrCloseOnFailure
-import org.futo.voiceinput.s1.S1MiniCleanupResult
-import org.futo.voiceinput.s1.S1MiniDiagnostics
-import org.futo.voiceinput.s1.S1MiniTranscriptCleaner
 import org.futo.voiceinput.settings.toSpeechBackendType
 import org.futo.voiceinput.settings.toEndOfSpeechProfile
 import java.nio.FloatBuffer
@@ -1179,77 +1175,42 @@ abstract class RecordingSession {
         val backendType = (liveBenchmarkSession?.selection?.runtimeId ?: context.getSetting(SPEECH_BACKEND)).toSpeechBackendType()
         val vadEnabled = context.getSetting(IS_VAD_ENABLED) &&
             (backendType != SpeechBackendType.Parakeet || context.getSetting(PARAKEET_USE_VAD))
-        val floatArray = floatSamples.array().sliceArray(0 until floatSamples.position())
+        val sampleCount = floatSamples.position()
+        val finalizeRecording = runBackend.prepareRecordingFinalization(floatSamples)
         if (BuildConfig.DEBUG) {
             var sumSquares = 0.0
             var peak = 0.0f
-            for (sample in floatArray) {
+            for (index in 0 until sampleCount) {
+                val sample = floatSamples[index]
                 val abs = kotlin.math.abs(sample)
                 if (abs > peak) peak = abs
                 sumSquares += (sample * sample).toDouble()
             }
-            val rms = if (floatArray.isNotEmpty()) sqrt(sumSquares / floatArray.size).toFloat() else 0.0f
+            val rms = if (sampleCount > 0) sqrt(sumSquares / sampleCount).toFloat() else 0.0f
             Log.d(
                 "AudioRecognizer",
-                "capture samples=${floatArray.size} durationSec=${"%.2f".format(floatArray.size.toFloat() / AUDIO_SAMPLE_RATE)} rms=${"%.5f".format(rms)} peak=${"%.5f".format(peak)} stopReason=$finalStopReason backend=$backendType vadEnabled=$vadEnabled"
+                "capture samples=$sampleCount durationSec=${"%.2f".format(sampleCount.toFloat() / AUDIO_SAMPLE_RATE)} rms=${"%.5f".format(rms)} peak=${"%.5f".format(peak)} stopReason=$finalStopReason backend=$backendType vadEnabled=$vadEnabled"
             )
         }
 
         yield()
-        var cleanupResult = S1MiniCleanupResult("", applied = false)
+        var validEmpty = false
         val text = run {
             val recognitionStarted = SystemClock.elapsedRealtime()
             report?.event(DiagnosticEvent.RECOGNITION_STARTED,
-                mapOf(DiagnosticMetric.AUDIO_MS to floatArray.size.toLong() * 1000 / AUDIO_SAMPLE_RATE))
-            val rawText = (runBackend as? StreamingSpeechBackend)?.finishStreaming()
-                ?: runBackend.transcribe(floatArray)
+                mapOf(DiagnosticMetric.AUDIO_MS to sampleCount.toLong() * 1000 / AUDIO_SAMPLE_RATE))
+            val rawText = finalizeRecording()
             liveBenchmarkSession?.raw(rawText)
             if (liveBenchmarkSession != null) return@run rawText
             report?.event(DiagnosticEvent.RECOGNITION_FINISHED, mapOf(
                 DiagnosticMetric.DURATION_MS to SystemClock.elapsedRealtime() - recognitionStarted,
                 DiagnosticMetric.CHARACTERS to rawText.length.toLong()))
             saveBackupTranscript(savedAudioId, rawText)
-            val cleanupStarted = SystemClock.elapsedRealtime()
-            report?.event(DiagnosticEvent.CLEANUP_STARTED)
-            cleanupResult = S1MiniTranscriptCleaner.clean(
-                context = context,
-                rawTranscript = rawText,
-                backend = backendType,
-                detectedLanguage = runBackend.detectedLanguage,
-                forcedLanguage = forcedLanguage,
-                onCleaning = { withContext(Dispatchers.Main) { cleaning() } }
-            )
-            report?.event(DiagnosticEvent.CLEANUP_FINISHED, mapOf(
-                DiagnosticMetric.DURATION_MS to SystemClock.elapsedRealtime() - cleanupStarted,
-                DiagnosticMetric.APPLIED to if (cleanupResult.applied) 1L else 0L))
-            val harperStarted = SystemClock.elapsedRealtime()
-            val harperResult = HarperTranscriptCleaner.clean(
-                context, cleanupResult.text, personalVocabulary, backendType,
-                runBackend.detectedLanguage, forcedLanguage
-            )
-            report?.event(DiagnosticEvent.HARPER_FINISHED, mapOf(
-                DiagnosticMetric.DURATION_MS to SystemClock.elapsedRealtime() - harperStarted,
-                DiagnosticMetric.APPLIED to if (harperResult.edits > 0) 1L else 0L,
-                DiagnosticMetric.HARPER_EDITS to harperResult.edits.toLong(),
-                DiagnosticMetric.HARPER_OUTCOME to harperResult.outcome.toLong()))
-            val finalDeliveredText = PersonalVocabulary.apply(harperResult.text, personalVocabulary)
-            val diagnosticReportId = cleanupResult.diagnosticReportId
-            if (
-                diagnosticReportId != null &&
-                context.getSetting(S1_MINI_TRANSCRIPT_DIAGNOSTICS)
-            ) {
-                runCatching {
-                    S1MiniDiagnostics.recordTranscript(
-                        context = context,
-                        reportId = diagnosticReportId,
-                        rawTranscript = rawText,
-                        cleanedTranscript = cleanupResult.text.takeIf { cleanupResult.applied },
-                        finalDeliveredTranscript = finalDeliveredText,
-                        failureOrBypassReason = cleanupResult.fallbackCategory
-                    )
-                }
-            }
-            finalDeliveredText
+            val finalized = TranscriptFinalizer.clean(context, rawText, backendType,
+                runBackend.detectedLanguage, forcedLanguage, personalVocabulary, report,
+                onCleaning = { withContext(Dispatchers.Main) { cleaning() } })
+            validEmpty = finalized.validEmpty
+            finalized.text
         }
 
         if (runGeneration != recognitionGeneration) {
@@ -1269,7 +1230,7 @@ abstract class RecordingSession {
         withContext(Dispatchers.Main) {
             if (runGeneration != recognitionGeneration) return@withContext
             runBackend.detectedLanguage?.let(::languageDetected)
-            if (text.isBlank() && !cleanupResult.validEmpty) {
+            if (text.isBlank() && !validEmpty) {
                 failRecognition(NoSpeechRecognizedException(), runGeneration)
             } else {
                 report?.event(DiagnosticEvent.RESULT_READY,
