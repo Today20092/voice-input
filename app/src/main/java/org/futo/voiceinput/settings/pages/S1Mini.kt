@@ -379,11 +379,14 @@ private fun DiagnosticOptions() {
                 Column(Modifier.verticalScroll(rememberScrollState())) {
                     TranscriptStage("Raw transcript", capture.raw.status, capture.raw.text)
                     TranscriptStage("Cleaned transcript", capture.cleaned.status, capture.cleaned.text)
+                    TranscriptStage("Prepared transcript", capture.prepared.status, capture.prepared.text)
                     TranscriptStage(
-                        "Final delivered transcript",
+                        if (capture.delivery == org.futo.voiceinput.s1.S1MiniTranscriptDelivery.Unknown)
+                            "Final text (delivery unverified)" else "Final delivered transcript",
                         capture.finalDelivered.status,
                         capture.finalDelivered.text
                     )
+                    Text("Delivery: ${capture.delivery.name}")
                     capture.failureOrBypassReason?.let { Text("Reason: $it") }
                 }
             },

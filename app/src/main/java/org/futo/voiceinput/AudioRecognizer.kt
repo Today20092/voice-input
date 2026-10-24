@@ -41,6 +41,10 @@ import org.futo.voiceinput.diagnostics.DiagnosticMetric
 import org.futo.voiceinput.diagnostics.DiagnosticSession
 import org.futo.voiceinput.history.AudioHistoryStore
 import org.futo.voiceinput.history.audioHistory
+import org.futo.voiceinput.s1.S1MiniDiagnostics
+import org.futo.voiceinput.s1.S1MiniTranscriptCapture
+import org.futo.voiceinput.s1.S1MiniTranscriptDelivery
+import org.futo.voiceinput.settings.S1_MINI_TRANSCRIPT_DIAGNOSTICS
 import org.futo.voiceinput.settings.AUDIO_HISTORY_ENABLED
 import org.futo.voiceinput.settings.AUDIO_HISTORY_RETENTION_HOURS
 import org.futo.voiceinput.settings.ENABLE_30S_LIMIT
@@ -296,7 +300,7 @@ abstract class RecordingSession {
     protected abstract val lifecycleScope: LifecycleCoroutineScope
 
     protected abstract fun cancelled()
-    protected abstract fun finished(result: String)
+    protected abstract fun finished(result: String): Boolean
     protected abstract fun failed(error: Throwable)
     protected abstract fun languageDetected(result: String)
     protected abstract fun partialResult(result: String)
@@ -604,16 +608,18 @@ abstract class RecordingSession {
             }
             val report = AppDiagnostics.session(readiness?.model?.id ?: backendType.id)
             diagnostics = report
-            report.event(DiagnosticEvent.SESSION_STARTED)
-            AppDiagnostics.sample(report.id, report.model)
-            diagnosticSamplingJob = lifecycleScope.launch {
-                while (!report.terminal) {
-                    delay(5_000L)
-                    if (!report.terminal) AppDiagnostics.sample(report.id, report.model, detailed = true)
+            report?.event(DiagnosticEvent.SESSION_STARTED)
+            diagnosticSamplingJob = report?.let { activeReport ->
+                lifecycleScope.launch {
+                    AppDiagnostics.sample(activeReport.id, activeReport.model)
+                    while (!activeReport.terminal) {
+                        delay(5_000L)
+                        if (!activeReport.terminal) AppDiagnostics.sample(activeReport.id, activeReport.model, detailed = true)
+                    }
                 }
             }
             if (readiness != null && !readiness.isReady) {
-                report.event(DiagnosticEvent.MODEL_REQUIRED)
+                report?.event(DiagnosticEvent.MODEL_REQUIRED)
                 needRecognitionModelDownload(readiness.model)
                 return@launch
             }
@@ -630,14 +636,14 @@ abstract class RecordingSession {
                         it.name.substringBefore(" (")
                     }
                     if (requiredModels.any { context.modelNeedsDownloading(it) }) {
-                        report.event(DiagnosticEvent.MODEL_REQUIRED)
+                        report?.event(DiagnosticEvent.MODEL_REQUIRED)
                         needWhisperModelDownload(requiredModels)
                         return@launch
                     }
             }
 
             if (context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-                report.event(DiagnosticEvent.PERMISSION_REQUIRED)
+                report?.event(DiagnosticEvent.PERMISSION_REQUIRED)
                 needPermission()
             } else {
                 startRecordingWithModelSession()
@@ -1197,6 +1203,7 @@ abstract class RecordingSession {
 
         yield()
         var validEmpty = false
+        var transcriptCapture: S1MiniTranscriptCapture? = null
         val text = run {
             val recognitionStarted = SystemClock.elapsedRealtime()
             report?.event(DiagnosticEvent.RECOGNITION_STARTED,
@@ -1212,6 +1219,7 @@ abstract class RecordingSession {
                 runBackend.detectedLanguage, forcedLanguage, personalVocabulary, report,
                 onCleaning = { withContext(Dispatchers.Main) { cleaning() } })
             validEmpty = finalized.validEmpty
+            transcriptCapture = finalized.capture
             finalized.text
         }
 
@@ -1229,15 +1237,33 @@ abstract class RecordingSession {
         }
         clearBackend(runGeneration, runBackend)
 
-        withContext(Dispatchers.Main) {
-            if (runGeneration != recognitionGeneration) return@withContext
-            runBackend.detectedLanguage?.let(::languageDetected)
-            if (text.isBlank() && !validEmpty) {
-                failRecognition(NoSpeechRecognizedException(), runGeneration)
-            } else {
-                report?.event(DiagnosticEvent.RESULT_READY,
-                    mapOf(DiagnosticMetric.CHARACTERS to text.length.toLong()))
-                finished(text)
+        var delivery = S1MiniTranscriptDelivery.Canceled
+        try {
+            withContext(Dispatchers.Main) {
+                if (runGeneration != recognitionGeneration) return@withContext
+                runBackend.detectedLanguage?.let(::languageDetected)
+                if (text.isBlank() && !validEmpty) {
+                    failRecognition(NoSpeechRecognizedException(), runGeneration)
+                } else {
+                    report?.event(DiagnosticEvent.RESULT_READY,
+                        mapOf(DiagnosticMetric.CHARACTERS to text.length.toLong()))
+                    delivery = S1MiniTranscriptDelivery.Rejected
+                    delivery = if (finished(text)) S1MiniTranscriptDelivery.Accepted else S1MiniTranscriptDelivery.Rejected
+                }
+            }
+        } finally {
+            // A successful IME commit may synchronously reset/cancel this coroutine.
+            val captureToSave = transcriptCapture
+            if (delivery != S1MiniTranscriptDelivery.Canceled && captureToSave != null) {
+                withContext(NonCancellable) {
+                    withContext(Dispatchers.IO) {
+                        runCatching {
+                            if (context.getSetting(S1_MINI_TRANSCRIPT_DIAGNOSTICS)) {
+                                S1MiniDiagnostics.recordTranscript(context, captureToSave.withDelivery(delivery))
+                            }
+                        }
+                    }
+                }
             }
         }
     }
