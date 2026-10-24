@@ -79,6 +79,12 @@ set(GGML_OPENCL_USE_ADRENO_KERNELS ON CACHE BOOL "" FORCE)
 add_subdirectory("${S1_THIRD_PARTY}/llama.cpp" "${CMAKE_CURRENT_BINARY_DIR}/llama.cpp")
 
 add_library(s1mini SHARED s1mini_jni.cpp)
+option(S1_NGRAM_SPECULATION "Experimental S1 ngram-mod target verification" OFF)
+if(S1_NGRAM_SPECULATION)
+    target_sources(s1mini PRIVATE s1mini_ngram.cpp "${S1_THIRD_PARTY}/llama.cpp/common/ngram-mod.cpp")
+    target_include_directories(s1mini PRIVATE "${S1_THIRD_PARTY}/llama.cpp/common")
+    target_compile_definitions(s1mini PRIVATE S1_NGRAM_SPECULATION=1)
+endif()
 target_include_directories(s1mini PRIVATE
     "${S1_THIRD_PARTY}/llama.cpp/include"
     "${S1_THIRD_PARTY}/llama.cpp/ggml/include")

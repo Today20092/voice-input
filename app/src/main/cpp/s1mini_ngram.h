@@ -9,6 +9,8 @@ struct S1NgramResult {
     int drafted = 0;
     int accepted = 0;
     int decode_calls = 0;
+    int pool_bytes = 0;
+    int peak_batch_tokens = 0;
     bool ended = false;
 };
 

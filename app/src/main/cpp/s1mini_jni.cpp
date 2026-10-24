@@ -14,6 +14,9 @@
 
 #include "llama.h"
 #include "ggml-backend.h"
+#if defined(S1_NGRAM_SPECULATION)
+#include "s1mini_ngram.h"
+#endif
 
 namespace {
 constexpr const char * TAG = "S1MiniNative";
@@ -260,6 +263,11 @@ Java_org_futo_voiceinput_s1_S1MiniNative_normalize(
         const auto decode_started = Clock::now();
         std::string output;
         int output_tokens = 0;
+#if defined(S1_NGRAM_SPECULATION)
+        const auto generated = s1_ngram_generate(ctx.get(), vocab, sampler.get(), tokens, max_new_tokens, g_cancelled);
+        for (const auto token : generated.tokens) output += token_piece(vocab, token);
+        output_tokens = static_cast<int>(generated.tokens.size());
+#else
         for (; output_tokens < max_new_tokens && !g_cancelled.load(); ++output_tokens) {
             llama_token token = llama_sampler_sample(sampler.get(), ctx.get(), -1);
             if (llama_vocab_is_eog(vocab, token)) break;
@@ -267,6 +275,7 @@ Java_org_futo_voiceinput_s1_S1MiniNative_normalize(
             auto next = llama_batch_get_one(&token, 1);
             if (llama_decode(ctx.get(), next) != 0) throw std::runtime_error("decode_failed");
         }
+#endif
         const long decode_ms = elapsed_ms(decode_started);
         if (g_cancelled.load()) throw std::runtime_error("cancelled");
 
@@ -281,6 +290,12 @@ Java_org_futo_voiceinput_s1_S1MiniNative_normalize(
                 << ",\"totalMs\":" << elapsed_ms(total_started)
                 << ",\"inputTokens\":" << tokens.size()
                 << ",\"outputTokens\":" << output_tokens
+#if defined(S1_NGRAM_SPECULATION)
+                << ",\"draftedTokens\":" << generated.drafted
+                << ",\"acceptedDraftTokens\":" << generated.accepted
+                << ",\"decodeCalls\":" << generated.decode_calls
+                << ",\"ngramPoolBytes\":" << generated.pool_bytes
+#endif
                 << ",\"threads\":" << threads << "}";
         return string_array(env, {output, metrics.str()});
     } catch (const std::bad_alloc &) {

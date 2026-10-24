@@ -62,6 +62,44 @@ static S1NgramResult generate(llama_model * model, const std::vector<llama_token
     return result;
 }
 
+static void failure_case(llama_model * model, const std::vector<llama_token> & input,
+        const std::string & expected) {
+    std::atomic_bool cancelled{false};
+    struct AbortState {
+        bool armed = false;
+        bool cancel = false;
+        std::atomic_bool * cancelled;
+    } abort{false, false, &cancelled};
+    auto params = llama_context_default_params();
+    params.n_ctx = params.n_batch = 2048;
+    params.n_threads = params.n_threads_batch = 2;
+    params.abort_callback = [](void * value) {
+        auto & state = *static_cast<AbortState *>(value);
+        if (state.armed && state.cancel) state.cancelled->store(true);
+        return state.armed;
+    };
+    params.abort_callback_data = &abort;
+    using Context = std::unique_ptr<llama_context, decltype(&llama_free)>;
+    Context ctx(llama_init_from_model(model, params), llama_free);
+    require(ctx != nullptr, "failure_context_init_failed");
+    using Sampler = std::unique_ptr<llama_sampler, decltype(&llama_sampler_free)>;
+    Sampler sampler(llama_sampler_init_greedy(), llama_sampler_free);
+    require(sampler != nullptr, "failure_sampler_init_failed");
+    auto tokens = input;
+    require(llama_decode(ctx.get(), llama_batch_get_one(tokens.data(), tokens.size())) == 0, "failure_prefill_failed");
+    if (expected == "cancelled") cancelled = true;
+    if (expected == "decode_failed" || expected == "cancelled_during_decode") abort.armed = true;
+    if (expected == "cancelled_during_decode") abort.cancel = true;
+    if (expected == "input_too_long") tokens.resize(llama_n_ctx(ctx), tokens.front());
+    bool caught = false;
+    try {
+        s1_ngram_generate(ctx.get(), llama_model_get_vocab(model), sampler.get(), tokens, 256, cancelled);
+    } catch (const std::runtime_error & error) {
+        caught = (expected == "cancelled_during_decode" ? "cancelled" : expected) == error.what();
+    }
+    require(caught, "failure_category_not_preserved");
+}
+
 int main(int argc, char ** argv) {
     try {
         require(argc == 2, "Usage: s1_speculation_proof PINNED_S1_MODEL");
@@ -94,18 +132,28 @@ int main(int argc, char ** argv) {
             require(plain.tokens == candidate.tokens && plain.ended == candidate.ended,
                 "candidate_differs_from_greedy");
             require(candidate.ended, "fixture_did_not_reach_eos");
+            require(!plain.tokens.empty(), "fixture_has_no_output_tokens");
+            require(candidate.pool_bytes <= 64 * 1024 && candidate.peak_batch_tokens <= 17,
+                "speculation_memory_bound_exceeded");
             drafted += candidate.drafted;
             accepted += candidate.accepted;
             std::cout << "case=" << i << " tokens=" << plain.tokens.size()
-                << " plainMs=" << std::chrono::duration_cast<std::chrono::milliseconds>(middle-started).count()
-                << " candidateMs=" << std::chrono::duration_cast<std::chrono::milliseconds>(finished-middle).count()
+                << " plainTotalMs=" << std::chrono::duration_cast<std::chrono::milliseconds>(middle-started).count()
+                << " candidateTotalMs=" << std::chrono::duration_cast<std::chrono::milliseconds>(finished-middle).count()
                 << " drafted=" << candidate.drafted << " accepted=" << candidate.accepted << '\n';
             const auto truncated = generate(model.get(), input, 1, true, cancelled);
             require(truncated.tokens.size() == 1 && truncated.tokens[0] == plain.tokens[0], "token_limit_failed");
+            if (i == 0) require(generate(model.get(), input, 0, true, cancelled).tokens.empty(), "zero_limit_failed");
         }
         require(drafted > 0 && accepted > 0, "no_speculative_tokens_were_verified");
         require(drafted > accepted, "fixtures_do_not_exercise_draft_rejection");
-        std::cout << "PASS: exact token/EOS equality, token limits, accepted and rejected drafts\n";
+        auto input = tokenize(llama_model_get_vocab(model.get()), prompt(fixtures[0]));
+        for (const auto * category : {"cancelled", "cancelled_during_decode", "input_too_long", "decode_failed"}) {
+            failure_case(model.get(), input, category);
+        }
+        require(generate(model.get(), input, 256, false, cancelled).tokens ==
+            generate(model.get(), input, 256, true, cancelled).tokens, "recovery_parity_failed");
+        std::cout << "PASS: exact tokens/EOS, limits, draft accept/reject, bounded pool/batch, cancellation, failure, recovery\n";
     } catch (const std::exception & error) {
         std::cerr << "FAIL: " << error.what() << '\n';
         return 1;
