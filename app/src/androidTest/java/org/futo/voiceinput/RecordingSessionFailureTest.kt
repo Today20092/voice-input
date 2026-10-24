@@ -245,7 +245,7 @@ class RecordingSessionFailureTest {
         }
         suspend fun decode() = beginFinishing().join()
         override fun cancelled() { cancellations++ }
-        override fun finished(result: String) { finals++; finalText = result }
+        override fun finished(result: String): Boolean { finals++; finalText = result; return true }
         override fun failed(error: Throwable) { failures += error }
         override fun languageDetected(result: String) = Unit
         override fun partialResult(result: String) = Unit

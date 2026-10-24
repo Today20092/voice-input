@@ -3,6 +3,7 @@ package org.futo.voiceinput.s1
 import android.content.Context
 import android.os.SystemClock
 import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.withTimeout
 import org.futo.voiceinput.settings.LANGUAGE_TOGGLES
 import org.futo.voiceinput.settings.NEMOTRON_MULTILINGUAL_LANGUAGE
@@ -75,12 +76,6 @@ object S1MiniTranscriptCleaner {
         }
         val warmDuration = context.getSetting(S1_MINI_WARM_DURATION).toS1MiniWarmDuration()
         val warmTimeout = warmDuration.timeoutMs
-        val nativeLibraryDir = context.applicationInfo.nativeLibraryDir
-        val packagedBackendLibraries = File(nativeLibraryDir).listFiles().orEmpty()
-            .map { it.name }
-            .filter { it.startsWith("libggml-") || it == "libs1mini.so" || it == "libllama.so" }
-            .sorted()
-
         suspend fun recordDiagnostic(
             outputCharacters: Int,
             chunkCount: Int,
@@ -88,9 +83,18 @@ object S1MiniTranscriptCleaner {
             nativeMetrics: List<String>,
             outcome: String,
             errorCategory: String?
-        ): String {
+        ): String? = try {
+            val nativeLibraryDir = context.applicationInfo.nativeLibraryDir
+            val packagedBackendLibraries = File(nativeLibraryDir).listFiles().orEmpty()
+                .map { it.name }
+                .filter { it.startsWith("libggml-") || it == "libs1mini.so" || it == "libllama.so" }
+                .sorted()
             val backendDiscovery = try {
                 withTimeout(2_000L) { S1MiniClient.discoverBackends(context) }
+            } catch (_: TimeoutCancellationException) {
+                S1MiniBackendDiscovery(emptyList(), emptyList())
+            } catch (cancelled: CancellationException) {
+                throw cancelled
             } catch (error: Throwable) {
                 S1MiniBackendDiscovery(emptyList(), listOf(error.javaClass.simpleName))
             }
@@ -121,8 +125,9 @@ object S1MiniTranscriptCleaner {
                 backendLoaderErrors = backendDiscovery.loaderErrors
             )
             runCatching { S1MiniDiagnostics.record(context, run) }
-            return run.reportId
-        }
+            run.reportId
+        } catch (cancelled: CancellationException) { throw cancelled
+        } catch (_: Throwable) { null }
 
         if (!S1MiniModel.isInstalled(context)) {
             val reportId = recordDiagnostic(
@@ -169,6 +174,8 @@ object S1MiniTranscriptCleaner {
             }
         } catch (timeout: TimeoutCancellationException) {
             errorCategory = "timeout"
+        } catch (cancelled: CancellationException) {
+            throw cancelled
         } catch (error: S1MiniServiceException) {
             errorCategory = error.category
         } catch (error: Throwable) {

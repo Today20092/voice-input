@@ -265,6 +265,10 @@ object S1MiniDiagnostics {
         )
     }
 
+    fun recordTranscript(context: Context, capture: S1MiniTranscriptCapture) {
+        S1MiniTranscriptCaptureStore.save(transcriptDirectory(context), capture, System.currentTimeMillis())
+    }
+
     @Synchronized
     fun recordBenchmark(context: Context, diagnostic: S1MiniBenchmarkDiagnostic) {
         if (!AppDiagnostics.collectionEnabled()) return
