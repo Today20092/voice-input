@@ -51,6 +51,46 @@ The original three production attempts all crashed. The candidate results are
 stronger than the prior build-only evidence, but cover one affected phone and
 one cancellation cycle, not the complete regression matrix below.
 
+### Follow-up CI with exact symbol-version validation
+
+[Run 40140732558](https://github.com/Today20092/voice-input/actions/runs/40140732558)
+passed on October 24, 2026 at source
+`380b24de10c90c6a39f70a92f1f8150f57c7f02c`. The job log confirms the new
+validator fixtures passed, the stock AAR was rejected for SME/SME2 instructions,
+and the rebuilt candidate passed the stricter ELF validation. The installable
+Dev APK then passed `testDevDebugUnitTest`, `lintDevDebug`,
+`compileDevDebugAndroidTestKotlin` and `verifyDevDebugApk`, followed by the exact
+packaged-ORT byte comparison. Gradle reports 71 executed tasks; the uploaded
+artifact does not include individual unit-test XML reports or a test-case count.
+
+The [candidate artifact](https://github.com/Today20092/voice-input/actions/runs/40140732558/artifacts/12579586806)
+contains the AAR, Dev APK, `SHA256SUMS`, source/build provenance, CMake cache,
+baseline/validator logs, MIT license and third-party notices. Artifact ID:
+`12579586806`; retention ends November 7, 2026. ZIP SHA-256:
+`2d38f8b3bd37d417b5bbeb85a45f4a6b3451242bbd7e6e8ecdd40eec78a2bd94`.
+
+| File | SHA-256 |
+| --- | --- |
+| `moonshine-voice-0.0.68-ort-no-kleidiai.aar` | `b43d0fb31657e1984b7c6513578dc4a71a2a8a4b581683dc9d0bb27b221d45c7` |
+| `voice-input-dev-moonshine-ort-candidate.apk` | `5abf8b1c29725ba81a3795834e7eb8166b8f2902201754dc9bc69776e40bad8a` |
+
+The ZIP and both payload hashes were independently checked after streaming the
+artifact to disk. The APK is `1.4.10-dev`, versionCode 82, source `380b24d`,
+111,980,586 bytes, ARM64 only. Its runtime provenance still pins ORT
+`be835efc56aca19b8e810538ec93c8e150e0fc61`, Moonshine 0.0.68, NDK
+28.2.13676358, API 26, KleidiAI off and NNAPI exports on. This newer APK has not
+been device-tested; the reporter's successful OnePlus results above belong to
+the earlier `eaa25dd` APK and its distinct hash.
+
+The same AAR and APK, their hashes, ORT license/notices, provenance, CMake cache
+and baseline/validator logs are preserved in the
+[experimental prerelease](https://github.com/Today20092/voice-input/releases/tag/experiment-issues-40-41-7a6c546).
+Its tag points to the combined follow-up source `7a6c546`; the Moonshine payload
+was built from `380b24d` as recorded above. This prerelease is not marked latest
+and does not promote the workaround into the normal beta or production runtime.
+Any rebuild needs its own validation, APK hash and durable provenance, even with
+the same source.
+
 ## Source and artifact evidence
 
 - [ORT #26377](https://github.com/microsoft/onnxruntime/issues/26377) documents
@@ -136,8 +176,8 @@ bash tools/test-moonshine-ort-validator.sh
 ```
 
 Those fixtures passed locally without downloads, Gradle, native compilation or
-model loading. The historical CI pass above predates this stricter validator;
-the updated workflow has not been rerun yet.
+model loading and passed again in the follow-up remote run above. No Android
+emulator, model inference or native build ran locally for this follow-up.
 
 ## Acceptance still required
 
@@ -148,9 +188,6 @@ the updated workflow has not been rerun yet.
   compatibility where available, long dictation, final flushing, and native
   runtime coexistence. Disabling kernels may affect speed; measure rather than
   claim a performance improvement.
-- Retain the same candidate AAR, its hash, source/build provenance and license
-  notices in durable release storage; the CI artifact expires after 14 days.
-  Rebuilds need their own validation and APK hash, even with the same source.
 - After the device checks pass, select a reproducible pinned distribution
   mechanism for the production runtime and update notices/version reporting as
   necessary. Run the stricter validator and normal release checks on that exact
