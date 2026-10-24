@@ -6,6 +6,8 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.io.File
 import java.io.IOException
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
 
 @Serializable
 enum class S1MiniTranscriptStageStatus {
@@ -39,6 +41,9 @@ data class S1MiniTranscriptStage(
 }
 
 @Serializable
+enum class S1MiniTranscriptDelivery { Unknown, Prepared, Accepted, Rejected, Canceled }
+
+@Serializable
 data class S1MiniTranscriptCapture(
     val schemaVersion: Int = 1,
     val reportId: String,
@@ -47,8 +52,16 @@ data class S1MiniTranscriptCapture(
     val raw: S1MiniTranscriptStage,
     val cleaned: S1MiniTranscriptStage,
     val finalDelivered: S1MiniTranscriptStage,
-    val failureOrBypassReason: String? = null
+    val failureOrBypassReason: String? = null,
+    val prepared: S1MiniTranscriptStage = S1MiniTranscriptStage.notProduced(),
+    val delivery: S1MiniTranscriptDelivery = S1MiniTranscriptDelivery.Unknown
 ) {
+    fun withDelivery(outcome: S1MiniTranscriptDelivery) = copy(
+        delivery = outcome,
+        finalDelivered = if (outcome == S1MiniTranscriptDelivery.Accepted) prepared
+            else S1MiniTranscriptStage.notProduced()
+    )
+
     companion object {
         internal const val RETENTION_MS = 7L * 24L * 60L * 60L * 1_000L
 
@@ -58,16 +71,21 @@ data class S1MiniTranscriptCapture(
             rawTranscript: String,
             cleanedTranscript: String?,
             finalDeliveredTranscript: String,
-            failureOrBypassReason: String?
+            failureOrBypassReason: String?,
+            delivery: S1MiniTranscriptDelivery = S1MiniTranscriptDelivery.Accepted
         ) = S1MiniTranscriptCapture(
+            schemaVersion = 2,
             reportId = reportId,
             capturedAtEpochMs = capturedAtEpochMs,
             expiresAtEpochMs = capturedAtEpochMs + RETENTION_MS,
             raw = S1MiniTranscriptStage.produced(rawTranscript),
             cleaned = cleanedTranscript?.let(S1MiniTranscriptStage::produced)
                 ?: S1MiniTranscriptStage.notProduced(),
-            finalDelivered = S1MiniTranscriptStage.produced(finalDeliveredTranscript),
-            failureOrBypassReason = failureOrBypassReason
+            finalDelivered = if (delivery == S1MiniTranscriptDelivery.Accepted)
+                S1MiniTranscriptStage.produced(finalDeliveredTranscript) else S1MiniTranscriptStage.notProduced(),
+            failureOrBypassReason = failureOrBypassReason,
+            prepared = S1MiniTranscriptStage.produced(finalDeliveredTranscript),
+            delivery = delivery
         )
     }
 }
@@ -82,18 +100,21 @@ data class S1MiniTranscriptCaptureLoadResult(
 
 object S1MiniTranscriptCaptureStore {
     private const val MAX_CAPTURES = 10
+    private const val MAX_CAPTURE_BYTES = 3L * 1024 * 1024
     private val json = Json { encodeDefaults = true; ignoreUnknownKeys = true }
 
     @Synchronized
     fun save(directory: File, capture: S1MiniTranscriptCapture, nowEpochMs: Long) {
         directory.mkdirs()
+        retained(directory, nowEpochMs)
         val safeId = capture.reportId.replace(Regex("[^A-Za-z0-9._-]"), "_")
         val target = File(directory, "${capture.capturedAtEpochMs}-$safeId.json")
         val temporary = File(directory, "${target.name}.tmp")
-        temporary.writeText(json.encodeToString(capture))
-        if (!temporary.renameTo(target)) {
-            temporary.delete()
-            error("Unable to save S1-mini transcript capture")
+        try {
+            temporary.writeText(json.encodeToString(capture))
+            Files.move(temporary.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
+        } finally {
+            if (temporary.exists()) deleteFile(temporary)
         }
         retained(directory, nowEpochMs)
     }
@@ -126,17 +147,22 @@ object S1MiniTranscriptCaptureStore {
     private fun retained(directory: File, nowEpochMs: Long): List<Pair<File, S1MiniTranscriptCapture?>> {
         val retained = mutableListOf<Pair<File, S1MiniTranscriptCapture?>>()
         captureFiles(directory).forEach { file ->
+            if (file.extension == "tmp" || file.length() > MAX_CAPTURE_BYTES) {
+                deleteFile(file)
+                return@forEach
+            }
             val capture = runCatching {
                 json.decodeFromString<S1MiniTranscriptCapture>(file.readText())
             }.getOrNull()
             when {
                 capture == null && file.lastModified() <= nowEpochMs - S1MiniTranscriptCapture.RETENTION_MS ->
                     deleteFile(file)
-                capture != null && capture.expiresAtEpochMs <= nowEpochMs -> deleteFile(file)
+                capture != null && minOf(capture.expiresAtEpochMs,
+                    capture.capturedAtEpochMs + S1MiniTranscriptCapture.RETENTION_MS) <= nowEpochMs -> deleteFile(file)
                 else -> retained += file to capture
             }
         }
-        val excess = retained.filter { it.second != null }.sortedByDescending { it.second!!.capturedAtEpochMs }
+        val excess = retained.sortedByDescending { it.second?.capturedAtEpochMs ?: it.first.lastModified() }
             .drop(MAX_CAPTURES)
         excess.forEach { (file, _) -> deleteFile(file) }
         return retained - excess.toSet()
@@ -144,7 +170,7 @@ object S1MiniTranscriptCaptureStore {
 
     private fun captureFiles(directory: File): List<File> {
         if (!directory.exists()) return emptyList()
-        return directory.listFiles { file -> file.isFile && file.extension == "json" }?.toList()
+        return directory.listFiles { file -> file.isFile && file.extension in setOf("json", "tmp") }?.toList()
             ?: throw IOException("Unable to read transcript capture directory")
     }
 

@@ -73,12 +73,9 @@ const char * safe_string(const char * value, const char * fallback = "") {
 
 void log_callback(enum ggml_log_level level, const char * text, void *) {
     if (level == GGML_LOG_LEVEL_ERROR) {
-        __android_log_write(ANDROID_LOG_ERROR, TAG, text);
+        __android_log_write(ANDROID_LOG_ERROR, TAG, "backend_error");
         if (text != nullptr && g_backend_load_errors.size() < 8) {
-            std::string detail(text);
-            detail.erase(std::remove(detail.begin(), detail.end(), '\n'), detail.end());
-            detail.erase(std::remove(detail.begin(), detail.end(), '\r'), detail.end());
-            g_backend_load_errors.push_back(detail.substr(0, 512));
+            g_backend_load_errors.push_back("backend_error");
         }
     }
 }
@@ -198,6 +195,15 @@ jobjectArray string_array(JNIEnv * env, const std::vector<std::string> & values)
 }
 
 void throw_runtime(JNIEnv * env, const char * category) {
+    static const std::vector<std::string> categories = {
+        "out_of_memory", "cancelled", "invalid_native_library_dir", "native_library_dir_changed",
+        "cpu_unavailable", "opencl_unavailable", "model_load_failed", "tokenize_overflow",
+        "tokenize_failed", "input_too_long", "context_init_failed", "sampler_init_failed",
+        "prefill_failed", "decode_failed", "native_failure"
+    };
+    if (category == nullptr || std::find(categories.begin(), categories.end(), category) == categories.end()) {
+        category = "native_failure";
+    }
     auto cls = env->FindClass("java/lang/RuntimeException");
     env->ThrowNew(cls, category);
 }
@@ -280,7 +286,7 @@ Java_org_futo_voiceinput_s1_S1MiniNative_normalize(
     } catch (const std::bad_alloc &) {
         throw_runtime(env, "out_of_memory");
     } catch (const std::exception & error) {
-        __android_log_print(ANDROID_LOG_ERROR, TAG, "normalize failed: %s", error.what());
+        __android_log_write(ANDROID_LOG_ERROR, TAG, "normalize_failed");
         throw_runtime(env, error.what());
     } catch (...) {
         throw_runtime(env, "native_failure");

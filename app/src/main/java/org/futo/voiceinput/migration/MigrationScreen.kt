@@ -1,5 +1,8 @@
 package org.futo.voiceinput.migration
 
+import android.util.Log
+import org.futo.voiceinput.diagnostics.DiagnosticFailure
+
 import android.app.Activity
 import android.app.job.JobScheduler
 import android.content.Context
@@ -338,7 +341,7 @@ class MigrationActivity : ComponentActivity() {
                     } catch (e: Exception) {
                         println("url failed ${it.url}")
                         println(response.headers)
-                        e.printStackTrace()
+                        Log.e("MigrationScreen", "Model migration failed (${DiagnosticFailure.from(e).kind})")
                         it.error = true
                     }
 
