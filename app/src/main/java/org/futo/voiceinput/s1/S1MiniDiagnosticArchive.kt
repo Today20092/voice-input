@@ -1,6 +1,7 @@
 package org.futo.voiceinput.s1
 
 import java.io.File
+import org.futo.voiceinput.diagnostics.StandardS1Reports
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 
@@ -10,10 +11,10 @@ object S1MiniDiagnosticArchive {
         environmentJson: String,
         runsJsonl: String,
         benchmarkJson: String?,
-        reportText: String,
         transcriptsJsonl: String?,
         unreadableTranscriptCaptures: Int
     ) {
+        val safeRuns = runsJsonl.lineSequence().mapNotNull(StandardS1Reports::project).joinToString("\n")
         ZipOutputStream(output.outputStream().buffered()).use { zip ->
             fun entry(name: String, contents: String) {
                 zip.putNextEntry(ZipEntry(name))
@@ -33,9 +34,9 @@ object S1MiniDiagnosticArchive {
                 }
             )
             entry("environment.json", environmentJson)
-            entry("runs.jsonl", runsJsonl)
-            benchmarkJson?.let { entry("benchmark.json", it) }
-            entry("report.txt", reportText)
+            entry("runs.jsonl", safeRuns)
+            benchmarkJson?.let(StandardS1Reports::project)?.let { entry("benchmark.json", it) }
+            entry("report.txt", "S1-mini diagnostic report\nTranscript included: false\n" + safeRuns.lineSequence().lastOrNull().orEmpty())
             if (transcriptsJsonl != null) {
                 entry("transcripts.jsonl", transcriptsJsonl)
                 entry(

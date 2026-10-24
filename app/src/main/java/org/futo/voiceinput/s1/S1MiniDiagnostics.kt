@@ -111,7 +111,8 @@ object S1MiniDiagnostics {
         purgeStandard(context)
         val existing = runsFile(context).takeIf { it.isFile }?.readLines().orEmpty()
             .filter { it.isNotBlank() }
-        val retained = (existing + json.encodeToString(run)).takeLast(MAX_RUNS).toMutableList()
+        val retained = (existing + json.encodeToString(run)).mapNotNull(StandardS1Reports::project)
+            .takeLast(MAX_RUNS).toMutableList()
         while (retained.sumOf { it.toByteArray().size + 1 } > 768 * 1024) retained.removeAt(0)
         val target = runsFile(context)
         val temporary = File(target.parentFile, "${target.name}.tmp")
@@ -162,7 +163,6 @@ object S1MiniDiagnostics {
             ),
             runsJsonl = runs,
             benchmarkJson = benchmarkFile(context).takeIf { it.isFile }?.readText(),
-            reportText = latestText(context).orEmpty(),
             transcriptsJsonl = transcriptResult?.captures?.joinToString("\n") {
                 json.encodeToString(it)
             }?.let { if (it.isEmpty()) it else "$it\n" },
@@ -226,9 +226,9 @@ object S1MiniDiagnostics {
                         val original = json.parseToJsonElement(line).jsonObject
                         val dated = if ("capturedAtEpochMs" in original) original else
                             JsonObject(original + ("capturedAtEpochMs" to JsonPrimitive(legacyTimestamp)))
-                        dated.toString().takeIf {
-                            json.decodeFromString<S1MiniDiagnosticRun>(it).capturedAtEpochMs >= cutoff
-                        }
+                        dated.takeIf { (it["capturedAtEpochMs"] as? JsonPrimitive)?.content?.toLongOrNull()
+                            ?.let { timestamp -> timestamp >= cutoff } == true }
+                            ?.toString()?.let(StandardS1Reports::project)
                     }.getOrNull()
                 }
                 if (retained.isEmpty()) runs.delete()
@@ -239,7 +239,15 @@ object S1MiniDiagnostics {
                 }
             }
         }
-        benchmarkFile(context).takeIf { it.isFile && (it.lastModified() < cutoff || it.length() > 256 * 1024) }?.delete()
+        benchmarkFile(context).takeIf { it.isFile }?.let { benchmark ->
+            if (benchmark.lastModified() < cutoff || benchmark.length() > 256 * 1024) benchmark.delete()
+            else {
+                val projected = StandardS1Reports.project(benchmark.readText())
+                if (projected == null) benchmark.delete() else benchmark.writeText(projected)
+            }
+        }
+        File(directory(context), "runs.jsonl.tmp").delete()
+        File(directory(context), "benchmark.json.tmp").delete()
     }
 
     fun recordTranscript(
@@ -271,7 +279,7 @@ object S1MiniDiagnostics {
         purgeStandard(context)
         val target = benchmarkFile(context)
         val temporary = File(target.parentFile, "${target.name}.tmp")
-        val encoded = json.encodeToString(diagnostic)
+        val encoded = StandardS1Reports.project(json.encodeToString(diagnostic)) ?: return
         if (encoded.toByteArray().size > 256 * 1024) return
         temporary.writeText(encoded)
         if (!temporary.renameTo(target)) {

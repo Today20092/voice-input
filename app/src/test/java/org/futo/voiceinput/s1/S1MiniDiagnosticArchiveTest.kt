@@ -15,7 +15,7 @@ class S1MiniDiagnosticArchiveTest {
             S1MiniDiagnosticArchive.write(
                 output, "{}",
                 """{"reportId":"12345678-1234-1234-1234-123456789abc","totalMs":900,"backendLoaderErrors":["$secret"],"nativeMetricsJson":"[{\"decodeMs\":123,\"error\":\"$secret\"}]"}""",
-                """{"failures":{"cpu/4":"$secret"}}""", secret, null, 0
+                """{"failures":{"cpu/4":"$secret"}}""", null, 0
             )
             ZipFile(output).use { zip ->
                 val allText = zip.entries().asSequence().joinToString("\n") {
@@ -40,7 +40,6 @@ class S1MiniDiagnosticArchiveTest {
                 environmentJson = "{\"transcriptIncluded\":false}",
                 runsJsonl = "{\"outcome\":\"success\"}\n",
                 benchmarkJson = null,
-                reportText = "Transcript included: false",
                 transcriptsJsonl = null,
                 unreadableTranscriptCaptures = 0
             )
@@ -67,7 +66,6 @@ class S1MiniDiagnosticArchiveTest {
                 environmentJson = "{\"transcriptIncluded\":true}",
                 runsJsonl = "",
                 benchmarkJson = null,
-                reportText = "",
                 transcriptsJsonl = "{\"raw\":\"private words\"}\n",
                 unreadableTranscriptCaptures = 2
             )
@@ -92,7 +90,6 @@ class S1MiniDiagnosticArchiveTest {
                 environmentJson = "{\"transcriptIncluded\":true}",
                 runsJsonl = "",
                 benchmarkJson = null,
-                reportText = "",
                 transcriptsJsonl = "",
                 unreadableTranscriptCaptures = 2
             )
