@@ -29,6 +29,39 @@ import java.nio.FloatBuffer
 import java.io.File
 
 class RecordingSessionFailureTest {
+    @Test fun cancellationWhileRetiringAnEmptyResultDoesNotPersistStaleCapture() = runBlocking {
+        val base = InstrumentationRegistry.getInstrumentation().targetContext
+        val saved = base.dataStore.data.first()
+        val temporary = File(base.cacheDir, "cancel-empty-capture-${System.nanoTime()}").apply { mkdirs() }
+        val context = object : ContextWrapper(base) {
+            override fun getFilesDir(): File = temporary
+            override fun getCacheDir(): File = File(temporary, "cache")
+        }
+        val retiring = CompletableDeferred<Unit>()
+        val session = newSession(context)
+        try {
+            base.setSetting(SPEECH_BACKEND, "orukeet")
+            base.setSetting(S1_MINI_ENABLED, true)
+            base.setSetting(S1_MINI_TRANSCRIPT_DIAGNOSTICS, true)
+            base.setSetting(S1_MINI_SKIP_SHORT_TRANSCRIPTS, false)
+            base.setSetting(HARPER_ENABLED, false)
+            session.attach(FailingBackend(null, result = "", retiring = retiring))
+            val decoding = session.beginFinishing()
+            withTimeout(10_000) { retiring.await() }
+            session.cancelRecognizer()
+            withTimeout(10_000) { decoding.join(); session.leaseReleased.await() }
+
+            assertEquals(0, session.finals)
+            assertEquals(1, session.cancellations)
+            assertTrue(session.failures.isEmpty())
+            assertTrue(S1MiniDiagnostics.transcriptCaptures(context).captures.isEmpty())
+        } finally {
+            session.lifecycleScope.cancel()
+            base.dataStore.updateData { saved }
+            temporary.deleteRecursively()
+        }
+    }
+
     @Test fun noSpeechRetainsFailedCleanupCaptureWithoutClaimingHandoffOrCancellation() = runBlocking {
         val base = InstrumentationRegistry.getInstrumentation().targetContext
         val saved = base.dataStore.data.first()
@@ -216,7 +249,8 @@ class RecordingSessionFailureTest {
         private val failure: Throwable?,
         private val closeFailure: Throwable? = null,
         private val entered: CompletableDeferred<Unit>? = null,
-        private val result: String = "known final"
+        private val result: String = "known final",
+        private val retiring: CompletableDeferred<Unit>? = null
     ) : StreamingSpeechBackend {
         var finishes = 0
         var closes = 0
@@ -234,7 +268,10 @@ class RecordingSessionFailureTest {
         override suspend fun close() {
             closes++
             closed.complete(Unit)
-            if (closes == 1) closeFailure?.let { throw it }
+            if (closes == 1) {
+                retiring?.let { it.complete(Unit); CompletableDeferred<Unit>().await() }
+                closeFailure?.let { throw it }
+            }
         }
     }
 
