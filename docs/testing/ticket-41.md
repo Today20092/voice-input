@@ -45,8 +45,8 @@ compilation ran on the maintainer's computer.
 
 ## CI candidate
 
-`.github/workflows/moonshine-runtime-candidate.yml` runs on relevant pull requests
-or manual dispatch. It builds exact ORT 1.23.0 for ARM64/API 26 with KleidiAI off,
+`.github/workflows/moonshine-runtime-candidate.yml` runs only by manual dispatch
+or an explicit reusable-workflow call. It builds exact ORT 1.23.0 for ARM64/API 26 with KleidiAI off,
 CPU and NNAPI exports retained, NDK 28.2.13676358 and 16 KiB LOAD alignment. Native
 compilation is limited to two workers on GitHub's runner. Only the ARM64
 `libonnxruntime.so` entry is replaced in the pinned Moonshine AAR. The Java API,
@@ -59,6 +59,22 @@ all three actual versioned imports, LOAD alignment, and absence of SME entry
 instructions. It uploads the AAR, SHA-256, CMake cache, MIT license, third-party
 notices, baseline/verification logs and build provenance for 14 days. This is
 packaging evidence; it does not execute ARM64 inference.
+
+The registered release workflow can dispatch the reusable candidate before this
+new workflow is on the default branch:
+
+```powershell
+gh workflow run release-apk.yml --repo Today20092/voice-input `
+  --ref codex/ticket-priority-integration -f build_moonshine_candidate=true
+```
+
+The separate candidate job also builds the dev package alongside production,
+runs dev unit tests/lint/instrumentation compilation/native packaging checks,
+and compares the APK's ARM64 ORT bytes with the candidate AAR before uploading
+an installable APK and its hash. It uses a single Gradle worker, a 2.5 GiB heap,
+two active Java processors and two native build workers on the remote runner.
+It neither executes device instrumentation nor publishes a release. The normal
+release job is independent and unchanged.
 
 Use that artifact only in a clearly identified test build, preferably in CI:
 

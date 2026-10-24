@@ -35,7 +35,7 @@ git -C "$workspace/onnxruntime" submodule update --init --recursive --depth 1
         --build_shared_lib --skip_tests --parallel 2 \
         --android --android_sdk_path "$ANDROID_HOME" --android_ndk_path "$ndk" \
         --android_abi arm64-v8a --android_api 26 --use_nnapi --no_kleidiai \
-        --cmake_extra_defines onnxruntime_USE_KLEIDIAI=OFF \
+        --cmake_extra_defines onnxruntime_USE_KLEIDIAI=OFF onnxruntime_BUILD_UNIT_TESTS=OFF \
         'CMAKE_SHARED_LINKER_FLAGS=-Wl,-z,max-page-size=16384'
 )
 grep -q 'onnxruntime_USE_KLEIDIAI:BOOL=OFF' "$workspace/build/Release/CMakeCache.txt"
