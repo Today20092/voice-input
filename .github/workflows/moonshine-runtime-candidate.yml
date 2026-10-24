@@ -54,6 +54,7 @@ jobs:
           cd "$RUNNER_TEMP/moonshine-candidate/output"
           sha256sum voice-input-dev-moonshine-ort-candidate.apk >> SHA256SUMS
       - name: Upload candidate, license and provenance
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: moonshine-ort-no-kleidiai-${{ github.sha }}
