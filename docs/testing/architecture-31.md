@@ -28,10 +28,10 @@ Release CI runs the checker after its existing package, notice, reference-transc
 
 The unsigned controlled repack is 100,544,826 bytes, but its overall APK difference is **not a release-size result**: repacking changes compression of unrelated resources and invalidates APK signing/alignment. Compare the final integrated signed standalone APK against v1.4.8 with the checker's `--baseline` option. Stripping debug data does not establish lower inference RAM use or faster inference.
 
-## Remaining gates
+## Integrated verification and remaining device gates
 
 Final integrated signed CI [40108948096](https://github.com/Today20092/voice-input/actions/runs/40108948096), source `b995256`, passed all build/reference/test/lint/instrumentation-compilation/signature/native-symbol checks. Its APK is 105,131,976 bytes (100.26 MiB), versus 139,809,896 bytes (133.33 MiB) for signed 1.4.8: 33.07 MiB / 24.80% smaller. Compressed native entries are 47,373,376 bytes and extracted native entries 121,056,528 bytes. The separate matching symbol archive is retained in CI. These final build measurements supersede the controlled unsigned repack estimate above; physical-device gates below remain pending.
 
-The integration run must perform full signed standalone assembly, JVM tests, lint, instrumentation compilation, existing package/reference/signature gates and this artifact checker. Report final APK size from that build. No physical ARM64 device was available: model loading/inference (including every CPU/OpenCL path), Whistle execution, IME, microphone, and installation/runtime smoke tests remain pending under existing #15/#17 gates. LLVM may warn that separate `.dbg` files have no dynamic table; these AGP debug-only files are not executable libraries, and their sections/build IDs are still checked.
+No physical ARM64 device was available: model loading/inference (including every CPU/OpenCL path), Whistle execution, IME, microphone, and installation/runtime smoke tests remain pending under existing #15/#17 gates. LLVM may warn that separate `.dbg` files have no dynamic table; these AGP debug-only files are not executable libraries, and their sections/build IDs are still checked.
 
 Reference: [Android native symbols documentation](https://developer.android.com/build/include-native-symbols), fetched through Context7 for this implementation.
