@@ -9,11 +9,20 @@ on:
     tags:
       - "v*"
   workflow_dispatch:
+    inputs:
+      build_moonshine_candidate:
+        description: 'Also build the experimental #41 ARM64 runtime and debug APK'
+        type: boolean
+        default: false
 
 permissions:
   contents: write
 
 jobs:
+  moonshine-candidate:
+    if: github.event_name == 'workflow_dispatch' && inputs.build_moonshine_candidate
+    uses: ./.github/workflows/moonshine-runtime-candidate.yml
+
   build:
     name: Build APK
     runs-on: ubuntu-latest
