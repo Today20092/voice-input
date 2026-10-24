@@ -305,7 +305,17 @@ dependencies {
     implementation 'com.squareup.okhttp3:okhttp:4.11.0'
     implementation 'org.apache.commons:commons-compress:1.28.0'
 
-    implementation 'ai.moonshine:moonshine-voice:0.0.68'
+    // Test-only #41 runtime candidate; normal builds retain the published dependency.
+    if (project.hasProperty('moonshineCandidateAar')) {
+        def candidate = file(project.property('moonshineCandidateAar'))
+        def expected = project.findProperty('moonshineCandidateAarSha256')?.toString()
+        if (!expected || !(expected ==~ /[0-9a-f]{64}/) || !candidate.isFile() || sha256(candidate) != expected) {
+            throw new GradleException('Moonshine candidate requires an existing AAR and its verified lowercase SHA-256')
+        }
+        implementation files(candidate)
+    } else {
+        implementation 'ai.moonshine:moonshine-voice:0.0.68'
+    }
     implementation 'org.pytorch:executorch-android:1.2.0'
     implementation sherpaOnnxFiles
 
