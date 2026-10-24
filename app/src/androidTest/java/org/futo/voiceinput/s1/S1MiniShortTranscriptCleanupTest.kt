@@ -42,13 +42,13 @@ class S1MiniShortTranscriptCleanupTest {
             assertEquals("model_not_installed", clean("um, hello").fallbackCategory)
             assertEquals("non_english_bypass", clean(language = "fr").fallbackCategory)
             assertEquals("built_in_cleanup_bypass", clean(backend = SpeechBackendType.Asr4all).fallbackCategory)
-            val final = TranscriptFinalizer.clean(context, "Sounds good, john", SpeechBackendType.Phonon,
+            val finalized = TranscriptFinalizer.clean(context, "Sounds good, john", SpeechBackendType.Phonon,
                 "en", null, "john => Jon", null)
-            assertEquals("Sounds good, Jon", final.text)
-            assertNotNull(final.capture)
-            assertEquals("Sounds good, john", final.capture!!.raw.text)
-            assertEquals(S1MiniTranscriptStageStatus.NotProduced, final.capture.cleaned.status)
-            assertEquals("short_transcript_bypass", final.capture.failureOrBypassReason)
+            assertEquals("Sounds good, Jon", finalized.text)
+            val captured = requireNotNull(finalized.capture)
+            assertEquals("Sounds good, john", captured.raw.text)
+            assertEquals(S1MiniTranscriptStageStatus.NotProduced, captured.cleaned.status)
+            assertEquals("short_transcript_bypass", captured.failureOrBypassReason)
             base.setSetting(S1_MINI_ENABLED, false)
             assertNull(clean().fallbackCategory)
         } finally {
