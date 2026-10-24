@@ -1,0 +1,34 @@
+# Ticket 15: current release verification matrix
+
+Reviewed October 24, 2026. Issue: [#15](https://github.com/Today20092/voice-input/issues/15). Candidate inspection base: integration `bf31d24`; this is not a claim that its checks passed.
+
+## Provenance and automated gates
+
+| Evidence | Revision | Observed result |
+| --- | --- | --- |
+| [Published v1.4.9](https://github.com/Today20092/voice-input/releases/tag/v1.4.9) and [tag CI](https://github.com/Today20092/voice-input/actions/runs/40111104414) | `23212c45f3112a09aa244f548eb816e69b34d55f` | Tag CI completed successfully; release published October 24 at 16:33:59 UTC. It predates these ticket fixes. |
+| [First integration CI](https://github.com/Today20092/voice-input/actions/runs/40112986427) | `d9097f506bdf939712fd9622633072f8eff6784d` | In progress when inspected. Later capture-bound integration `bf31d24` and subsequent work are outside this run. |
+| [Ticket 19 old-code regression replay](https://github.com/Today20092/voice-input/actions/runs/40112697133) | `c9495b2c75f937302865294724100b6814365b1e` | In progress when inspected. Expected failure is not an observed red result until the job actually fails for the intended assertions. |
+
+The existing [release workflow](../../.github/workflows/release-apk.yml) already runs standalone-release JVM tests, release lint, dev-debug Android-test Kotlin compilation, Harper Rust tests, signed ARM64 release assembly, pinned Orukeet archive validation, host Phonon/Whistle reference inference, notices, APK signature/content checks, stripped native payload and matching separate debug symbols. `tools/verify_native_packaging.py` requires the exact 29-library set with one ONNX Runtime and one Sherpa JNI library, rejects duplicate ZIP entries/non-ARM64 payloads, and checks ELF alignment/build IDs. No extra parallel build or duplicate packaging job is needed.
+
+The workflow supports explicit branch dispatch. Opening a PR does not trigger it automatically because there is no `pull_request` event. Dispatch the final integration SHA after all fixes/review edits are committed, inspect failures, and attach that exact run/artifact before marking the candidate ready. Branch runs upload an artifact; only tag runs publish a release. This audit creates no release tag, version bump or production publication.
+
+## Remaining release matrix
+
+| Scope | Implementation/evidence available | Automated candidate gate | Physical/device gate still required |
+| --- | --- | --- | --- |
+| [#19 privacy/retention](ticket-19.md) | S1 projection, safe logging, capture/file/cache bounds and invalidation implemented. | Capture/archive/privacy JVM regressions, native build, lint and packaging must pass at final SHA. | Realistic sentinels across packaged native/Kotlin logs, copy/export, interruption/expiry/deletion and failed deletion; inspect packaged ACRA configuration/consent. |
+| [#21 delivery/isolation](ticket-21.md) | Prepared/accepted/rejected stages, generation guards, best-effort diagnostics and failure cleanup implemented. | JVM delivery schema tests and Android test compilation; compilation is not device execution. | Execute `TranscriptFinalizerDeviceTest` preparation/resource-failure checks, `S1MiniCaptureExecutionTest` share-failure check, real IME rejection/switch-back/cancel/interruption and one accepted final handoff. |
+| [#41 Moonshine SIGILL](https://github.com/Today20092/voice-input/issues/41) | Reporter identifies successful loading followed by a native crash on OnePlus 15; cause remains unconfirmed at this audit base. | Any proposed runtime/dependency fix needs final JVM/native/package checks and explicit runtime provenance. | Affected OnePlus 15 live/history Moonshine inference and recovery. Generic CI or a different phone cannot prove this report fixed. |
+| [#8 Orukeet no-speech](ticket-8.md) | Shared PCM correction shipped in v1.4.8; source investigation does not demonstrate another root defect. | Existing full-scale history regression and recording/smoke-test compilation; installed-model smoke tests must not be counted if skipped. | Current-build affected-Poco retry, audible complete failed recording, same-recording Orukeet versus Nemotron, detailed content-free report. |
+| [#26 ASR4ALL](../research/ticket-26-asr4all-feasibility-2026-10-09.md) | Agreed three base models and family UI shipped; earlier S25 fixture evidence remains limited to its tested revision/scenario. | Catalog/contracts/decoder tests, geometry/notices/native packaging. | Actual microphone/keyboard use, cancellation, representative accents/noise/names versus Orukeet, accessibility and sustained thermal/battery checks. Plus was removed from scope. |
+| [#27 compact IME](../research/ticket27/verification.md) | Compact full-width bars/controls and hidden IME preview shipped. Initial device run passed 18/19; correction does not establish rerun success. | UI/instrumentation compilation and existing waveform/recording tests. | FUTO Keyboard plus alternate entry path; portrait/landscape/insets, spoken TalkBack/large text, silence/processing/finish/cancel/insertion/errors/permissions/download prompts, reviewed before/after measurements/screenshots. |
+| Models, microphone and lifecycle | Existing safe installation, update/rollback, ownership, history and generation guards remain. | Focused lifecycle/readiness/update/download/recording regression suites in full JVM run. | Bluetooth routing, permission denial, download interruption/retry/corruption, active ownership, long-dictation resource exhaustion and single-result behavior. Identify tested device, editor, keyboard, headset and effective settings. |
+| [#17 comparison](https://github.com/Today20092/voice-input/issues/17) | Shared comparison UI/runner and limited historical pilot exist. | Scoring/runner/storage tests and Android compilation. | Full catalog-derived fixed-audio pass and guided live IME/activity readings, long-Moonshine continuity/Stop latency, reviewed references and reproducible reports. File throughput does not prove microphone or delivery safety. |
+
+A real production successor model is not supplied by this work; explicitly identified update/rollback fixtures must remain distinct from unavailable successor inference. Light/Balanced/Demanding labels remain advisory until measured. Standard diagnostics, transcript captures and audio history retain their separate content/retention boundaries.
+
+## Disposition
+
+Keep #15 open for current-candidate CI and device evidence. The published baseline's success cannot be reused as a pass for later commits. No local Gradle, APK/native compilation, emulator, model download or phone inference was run; only source/workflow inspection, GitHub read-only status checks and `git diff --check` were used. No automated release-script defect was demonstrated, so this ticket adds a concrete verification matrix rather than changing an already adequate build pipeline.
