@@ -4,7 +4,7 @@ Specification: [fork architecture improvements](../plans/fork-architecture-impro
 
 ## Ticket evidence
 
-- #31 native packaging: integrated. [Artifact checks and controlled measurements](architecture-31.md) pass; final signed build remains pending.
+- #31 native packaging: integrated. [Artifact checks and final signed integration measurements](architecture-31.md) passed; see integrated checks below.
 - #32 final transcript processing: integrated. [Focused verification](architecture-32.md): 29 JVM tests and Android-test compilation passed; no device execution.
 - #33 comparison audio lifetime: integrated. [Focused verification](architecture-33.md): 25 benchmark JVM tests passed, including the demonstrated eager-loading regression.
 - #34 recognition construction: integrated. [Focused verification](architecture-34.md): 33 JVM tests and Android-test compilation passed; actual native construction/configuration tests still need device execution.
