@@ -56,6 +56,7 @@ struct WhisperModelState {
 };
 
 static jlong WhisperGGML_open(JNIEnv *env, jclass clazz, jstring model_dir) {
+    whisper_log_set([](ggml_log_level, const char *, void *) {}, nullptr);
     std::string model_dir_str = jstring2string(env, model_dir);
 
     auto *state = new WhisperModelState();
@@ -63,7 +64,7 @@ static jlong WhisperGGML_open(JNIEnv *env, jclass clazz, jstring model_dir) {
     state->context = whisper_init_from_file(model_dir_str.c_str());
 
     if(!state->context){
-        AKLOGE("Failed to initialize whisper_context from path %s", model_dir_str.c_str());
+        AKLOGE("Failed to initialize whisper_context");
         delete state;
         return 0L;
     }
@@ -72,6 +73,7 @@ static jlong WhisperGGML_open(JNIEnv *env, jclass clazz, jstring model_dir) {
 }
 
 static jlong WhisperGGML_openFromBuffer(JNIEnv *env, jclass clazz, jobject buffer) {
+    whisper_log_set([](ggml_log_level, const char *, void *) {}, nullptr);
     void* buffer_address = env->GetDirectBufferAddress(buffer);
     jlong buffer_capacity = env->GetDirectBufferCapacity(buffer);
 
@@ -156,7 +158,6 @@ static jstring WhisperGGML_infer(JNIEnv *env, jobject instance, jlong handle, jf
 
     std::string prompt_str = jstring2string(env, prompt);
     wparams.initial_prompt = prompt_str.c_str();
-    AKLOGI("Initial prompt is [%s]", prompt_str.c_str());
 
     state->env = env;
     state->partial_result_instance = instance;

@@ -1,5 +1,8 @@
 package org.futo.voiceinput.downloader
 
+import android.util.Log
+import org.futo.voiceinput.diagnostics.DiagnosticFailure
+
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
@@ -593,7 +596,7 @@ class DownloadActivity : ComponentActivity() {
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (error: Exception) {
-                error.printStackTrace()
+                Log.e("DownloadActivity", "Model download failed (${DiagnosticFailure.from(error).kind})")
                 markError(model, getString(R.string.download_archive_failed,
                     error.message ?: error.javaClass.simpleName), error = error)
             }
@@ -719,7 +722,7 @@ class DownloadActivity : ComponentActivity() {
                         } catch (e: Exception) {
                             println("url failed ${it.url}")
                             println(response.headers)
-                            e.printStackTrace()
+                            Log.e("DownloadActivity", "Model download failed (${DiagnosticFailure.from(e).kind})")
                             markError(it)
                         }
 

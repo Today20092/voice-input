@@ -1,5 +1,7 @@
 package org.futo.voiceinput
 
+import org.futo.voiceinput.diagnostics.DiagnosticFailure
+
 import android.Manifest
 import android.content.Context
 import android.content.Intent
@@ -354,12 +356,12 @@ abstract class RecordingSession {
                 current.stop()
             }
         } catch(e: Exception) {
-            e.printStackTrace()
+            Log.e("AudioRecognizer", "Recorder stop failed (${DiagnosticFailure.from(e).kind})")
         } finally {
             try {
                 current.release()
             } catch(e: Exception) {
-                e.printStackTrace()
+                Log.e("AudioRecognizer", "Recorder release failed (${DiagnosticFailure.from(e).kind})")
             } finally {
                 if (recorder === current) {
                     recorder = null
@@ -453,7 +455,7 @@ abstract class RecordingSession {
                 audioManager.requestAudioFocus(focusRequest!!)
             }
         }catch(e: Exception) {
-            e.printStackTrace()
+            Log.e("AudioRecognizer", "Recorder setup failed (${DiagnosticFailure.from(e).kind})")
         }
     }
     private fun unfocusAudio() {
@@ -466,7 +468,7 @@ abstract class RecordingSession {
                 focusRequest = null
             }
         }catch(e: Exception) {
-            e.printStackTrace()
+            Log.e("AudioRecognizer", "Recorder setup failed (${DiagnosticFailure.from(e).kind})")
         }
     }
 
@@ -730,7 +732,7 @@ abstract class RecordingSession {
                 }
             } catch(e: Exception) {
                 println("Failed to set preferred mic direction")
-                e.printStackTrace()
+                Log.e("AudioRecognizer", "Recorder start failed (${DiagnosticFailure.from(e).kind})")
             }
 
             recorder!!.startRecording()
@@ -1122,7 +1124,7 @@ abstract class RecordingSession {
             if (runGeneration != recognitionGeneration) {
                 return
             }
-            Log.e("AudioRecognizer", "Speech recognition failed", error)
+            Log.e("AudioRecognizer", "Speech recognition failed (${DiagnosticFailure.from(error).kind})")
             report?.end(DiagnosticEvent.SESSION_FAILED, error)
             try {
                 closeFailedBackend(runGeneration)

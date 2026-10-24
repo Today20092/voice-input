@@ -1,5 +1,7 @@
 package org.futo.voiceinput.parakeet
 
+import org.futo.voiceinput.diagnostics.DiagnosticFailure
+
 import android.content.Context
 import android.util.Log
 import com.k2fsa.sherpa.onnx.FeatureConfig
@@ -77,7 +79,7 @@ class ParakeetBackend internal constructor(
             }
         } catch (error: Exception) {
             if (diagnosticsEnabled) {
-                Log.e(DIAGNOSTICS_TAG, "request=$requestId decode_failed", error)
+                Log.e(DIAGNOSTICS_TAG, "request=$requestId decode_failed kind=${DiagnosticFailure.from(error).kind}")
             }
             throw error
         }

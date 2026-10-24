@@ -8,6 +8,54 @@ import java.util.zip.ZipFile
 
 class S1MiniDiagnosticArchiveTest {
     @Test
+    fun cachedTranscriptArchiveExpiresWithItsOldestEvidenceAndLegacyArchivesAreRemoved() {
+        val directory = Files.createTempDirectory("s1-transcript-cache").toFile()
+        val output = directory.resolve("s1-diagnostics-WITH-TRANSCRIPTS-current.zip")
+        try {
+            S1MiniDiagnosticArchive.write(output, "{}", "", null, "{}", 0,
+                transcriptExpiresAtEpochMs = 2_000L)
+            directory.resolve("s1-diagnostics-WITH-TRANSCRIPTS-legacy.zip").apply {
+                writeText("old dictated text")
+                assertTrue(setLastModified(1_000L))
+            }
+            val standard = directory.resolve("s1-diagnostics-standard.zip").apply { writeText("technical only") }
+
+            S1MiniDiagnosticArchive.purgeExpired(directory, 1_500L)
+            assertTrue(output.exists())
+            assertFalse(directory.resolve("s1-diagnostics-WITH-TRANSCRIPTS-legacy.zip").exists())
+            S1MiniDiagnosticArchive.purgeExpired(directory, 2_000L)
+            assertFalse(output.exists())
+            assertTrue(standard.exists())
+        } finally {
+            directory.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun ordinaryArchiveProjectsRawNativeAndExceptionMetadataBeforeSharing() {
+        val output = Files.createTempFile("s1-sensitive-metadata", ".zip").toFile()
+        val secret = "Avery Support says cobalt orchard 472"
+        try {
+            S1MiniDiagnosticArchive.write(
+                output, "{}",
+                """{"reportId":"12345678-1234-1234-1234-123456789abc","totalMs":900,"backendLoaderErrors":["$secret"],"nativeMetricsJson":"[{\"decodeMs\":123,\"error\":\"$secret\"}]"}""",
+                """{"failures":{"cpu/4":"$secret"}}""", null, 0
+            )
+            ZipFile(output).use { zip ->
+                val allText = zip.entries().asSequence().joinToString("\n") {
+                    zip.getInputStream(it).bufferedReader().readText()
+                }
+                assertFalse(secret in allText)
+                assertTrue("900" in allText)
+                assertTrue("12345678-1234-1234-1234-123456789abc" in allText)
+                assertTrue("123" in allText)
+            }
+        } finally {
+            output.delete()
+        }
+    }
+
+    @Test
     fun standardArchiveNeverContainsTranscriptEntryOrText() {
         val output = Files.createTempFile("s1-standard", ".zip").toFile()
         try {
@@ -16,7 +64,6 @@ class S1MiniDiagnosticArchiveTest {
                 environmentJson = "{\"transcriptIncluded\":false}",
                 runsJsonl = "{\"outcome\":\"success\"}\n",
                 benchmarkJson = null,
-                reportText = "Transcript included: false",
                 transcriptsJsonl = null,
                 unreadableTranscriptCaptures = 0
             )
@@ -43,7 +90,6 @@ class S1MiniDiagnosticArchiveTest {
                 environmentJson = "{\"transcriptIncluded\":true}",
                 runsJsonl = "",
                 benchmarkJson = null,
-                reportText = "",
                 transcriptsJsonl = "{\"raw\":\"private words\"}\n",
                 unreadableTranscriptCaptures = 2
             )
@@ -68,7 +114,6 @@ class S1MiniDiagnosticArchiveTest {
                 environmentJson = "{\"transcriptIncluded\":true}",
                 runsJsonl = "",
                 benchmarkJson = null,
-                reportText = "",
                 transcriptsJsonl = "",
                 unreadableTranscriptCaptures = 2
             )

@@ -22,6 +22,9 @@ import org.futo.voiceinput.diagnostics.AppDiagnostics
 import org.futo.voiceinput.diagnostics.DiagnosticStore
 import org.futo.voiceinput.diagnostics.StandardS1Reports
 import java.io.File
+import java.io.IOException
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -104,6 +107,7 @@ object S1MiniDiagnostics {
     private fun runsFile(context: Context) = File(directory(context), "runs.jsonl")
     private fun benchmarkFile(context: Context) = File(directory(context), "benchmark.json")
     private fun transcriptDirectory(context: Context) = File(context.filesDir, "s1-transcript-captures")
+    private fun exportDirectory(context: Context) = File(context.cacheDir, "s1-diagnostics-export")
 
     @Synchronized
     fun record(context: Context, run: S1MiniDiagnosticRun) {
@@ -111,15 +115,13 @@ object S1MiniDiagnostics {
         purgeStandard(context)
         val existing = runsFile(context).takeIf { it.isFile }?.readLines().orEmpty()
             .filter { it.isNotBlank() }
-        val retained = (existing + json.encodeToString(run)).takeLast(MAX_RUNS).toMutableList()
+        val retained = (existing + json.encodeToString(run)).mapNotNull(StandardS1Reports::project)
+            .takeLast(MAX_RUNS).toMutableList()
         while (retained.sumOf { it.toByteArray().size + 1 } > 768 * 1024) retained.removeAt(0)
         val target = runsFile(context)
         val temporary = File(target.parentFile, "${target.name}.tmp")
         temporary.writeText(retained.joinToString("\n", postfix = if (retained.isEmpty()) "" else "\n"))
-        if (!temporary.renameTo(target)) {
-            target.delete()
-            check(temporary.renameTo(target)) { "Unable to replace S1-mini diagnostics" }
-        }
+        Files.move(temporary.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
     }
 
     fun latestText(context: Context): String? {
@@ -142,13 +144,14 @@ object S1MiniDiagnostics {
     }
 
     suspend fun exportZip(context: Context, includeTranscripts: Boolean = false): File? = withContext(Dispatchers.IO) {
+        synchronized(this@S1MiniDiagnostics) {
         purgeStandard(context)
         val runs = runsFile(context).takeIf { it.isFile }?.readText().orEmpty()
-        val transcriptResult = if (includeTranscripts) transcriptCaptures(context) else null
-        if (includeTranscripts && transcriptResult?.hasExportableEvidence != true) return@withContext null
-        if (!includeTranscripts && runs.isBlank() && !benchmarkFile(context).isFile) return@withContext null
-        val exportDir = File(context.cacheDir, "s1-diagnostics-export").apply { mkdirs() }
-        exportDir.listFiles()?.forEach { it.delete() }
+        val transcriptResult = if (includeTranscripts) loadTranscripts(context, System.currentTimeMillis()) else null
+        if (includeTranscripts && transcriptResult?.hasExportableEvidence != true) return@synchronized null
+        if (!includeTranscripts && runs.isBlank() && !benchmarkFile(context).isFile) return@synchronized null
+        val exportDir = exportDirectory(context).apply { mkdirs() }
+        check(exportDir.listFiles()?.all { it.delete() || !it.exists() } == true) { "Unable to clear S1-mini exports" }
         val suffix = SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(Date())
         val output = File(
             exportDir,
@@ -162,13 +165,16 @@ object S1MiniDiagnostics {
             ),
             runsJsonl = runs,
             benchmarkJson = benchmarkFile(context).takeIf { it.isFile }?.readText(),
-            reportText = latestText(context).orEmpty(),
             transcriptsJsonl = transcriptResult?.captures?.joinToString("\n") {
                 json.encodeToString(it)
             }?.let { if (it.isEmpty()) it else "$it\n" },
-            unreadableTranscriptCaptures = transcriptResult?.unreadableCount ?: 0
+            unreadableTranscriptCaptures = transcriptResult?.unreadableCount ?: 0,
+            transcriptExpiresAtEpochMs = transcriptResult?.captures?.minOfOrNull {
+                minOf(it.expiresAtEpochMs, it.capturedAtEpochMs + S1MiniTranscriptCapture.RETENTION_MS)
+            } ?: (System.currentTimeMillis() + S1MiniTranscriptCapture.RETENTION_MS)
         )
         output
+        }
     }
 
     suspend fun shareZip(context: Context, includeTranscripts: Boolean = false): Boolean {
@@ -218,7 +224,7 @@ object S1MiniDiagnostics {
         val cutoff = System.currentTimeMillis() - DiagnosticStore.RETENTION_MS
         val runs = runsFile(context)
         if (runs.isFile) {
-            if (runs.lastModified() < cutoff || runs.length() > 768 * 1024) runs.delete()
+            if (runs.lastModified() < cutoff || runs.length() > 768 * 1024) deleteStandardFile(runs)
             else {
                 val legacyTimestamp = runs.lastModified()
                 val retained = runs.readLines().mapNotNull { line ->
@@ -226,22 +232,41 @@ object S1MiniDiagnostics {
                         val original = json.parseToJsonElement(line).jsonObject
                         val dated = if ("capturedAtEpochMs" in original) original else
                             JsonObject(original + ("capturedAtEpochMs" to JsonPrimitive(legacyTimestamp)))
-                        dated.toString().takeIf {
-                            json.decodeFromString<S1MiniDiagnosticRun>(it).capturedAtEpochMs >= cutoff
-                        }
+                        dated.takeIf { (it["capturedAtEpochMs"] as? JsonPrimitive)?.content?.toLongOrNull()
+                            ?.let { timestamp -> timestamp >= cutoff } == true }
+                            ?.toString()?.let(StandardS1Reports::project)
                     }.getOrNull()
                 }
-                if (retained.isEmpty()) runs.delete()
+                if (retained.isEmpty()) deleteStandardFile(runs)
                 else {
                     val temporary = File(runs.parentFile, "runs.jsonl.tmp")
                     temporary.writeText(retained.joinToString("\n", postfix = "\n"))
-                    check(temporary.renameTo(runs)) { "Unable to purge diagnostics" }
+                    Files.move(temporary.toPath(), runs.toPath(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
                 }
             }
         }
-        benchmarkFile(context).takeIf { it.isFile && (it.lastModified() < cutoff || it.length() > 256 * 1024) }?.delete()
+        benchmarkFile(context).takeIf { it.isFile }?.let { benchmark ->
+            if (benchmark.lastModified() < cutoff || benchmark.length() > 256 * 1024) deleteStandardFile(benchmark)
+            else {
+                val projected = StandardS1Reports.project(benchmark.readText())
+                if (projected == null) deleteStandardFile(benchmark) else {
+                    val timestamp = benchmark.lastModified()
+                    val temporary = File(benchmark.parentFile, "benchmark.json.tmp")
+                    temporary.writeText(projected)
+                    Files.move(temporary.toPath(), benchmark.toPath(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
+                    check(benchmark.setLastModified(timestamp)) { "Unable to retain benchmark timestamp" }
+                }
+            }
+        }
+        deleteStandardFile(File(directory(context), "runs.jsonl.tmp"))
+        deleteStandardFile(File(directory(context), "benchmark.json.tmp"))
     }
 
+    private fun deleteStandardFile(file: File) {
+        if (file.exists() && !file.delete()) throw IOException("Unable to delete expired S1-mini diagnostics")
+    }
+
+    @Synchronized
     fun recordTranscript(
         context: Context,
         reportId: String,
@@ -251,6 +276,7 @@ object S1MiniDiagnostics {
         failureOrBypassReason: String?,
         nowEpochMs: Long = System.currentTimeMillis()
     ) {
+        S1MiniDiagnosticArchive.invalidateTranscripts(exportDirectory(context))
         S1MiniTranscriptCaptureStore.save(
             transcriptDirectory(context),
             S1MiniTranscriptCapture.create(
@@ -271,32 +297,40 @@ object S1MiniDiagnostics {
         purgeStandard(context)
         val target = benchmarkFile(context)
         val temporary = File(target.parentFile, "${target.name}.tmp")
-        val encoded = json.encodeToString(diagnostic)
+        val encoded = StandardS1Reports.project(json.encodeToString(diagnostic)) ?: return
         if (encoded.toByteArray().size > 256 * 1024) return
         temporary.writeText(encoded)
-        if (!temporary.renameTo(target)) {
-            target.delete()
-            check(temporary.renameTo(target)) { "Unable to replace S1-mini benchmark diagnostics" }
-        }
+        Files.move(temporary.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
     }
 
     suspend fun transcriptCaptures(
         context: Context,
         nowEpochMs: Long = System.currentTimeMillis()
     ): S1MiniTranscriptCaptureLoadResult = withContext(Dispatchers.IO) {
-        S1MiniTranscriptCaptureStore.load(transcriptDirectory(context), nowEpochMs)
+        synchronized(this@S1MiniDiagnostics) { loadTranscripts(context, nowEpochMs) }
+    }
+
+    private fun loadTranscripts(context: Context, nowEpochMs: Long): S1MiniTranscriptCaptureLoadResult {
+        S1MiniDiagnosticArchive.purgeExpired(exportDirectory(context), nowEpochMs)
+        return S1MiniTranscriptCaptureStore.load(transcriptDirectory(context), nowEpochMs)
     }
 
     suspend fun deleteTranscriptCapture(context: Context, reportId: String): Boolean = withContext(Dispatchers.IO) {
+        synchronized(this@S1MiniDiagnostics) {
+        S1MiniDiagnosticArchive.invalidateTranscripts(exportDirectory(context))
         S1MiniTranscriptCaptureStore.delete(
             transcriptDirectory(context),
             reportId,
             System.currentTimeMillis()
         )
+        }
     }
 
     suspend fun clearTranscriptCaptures(context: Context) = withContext(Dispatchers.IO) {
+        synchronized(this@S1MiniDiagnostics) {
+        S1MiniDiagnosticArchive.invalidateTranscripts(exportDirectory(context))
         S1MiniTranscriptCaptureStore.clear(transcriptDirectory(context))
+        }
     }
 
     suspend fun purgeTranscriptCaptures(context: Context) {
