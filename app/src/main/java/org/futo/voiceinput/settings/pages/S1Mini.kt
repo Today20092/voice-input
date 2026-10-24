@@ -211,20 +211,28 @@ private fun DiagnosticOptions() {
     val error = remember { mutableStateOf<String?>(null) }
     val retry = remember { mutableStateOf<(() -> Unit)?>(null) }
 
-    fun perform(message: String = "Unable to load captured transcripts.", action: suspend () -> Unit = {}) {
+    val loadError = "Unable to load captured transcripts."
+    fun perform(message: String = loadError, action: suspend () -> Unit = {}) {
         if (busy.value) return
         busy.value = true
         error.value = null
         retry.value = null
         scope.launch {
+            var actionCompleted = false
             try {
                 action()
+                actionCompleted = true
                 captures.value = S1MiniDiagnostics.transcriptCaptures(context)
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (_: Exception) {
-                error.value = message
-                retry.value = { perform(message, action) }
+                if (actionCompleted) {
+                    error.value = loadError
+                    retry.value = { perform() }
+                } else {
+                    error.value = message
+                    retry.value = { perform(message, action) }
+                }
             } finally {
                 busy.value = false
             }

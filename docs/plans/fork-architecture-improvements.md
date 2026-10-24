@@ -30,6 +30,8 @@ The user explicitly delegated test choices. Use focused vertical TDD cycles at t
 
 ## Verification and evidence
 
+The user reported insufficient host RAM after the ticket implementations. From that point onward, run all remaining builds/tests in remote CI; review/fix agents must not run local Gradle, compilation or test retries. Lightweight source/Git review is allowed. Previously completed local results remain evidence only for their recorded revisions.
+
 - Focused regression evidence records pre-fix failure (or why the check is a preservation/refactor check) and post-fix success.
 - Integrated JVM tests, lint, Android-test Kotlin compilation, and ARM64 APK assembly/contents/signature checks.
 - Use signed CI when local full native assembly cannot run. Preserve the production key/application ID; no signing secrets in source or output.

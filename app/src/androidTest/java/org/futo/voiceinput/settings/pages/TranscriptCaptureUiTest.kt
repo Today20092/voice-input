@@ -19,13 +19,16 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import java.io.File
+import java.io.IOException
 import java.text.DateFormat
 import java.util.Date
+import java.util.concurrent.atomic.AtomicBoolean
 
 class TranscriptCaptureUiTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
     private lateinit var directory: File
     private lateinit var context: ContextWrapper
+    private val failEmptyRefresh = AtomicBoolean(false)
 
     @Before fun prepareStorage() {
         directory = File(compose.activity.cacheDir, "capture-ui-${System.nanoTime()}").apply { mkdirs() }
@@ -33,6 +36,10 @@ class TranscriptCaptureUiTest {
             override fun getCacheDir(): File = File(directory, "cache")
             override fun getFilesDir(): File {
                 check(Looper.myLooper() != Looper.getMainLooper()) { "Capture disk access on main thread" }
+                if (failEmptyRefresh.get() && File(directory, "s1-transcript-captures")
+                        .listFiles().orEmpty().none { it.extension == "json" }) {
+                    throw IOException("Injected capture refresh failure")
+                }
                 return directory
             }
         }
@@ -86,5 +93,24 @@ class TranscriptCaptureUiTest {
         awaitText("1 captured run(s)")
         compose.onNodeWithText("Clear captured transcripts").performScrollTo().performClick()
         awaitText("0 captured run(s)")
+    }
+
+    @Test fun refreshRetryDoesNotRepeatSuccessfulDeletion() {
+        val now = System.currentTimeMillis()
+        runBlocking { S1MiniDiagnostics.recordTranscript(context, "same-report", "raw", "clean", "final", null, now) }
+        show()
+        awaitText("1 captured run(s)")
+        failEmptyRefresh.set(true)
+        compose.onNodeWithText(DateFormat.getDateTimeInstance().format(Date(now)))
+            .performScrollTo().performClick()
+        compose.onNodeWithText("Delete").performClick()
+        awaitText("Unable to load captured transcripts.")
+        failEmptyRefresh.set(false)
+        runBlocking {
+            S1MiniDiagnostics.recordTranscript(context, "same-report", "replacement raw", "clean", "final", null, now)
+        }
+        compose.onNodeWithText("Retry").performScrollTo().performClick()
+        awaitText("1 captured run(s)")
+        compose.onNodeWithText("Unable to load captured transcripts.").assertDoesNotExist()
     }
 }
