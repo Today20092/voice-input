@@ -43,6 +43,13 @@ Standalone builds use `:app:assembleStandaloneRelease` and write to `app/build/o
 
 The [release workflow](../.github/workflows/release-apk.yml) builds on configured branch pushes and `v*` tags. A tag run publishes an APK; a branch run uploads an artifact. Before a new release, update the app version and add notes at `docs/releases/<tag>.md`, which the workflow selects automatically. Do not reuse an existing release tag.
 
+For a low-memory beta release, dispatch `release-apk.yml` on the reviewed source
+ref with `beta_tag` set to the new `vMAJOR.MINOR.PATCH-beta.N` tag. It must match
+`app/build.gradle`'s version and must not already exist. CI signs and verifies
+the normal standalone APK before creating the prerelease at that exact commit.
+An empty `beta_tag` retains the build-only manual workflow. Normal release
+builds explicitly disable S1 speculation and verify its absence from the APK.
+
 Current verification is recorded in the [1.4.6 release notes](releases/v1.4.6.md) and [successful stable release run](https://github.com/Today20092/voice-input/actions/runs/37829884596). Older test counts belong to their dated release notes.
 
 ## Stable release requirements

@@ -42,6 +42,13 @@ REQUIRED = {
     "libwhistle_runner.so",
 }
 WHISTLE_SHA256 = "02a044e15489e19fa9f4f1cd1d5943d39dc0eefc08e0ba99d36279daf2351d46"
+PINNED_PAYLOADS = {
+    "libwhistle_runner.so": WHISTLE_SHA256,
+    "libonnxruntime.so": "cbe4d71990f1032bcc7b4b7baf3e0b18327af6c25ba4bf106b5ecd42ddf22d30",
+    "assets/MOONSHINE-LICENSE.txt": "6148d7574a6554b7379b633cfd4c4fe5840c3f548d13bc83e00b52dc6fa00abd",
+    "assets/ONNX-RUNTIME-LICENSE.txt": "2f07c72751aed99790b8a4869cf2311df85a860b22ded05fa22803587a48922c",
+    "assets/ONNX-RUNTIME-THIRD-PARTY-NOTICES.txt": "e9e90971a8e75a9a8ac0c6412e29c1202d079998389915aa485f46c816c3b4cc",
+}
 # These project-built boundaries must remain diagnosable, even if prebuilt vendors
 # supplied stripped libraries and therefore cannot contribute FULL symbols.
 PROJECT_SYMBOLS = {
@@ -55,6 +62,19 @@ PROJECT_SYMBOLS = {
 def require(condition, message):
     if not condition:
         raise ValueError(message)
+
+
+def verify_pinned_payload(name, data):
+    if name in PINNED_PAYLOADS:
+        require(
+            hashlib.sha256(data).hexdigest() == PINNED_PAYLOADS[name],
+            f"Pinned payload bytes changed: {name}",
+        )
+    if name == "libs1mini.so":
+        require(
+            b"ngramPoolBytes" not in data,
+            "Experimental S1 speculation must remain disabled in normal releases",
+        )
 
 
 def inspect(data, readelf, directory):
@@ -98,6 +118,9 @@ def verify(apk_path, symbols_path, readelf, baseline_path=None):
         tempfile.TemporaryDirectory() as temporary,
     ):
         directory = Path(temporary)
+        for name in PINNED_PAYLOADS:
+            if name.startswith("assets/"):
+                verify_pinned_payload(name, apk.read(name))
         entries = native_entries(apk)
         for entry in entries:
             name = Path(entry.filename).name
@@ -106,11 +129,8 @@ def verify(apk_path, symbols_path, readelf, baseline_path=None):
                 f"Legacy compressed/extracted packaging lost: {name}",
             )
             data = apk.read(entry)
+            verify_pinned_payload(name, data)
             if name == "libwhistle_runner.so":
-                require(
-                    hashlib.sha256(data).hexdigest() == WHISTLE_SHA256,
-                    "Pinned Whistle executable bytes changed",
-                )
                 continue
             sections, alignment, build_id = inspect(data, readelf, directory)
             require(
@@ -154,7 +174,7 @@ def verify(apk_path, symbols_path, readelf, baseline_path=None):
         compressed = sum(entry.compress_size for entry in entries)
         extracted = sum(entry.file_size for entry in entries)
         print(
-            f"Verified {len(entries)} ARM64 libraries, pinned Whistle, stripping and matching symbols"
+            f"Verified {len(entries)} ARM64 libraries, pinned runtimes/notices, S1 speculation off, stripping and matching symbols"
         )
         print(
             f"APK={apk_path.stat().st_size}; compressed native={compressed}; extracted native={extracted} bytes"

@@ -116,6 +116,22 @@ fun CreditsScreen(openDependencies: () -> Unit = {}, navController: NavHostContr
         )
 
         CreditItem(
+            name = "Moonshine Voice 0.0.68",
+            thanksFor = "English speech recognition; complete license bundled in MOONSHINE-LICENSE.txt",
+            link = "https://github.com/moonshine-ai/moonshine/blob/0a99f2e31e6e2913c4c61e4c62f85ce57404ba60/LICENSE",
+            license = "MIT (Section 1: runtime and English models)",
+            copyright = "Copyright (c) 2025 Useful Sensors, Inc. (dba Moonshine AI)"
+        )
+
+        CreditItem(
+            name = "ONNX Runtime 1.23.0",
+            thanksFor = "Moonshine runtime with KleidiAI disabled; license and third-party notices bundled as ONNX-RUNTIME-*.txt",
+            link = "https://github.com/microsoft/onnxruntime/blob/be835efc56aca19b8e810538ec93c8e150e0fc61/ThirdPartyNotices.txt",
+            license = "MIT and included dependency licenses",
+            copyright = "Microsoft Corporation and ONNX Runtime contributors"
+        )
+
+        CreditItem(
             name = "Moondream Parakeet Redux",
             thanksFor = "Optional packed ternary speech recognition, derived from NVIDIA Parakeet TDT 0.6B V3",
             link = "https://huggingface.co/moondream/parakeet-redux",
