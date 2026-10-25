@@ -3,8 +3,9 @@
 Recorded October 24, 2026 for [issue 41](https://github.com/Today20092/voice-input/issues/41).
 Moonshine Small and Medium completed native batch recognition on a second
 physical ARM64 phone. Subsequent audio-history UI checks passed cancellation,
-retry and same-process switching with Whisper. Positive live dictation and
-production release gates remain outstanding.
+retry and same-process switching with Whisper. Subsequent human-spoken live
+checks also passed for Small and Medium, including recovery after repeated
+cancellation. Production release gates remain outstanding.
 
 ## Device and candidate
 
@@ -138,14 +139,45 @@ ended with a no-speech failure. None of these proves a successful spoken retry,
 first partial, final text or delivery. Positive live speech needs a sample the
 phone's microphone can actually hear.
 
-## Remaining checks
+## Human-spoken live follow-up
 
-- Actual microphone/live streaming, first partial and final flushing in the
-  recognition activity; delivery to a controlled activity/IME receiver.
-- Live-recording cancellation followed by successful spoken retry. The history
-  cancellation/retry tests above exercise a separate path.
-- Retranscription of an actual microphone-captured successful recording; the
-  seeded public history entries above validate the history UI/inference path.
+The maintainer then read a short test phrase into the phone. Both recognition
+activities produced partial and nonempty final text and recorded
+`DELIVERY_ACCEPTED`. No dictated text or microphone audio was exported to this
+repository.
+
+| Model/session | First partial from session start | Final characters | Activity handoff accepted from session start |
+| --- | ---: | ---: | ---: |
+| Medium `6f7ef9ad…` | 2,743 ms | 72 | 8,359 ms |
+| Small `9ba959c5…` | 3,636 ms | 69 | 9,489 ms |
+| Medium recovery `9374b48a…` | 2,667 ms | 123 | 11,549 ms |
+
+These times include when the human started speaking and stopped recording;
+they are functional observations, not recognition-latency comparisons. The
+recognition activity was started from ADB without a controlled external result
+receiver. `DELIVERY_ACCEPTED` confirms the app's activity handoff, not text
+insertion in an IME editor or receipt by another app.
+
+The actual microphone-captured Small recording was then retranscribed through
+the history UI with Small (`680afe04…`) and Medium (`65d5c5a5…`). Both completed
+with nonempty saved text. This is additional to the seven seeded-public-history
+successes above and closes the real-capture/history coverage gap.
+
+Finally, three further Medium recording screens were opened and canceled, then
+reopened for a spoken recovery check, all in PID `16974`. One attempt reported
+no speech; the maintainer explicitly confirmed they had missed that attempt.
+It is retained as an expected no-input result, not a recovery defect. The
+subsequent spoken retry produced partial text, a nonempty final result and an
+accepted handoff without restarting the app.
+
+The [numeric event extract](evidence/s25-live-spoken-events.jsonl) retains the
+three live successes, three cancellations, expected no-speech attempt and two
+real-recording retranscriptions. It contains no audio or transcript text.
+
+## Remaining release checks
+
+- Delivery to a controlled external activity or IME editor; the ADB-started
+  activity handoff above does not establish what a receiving app observes.
 - Older Android compatibility, final affected-OnePlus confirmation and normal
   beta validation remain separate release gates.
 
