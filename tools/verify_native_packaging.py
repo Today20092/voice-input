@@ -77,7 +77,7 @@ def verify_pinned_payload(name, data):
         )
 
 
-def inspect(data, readelf, directory):
+def inspect(data, readelf, directory, allow_missing_build_id=False):
     target = directory / "library.so"
     target.write_bytes(data)
     output = subprocess.check_output(
@@ -90,9 +90,9 @@ def inspect(data, readelf, directory):
         if line.strip().startswith("LOAD ")
     ]
     build_id = re.search(r"Build ID: (\w+)", output)
-    if build_id is None or not alignment:
+    if not alignment or (build_id is None and not allow_missing_build_id):
         raise ValueError("ELF missing build ID or LOAD segments")
-    return sections, alignment, build_id.group(1)
+    return sections, alignment, build_id.group(1) if build_id else None
 
 
 def native_entries(archive):
@@ -132,7 +132,13 @@ def verify(apk_path, symbols_path, readelf, baseline_path=None):
             verify_pinned_payload(name, data)
             if name == "libwhistle_runner.so":
                 continue
-            sections, alignment, build_id = inspect(data, readelf, directory)
+            # The exact hash-pinned ORT prebuilt has no GNU build ID.
+            sections, alignment, build_id = inspect(
+                data,
+                readelf,
+                directory,
+                allow_missing_build_id=name == "libonnxruntime.so",
+            )
             require(
                 not any(
                     section.startswith((".debug_", ".zdebug_")) for section in sections
@@ -156,6 +162,10 @@ def verify(apk_path, symbols_path, readelf, baseline_path=None):
                 f"Missing project symbols: {name}",
             )
             if matches:
+                require(
+                    build_id is not None,
+                    f"Cannot match symbols without build ID: {name}",
+                )
                 debug_sections, _, debug_id = inspect(
                     symbols.read(matches[0]), readelf, directory
                 )
