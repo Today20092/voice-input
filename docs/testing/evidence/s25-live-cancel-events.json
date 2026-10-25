@@ -1,0 +1,164 @@
+[
+  {
+    "timestampMs": 1792895685642,
+    "event": "SESSION_STARTED",
+    "sessionId": "44535a84-b727-472c-85a7-7ac11edab0f6",
+    "model": "moonshine-medium",
+    "metrics": {
+      "ELAPSED_MS": 0
+    }
+  },
+  {
+    "timestampMs": 1792895685703,
+    "event": "MODEL_LOAD_STARTED",
+    "sessionId": "44535a84-b727-472c-85a7-7ac11edab0f6",
+    "model": "moonshine-medium",
+    "metrics": {
+      "ELAPSED_MS": 18
+    }
+  },
+  {
+    "timestampMs": 1792895686206,
+    "event": "MODEL_LOAD_FINISHED",
+    "sessionId": "44535a84-b727-472c-85a7-7ac11edab0f6",
+    "model": "moonshine-medium",
+    "metrics": {
+      "DURATION_MS": 546,
+      "ELAPSED_MS": 564
+    }
+  },
+  {
+    "timestampMs": 1792895703834,
+    "event": "SESSION_CANCELLED",
+    "sessionId": "44535a84-b727-472c-85a7-7ac11edab0f6",
+    "model": "moonshine-medium",
+    "metrics": {
+      "ELAPSED_MS": 18192
+    }
+  },
+  {
+    "timestampMs": 1792895703892,
+    "event": "CAPTURE_SUMMARY",
+    "sessionId": "44535a84-b727-472c-85a7-7ac11edab0f6",
+    "model": "moonshine-medium",
+    "metrics": {
+      "CAPTURED_SAMPLES": 289600,
+      "VAD_FRAMES": 603,
+      "VAD_SPEECH_FRAMES": 13,
+      "DRAIN_SAMPLES": 0,
+      "ZERO_READS": 0,
+      "READ_FAILURES": 0,
+      "STOPPING_SILENCE_FRAMES": 582,
+      "STOP_REASON": 3,
+      "ELAPSED_MS": 18230
+    }
+  },
+  {
+    "timestampMs": 1792895742394,
+    "event": "SESSION_STARTED",
+    "sessionId": "38884ada-c207-471a-a987-9ed101d7e27a",
+    "model": "moonshine-medium",
+    "metrics": {
+      "ELAPSED_MS": 0
+    }
+  },
+  {
+    "timestampMs": 1792895742431,
+    "event": "MODEL_LOAD_STARTED",
+    "sessionId": "38884ada-c207-471a-a987-9ed101d7e27a",
+    "model": "moonshine-medium",
+    "metrics": {
+      "ELAPSED_MS": 12
+    }
+  },
+  {
+    "timestampMs": 1792895742948,
+    "event": "MODEL_LOAD_FINISHED",
+    "sessionId": "38884ada-c207-471a-a987-9ed101d7e27a",
+    "model": "moonshine-medium",
+    "metrics": {
+      "DURATION_MS": 543,
+      "ELAPSED_MS": 554
+    }
+  },
+  {
+    "timestampMs": 1792895743515,
+    "event": "SESSION_CANCELLED",
+    "sessionId": "38884ada-c207-471a-a987-9ed101d7e27a",
+    "model": "moonshine-medium",
+    "metrics": {
+      "ELAPSED_MS": 1121
+    }
+  },
+  {
+    "timestampMs": 1792895743575,
+    "event": "CAPTURE_SUMMARY",
+    "sessionId": "38884ada-c207-471a-a987-9ed101d7e27a",
+    "model": "moonshine-medium",
+    "metrics": {
+      "CAPTURED_SAMPLES": 16000,
+      "VAD_FRAMES": 33,
+      "VAD_SPEECH_FRAMES": 13,
+      "DRAIN_SAMPLES": 0,
+      "ZERO_READS": 0,
+      "READ_FAILURES": 0,
+      "STOPPING_SILENCE_FRAMES": 12,
+      "STOP_REASON": 3,
+      "ELAPSED_MS": 1178
+    }
+  },
+  {
+    "timestampMs": 1792895744390,
+    "event": "SESSION_STARTED",
+    "sessionId": "cadc9222-b4c1-484c-8298-e133ef7f30f0",
+    "model": "moonshine-medium",
+    "metrics": {
+      "ELAPSED_MS": 0
+    }
+  },
+  {
+    "timestampMs": 1792895744449,
+    "event": "MODEL_LOAD_STARTED",
+    "sessionId": "cadc9222-b4c1-484c-8298-e133ef7f30f0",
+    "model": "moonshine-medium",
+    "metrics": {
+      "ELAPSED_MS": 13
+    }
+  },
+  {
+    "timestampMs": 1792895744947,
+    "event": "MODEL_LOAD_FINISHED",
+    "sessionId": "cadc9222-b4c1-484c-8298-e133ef7f30f0",
+    "model": "moonshine-medium",
+    "metrics": {
+      "DURATION_MS": 545,
+      "ELAPSED_MS": 557
+    }
+  },
+  {
+    "timestampMs": 1792895745497,
+    "event": "SESSION_CANCELLED",
+    "sessionId": "cadc9222-b4c1-484c-8298-e133ef7f30f0",
+    "model": "moonshine-medium",
+    "metrics": {
+      "ELAPSED_MS": 1107
+    }
+  },
+  {
+    "timestampMs": 1792895745551,
+    "event": "CAPTURE_SUMMARY",
+    "sessionId": "cadc9222-b4c1-484c-8298-e133ef7f30f0",
+    "model": "moonshine-medium",
+    "metrics": {
+      "CAPTURED_SAMPLES": 16000,
+      "VAD_FRAMES": 33,
+      "VAD_SPEECH_FRAMES": 15,
+      "DRAIN_SAMPLES": 0,
+      "ZERO_READS": 0,
+      "READ_FAILURES": 0,
+      "STOPPING_SILENCE_FRAMES": 11,
+      "STOP_REASON": 3,
+      "ELAPSED_MS": 1148
+    }
+  }
+]
