@@ -38,7 +38,7 @@ data class BenchmarkModel(val id: String, val name: String, val managed: Recogni
             "artifacts" to (model?.artifacts?.joinToString { "${it.name}:${it.sha256}" } ?: requireNotNull(whisper).ggml.digest),
             "language" to if (model?.runtimeId in setOf("parakeet", "orukeet", "parakeet_redux", "whistle")) "auto (recording language $language)" else language,
             "decoding" to "runtime default; Whisper beam search 5, no glossary",
-            "runtimeVersions" to "Sherpa-ONNX ${BuildConfig.SHERPA_ONNX_VERSION}; Moonshine 0.0.68; ExecuTorch 1.2.0; native runtime revision in app build"
+            "runtimeVersions" to "Sherpa-ONNX ${BuildConfig.SHERPA_ONNX_VERSION}; Moonshine ${BuildConfig.MOONSHINE_RUNTIME_VERSION}; ExecuTorch 1.2.0; native runtime revision in app build"
         ) + if (model?.runtimeId == "whistle") mapOf(
             "timingNotice" to "Every Whistle pass includes worker startup and model loading; the model is not kept loaded between passes.",
             "memoryNotice" to "Sampled memory covers the app process and excludes the Whistle worker."

@@ -10,6 +10,10 @@ on:
       - "v*"
   workflow_dispatch:
     inputs:
+      beta_tag:
+        description: Publish the verified signed APK under this new beta tag (must match app version)
+        type: string
+        default: ''
       build_benchmark_apks:
         description: Build paired dev app and instrumentation APKs for physical-phone benchmarking
         type: boolean
@@ -56,6 +60,17 @@ jobs:
           printf '%s' "$RELEASE_KEYSTORE_BASE64" | base64 --decode > release-signing.jks
           printf 'storeFile=release-signing.jks\nkeyAlias=%s\nkeyPassword=%s\nstorePassword=%s\n' \
             "$RELEASE_KEY_ALIAS" "$RELEASE_KEY_PASSWORD" "$RELEASE_STORE_PASSWORD" > keystore.properties
+
+      - name: Validate requested beta tag
+        if: github.event_name == 'workflow_dispatch' && inputs.beta_tag != ''
+        env:
+          BETA_TAG: ${{ inputs.beta_tag }}
+        run: |
+          [[ "$BETA_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+-beta\.[0-9]+$ ]]
+          VERSION="$(sed -n 's/^[[:space:]]*versionName "\([^"]*\)"/\1/p' app/build.gradle)"
+          test "$BETA_TAG" = "v$VERSION"
+          EXISTING="$(git ls-remote --tags origin "refs/tags/$BETA_TAG")"
+          test -z "$EXISTING"
 
       - name: Set up JDK
         uses: actions/setup-java@v4
@@ -125,7 +140,8 @@ jobs:
           WHISTLE_TEST_RUNNER: ${{ runner.temp }}/whistle-runner
           WHISTLE_TEST_MODEL: ${{ runner.temp }}/whistle.cact
         run: |
-          ./gradlew --max-workers=2 '-Dorg.gradle.jvmargs=-Xmx4096m -Dfile.encoding=UTF-8' :app:testStandaloneReleaseUnitTest :app:lintStandaloneRelease :app:compileDevDebugAndroidTestKotlin :app:assembleStandaloneRelease --stacktrace
+          python3 -m unittest discover -s tools -p 'test_native_packaging.py'
+          ./gradlew --max-workers=2 '-Dorg.gradle.jvmargs=-Xmx4096m -Dfile.encoding=UTF-8' -Ps1NgramSpeculation=false :app:testStandaloneReleaseUnitTest :app:lintStandaloneRelease :app:compileDevDebugAndroidTestKotlin :app:assembleStandaloneRelease --stacktrace
           echo "APK_DIR=app/build/outputs/apk/standalone/release" >> "$GITHUB_ENV"
           echo "APK_NAME=futo-voice-input-moonshine" >> "$GITHUB_ENV"
 
@@ -171,11 +187,20 @@ jobs:
             exit 1
           fi
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$APK_PATH"
+          mkdir -p "$RUNNER_TEMP/moonshine-apk-validation/jni/arm64-v8a"
+          unzip -p "$APK_PATH" lib/arm64-v8a/libonnxruntime.so > "$RUNNER_TEMP/moonshine-apk-validation/jni/arm64-v8a/libonnxruntime.so"
+          unzip -p "$APK_PATH" lib/arm64-v8a/libmoonshine.so > "$RUNNER_TEMP/moonshine-apk-validation/jni/arm64-v8a/libmoonshine.so"
+          (cd "$RUNNER_TEMP/moonshine-apk-validation" && zip -q runtime.aar jni/arm64-v8a/*.so)
+          bash tools/test-moonshine-ort-validator.sh
+          bash tools/verify-moonshine-ort-candidate.sh "$RUNNER_TEMP/moonshine-apk-validation/runtime.aar" \
+            "$ANDROID_HOME/ndk/28.2.13676358/toolchains/llvm/prebuilt/linux-x86_64/bin"
 
       - name: Rename APK
+        env:
+          BETA_TAG: ${{ inputs.beta_tag }}
         run: |
           mkdir -p release
-          VERSION="${GITHUB_REF_NAME:-manual}"
+          VERSION="${BETA_TAG:-${GITHUB_REF_NAME:-manual}}"
           VERSION="${VERSION//\//-}"
           APK_PATH="$(find "$APK_DIR" -maxdepth 1 -type f -name '*.apk' | head -n 1)"
           if [ -z "$APK_PATH" ]; then
@@ -223,15 +248,17 @@ jobs:
             app/build/outputs/apk/benchmark-apk-sha256.txt
 
       - name: Create GitHub Release
-        if: startsWith(github.ref, 'refs/tags/')
+        if: startsWith(github.ref, 'refs/tags/') || (github.event_name == 'workflow_dispatch' && inputs.beta_tag != '')
         uses: softprops/action-gh-release@v2
         with:
-          name: FUTO Voice Input ${{ github.ref_name }}
-          body_path: docs/releases/${{ github.ref_name }}.md
+          name: FUTO Voice Input ${{ inputs.beta_tag || github.ref_name }}
+          tag_name: ${{ inputs.beta_tag || github.ref_name }}
+          target_commitish: ${{ github.sha }}
+          body_path: docs/releases/${{ inputs.beta_tag || github.ref_name }}.md
           files: |
             release/*.apk
             docs/examples/arabic-transliteration.txt
             docs/screenshots/${{ github.ref_name }}/*.png
           generate_release_notes: true
-          prerelease: ${{ contains(github.ref_name, '-beta') }}
-          make_latest: ${{ !contains(github.ref_name, '-beta') }}
+          prerelease: ${{ contains(inputs.beta_tag || github.ref_name, '-beta') }}
+          make_latest: ${{ !contains(inputs.beta_tag || github.ref_name, '-beta') }}
