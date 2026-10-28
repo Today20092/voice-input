@@ -54,12 +54,25 @@ object GlossaryProcessor {
                     val transformedWords = mutableSetOf(word)
                     if (Language.English in languages && model.caps.requiresPersonalDictSpecialCharacterProcessing) {
                         val rules = listOf(
-                            "@" to setOf("at"),
+                            "@" to setOf("at", "at the"),
+                            ".com" to setOf("dot com", "dotcom"), // asr4all likes dotcom sometimes :)
                             "." to setOf("dot"), // period?
                             "/" to setOf("slash", "or"),
                             "+" to setOf("plus"),
                             "-" to setOf("minus", "dash", ""),
                             ":" to setOf("colon"),
+
+                            "10" to setOf("ten", "one zero"),
+                            "11" to setOf("eleven", "one one"),
+                            "12" to setOf("twelve", "one two"),
+                            "13" to setOf("thirteen", "one three"),
+                            "14" to setOf("fourteen", "one four"),
+                            "15" to setOf("fifteen", "one five"),
+                            "16" to setOf("sixteen", "one six"),
+                            "17" to setOf("seventeen", "one seven"),
+                            "18" to setOf("eighteen", "one eight"),
+                            "19" to setOf("nineteen", "one nine"),
+
                             "0" to setOf("zero"),
                             "1" to setOf("one"),
                             "2" to setOf("two"),
@@ -149,7 +162,7 @@ class MultiModelRunner(
             decodingConfiguration.glossary
         )
 
-        //Log.d("MultiModelRunner", "glossary: ${glossary.compiledWords}")
+        Log.d("MultiModelRunner", "glossary: ${glossary.compiledWords}")
 
         val result = try {
             callback.updateStatus(InferenceState.Encoding)
