@@ -175,7 +175,12 @@ class RecognizerView(
     }
 
     fun cancel() {
-        recognizer?.cancel()
+        if(recognizer != null) {
+            recognizer?.cancel()
+        } else {
+            // manually triggering the callback to cancel before recognizer is created
+            audioRecognizerListener.cancelled()
+        }
         startPending = false
     }
 
