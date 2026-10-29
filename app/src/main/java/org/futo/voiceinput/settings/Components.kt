@@ -2,6 +2,7 @@ package org.futo.voiceinput.settings
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -11,6 +12,7 @@ import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsBottomHeight
@@ -23,7 +25,10 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowForward
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.Button
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
@@ -31,6 +36,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.contentColorFor
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Alignment.Companion.CenterVertically
@@ -40,7 +46,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
@@ -70,20 +78,36 @@ fun ScreenTitle(title: String, showBack: Boolean = false, navController: NavHost
     }
 }
 
+enum class TipKind(val icon: ImageVector?, val header: Int?, val bgColor: (ColorScheme) -> Color) {
+    Info(Icons.Outlined.Info, R.string.tip_kind_tip, { it.surfaceBright }),
+    Warning(Icons.Outlined.Warning, R.string.tip_kind_warning, { it.primaryContainer }),
+    Error(Icons.Outlined.Warning, R.string.tip_kind_error, { it.errorContainer }),
+    None(null, null, { it.surfaceBright }),
+    /*Warning,
+    Notice,
+    Error,*/
+}
+
 @Composable
-@Preview
-fun Tip(text: String = "This is an example tip", onDismiss: (() -> Unit)? = null) {
+fun Tip(text: String = "This is an example tip", kind: TipKind, onDismiss: (() -> Unit)? = null) {
+    val bgColor = kind.bgColor(MaterialTheme.colorScheme)
+    val fgColor = contentColorFor(bgColor)
+
     Surface(
-        color = MaterialTheme.colorScheme.primaryContainer, modifier = Modifier
+        color = bgColor, modifier = Modifier
             .fillMaxWidth()
-            .padding(8.dp), shape = RoundedCornerShape(4.dp)
+            .padding(6.dp), shape = RoundedCornerShape(16.dp)
     ) {
-        Column {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            if(kind.icon != null && kind.header != null)
+                Row(Modifier.align(Alignment.CenterHorizontally).alpha(0.67f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Icon(kind.icon, contentDescription = null, modifier = Modifier.size(20.dp))
+                    Text(stringResource(kind.header), style = Typography.SmallMl.copy(fontWeight = FontWeight.Medium))
+                }
             Text(
                 text,
-                modifier = Modifier.padding(8.dp),
                 style = Typography.Body.RegularMl,
-                color = MaterialTheme.colorScheme.onPrimaryContainer
+                color = fgColor
             )
             if (onDismiss != null) {
                 TextButton(onClick = onDismiss, modifier = Modifier.align(Alignment.End)) {

@@ -24,6 +24,7 @@ import org.futo.voiceinput.settings.SettingToggleDataStore
 import org.futo.voiceinput.settings.SettingsRootList
 import org.futo.voiceinput.settings.SettingsViewModel
 import org.futo.voiceinput.settings.Tip
+import org.futo.voiceinput.settings.TipKind
 import org.futo.voiceinput.settings.USE_LANGUAGE_SPECIFIC_MODELS
 import org.futo.voiceinput.settings.useDataStore
 
@@ -60,14 +61,14 @@ fun InputScreen(
 
         Spacer(modifier = Modifier.height(32.dp))
 
-        Tip(stringResource(R.string.stop_on_silence_info))
+        Tip(stringResource(R.string.stop_on_silence_info), TipKind.Info)
         SettingToggleDataStore(stringResource(R.string.stop_on_silence), IS_VAD_ENABLED)
 
         // Option only has effect when English is active and at least one other language
         if(languages.value.size > 1 && languages.value.contains("en")) {
             Spacer(modifier = Modifier.height(32.dp))
 
-            Tip(stringResource(R.string.use_language_specific_models_info))
+            Tip(stringResource(R.string.use_language_specific_models_info), TipKind.Info)
             SettingToggleDataStore(
                 stringResource(R.string.use_language_specific_models),
                 USE_LANGUAGE_SPECIFIC_MODELS

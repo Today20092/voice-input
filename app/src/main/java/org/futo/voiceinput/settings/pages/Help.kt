@@ -29,6 +29,7 @@ import org.futo.voiceinput.RecognizeWindow
 import org.futo.voiceinput.settings.ScreenTitle
 import org.futo.voiceinput.settings.SettingsRootList
 import org.futo.voiceinput.settings.Tip
+import org.futo.voiceinput.settings.TipKind
 import org.futo.voiceinput.settings.openImeOptions
 import org.futo.voiceinput.theme.Typography
 
@@ -122,7 +123,7 @@ fun HelpScreen(navController: NavHostController = rememberNavController()) {
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        Tip(stringResource(R.string.help_paragraph_5))
+        Tip(stringResource(R.string.help_paragraph_5), TipKind.Info)
 
         Spacer(modifier = Modifier.height(4.dp))
         textItem(stringResource(R.string.help_paragraph_8))
@@ -136,7 +137,7 @@ fun HelpScreen(navController: NavHostController = rememberNavController()) {
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Tip(stringResource(R.string.help_paragraph_9))
+        Tip(stringResource(R.string.help_paragraph_9), TipKind.Info)
 
         Spacer(modifier = Modifier.height(16.dp))
 

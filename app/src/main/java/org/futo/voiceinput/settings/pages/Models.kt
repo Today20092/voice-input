@@ -42,6 +42,7 @@ import org.futo.voiceinput.settings.SettingToggleDataStoreItem
 import org.futo.voiceinput.settings.SettingsRootList
 import org.futo.voiceinput.settings.SettingsViewModel
 import org.futo.voiceinput.settings.Tip
+import org.futo.voiceinput.settings.TipKind
 import org.futo.voiceinput.settings.USE_LANGUAGE_SPECIFIC_MODELS
 import org.futo.voiceinput.settings.useDataStore
 import org.futo.voiceinput.settings.useInvertedDataStore
@@ -70,12 +71,12 @@ fun PersonalDictionaryEditor(disabled: Boolean) {
     LaunchedEffect(textFieldValue.value) {
         personalDict.setValue(textFieldValue.value)
     }
-    
-    ScreenTitle(title = stringResource(R.string.personal_dictionary))
 
-    if(textFieldValue.value.isNotEmpty() && !textFieldValue.value.contains(',')) {
-        Tip(stringResource(R.string.personal_dictionary_no_comma_warning))
+    if(textFieldValue.value.isNotEmpty() && !textFieldValue.value.contains(',') && (textFieldValue.value.contains(' ') || textFieldValue.value.contains('\n'))) {
+        Tip(stringResource(R.string.personal_dictionary_no_comma_warning), TipKind.Warning)
     }
+
+    ScreenTitle(title = stringResource(R.string.personal_dictionary))
 
     TextField(
         value = textFieldValue.value,
@@ -151,7 +152,7 @@ fun ModelsScreen(
                     R.string.language_settings_model_doesnt_support_languages,
                     stringResource(model.name),
                     unsupportedLanguages.joinToString(", ")
-                ))
+                ), TipKind.Error)
             }
 
             Surface(color = MaterialTheme.colorScheme.surfaceContainerHigh, shape = RoundedCornerShape(24.dp), modifier = Modifier.padding(16.dp)) {
@@ -201,6 +202,6 @@ fun ModelsScreen(
             Spacer(Modifier.height(16.dp))
         }
 
-        Tip(stringResource(R.string.parameter_count_tip))
+        Tip(stringResource(R.string.parameter_count_tip), TipKind.Info)
     }
 }

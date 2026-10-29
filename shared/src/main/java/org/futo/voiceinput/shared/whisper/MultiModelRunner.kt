@@ -162,8 +162,6 @@ class MultiModelRunner(
             decodingConfiguration.glossary
         )
 
-        Log.d("MultiModelRunner", "glossary: ${glossary.compiledWords}")
-
         val result = try {
             callback.updateStatus(InferenceState.Encoding)
             primaryModel.infer(

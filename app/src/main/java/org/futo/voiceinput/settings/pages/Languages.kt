@@ -24,6 +24,7 @@ import org.futo.voiceinput.settings.SettingToggleRaw
 import org.futo.voiceinput.settings.SettingsRootListLazy
 import org.futo.voiceinput.settings.SettingsViewModel
 import org.futo.voiceinput.settings.Tip
+import org.futo.voiceinput.settings.TipKind
 import org.futo.voiceinput.settings.useDataStore
 import org.futo.voiceinput.shared.MULTILINGUAL_MODELS
 import org.futo.voiceinput.shared.types.getLanguageFromWhisperString
@@ -81,7 +82,7 @@ fun LanguagesScreen(
         }
 
         item {
-            Tip(stringResource(R.string.language_tip_1))
+            Tip(stringResource(R.string.language_tip_1), TipKind.Info)
 
             val unsupportedLanguages = languages.map { getLanguageFromWhisperString(it) }.filter { it !in model.caps.supportedLanguages }
 
@@ -91,7 +92,8 @@ fun LanguagesScreen(
                         R.string.language_settings_model_doesnt_support_languages,
                         stringResource(model.name),
                         unsupportedLanguages.joinToString(", ")
-                    )
+                    ),
+                    TipKind.Error
                 )
             }
         }
@@ -102,17 +104,17 @@ fun LanguagesScreen(
             if(allowUndertrainedLanguages && it > 0 && model.caps.isWhisper) {
                 if (language.trainedHourCount < 1000 && LANGUAGE_LIST[it - 1].trainedHourCount >= 1000) {
                     Spacer(modifier = Modifier.height(48.dp))
-                    Tip(stringResource(R.string.language_unsupported_warning_1000))
+                    Tip(stringResource(R.string.language_unsupported_warning_1000), TipKind.Info)
                 } else if (language.trainedHourCount < 100 && LANGUAGE_LIST[it - 1].trainedHourCount >= 100) {
                     Spacer(modifier = Modifier.height(48.dp))
-                    Tip(stringResource(R.string.language_unsupported_warning_100))
+                    Tip(stringResource(R.string.language_unsupported_warning_100), TipKind.Info)
                 }
             }
 
             val modelSupportsLanguage = getLanguageFromWhisperString(language.id) in model.caps.supportedLanguages
             val subtitle = when {
                  !modelSupportsLanguage ->
-                     stringResource(R.string.model_settings_model_doesnt_support_detection, stringResource(model.name))
+                     stringResource(R.string.language_settings_language_unsupported_by_model, stringResource(model.name))
 
                 !model.caps.isWhisper && model.caps.unrecommendedLanguages.contains(getLanguageFromWhisperString(language.id))
                         && languages.contains(language.id) ->

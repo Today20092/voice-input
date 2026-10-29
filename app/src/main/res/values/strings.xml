@@ -262,4 +262,9 @@
     <string name="voice_input_window_indicator_model_update_available">Update model</string>
     <string name="voice_input_window_indicator_model_requires_download">Model download required</string>
 
+    <string name="tip_kind_tip">Tip</string>
+    <string name="tip_kind_warning">Warning</string>
+    <string name="tip_kind_notice">Notice</string>
+    <string name="tip_kind_error">Error</string>
+
 </resources>
