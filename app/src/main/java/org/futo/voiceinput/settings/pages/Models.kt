@@ -49,7 +49,6 @@ import org.futo.voiceinput.shared.ENGLISH_MODELS
 import org.futo.voiceinput.shared.MULTILINGUAL_MODELS
 import org.futo.voiceinput.shared.types.ModelLoader
 import org.futo.voiceinput.shared.types.getLanguageFromWhisperString
-import org.futo.voiceinput.startModelDownloadActivity
 import org.futo.voiceinput.theme.Typography
 
 @Composable
@@ -106,24 +105,6 @@ fun ModelsScreen(
     val (useLanguageSpecificModels, _) = useDataStore(USE_LANGUAGE_SPECIFIC_MODELS)
 
     val context = LocalContext.current
-
-    val launchDownloaderIfNecessary = {
-        if (useMultilingual) {
-            context.startModelDownloadActivity(
-                listOf(
-                    ENGLISH_MODELS[englishModelIndex.value],
-                    MULTILINGUAL_MODELS[multilingualModelIndex.value]
-                ),
-                forUpgrade = false
-            )
-        } else {
-            context.startModelDownloadActivity(listOf(ENGLISH_MODELS[englishModelIndex.value]), forUpgrade = false)
-        }
-    }
-
-    LaunchedEffect(listOf(useMultilingual, englishModelIndex.value, multilingualModelIndex.value)) {
-        launchDownloaderIfNecessary()
-    }
 
     val modelEn = ENGLISH_MODELS[englishModelIndex.value]
     val model = MULTILINGUAL_MODELS[multilingualModelIndex.value]
