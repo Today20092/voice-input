@@ -112,55 +112,54 @@ class RecognizeActivity : ComponentActivity() {
 
     fun initRecognizerView(): Boolean {
         val settings = loadRecognizerSettings(inlinePartialResult = true)
-        try {
-            recognizer = RecognizerView(
-                context = this@RecognizeActivity,
-                listener = object : RecognizerViewListener {
-                    override fun cancelled() {
-                        onCancel()
-                    }
+        recognizer = RecognizerView(
+            context = this@RecognizeActivity,
+            listener = object : RecognizerViewListener {
+                override fun cancelled() {
+                    onCancel()
+                }
 
-                    override fun recordingStarted(device: MicrophoneDeviceState) {
+                override fun recordingStarted(device: MicrophoneDeviceState) {
 
-                    }
+                }
 
-                    override fun finished(result: String) {
-                        this@RecognizeActivity.sendResult(result)
-                    }
+                override fun finished(result: String) {
+                    this@RecognizeActivity.sendResult(result)
+                }
 
-                    override fun partialResult(result: String) {
+                override fun partialResult(result: String) {
 
-                    }
+                }
 
-                    override fun requestPermission(
-                        onGranted: () -> Unit,
-                        onRejected: () -> Unit
-                    ): Boolean {
-                        this@RecognizeActivity.onPermissionGranted = onGranted
-                        this@RecognizeActivity.onPermissionRejected = onRejected
-                        this@RecognizeActivity.requestPermission()
-                        return true
-                    }
+                override fun requestPermission(
+                    onGranted: () -> Unit,
+                    onRejected: () -> Unit
+                ): Boolean {
+                    this@RecognizeActivity.onPermissionGranted = onGranted
+                    this@RecognizeActivity.onPermissionRejected = onRejected
+                    this@RecognizeActivity.requestPermission()
+                    return true
+                }
 
-                    override fun openSettings() {
+                override fun openSettings() {
 
-                    }
+                }
 
-                },
-                settings = settings,
-                lifecycleScope = this@RecognizeActivity.lifecycleScope,
-                modelManager = CrashLoggingApplication.getModelManager(this@RecognizeActivity)!!,
-            )
-            return true
-        } catch(e: ModelDoesNotExistException) {
-            val models = listOf(
-                settings.modelRunConfiguration.primaryModel
-            ) + settings.modelRunConfiguration.languageSpecificModels.values
+                override fun modelNotFound() {
+                    val models = listOf(
+                        settings.modelRunConfiguration.primaryModel
+                    ) + settings.modelRunConfiguration.languageSpecificModels.values
 
-            startModelDownloadActivity(models)
-            onCancel()
-            return false
-        }
+                    startModelDownloadActivity(models)
+                    onCancel()
+                }
+
+            },
+            settings = settings,
+            lifecycleScope = this@RecognizeActivity.lifecycleScope,
+            modelManager = CrashLoggingApplication.getModelManager(this@RecognizeActivity)!!,
+        )
+        return true
     }
 
     private fun onCancel() {

@@ -203,65 +203,64 @@ class VoiceInputMethodService : InputMethodService(), LifecycleOwner, ViewModelS
             }
         }
         val settings = loadRecognizerSettings()
-        try {
-            recognizer = RecognizerView(
-                context = this@VoiceInputMethodService,
-                listener = object : RecognizerViewListener {
-                    override fun cancelled() {
-                        cancelSelf()
+        recognizer = RecognizerView(
+            context = this@VoiceInputMethodService,
+            listener = object : RecognizerViewListener {
+                override fun cancelled() {
+                    cancelSelf()
+                }
+
+                override fun recordingStarted(device: MicrophoneDeviceState) {
+
+                }
+
+                override fun finished(result: String) {
+                    currentInputConnection?.let {
+                        it.commitText(result + pendingPostText, 1)
                     }
+                    cancelled()
+                }
 
-                    override fun recordingStarted(device: MicrophoneDeviceState) {
+                override fun partialResult(result: String) {
+                    if(result == textComposed) return
 
-                    }
-
-                    override fun finished(result: String) {
-                        currentInputConnection?.let {
-                            it.commitText(result + pendingPostText, 1)
+                    currentInputConnection?.let {
+                        if(pendingPreText.isNotEmpty()) {
+                            it.commitText(pendingPreText, 1)
+                            composingStartPos += pendingPreText.length
+                            pendingPreText = ""
                         }
-                        cancelled()
+                        it.setComposingText(result, 1)
+                        textComposed = result
                     }
+                }
 
-                    override fun partialResult(result: String) {
-                        if(result == textComposed) return
+                override fun requestPermission(
+                    onGranted: () -> Unit,
+                    onRejected: () -> Unit
+                ): Boolean {
+                    // TODO: Launch activity to request permission, steal this code from keyboard
+                    return false
+                }
 
-                        currentInputConnection?.let {
-                            if(pendingPreText.isNotEmpty()) {
-                                it.commitText(pendingPreText, 1)
-                                composingStartPos += pendingPreText.length
-                                pendingPreText = ""
-                            }
-                            it.setComposingText(result, 1)
-                            textComposed = result
-                        }
-                    }
+                override fun openSettings() {
 
-                    override fun requestPermission(
-                        onGranted: () -> Unit,
-                        onRejected: () -> Unit
-                    ): Boolean {
-                        // TODO: Launch activity to request permission, steal this code from keyboard
-                        return false
-                    }
+                }
 
-                    override fun openSettings() {
+                override fun modelNotFound() {
+                    val models = listOf(
+                        settings.modelRunConfiguration.primaryModel
+                    ) + settings.modelRunConfiguration.languageSpecificModels.values
 
-                    }
+                    startModelDownloadActivity(models)
 
-                },
-                settings = loadRecognizerSettings(),
-                lifecycleScope = lifecycleScope,
-                modelManager = CrashLoggingApplication.getModelManager(this)!!,
-            )
-        } catch(e: ModelDoesNotExistException) {
-            val models = listOf(
-                settings.modelRunConfiguration.primaryModel
-            ) + settings.modelRunConfiguration.languageSpecificModels.values
-
-            startModelDownloadActivity(models)
-
-            cancelSelf()
-        }
+                    cancelSelf()
+                }
+            },
+            settings = settings,
+            lifecycleScope = lifecycleScope,
+            modelManager = CrashLoggingApplication.getModelManager(this)!!,
+        )
     }
 
     private fun setOwners() {

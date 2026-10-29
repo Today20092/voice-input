@@ -185,7 +185,7 @@ fun ModelsScreen(
                         .sortedBy { it.second.caps.paramCount }
 
                     modelItems(
-                        R.string.streaming_models, englishModelIndex,
+                        R.string.streaming_models_recommended, englishModelIndex,
                         sortedModels.filter { it.second.caps.supportsStreaming && !it.second.caps.banishedToOther })
 
                     modelItems(

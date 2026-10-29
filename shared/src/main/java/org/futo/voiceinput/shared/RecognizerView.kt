@@ -76,6 +76,9 @@ interface RecognizerViewListener {
     fun requestPermission(onGranted: () -> Unit, onRejected: () -> Unit): Boolean
 
     fun openSettings()
+
+    // download must happen
+    fun modelNotFound()
 }
 
 class RecognizerView(
@@ -270,26 +273,31 @@ class RecognizerView(
     }
 
     var startPending = false
-    private fun recognizerWithLanguage(language: Language?) = AudioRecognizer(
-        context = context,
-        lifecycleScope = lifecycleScope,
-        modelManager = modelManager,
-        listener = audioRecognizerListener,
-        settings = AudioRecognizerSettings(
-            modelRunConfiguration = settings.modelRunConfiguration.let {
-                if(language != null) {
-                    val model = it.languageSpecificModels[language] ?: it.primaryModel
-                    it.copy(primaryModel = model, languageSpecificModels = emptyMap())
-                } else it
-            },
-            decodingConfiguration = settings.decodingConfiguration.let {
-                if(language != null) {
-                    it.copy(languages = setOf(language))
-                } else it
-            },
-            recordingConfiguration = settings.recordingConfiguration
+    private fun recognizerWithLanguage(language: Language?) = try {
+        AudioRecognizer(
+            context = context,
+            lifecycleScope = lifecycleScope,
+            modelManager = modelManager,
+            listener = audioRecognizerListener,
+            settings = AudioRecognizerSettings(
+                modelRunConfiguration = settings.modelRunConfiguration.let {
+                    if(language != null) {
+                        val model = it.languageSpecificModels[language] ?: it.primaryModel
+                        it.copy(primaryModel = model, languageSpecificModels = emptyMap())
+                    } else it
+                },
+                decodingConfiguration = settings.decodingConfiguration.let {
+                    if(language != null) {
+                        it.copy(languages = setOf(language))
+                    } else it
+                },
+                recordingConfiguration = settings.recordingConfiguration
+            )
         )
-    )
+    } catch(e: ModelDoesNotExistException) {
+        listener.modelNotFound()
+        null
+    }
 
     private fun initRecognizerWithLanguage(language: Language?) {
         recognizer = recognizerWithLanguage(language)

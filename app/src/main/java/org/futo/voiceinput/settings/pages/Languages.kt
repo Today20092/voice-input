@@ -27,7 +27,6 @@ import org.futo.voiceinput.settings.Tip
 import org.futo.voiceinput.settings.useDataStore
 import org.futo.voiceinput.shared.MULTILINGUAL_MODELS
 import org.futo.voiceinput.shared.types.getLanguageFromWhisperString
-import org.futo.voiceinput.startModelDownloadActivity
 
 
 @Composable
@@ -70,13 +69,6 @@ fun LanguagesScreen(
     val (allowUndertrainedLanguages, _) = useDataStore(ALLOW_UNDERTRAINED_LANGUAGES)
 
     val model = MULTILINGUAL_MODELS[multilingualModelIndex]
-
-
-    LaunchedEffect(listOf(multilingualModelIndex, multilingual)) {
-        if (multilingual) {
-            context.startModelDownloadActivity(listOf(MULTILINGUAL_MODELS[multilingualModelIndex]), forUpgrade = false)
-        }
-    }
 
     LaunchedEffect(languages) {
         val newMultilingual = languages.count { it != "en" } > 0
