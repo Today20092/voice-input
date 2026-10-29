@@ -25,6 +25,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowForward
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.Button
@@ -83,13 +84,14 @@ enum class TipKind(val icon: ImageVector?, val header: Int?, val bgColor: (Color
     Warning(Icons.Outlined.Warning, R.string.tip_kind_warning, { it.primaryContainer }),
     Error(Icons.Outlined.Warning, R.string.tip_kind_error, { it.errorContainer }),
     None(null, null, { it.surfaceBright }),
+    WhatsNew(Icons.Default.Star, R.string.whats_new_title, { it.primaryContainer })
     /*Warning,
     Notice,
     Error,*/
 }
 
 @Composable
-fun Tip(text: String = "This is an example tip", kind: TipKind, onDismiss: (() -> Unit)? = null) {
+fun Tip(text: String = "This is an example tip", kind: TipKind, onAction: (() -> Unit)? = null, actionText: Int = R.string.whats_new_read_more, onDismiss: (() -> Unit)? = null, dismissText: Int = R.string.dismiss) {
     val bgColor = kind.bgColor(MaterialTheme.colorScheme)
     val fgColor = contentColorFor(bgColor)
 
@@ -109,9 +111,17 @@ fun Tip(text: String = "This is an example tip", kind: TipKind, onDismiss: (() -
                 style = Typography.Body.RegularMl,
                 color = fgColor
             )
-            if (onDismiss != null) {
-                TextButton(onClick = onDismiss, modifier = Modifier.align(Alignment.End)) {
-                    Text(stringResource(R.string.dismiss))
+            Row(Modifier.align(Alignment.CenterHorizontally), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                if(onAction != null) {
+                    Button(onClick = onAction) {
+                        Text(stringResource(actionText))
+                    }
+                }
+
+                if(onDismiss != null) {
+                    TextButton(onClick = onDismiss) {
+                        Text(stringResource(dismissText))
+                    }
                 }
             }
         }

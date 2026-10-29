@@ -18,7 +18,7 @@
     <string name="view_other_dependencies">View Other Dependencies</string>
     <string name="name_legal">The authors, contributors or copyright holders listed above are not affiliated with this product and do not endorse or promote this product. Reference to the authors, contributors or copyright holders is solely for attribution purposes. Mention of their names does not imply approval or endorsement.</string>
     <string name="just_a_demonstration">This is just a demonstration of how Voice Input looks</string>
-    <string name="help_paragraph_1">You\'ve installed and enabled FUTO Voice Input. You should now be abl to use it in supported apps and keyboards.</string>
+    <string name="help_paragraph_1">You\'ve installed and enabled FUTO Voice Input. You should now be able to use it in supported apps and keyboards.</string>
     <string name="help_paragraph_2">When you open voice input, it should look something like this:</string>
     <string name="voice_input_will_look_like_this">Voice Input will look like this</string>
     <string name="look_for_the_big_off_center_futo_logo_in_the_background">Look for the big off-center FUTO logo in the background!</string>
@@ -266,5 +266,9 @@
     <string name="tip_kind_warning">Warning</string>
     <string name="tip_kind_notice">Notice</string>
     <string name="tip_kind_error">Error</string>
+
+    <string name="whats_new_title">What\'s new?</string>
+    <string name="whats_new_body">We have upgraded the speech recognition engine in this app, introducing new model options that you can choose from. Try them out in Model options! Many of these support streaming speech recognition.\n\nWe have also developed our own models under the asr4all family, which you can read more about in our blog.</string>
+    <string name="whats_new_read_more">Read our blog</string>
 
 </resources>

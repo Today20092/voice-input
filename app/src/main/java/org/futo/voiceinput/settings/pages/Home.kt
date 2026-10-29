@@ -22,6 +22,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
@@ -36,8 +37,11 @@ import org.futo.voiceinput.settings.NavigationItem
 import org.futo.voiceinput.settings.NavigationItemStyle
 import org.futo.voiceinput.settings.ScreenTitle
 import org.futo.voiceinput.settings.SettingItem
+import org.futo.voiceinput.settings.SettingsKey
 import org.futo.voiceinput.settings.SettingsRootList
 import org.futo.voiceinput.settings.SettingsViewModel
+import org.futo.voiceinput.settings.Tip
+import org.futo.voiceinput.settings.TipKind
 import org.futo.voiceinput.settings.useDataStore
 
 
@@ -85,6 +89,28 @@ fun SettingsSeparator(text: String) {
     Text(text, style = Typography.Small, modifier = Modifier.padding(16.dp, 0.dp))
 }
 
+
+val NewsEntries = listOf(
+    R.string.whats_new_body to (R.string.whats_new_read_more to "https://futo.tech/blog/asr4all")
+)
+
+val NewsViewed = SettingsKey(intPreferencesKey("news_viewed2"), 0)
+
+@Composable
+fun ConditionalWhatsNew(orElse: @Composable () -> Unit) {
+    val context = LocalContext.current
+    val newsViewed = useDataStore(NewsViewed)
+
+    if(newsViewed.value < NewsEntries.size) {
+        val entry = NewsEntries[newsViewed.value]
+        Tip(stringResource(entry.first), TipKind.WhatsNew, onAction = {
+            context.openURI(entry.second.second)
+        }, actionText = entry.second.first, onDismiss = {
+            newsViewed.setValue(newsViewed.value + 1)
+        })
+    } else orElse()
+}
+
 @Composable
 @Preview
 fun HomeScreen(
@@ -112,7 +138,9 @@ fun HomeScreen(
         )
 
 
-        ConditionalUnpaidNoticeWithNav(navController)
+        ConditionalWhatsNew(orElse = {
+            ConditionalUnpaidNoticeWithNav(navController)
+        })
         ConditionalUpdate()
 
         SettingsSeparator(stringResource(R.string.options))

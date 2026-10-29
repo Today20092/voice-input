@@ -38,7 +38,7 @@ import org.futo.voiceinput.theme.Typography
 @Preview
 fun HelpScreen(navController: NavHostController = rememberNavController()) {
     val textItem: @Composable (text: String) -> Unit = { text ->
-        Text(text, style = Typography.Body.Regular, modifier = Modifier.padding(16.dp, 4.dp))
+        Text(text, style = Typography.Body.RegularMl, modifier = Modifier.padding(16.dp, 4.dp))
     }
 
     val context = LocalContext.current
@@ -57,9 +57,12 @@ fun HelpScreen(navController: NavHostController = rememberNavController()) {
 
         textItem(stringResource(R.string.help_paragraph_1))
         textItem(stringResource(R.string.help_paragraph_2))
+
+        Spacer(Modifier.height(8.dp))
+
         Column(modifier = Modifier.fillMaxWidth()) {
             Box(modifier = Modifier.align(CenterHorizontally)) {
-                RecognizeWindow(onClose = showAntiConfusionToast, forceNoUnpaidNotice = true) {
+                RecognizeWindow(onClose = showAntiConfusionToast, forceNoUnpaidNotice = true, useSafeDrawingPadding = false) {
                     Column {
                         Text(
                             stringResource(R.string.voice_input_will_look_like_this),
@@ -83,7 +86,7 @@ fun HelpScreen(navController: NavHostController = rememberNavController()) {
 
         Column(modifier = Modifier.fillMaxWidth()) {
             Box(modifier = Modifier.align(CenterHorizontally)) {
-                RecognizeWindow(onClose = showAntiConfusionToast, forceNoUnpaidNotice = true) {
+                RecognizeWindow(onClose = showAntiConfusionToast, forceNoUnpaidNotice = true, useSafeDrawingPadding = false) {
                     Column {
                         IconButton(
                             onClick = showAntiConfusionToast,
