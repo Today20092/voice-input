@@ -58,8 +58,7 @@ private val Nemotron600M = ModelDownloadable(
         supportsStreaming = true,
         paramCount = 600,
         unrecommendedLanguages = setOf(
-            // Outputs nothing a lot of the time!
-            Language.Japanese,
+            Language.Japanese, // Outputs nothing a lot of the time!
             Language.Korean,
         )
     )

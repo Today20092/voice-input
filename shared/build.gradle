@@ -156,10 +156,10 @@ android {
         mlModelBinding true
     }
     lint {
-        targetSdk 35
+        targetSdk 36
     }
     testOptions {
-        targetSdk 35
+        targetSdk 36
     }
 }
 

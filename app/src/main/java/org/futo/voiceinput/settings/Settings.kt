@@ -103,6 +103,8 @@ val DISALLOW_SYMBOLS = SettingsKey(booleanPreferencesKey("disallow_symbols"), tr
 val ENABLE_30S_LIMIT = SettingsKey(booleanPreferencesKey("enable_30s_limit"), false)
 
 val ENGLISH_MODEL_INDEX = SettingsKey(intPreferencesKey("english_model_index"), DEFAULT_ENGLISH_MODEL_IDX)
+val MIGRATED_ENGLISH_MODEL = SettingsKey(intPreferencesKey("migrated_english_model"), 0)
+val CURRENT_MIGRATION_LEVEL = 1
 
 val MULTILINGUAL_MODEL_INDEX = SettingsKey(intPreferencesKey("multilingual_model_index"), 1)
 

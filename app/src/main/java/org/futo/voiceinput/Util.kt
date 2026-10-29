@@ -16,7 +16,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.semantics
+import kotlinx.coroutines.runBlocking
 import org.futo.voiceinput.downloader.DownloadActivity
+import org.futo.voiceinput.settings.CURRENT_MIGRATION_LEVEL
 import org.futo.voiceinput.settings.DISALLOW_SYMBOLS
 import org.futo.voiceinput.settings.ENABLE_30S_LIMIT
 import org.futo.voiceinput.settings.ENABLE_ANIMATIONS
@@ -25,12 +27,15 @@ import org.futo.voiceinput.settings.ENGLISH_MODEL_INDEX
 import org.futo.voiceinput.settings.IS_VAD_ENABLED
 import org.futo.voiceinput.settings.LANGUAGE_TOGGLES
 import org.futo.voiceinput.settings.MANUALLY_SELECT_LANGUAGE
+import org.futo.voiceinput.settings.MIGRATED_ENGLISH_MODEL
 import org.futo.voiceinput.settings.MULTILINGUAL_MODEL_INDEX
 import org.futo.voiceinput.settings.PERSONAL_DICTIONARY
 import org.futo.voiceinput.settings.STREAMING_TIER
 import org.futo.voiceinput.settings.USE_LANGUAGE_SPECIFIC_MODELS
 import org.futo.voiceinput.settings.VERBOSE_PROGRESS
 import org.futo.voiceinput.settings.getSetting
+import org.futo.voiceinput.settings.setSetting
+import org.futo.voiceinput.shared.DEFAULT_ENGLISH_MODEL_IDX
 import org.futo.voiceinput.shared.ENGLISH_MODELS
 import org.futo.voiceinput.shared.MULTILINGUAL_MODELS
 import org.futo.voiceinput.shared.RecognizerViewSettings
@@ -211,7 +216,24 @@ fun Context.loadCurrentModelList() = loadRecognizerSettings().modelRunConfigurat
     listOf(it.primaryModel) + it.languageSpecificModels.values
 }
 
+// upgrade old tiny.en selection, which was previously built into the app, to the new one that's
+// built into the app (asr4all-m) to avoid unnecessary download prompt
+fun Context.performMigrationsIfNecessary() {
+    val englishModelIdx = getSetting(ENGLISH_MODEL_INDEX)
+    val migrationLvl = getSetting(MIGRATED_ENGLISH_MODEL)
+
+    if(migrationLvl >= CURRENT_MIGRATION_LEVEL) return
+    runBlocking { setSetting(MIGRATED_ENGLISH_MODEL, CURRENT_MIGRATION_LEVEL) }
+
+    val oldDefaultEnglishModelIdx = 0
+    if(englishModelIdx == oldDefaultEnglishModelIdx && !ENGLISH_MODELS[oldDefaultEnglishModelIdx].exists(this)) {
+        runBlocking { setSetting(ENGLISH_MODEL_INDEX, DEFAULT_ENGLISH_MODEL_IDX) }
+    }
+}
+
 fun Context.loadRecognizerSettings(inlinePartialResult: Boolean = false): RecognizerViewSettings {
+    performMigrationsIfNecessary()
+
     val multiModelIdx = getSetting(MULTILINGUAL_MODEL_INDEX)
     val englishModelIdx = getSetting(ENGLISH_MODEL_INDEX)
     val useLanguageSpecificModels = getSetting(USE_LANGUAGE_SPECIFIC_MODELS)
