@@ -226,16 +226,29 @@ static jstring WhisperGGML_infer(JNIEnv *env, jobject instance, jlong handle, jf
         if(prompt) {
             auto p = jstring2string(env, prompt);
             if(!p.empty()) {
-                prompt_str.append("(Glossary: ");
+                if(language_hint == "en") {
+                    prompt_str.append("(Glossary: ");
+                } else {
+                    prompt_str.append("(");
+                }
                 for(const char c : p) {
                     if(c == '\n') prompt_str.append(", ");
                     else prompt_str.push_back(c);
                 }
+                if(strcmp(&prompt_str[prompt_str.length() - 2], ", ") == 0) {
+                    prompt_str.pop_back();
+                    prompt_str.pop_back();
+                }
                 prompt_str.append(")");
-
-                wp.initial_prompt = prompt_str.c_str();
             }
         }
+
+        if(language_hint == "zh") {
+            prompt_str.append(" [简体]");
+        }
+
+        wp.initial_prompt = prompt_str.c_str();
+        AKLOGI("Initial prompt for [%s]: %s", language_hint.c_str(), prompt_str.c_str());
 
         params.family = &wp.ext;
     }

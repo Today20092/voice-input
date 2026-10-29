@@ -60,10 +60,6 @@ fun AdvancedScreen(
             ALLOW_UNDERTRAINED_LANGUAGES,
             subtitle = stringResource(R.string.allow_undertrained_languages_subtitle),
             onChanged = {
-                // Automatically change model to largest one
-                if(it) {
-                    setMultilingualIdx(MULTILINGUAL_MODELS.size - 1)
-                }
             }
         )
 

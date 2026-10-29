@@ -16,6 +16,7 @@ data class ModelCapabilities(
     val paramCount: Int = 0,
     val banishedToOther: Boolean = false,
     val requiresPersonalDictSpecialCharacterProcessing: Boolean = false,
+    val unrecommendedLanguages: Set<Language> = emptySet(),
 )
 
 enum class ModelPresence {

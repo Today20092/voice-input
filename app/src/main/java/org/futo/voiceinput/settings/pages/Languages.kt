@@ -91,23 +91,17 @@ fun LanguagesScreen(
         item {
             Tip(stringResource(R.string.language_tip_1))
 
-            if(model.caps.supportsLanguageDetection) {
-                Tip(stringResource(R.string.language_tip_2))
-                Tip(stringResource(R.string.language_tip_3))
-            } else {
-                val unsupportedLanguages = languages.map { getLanguageFromWhisperString(it) }.filter { it !in model.caps.supportedLanguages }
+            val unsupportedLanguages = languages.map { getLanguageFromWhisperString(it) }.filter { it !in model.caps.supportedLanguages }
 
-                if(unsupportedLanguages.isNotEmpty()) {
-                    Tip(
-                        stringResource(
-                            R.string.language_settings_model_doesnt_support_languages,
-                            stringResource(model.name),
-                            unsupportedLanguages.joinToString(", ")
-                        )
+            if(unsupportedLanguages.isNotEmpty()) {
+                Tip(
+                    stringResource(
+                        R.string.language_settings_model_doesnt_support_languages,
+                        stringResource(model.name),
+                        unsupportedLanguages.joinToString(", ")
                     )
-                }
+                )
             }
-
         }
 
         items(LANGUAGE_LIST.size) {
@@ -127,6 +121,10 @@ fun LanguagesScreen(
             val subtitle = when {
                  !modelSupportsLanguage ->
                      stringResource(R.string.model_settings_model_doesnt_support_detection, stringResource(model.name))
+
+                !model.caps.isWhisper && model.caps.unrecommendedLanguages.contains(getLanguageFromWhisperString(language.id))
+                        && languages.contains(language.id) ->
+                    stringResource(R.string.whisper_recommended_subtitle)
 
                 !model.caps.isWhisper ->
                     ""

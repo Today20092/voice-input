@@ -128,9 +128,7 @@
     <string name="download_progress">Download Progress</string>
     <string name="advanced_settings">Advanced Settings</string>
     <string name="languages_title">Languages</string>
-    <string name="language_tip_1">By default, the language is detected automatically. You can enable manual language selection in Input Options.</string>
-    <string name="language_tip_2">Some languages may work better than others, depending on the amount of training data.</string>
-    <string name="language_tip_3">You can configure multilingual model switching behavior in the Input Options section</string>
+    <string name="language_tip_1">Some languages may work better than others. Try out Nemotron (newer model, sometimes tendency to output nothing) vs Whisper (more languages) in the Model options.</string>
     <string name="may_be_low_accuracy_x_hours">May be low accuracy (<xliff:g name="hourCount" example="1">%d</xliff:g>h)</string>
     <string name="trained_on_x_hours">Trained on <xliff:g name="hourCount" example="1">%d</xliff:g> hours</string>
     <string name="input_testing">Input testing</string>
@@ -172,8 +170,8 @@
     <string name="use_language_specific_models_info">Language-specific models may be more accurate, but take extra time to switch after detecting the language. Currently only has effect with English.</string>
     <string name="ending_soon_30s">Ending soon - 30s limit</string>
     <string name="ending_soon_vad">Silence detected</string>
-    <string name="allow_undertrained_languages">Allow undertrained languages</string>
-    <string name="allow_undertrained_languages_subtitle">May be less accurate, enabling will automatically select largest model</string>
+    <string name="allow_undertrained_languages">Allow undertrained languages for Whisper</string>
+    <string name="allow_undertrained_languages_subtitle">May be less accurate</string>
     <string name="language_unsupported_warning_1000">Languages below are likely to not work well. You have enabled the option to see them anyway. Use at your own risk.</string>
     <string name="language_unsupported_warning_100">Languages below are certain to not work well. You have enabled the option to see them anyway. Use at your own risk.</string>
     <string name="out_of_memory_error">Out of Memory error, will retry…</string>
@@ -205,7 +203,7 @@
     <string name="new_model_features_tip">Models have been updated for better accuracy and faster performance. You can now also add words/phrases in the personal dictionary. If you have any issues or feedback after this change please contact us.</string>
     <string name="personal_dictionary_placeholder">John Doe, Jane Smith, TensorFlow, bobble, type anything you want voice input to recognize more often here!</string>
     <string name="personal_dictionary">Personal Dictionary</string>
-    <string name="personal_dictionary_no_comma_warning">Make sure to separate words by comma, example: quick, brown, fox</string>
+    <string name="personal_dictionary_no_comma_warning">Make sure to separate words by comma like: quick, brown, fox, FUTO</string>
     <string name="manual_language_selection_toggle_subtitle">Recommended</string>
     <string name="unpaid_futo_voice_input">Unpaid FUTO Voice Input</string>
     <string name="pay_for_futo_voice_input">Pay for FUTO Voice Input</string>
@@ -230,6 +228,7 @@
 
     <string name="no_personal_dict_subtitle">This model doesn\'t support personal dictionary</string>
     <string name="hidden_models_notice">%1$s models hidden because they don\'t support these languages: %1$s</string>
+    <string name="whisper_recommended_subtitle">If you keep getting blank text, try switching to Whisper in Model options</string>
 
     <string name="setup_which_voice_input_to_use">Which voice input do you want to use?</string>
     <string name="setup_which_voice_input_to_use_info">You\'re using FUTO Keyboard, which already has voice input included. This app has a more experimental engine with wider model support. You can change this later in FUTO Keyboard settings.</string>
