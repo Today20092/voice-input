@@ -36,16 +36,15 @@ import org.futo.voiceinput.settings.LANGUAGE_TOGGLES
 import org.futo.voiceinput.settings.MANUALLY_SELECT_LANGUAGE
 import org.futo.voiceinput.settings.MULTILINGUAL_MODEL_INDEX
 import org.futo.voiceinput.settings.PERSONAL_DICTIONARY
-import org.futo.voiceinput.settings.STREAMING_TIER
 import org.futo.voiceinput.settings.ScreenTitle
 import org.futo.voiceinput.settings.SettingItem
-import org.futo.voiceinput.settings.SettingRadio
-import org.futo.voiceinput.settings.SettingToggleDataStore
+import org.futo.voiceinput.settings.SettingToggleDataStoreItem
 import org.futo.voiceinput.settings.SettingsRootList
 import org.futo.voiceinput.settings.SettingsViewModel
 import org.futo.voiceinput.settings.Tip
 import org.futo.voiceinput.settings.USE_LANGUAGE_SPECIFIC_MODELS
 import org.futo.voiceinput.settings.useDataStore
+import org.futo.voiceinput.settings.useInvertedDataStore
 import org.futo.voiceinput.shared.ENGLISH_MODELS
 import org.futo.voiceinput.shared.MULTILINGUAL_MODELS
 import org.futo.voiceinput.shared.types.ModelLoader
@@ -75,6 +74,10 @@ fun PersonalDictionaryEditor(disabled: Boolean) {
     
     ScreenTitle(title = stringResource(R.string.personal_dictionary))
 
+    if(textFieldValue.value.isNotEmpty() && !textFieldValue.value.contains(',')) {
+        Tip(stringResource(R.string.personal_dictionary_no_comma_warning))
+    }
+
     TextField(
         value = textFieldValue.value,
         onValueChange = {
@@ -86,7 +89,6 @@ fun PersonalDictionaryEditor(disabled: Boolean) {
             .padding(8.dp, 4.dp),
         enabled = !disabled
     )
-
 }
 
 @Composable
@@ -126,25 +128,22 @@ fun ModelsScreen(
     val modelEn = ENGLISH_MODELS[englishModelIndex.value]
     val model = MULTILINGUAL_MODELS[multilingualModelIndex.value]
 
+    val personalDict = useDataStore(PERSONAL_DICTIONARY)
+
     SettingsRootList {
         ScreenTitle(stringResource(R.string.model_options), showBack = true, navController = navController)
 
-        if(languages.size > 1) {
-            SettingToggleDataStore(
-                stringResource(R.string.manually_select_language),
-                MANUALLY_SELECT_LANGUAGE,
-                subtitle = stringResource(R.string.manual_language_selection_toggle_subtitle)
+        if(languages.size > 1 && model.caps.supportsLanguageDetection) {
+            SettingToggleDataStoreItem(
+                stringResource(R.string.autodetect_language),
+                useInvertedDataStore(MANUALLY_SELECT_LANGUAGE),
+                subtitle = stringResource(R.string.autodetect_language_subtitle)
             )
         }
 
-        if(!modelEn.caps.supportsPersonalDict && (useLanguageSpecificModels || languages == setOf("en"))) {
-            Tip(stringResource(R.string.model_settings_model_doesnt_support_personal_dict, stringResource(modelEn.name)))
+        if((model.caps.supportsPersonalDict && languages != setOf("en")) || (modelEn.caps.supportsPersonalDict && (useLanguageSpecificModels || languages == setOf("en")))) {
+            PersonalDictionaryEditor(disabled = false)
         }
-        if(!model.caps.supportsPersonalDict && languages != setOf("en")) {
-            Tip(stringResource(R.string.model_settings_model_doesnt_support_personal_dict, stringResource(model.name)))
-        }
-
-        PersonalDictionaryEditor(disabled = false)
 
         Spacer(modifier = Modifier.height(32.dp))
 
@@ -154,6 +153,7 @@ fun ModelsScreen(
             list.forEach {
                 SettingItem(
                     title = stringResource(it.second.name),
+                    subtitle = if(setting.value == it.first && !it.second.caps.supportsPersonalDict && personalDict.value.isNotBlank()) stringResource(R.string.no_personal_dict_subtitle) else null,
                     onClick = {
                         setting.setValue(it.first)
                     },
@@ -164,10 +164,6 @@ fun ModelsScreen(
         }
 
         if (useMultilingual) {
-            if(!model.caps.supportsLanguageDetection) {
-                Tip(stringResource(R.string.model_settings_model_doesnt_support_detection))
-            }
-
             val unsupportedLanguages = languages.map { getLanguageFromWhisperString(it) }.filter { it !in model.caps.supportedLanguages }
             if(unsupportedLanguages.isNotEmpty()) {
                 Tip(stringResource(

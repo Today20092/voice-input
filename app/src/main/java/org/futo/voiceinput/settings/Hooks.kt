@@ -194,6 +194,13 @@ fun <T> useDataStore(setting: SettingsKey<T>): DataStoreItem<T> {
 }
 
 @Composable
+fun useInvertedDataStore(setting: SettingsKey<Boolean>): DataStoreItem<Boolean> {
+    val (value, setValue) = useDataStore(key = setting.key, default = setting.default)
+
+    return DataStoreItem(!value, { setValue(!it) })
+}
+
+@Composable
 fun <T> useDataStoreValueNullable(key: Preferences.Key<T>, default: T): T {
     val context = LocalContext.current
 
