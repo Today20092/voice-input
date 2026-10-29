@@ -112,9 +112,11 @@ fun HelpScreen(navController: NavHostController = rememberNavController()) {
 
         textItem(stringResource(R.string.help_paragraph_3))
         Column(modifier = Modifier.padding(16.dp, 0.dp)) {
-            textItem(stringResource(R.string.aosp_keyboard_included_in_aosp_based_roms))
+            textItem(stringResource(R.string.futo_keyboard_bullet_point))
             textItem(stringResource(R.string.heliboard_info))
+            textItem(stringResource(R.string.florisboard_info))
             textItem(stringResource(R.string.anysoftkeyboard_available_on_f_droid_and_google_play))
+            textItem(stringResource(R.string.aosp_keyboard_included_in_aosp_based_roms))
             textItem(stringResource(R.string.unexpected_keyboard))
         }
 

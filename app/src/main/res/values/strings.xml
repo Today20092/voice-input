@@ -26,9 +26,10 @@
     <string name="once_you_re_done_talking_you_can_hit_the_microphone_button_to_stop">Once you\'re done talking, you can hit the microphone button to stop</string>
     <string name="help_paragraph_3">We recommend using one of these keyboards:</string>
     <string name="futo_keyboard_bullet_point">• FUTO Keyboard, which also has Whisper built-in (but you can use this app for more models)</string>
-    <string name="aosp_keyboard_included_in_aosp_based_roms">• AOSP Keyboard, if it\'s included in your OS</string>
+    <string name="florisboard_info">• FlorisBoard</string>
     <string name="heliboard_info">• HeliBoard, a fork of AOSP Keyboard / OpenBoard</string>
     <string name="anysoftkeyboard_available_on_f_droid_and_google_play">• AnySoftKeyboard, available on F-Droid and Google Play</string>
+    <string name="aosp_keyboard_included_in_aosp_based_roms">• AOSP Keyboard, if it\'s included in your OS</string>
     <string name="help_paragraph_5">Everything you type is seen by your keyboard app, and proprietary commercial keyboards often have lengthy and complicated privacy policies. Choose carefully!</string>
     <string name="help_paragraph_7">Note: Not all keyboards are compatible with Voice Input. You need to make sure you\'re using a compatible keyboard.</string>
     <string name="help_paragraph_8">Not all keyboards are compatible with FUTO Voice Input. You should avoid using:</string>
@@ -176,7 +177,8 @@
     <string name="language_unsupported_warning_1000">Languages below are likely to not work well. You have enabled the option to see them anyway. Use at your own risk.</string>
     <string name="language_unsupported_warning_100">Languages below are certain to not work well. You have enabled the option to see them anyway. Use at your own risk.</string>
     <string name="out_of_memory_error">Out of Memory error, will retry…</string>
-    <string name="manually_select_language">Enable manual language selection</string>
+    <string name="autodetect_language">Autodetect language</string>
+    <string name="autodetect_language_subtitle">Whisper models can automatically detect language, but there may be a switching delay for English</string>
 
     <string name="amoled_dark_theme_name">AMOLED Dark Purple</string>
     <string name="classic_material_dark_theme_name">AOSP Material Dark</string>
@@ -203,7 +205,8 @@
     <string name="new_model_features_tip">Models have been updated for better accuracy and faster performance. You can now also add words/phrases in the personal dictionary. If you have any issues or feedback after this change please contact us.</string>
     <string name="personal_dictionary_placeholder">John Doe, Jane Smith, TensorFlow, bobble, type anything you want voice input to recognize more often here!</string>
     <string name="personal_dictionary">Personal Dictionary</string>
-    <string name="manual_language_selection_toggle_subtitle">Avoids model switching delay if you have multiple languages enabled</string>
+    <string name="personal_dictionary_no_comma_warning">Make sure to separate words by comma, example: quick, brown, fox</string>
+    <string name="manual_language_selection_toggle_subtitle">Recommended</string>
     <string name="unpaid_futo_voice_input">Unpaid FUTO Voice Input</string>
     <string name="pay_for_futo_voice_input">Pay for FUTO Voice Input</string>
     <string name="already_paid_title">Already paid?</string>
@@ -224,6 +227,9 @@
     <string name="model_settings_streaming_tier_1">mid</string>
     <string name="model_settings_streaming_tier_2">high (more accurate, more delayed)</string>
     <string name="model_settings_streaming_tier_3">no streaming</string>
+
+    <string name="no_personal_dict_subtitle">This model doesn\'t support personal dictionary</string>
+    <string name="hidden_models_notice">%1$s models hidden because they don\'t support these languages: %1$s</string>
 
     <string name="setup_which_voice_input_to_use">Which voice input do you want to use?</string>
     <string name="setup_which_voice_input_to_use_info">You\'re using FUTO Keyboard, which already has voice input included. This app has a more experimental engine with wider model support. You can change this later in FUTO Keyboard settings.</string>
