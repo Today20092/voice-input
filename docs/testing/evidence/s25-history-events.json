@@ -1,0 +1,499 @@
+[
+  {
+    "timestampMs": 1792895073020,
+    "event": "SESSION_STARTED",
+    "sessionId": "4cea0392-7b05-418a-809b-daa762f1725b",
+    "model": "moonshine-small",
+    "metrics": {
+      "RETRANSCRIPTION": 1,
+      "ELAPSED_MS": 0
+    }
+  },
+  {
+    "timestampMs": 1792895073113,
+    "event": "MODEL_LOAD_STARTED",
+    "sessionId": "4cea0392-7b05-418a-809b-daa762f1725b",
+    "model": "moonshine-small",
+    "metrics": {
+      "ELAPSED_MS": 93
+    }
+  },
+  {
+    "timestampMs": 1792895073445,
+    "event": "MODEL_LOAD_FINISHED",
+    "sessionId": "4cea0392-7b05-418a-809b-daa762f1725b",
+    "model": "moonshine-small",
+    "metrics": {
+      "DURATION_MS": 332,
+      "ELAPSED_MS": 425
+    }
+  },
+  {
+    "timestampMs": 1792895073446,
+    "event": "RECOGNITION_STARTED",
+    "sessionId": "4cea0392-7b05-418a-809b-daa762f1725b",
+    "model": "moonshine-small",
+    "metrics": {
+      "AUDIO_MS": 58550,
+      "ELAPSED_MS": 425
+    }
+  },
+  {
+    "timestampMs": 1792895077315,
+    "event": "RECOGNITION_FINISHED",
+    "sessionId": "4cea0392-7b05-418a-809b-daa762f1725b",
+    "model": "moonshine-small",
+    "metrics": {
+      "DURATION_MS": 3870,
+      "CHARACTERS": 888,
+      "ELAPSED_MS": 4295
+    }
+  },
+  {
+    "timestampMs": 1792895077357,
+    "event": "RETRANSCRIPTION_FINISHED",
+    "sessionId": "4cea0392-7b05-418a-809b-daa762f1725b",
+    "model": "moonshine-small",
+    "metrics": {
+      "ELAPSED_MS": 4337
+    }
+  },
+  {
+    "timestampMs": 1792895164053,
+    "event": "SESSION_STARTED",
+    "sessionId": "e2fa8564-29cb-4072-b4a9-051c290ce0a9",
+    "model": "moonshine-medium",
+    "metrics": {
+      "RETRANSCRIPTION": 1,
+      "ELAPSED_MS": 0
+    }
+  },
+  {
+    "timestampMs": 1792895164116,
+    "event": "MODEL_LOAD_STARTED",
+    "sessionId": "e2fa8564-29cb-4072-b4a9-051c290ce0a9",
+    "model": "moonshine-medium",
+    "metrics": {
+      "ELAPSED_MS": 63
+    }
+  },
+  {
+    "timestampMs": 1792895164976,
+    "event": "MODEL_LOAD_FINISHED",
+    "sessionId": "e2fa8564-29cb-4072-b4a9-051c290ce0a9",
+    "model": "moonshine-medium",
+    "metrics": {
+      "DURATION_MS": 860,
+      "ELAPSED_MS": 923
+    }
+  },
+  {
+    "timestampMs": 1792895164977,
+    "event": "RECOGNITION_STARTED",
+    "sessionId": "e2fa8564-29cb-4072-b4a9-051c290ce0a9",
+    "model": "moonshine-medium",
+    "metrics": {
+      "AUDIO_MS": 58550,
+      "ELAPSED_MS": 923
+    }
+  },
+  {
+    "timestampMs": 1792895170762,
+    "event": "RECOGNITION_FINISHED",
+    "sessionId": "e2fa8564-29cb-4072-b4a9-051c290ce0a9",
+    "model": "moonshine-medium",
+    "metrics": {
+      "DURATION_MS": 5786,
+      "CHARACTERS": 901,
+      "ELAPSED_MS": 6709
+    }
+  },
+  {
+    "timestampMs": 1792895170823,
+    "event": "RETRANSCRIPTION_FINISHED",
+    "sessionId": "e2fa8564-29cb-4072-b4a9-051c290ce0a9",
+    "model": "moonshine-medium",
+    "metrics": {
+      "ELAPSED_MS": 6770
+    }
+  },
+  {
+    "timestampMs": 1792895195207,
+    "event": "SESSION_STARTED",
+    "sessionId": "2f61d61a-73ca-4310-999f-a68b9f93486e",
+    "model": "moonshine-medium",
+    "metrics": {
+      "RETRANSCRIPTION": 1,
+      "ELAPSED_MS": 0
+    }
+  },
+  {
+    "timestampMs": 1792895195253,
+    "event": "MODEL_LOAD_STARTED",
+    "sessionId": "2f61d61a-73ca-4310-999f-a68b9f93486e",
+    "model": "moonshine-medium",
+    "metrics": {
+      "ELAPSED_MS": 46
+    }
+  },
+  {
+    "timestampMs": 1792895195778,
+    "event": "SESSION_CANCELLED",
+    "sessionId": "2f61d61a-73ca-4310-999f-a68b9f93486e",
+    "model": "moonshine-medium",
+    "metrics": {
+      "ELAPSED_MS": 571
+    }
+  },
+  {
+    "timestampMs": 1792895206588,
+    "event": "SESSION_STARTED",
+    "sessionId": "23bdb67e-0d83-4ec7-ae40-4d1580c3fb7b",
+    "model": "moonshine-medium",
+    "metrics": {
+      "RETRANSCRIPTION": 1,
+      "ELAPSED_MS": 0
+    }
+  },
+  {
+    "timestampMs": 1792895206632,
+    "event": "MODEL_LOAD_STARTED",
+    "sessionId": "23bdb67e-0d83-4ec7-ae40-4d1580c3fb7b",
+    "model": "moonshine-medium",
+    "metrics": {
+      "ELAPSED_MS": 45
+    }
+  },
+  {
+    "timestampMs": 1792895207121,
+    "event": "MODEL_LOAD_FINISHED",
+    "sessionId": "23bdb67e-0d83-4ec7-ae40-4d1580c3fb7b",
+    "model": "moonshine-medium",
+    "metrics": {
+      "DURATION_MS": 489,
+      "ELAPSED_MS": 534
+    }
+  },
+  {
+    "timestampMs": 1792895207123,
+    "event": "RECOGNITION_STARTED",
+    "sessionId": "23bdb67e-0d83-4ec7-ae40-4d1580c3fb7b",
+    "model": "moonshine-medium",
+    "metrics": {
+      "AUDIO_MS": 58550,
+      "ELAPSED_MS": 534
+    }
+  },
+  {
+    "timestampMs": 1792895212790,
+    "event": "RECOGNITION_FINISHED",
+    "sessionId": "23bdb67e-0d83-4ec7-ae40-4d1580c3fb7b",
+    "model": "moonshine-medium",
+    "metrics": {
+      "DURATION_MS": 5669,
+      "CHARACTERS": 901,
+      "ELAPSED_MS": 6203
+    }
+  },
+  {
+    "timestampMs": 1792895212871,
+    "event": "RETRANSCRIPTION_FINISHED",
+    "sessionId": "23bdb67e-0d83-4ec7-ae40-4d1580c3fb7b",
+    "model": "moonshine-medium",
+    "metrics": {
+      "ELAPSED_MS": 6284
+    }
+  },
+  {
+    "timestampMs": 1792895248457,
+    "event": "SESSION_STARTED",
+    "sessionId": "b862416c-2baf-4acd-bf7d-b9193d39086c",
+    "model": "moonshine-medium",
+    "metrics": {
+      "RETRANSCRIPTION": 1,
+      "ELAPSED_MS": 0
+    }
+  },
+  {
+    "timestampMs": 1792895248504,
+    "event": "MODEL_LOAD_STARTED",
+    "sessionId": "b862416c-2baf-4acd-bf7d-b9193d39086c",
+    "model": "moonshine-medium",
+    "metrics": {
+      "ELAPSED_MS": 47
+    }
+  },
+  {
+    "timestampMs": 1792895249051,
+    "event": "SESSION_CANCELLED",
+    "sessionId": "b862416c-2baf-4acd-bf7d-b9193d39086c",
+    "model": "moonshine-medium",
+    "metrics": {
+      "ELAPSED_MS": 594
+    }
+  },
+  {
+    "timestampMs": 1792895293165,
+    "event": "SESSION_STARTED",
+    "sessionId": "71bab2ff-025e-4123-a5ad-aa344547c9e2",
+    "model": "moonshine-medium",
+    "metrics": {
+      "RETRANSCRIPTION": 1,
+      "ELAPSED_MS": 0
+    }
+  },
+  {
+    "timestampMs": 1792895293206,
+    "event": "MODEL_LOAD_STARTED",
+    "sessionId": "71bab2ff-025e-4123-a5ad-aa344547c9e2",
+    "model": "moonshine-medium",
+    "metrics": {
+      "ELAPSED_MS": 42
+    }
+  },
+  {
+    "timestampMs": 1792895293698,
+    "event": "MODEL_LOAD_FINISHED",
+    "sessionId": "71bab2ff-025e-4123-a5ad-aa344547c9e2",
+    "model": "moonshine-medium",
+    "metrics": {
+      "DURATION_MS": 491,
+      "ELAPSED_MS": 533
+    }
+  },
+  {
+    "timestampMs": 1792895293698,
+    "event": "RECOGNITION_STARTED",
+    "sessionId": "71bab2ff-025e-4123-a5ad-aa344547c9e2",
+    "model": "moonshine-medium",
+    "metrics": {
+      "AUDIO_MS": 58550,
+      "ELAPSED_MS": 533
+    }
+  },
+  {
+    "timestampMs": 1792895299331,
+    "event": "RECOGNITION_FINISHED",
+    "sessionId": "71bab2ff-025e-4123-a5ad-aa344547c9e2",
+    "model": "moonshine-medium",
+    "metrics": {
+      "DURATION_MS": 5633,
+      "CHARACTERS": 901,
+      "ELAPSED_MS": 6166
+    }
+  },
+  {
+    "timestampMs": 1792895299392,
+    "event": "RETRANSCRIPTION_FINISHED",
+    "sessionId": "71bab2ff-025e-4123-a5ad-aa344547c9e2",
+    "model": "moonshine-medium",
+    "metrics": {
+      "ELAPSED_MS": 6227
+    }
+  },
+  {
+    "timestampMs": 1792895309896,
+    "event": "SESSION_STARTED",
+    "sessionId": "bda9bf67-f197-4593-bce7-e4e9317b8711",
+    "model": "moonshine-small",
+    "metrics": {
+      "RETRANSCRIPTION": 1,
+      "ELAPSED_MS": 0
+    }
+  },
+  {
+    "timestampMs": 1792895310026,
+    "event": "MODEL_LOAD_STARTED",
+    "sessionId": "bda9bf67-f197-4593-bce7-e4e9317b8711",
+    "model": "moonshine-small",
+    "metrics": {
+      "ELAPSED_MS": 130
+    }
+  },
+  {
+    "timestampMs": 1792895310529,
+    "event": "SESSION_CANCELLED",
+    "sessionId": "bda9bf67-f197-4593-bce7-e4e9317b8711",
+    "model": "moonshine-small",
+    "metrics": {
+      "ELAPSED_MS": 633
+    }
+  },
+  {
+    "timestampMs": 1792895318570,
+    "event": "SESSION_STARTED",
+    "sessionId": "c1014508-603d-41ff-9397-4063fa86c3f5",
+    "model": "moonshine-small",
+    "metrics": {
+      "RETRANSCRIPTION": 1,
+      "ELAPSED_MS": 0
+    }
+  },
+  {
+    "timestampMs": 1792895318685,
+    "event": "MODEL_LOAD_STARTED",
+    "sessionId": "c1014508-603d-41ff-9397-4063fa86c3f5",
+    "model": "moonshine-small",
+    "metrics": {
+      "ELAPSED_MS": 115
+    }
+  },
+  {
+    "timestampMs": 1792895319031,
+    "event": "MODEL_LOAD_FINISHED",
+    "sessionId": "c1014508-603d-41ff-9397-4063fa86c3f5",
+    "model": "moonshine-small",
+    "metrics": {
+      "DURATION_MS": 346,
+      "ELAPSED_MS": 461
+    }
+  },
+  {
+    "timestampMs": 1792895319033,
+    "event": "RECOGNITION_STARTED",
+    "sessionId": "c1014508-603d-41ff-9397-4063fa86c3f5",
+    "model": "moonshine-small",
+    "metrics": {
+      "AUDIO_MS": 58550,
+      "ELAPSED_MS": 461
+    }
+  },
+  {
+    "timestampMs": 1792895323094,
+    "event": "RECOGNITION_FINISHED",
+    "sessionId": "c1014508-603d-41ff-9397-4063fa86c3f5",
+    "model": "moonshine-small",
+    "metrics": {
+      "DURATION_MS": 4063,
+      "CHARACTERS": 891,
+      "ELAPSED_MS": 4524
+    }
+  },
+  {
+    "timestampMs": 1792895323134,
+    "event": "RETRANSCRIPTION_FINISHED",
+    "sessionId": "c1014508-603d-41ff-9397-4063fa86c3f5",
+    "model": "moonshine-small",
+    "metrics": {
+      "ELAPSED_MS": 4564
+    }
+  },
+  {
+    "timestampMs": 1792895371751,
+    "event": "SESSION_STARTED",
+    "sessionId": "6d350f59-3647-4a15-bd32-4c586e36f5cf",
+    "model": "whisper_ggml",
+    "metrics": {
+      "RETRANSCRIPTION": 1,
+      "ELAPSED_MS": 0
+    }
+  },
+  {
+    "timestampMs": 1792895371795,
+    "event": "MODEL_LOAD_STARTED",
+    "sessionId": "6d350f59-3647-4a15-bd32-4c586e36f5cf",
+    "model": "whisper_ggml",
+    "metrics": {
+      "ELAPSED_MS": 14
+    }
+  },
+  {
+    "timestampMs": 1792895371828,
+    "event": "MODEL_LOAD_FINISHED",
+    "sessionId": "6d350f59-3647-4a15-bd32-4c586e36f5cf",
+    "model": "whisper_ggml",
+    "metrics": {
+      "DURATION_MS": 63,
+      "ELAPSED_MS": 77
+    }
+  },
+  {
+    "timestampMs": 1792895371828,
+    "event": "RECOGNITION_STARTED",
+    "sessionId": "6d350f59-3647-4a15-bd32-4c586e36f5cf",
+    "model": "whisper_ggml",
+    "metrics": {
+      "AUDIO_MS": 5855,
+      "ELAPSED_MS": 77
+    }
+  },
+  {
+    "timestampMs": 1792895375790,
+    "event": "RECOGNITION_FINISHED",
+    "sessionId": "6d350f59-3647-4a15-bd32-4c586e36f5cf",
+    "model": "whisper_ggml",
+    "metrics": {
+      "DURATION_MS": 3962,
+      "CHARACTERS": 88,
+      "ELAPSED_MS": 4039
+    }
+  },
+  {
+    "timestampMs": 1792895375804,
+    "event": "RETRANSCRIPTION_FINISHED",
+    "sessionId": "6d350f59-3647-4a15-bd32-4c586e36f5cf",
+    "model": "whisper_ggml",
+    "metrics": {
+      "ELAPSED_MS": 4053
+    }
+  },
+  {
+    "timestampMs": 1792895423571,
+    "event": "SESSION_STARTED",
+    "sessionId": "a89d2c4d-b7e9-46eb-bcba-4329f67a2cc1",
+    "model": "moonshine-medium",
+    "metrics": {
+      "RETRANSCRIPTION": 1,
+      "ELAPSED_MS": 0
+    }
+  },
+  {
+    "timestampMs": 1792895423619,
+    "event": "MODEL_LOAD_STARTED",
+    "sessionId": "a89d2c4d-b7e9-46eb-bcba-4329f67a2cc1",
+    "model": "moonshine-medium",
+    "metrics": {
+      "ELAPSED_MS": 6
+    }
+  },
+  {
+    "timestampMs": 1792895424098,
+    "event": "MODEL_LOAD_FINISHED",
+    "sessionId": "a89d2c4d-b7e9-46eb-bcba-4329f67a2cc1",
+    "model": "moonshine-medium",
+    "metrics": {
+      "DURATION_MS": 521,
+      "ELAPSED_MS": 527
+    }
+  },
+  {
+    "timestampMs": 1792895424099,
+    "event": "RECOGNITION_STARTED",
+    "sessionId": "a89d2c4d-b7e9-46eb-bcba-4329f67a2cc1",
+    "model": "moonshine-medium",
+    "metrics": {
+      "AUDIO_MS": 5855,
+      "ELAPSED_MS": 527
+    }
+  },
+  {
+    "timestampMs": 1792895424680,
+    "event": "RECOGNITION_FINISHED",
+    "sessionId": "a89d2c4d-b7e9-46eb-bcba-4329f67a2cc1",
+    "model": "moonshine-medium",
+    "metrics": {
+      "DURATION_MS": 582,
+      "CHARACTERS": 88,
+      "ELAPSED_MS": 1109
+    }
+  },
+  {
+    "timestampMs": 1792895424737,
+    "event": "RETRANSCRIPTION_FINISHED",
+    "sessionId": "a89d2c4d-b7e9-46eb-bcba-4329f67a2cc1",
+    "model": "moonshine-medium",
+    "metrics": {
+      "ELAPSED_MS": 1166
+    }
+  }
+]
