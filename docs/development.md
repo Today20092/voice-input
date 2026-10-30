@@ -15,7 +15,9 @@ For code changes, read [AGENTS.md](../AGENTS.md), link the relevant GitHub issue
 ## Build locally
 
 
-Install JDK 17 or newer, Android SDK platform 35, NDK `28.2.13676358`, and CMake `3.22.1`. Initialize the repository's submodules. Point `local.properties` at your Android SDK, or set `ANDROID_HOME`.
+Install JDK 17 or newer (prefer JDK 21 to match release CI), Android SDK platform 35, NDK `28.2.13676358`, and CMake `3.22.1`. Initialize the repository's submodules. Point `local.properties` at your Android SDK, or set `ANDROID_HOME`.
+
+Native Harper builds also require Rust `1.98.1` with the `aarch64-linux-android` target. Install them with `rustup toolchain install 1.98.1 --profile minimal` and `rustup target add --toolchain 1.98.1 aarch64-linux-android`. Install Python 3 and run `python3 tools/harper_notices.py` before packaging outside CI (use `python` on Windows if that is your Python 3 command). See [Harper's notice](third-party/Harper-NOTICE.md) for the native integration.
 
 On macOS or Linux:
 
