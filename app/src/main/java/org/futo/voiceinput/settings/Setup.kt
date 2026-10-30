@@ -166,6 +166,33 @@ fun SetupFUTOKeyboardConflictKeepUsingDialog(
         onDismiss = onBack,
 )
 
+fun openFUTOKeyboardSettings(context: Context, defaultIME: String) {
+    val pm = context.packageManager
+    val pkg = defaultIME.split("/")[0]
+
+    val flags = (Intent.FLAG_ACTIVITY_NEW_TASK
+            or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED
+            or Intent.FLAG_ACTIVITY_NO_HISTORY
+            or Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS)
+
+    try {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val intent = Intent()
+            intent.flags = flags
+
+            val sender = pm.getLaunchIntentSenderForPackage(pkg)
+            sender.sendIntent(context, 0, intent, null, null)
+        } else {
+            val intent = pm.getLaunchIntentForPackage(pkg)!!
+            intent.flags = flags
+            context.startActivity(intent)
+        }
+    } catch(e: Exception) {
+        val toast = Toast.makeText(context, "Launching failed! Please open FUTO Keyboard settings manually", Toast.LENGTH_LONG)
+        toast.show()
+    }
+}
+
 @Composable
 fun SetupFUTOKeyboardConflictSwitchDialog(
     onBack: () -> Unit,
@@ -180,30 +207,7 @@ fun SetupFUTOKeyboardConflictSwitchDialog(
         back = R.string.setup_which_voice_input_to_use_switch_settings,
         forward = R.string.setup_which_voice_input_to_use_switch_finished,
         onBack = {
-            val pm = context.packageManager
-            val pkg = defaultIME.value.split("/")[0]
-
-            val flags = (Intent.FLAG_ACTIVITY_NEW_TASK
-                    or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED
-                    or Intent.FLAG_ACTIVITY_NO_HISTORY
-                    or Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS)
-
-            try {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    val intent = Intent()
-                    intent.flags = flags
-
-                    val sender = pm.getLaunchIntentSenderForPackage(pkg)
-                    sender.sendIntent(context, 0, intent, null, null)
-                } else {
-                    val intent = pm.getLaunchIntentForPackage(pkg)!!
-                    intent.flags = flags
-                    context.startActivity(intent)
-                }
-            } catch(e: Exception) {
-                val toast = Toast.makeText(context, "Launching failed! Please open FUTO Keyboard settings manually", Toast.LENGTH_LONG)
-                toast.show()
-            }
+            openFUTOKeyboardSettings(context, defaultIME.value)
         },
         onForward = onContinue,
         onDismiss = onBack

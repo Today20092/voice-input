@@ -95,6 +95,9 @@ enum class KeyboardVoiceInputConfigState {
 @Composable
 fun useIsConfiguredInFUTOKeyboard(defaultIme: String, any: Any, doSwitch: Boolean): MutableState<KeyboardVoiceInputConfigState> {
     val currentState = remember { mutableStateOf(KeyboardVoiceInputConfigState.Unknown) }
+
+    if(!defaultIme.startsWith("org.futo.inputmethod.latin")) return currentState
+
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) {

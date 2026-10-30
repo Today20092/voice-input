@@ -33,6 +33,7 @@ import org.futo.voiceinput.BuildConfig
 import org.futo.voiceinput.settings.ConditionalUpdate
 import org.futo.voiceinput.settings.ENABLE_MULTILINGUAL
 import org.futo.voiceinput.settings.IS_ALREADY_PAID
+import org.futo.voiceinput.settings.KeyboardVoiceInputConfigState
 import org.futo.voiceinput.settings.NavigationItem
 import org.futo.voiceinput.settings.NavigationItemStyle
 import org.futo.voiceinput.settings.ScreenTitle
@@ -43,6 +44,8 @@ import org.futo.voiceinput.settings.SettingsViewModel
 import org.futo.voiceinput.settings.Tip
 import org.futo.voiceinput.settings.TipKind
 import org.futo.voiceinput.settings.useDataStore
+import org.futo.voiceinput.settings.useDefaultIME
+import org.futo.voiceinput.settings.useIsConfiguredInFUTOKeyboard
 
 
 @Composable
@@ -125,6 +128,9 @@ fun HomeScreen(
         null
     }
 
+    val defaultIME = useDefaultIME(0)
+    val isSet = useIsConfiguredInFUTOKeyboard(defaultIME.value, 0, false)
+
     SettingsRootList {
         Spacer(modifier = Modifier.height(24.dp))
         ScreenTitle(stringResource(R.string.futo_voice_input_settings))
@@ -202,6 +208,9 @@ fun HomeScreen(
         SettingsSeparator(stringResource(R.string.about))
         NavigationItem(
             title = stringResource(R.string.help),
+            subtitle = if(defaultIME.value.startsWith("org.futo.inputmethod.latin") && isSet.value != KeyboardVoiceInputConfigState.Set) {
+                stringResource(R.string.help_futo_keyboard_title)
+            } else null,
             style = NavigationItemStyle.Misc,
             navigate = { navController.navigate("help") },
             icon = painterResource(R.drawable.help_circle)

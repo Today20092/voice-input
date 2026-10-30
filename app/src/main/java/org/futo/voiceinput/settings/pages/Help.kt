@@ -26,11 +26,15 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import org.futo.voiceinput.R
 import org.futo.voiceinput.RecognizeWindow
+import org.futo.voiceinput.settings.KeyboardVoiceInputConfigState
 import org.futo.voiceinput.settings.ScreenTitle
 import org.futo.voiceinput.settings.SettingsRootList
 import org.futo.voiceinput.settings.Tip
 import org.futo.voiceinput.settings.TipKind
+import org.futo.voiceinput.settings.openFUTOKeyboardSettings
 import org.futo.voiceinput.settings.openImeOptions
+import org.futo.voiceinput.settings.useDefaultIME
+import org.futo.voiceinput.settings.useIsConfiguredInFUTOKeyboard
 import org.futo.voiceinput.theme.Typography
 
 
@@ -52,8 +56,20 @@ fun HelpScreen(navController: NavHostController = rememberNavController()) {
         toast.show()
     }
 
+    val defaultIME = useDefaultIME(0)
+    val isSet = useIsConfiguredInFUTOKeyboard(defaultIME.value, 0, false)
+
     SettingsRootList {
         ScreenTitle(title = stringResource(id = R.string.help_title), showBack = true, navController = navController)
+
+
+        if(defaultIME.value.startsWith("org.futo.inputmethod.latin") && isSet.value != KeyboardVoiceInputConfigState.Set) {
+            Tip(stringResource(R.string.help_futo_keyboard_body), TipKind.Warning,
+                actionText = R.string.setup_which_voice_input_to_use_switch_settings,
+                onAction = {
+                    openFUTOKeyboardSettings(context, defaultIME.value)
+                })
+        }
 
         textItem(stringResource(R.string.help_paragraph_1))
         textItem(stringResource(R.string.help_paragraph_2))
@@ -112,6 +128,7 @@ fun HelpScreen(navController: NavHostController = rememberNavController()) {
                 }
             }
         }
+
         Spacer(modifier = Modifier.height(16.dp))
 
         textItem(stringResource(R.string.help_paragraph_3))

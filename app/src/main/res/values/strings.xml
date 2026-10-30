@@ -271,4 +271,7 @@
     <string name="whats_new_body">We have upgraded the speech recognition engine in this app, introducing new model options that you can choose from. Try them out in Model options! Many of these support streaming speech recognition.\n\nWe have also developed our own models under the asr4all family, which you can read more about in our blog.</string>
     <string name="whats_new_read_more">Read our blog</string>
 
+    <string name="help_futo_keyboard_title">FUTO Keyboard setup</string>
+    <string name="help_futo_keyboard_body">Make sure you toggle on \"Disable built-in voice input\" in FUTO Keyboard\'s settings, otherwise the keyboard won\'t trigger this app and none of the options here will change anything.\n\n\You can check for the big O in the background of voice input to tell whether this app is being used or not.</string>
+
 </resources>
