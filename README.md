@@ -21,7 +21,7 @@ Currently this does not support the SpeechRecognizer API, which few apps seem to
 ## Keyboard support
 
 Keyboard support is touched on in the Help section of the app. In short, the following keyboards are supported:
-* [**FUTO Keyboard**](https://keyboard.futo.org/) has FUTO Voice Input built-in; if you want to force it to use the external app you have to disable built-in voice input in its settings
+* [**FUTO Keyboard**](https://keyboard.futo.org/) which also has Whisper model support built-in; if you want to force it to use the external app you have to disable built-in voice input in its settings
 * [**HeliBoard**](https://github.com/Helium314/HeliBoard)
 * [**FlorisBoard**](https://github.com/florisboard/florisboard) supports it on newer releases
 * [**AnySoftKeyboard**](https://github.com/AnySoftKeyboard/AnySoftKeyboard)
@@ -30,7 +30,7 @@ Keyboard support is touched on in the Help section of the app. In short, the fol
 
 If you're okay with using proprietary keyboards, the following are supported:
 * **Grammarly Keyboard**, which uses the IME
-* **Microsoft SwiftKey**, which uses the implicit intent
+* **Microsoft SwiftKey**, however users have reported issues where text would sometimes not get inserted
 
 Incompatible keyboards:
 * **Gboard** - hardcoded to use Google's voice input, does not support third-party options
