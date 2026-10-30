@@ -1,0 +1,65 @@
+name: Moonshine ARM64 runtime candidate
+
+on:
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: moonshine-runtime-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  candidate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+      - name: Install pinned NDK and build dependencies
+        run: |
+          sdkmanager 'platforms;android-35' 'build-tools;35.0.0' 'ndk;28.2.13676358' 'cmake;3.22.1'
+          python3 -m pip install 'numpy==2.2.6' 'packaging==25.0'
+      - name: Build and verify test-only candidate
+        run: |
+          bash tools/test-moonshine-ort-validator.sh
+          bash tools/build-moonshine-ort-candidate.sh "$RUNNER_TEMP/moonshine-candidate"
+      - name: Build installable candidate alongside production
+        env:
+          CMAKE_BUILD_PARALLEL_LEVEL: '2'
+        run: |
+          rustup toolchain install 1.98.1 --profile minimal
+          rustup target add --toolchain 1.98.1 aarch64-linux-android
+          python3 tools/harper_notices.py
+          CANDIDATE="$RUNNER_TEMP/moonshine-candidate/output/moonshine-voice-0.0.68-ort-no-kleidiai.aar"
+          HASH="$(sha256sum "$CANDIDATE" | cut -d ' ' -f 1)"
+          ./gradlew --no-daemon --max-workers=1 \
+            '-Dorg.gradle.jvmargs=-Xmx2560m -XX:ActiveProcessorCount=2 -Dfile.encoding=UTF-8' \
+            "-PmoonshineCandidateAar=$CANDIDATE" "-PmoonshineCandidateAarSha256=$HASH" \
+            :app:testDevDebugUnitTest :app:lintDevDebug :app:compileDevDebugAndroidTestKotlin :app:verifyDevDebugApk
+          APK="$(find app/build/outputs/apk/dev/debug -maxdepth 1 -name '*.apk' -print -quit)"
+          test -n "$APK"
+          unzip -p "$CANDIDATE" jni/arm64-v8a/libonnxruntime.so > "$RUNNER_TEMP/candidate-ort.so"
+          unzip -p "$APK" lib/arm64-v8a/libonnxruntime.so > "$RUNNER_TEMP/packaged-ort.so"
+          cmp "$RUNNER_TEMP/candidate-ort.so" "$RUNNER_TEMP/packaged-ort.so"
+          cp "$APK" "$RUNNER_TEMP/moonshine-candidate/output/voice-input-dev-moonshine-ort-candidate.apk"
+          cd "$RUNNER_TEMP/moonshine-candidate/output"
+          sha256sum voice-input-dev-moonshine-ort-candidate.apk >> SHA256SUMS
+      - name: Upload candidate, license and provenance
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: moonshine-ort-no-kleidiai-${{ github.sha }}
+          path: ${{ runner.temp }}/moonshine-candidate/output/*
+          if-no-files-found: error
+          retention-days: 14

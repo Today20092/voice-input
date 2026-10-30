@@ -14,6 +14,9 @@
 
 #include "llama.h"
 #include "ggml-backend.h"
+#if defined(S1_NGRAM_SPECULATION)
+#include "s1mini_ngram.h"
+#endif
 
 namespace {
 constexpr const char * TAG = "S1MiniNative";
@@ -73,12 +76,9 @@ const char * safe_string(const char * value, const char * fallback = "") {
 
 void log_callback(enum ggml_log_level level, const char * text, void *) {
     if (level == GGML_LOG_LEVEL_ERROR) {
-        __android_log_write(ANDROID_LOG_ERROR, TAG, text);
+        __android_log_write(ANDROID_LOG_ERROR, TAG, "backend_error");
         if (text != nullptr && g_backend_load_errors.size() < 8) {
-            std::string detail(text);
-            detail.erase(std::remove(detail.begin(), detail.end(), '\n'), detail.end());
-            detail.erase(std::remove(detail.begin(), detail.end(), '\r'), detail.end());
-            g_backend_load_errors.push_back(detail.substr(0, 512));
+            g_backend_load_errors.push_back("backend_error");
         }
     }
 }
@@ -198,6 +198,15 @@ jobjectArray string_array(JNIEnv * env, const std::vector<std::string> & values)
 }
 
 void throw_runtime(JNIEnv * env, const char * category) {
+    static const std::vector<std::string> categories = {
+        "out_of_memory", "cancelled", "invalid_native_library_dir", "native_library_dir_changed",
+        "cpu_unavailable", "opencl_unavailable", "model_load_failed", "tokenize_overflow",
+        "tokenize_failed", "input_too_long", "context_init_failed", "sampler_init_failed",
+        "prefill_failed", "decode_failed", "native_failure"
+    };
+    if (category == nullptr || std::find(categories.begin(), categories.end(), category) == categories.end()) {
+        category = "native_failure";
+    }
     auto cls = env->FindClass("java/lang/RuntimeException");
     env->ThrowNew(cls, category);
 }
@@ -254,6 +263,11 @@ Java_org_futo_voiceinput_s1_S1MiniNative_normalize(
         const auto decode_started = Clock::now();
         std::string output;
         int output_tokens = 0;
+#if defined(S1_NGRAM_SPECULATION)
+        const auto generated = s1_ngram_generate(ctx.get(), vocab, sampler.get(), tokens, max_new_tokens, g_cancelled);
+        for (const auto token : generated.tokens) output += token_piece(vocab, token);
+        output_tokens = static_cast<int>(generated.tokens.size());
+#else
         for (; output_tokens < max_new_tokens && !g_cancelled.load(); ++output_tokens) {
             llama_token token = llama_sampler_sample(sampler.get(), ctx.get(), -1);
             if (llama_vocab_is_eog(vocab, token)) break;
@@ -261,6 +275,7 @@ Java_org_futo_voiceinput_s1_S1MiniNative_normalize(
             auto next = llama_batch_get_one(&token, 1);
             if (llama_decode(ctx.get(), next) != 0) throw std::runtime_error("decode_failed");
         }
+#endif
         const long decode_ms = elapsed_ms(decode_started);
         if (g_cancelled.load()) throw std::runtime_error("cancelled");
 
@@ -275,12 +290,18 @@ Java_org_futo_voiceinput_s1_S1MiniNative_normalize(
                 << ",\"totalMs\":" << elapsed_ms(total_started)
                 << ",\"inputTokens\":" << tokens.size()
                 << ",\"outputTokens\":" << output_tokens
+#if defined(S1_NGRAM_SPECULATION)
+                << ",\"draftedTokens\":" << generated.drafted
+                << ",\"acceptedDraftTokens\":" << generated.accepted
+                << ",\"decodeCalls\":" << generated.decode_calls
+                << ",\"ngramPoolBytes\":" << generated.pool_bytes
+#endif
                 << ",\"threads\":" << threads << "}";
         return string_array(env, {output, metrics.str()});
     } catch (const std::bad_alloc &) {
         throw_runtime(env, "out_of_memory");
     } catch (const std::exception & error) {
-        __android_log_print(ANDROID_LOG_ERROR, TAG, "normalize failed: %s", error.what());
+        __android_log_write(ANDROID_LOG_ERROR, TAG, "normalize_failed");
         throw_runtime(env, error.what());
     } catch (...) {
         throw_runtime(env, "native_failure");

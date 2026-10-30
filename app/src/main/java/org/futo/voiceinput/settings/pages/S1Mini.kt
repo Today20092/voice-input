@@ -3,25 +3,32 @@ package org.futo.voiceinput.settings.pages
 import android.widget.Toast
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import org.futo.voiceinput.R
 import org.futo.voiceinput.s1.S1MiniBenchmark
@@ -29,9 +36,11 @@ import org.futo.voiceinput.s1.S1MiniClient
 import org.futo.voiceinput.s1.S1MiniDiagnostics
 import org.futo.voiceinput.s1.S1MiniModel
 import org.futo.voiceinput.s1.S1MiniTranscriptCapture
+import org.futo.voiceinput.s1.S1MiniTranscriptCaptureLoadResult
 import org.futo.voiceinput.s1.S1MiniTranscriptStageStatus
 import org.futo.voiceinput.settings.S1_MINI_CONTEXT
 import org.futo.voiceinput.settings.S1_MINI_ENABLED
+import org.futo.voiceinput.settings.S1_MINI_SKIP_SHORT_TRANSCRIPTS
 import org.futo.voiceinput.settings.S1_MINI_RUNTIME
 import org.futo.voiceinput.settings.S1_MINI_STRUCTURE
 import org.futo.voiceinput.settings.S1_MINI_STYLING
@@ -46,12 +55,14 @@ import org.futo.voiceinput.settings.ScreenTitle
 import org.futo.voiceinput.settings.ScrollableList
 import org.futo.voiceinput.settings.SettingItem
 import org.futo.voiceinput.settings.SettingRadio
-import org.futo.voiceinput.settings.SettingToggleDataStoreItem
 import org.futo.voiceinput.settings.SettingToggleRaw
 import org.futo.voiceinput.settings.SettingToggleDataStore
 import org.futo.voiceinput.settings.VERBOSE_PROGRESS
 import org.futo.voiceinput.settings.Tip
 import org.futo.voiceinput.settings.useDataStore
+import org.futo.voiceinput.settings.toS1MiniContext
+import org.futo.voiceinput.settings.toS1MiniStructure
+import org.futo.voiceinput.settings.toS1MiniStyling
 import java.text.DateFormat
 import java.util.Date
 
@@ -60,6 +71,13 @@ fun S1MiniOptions(showTitle: Boolean = true) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val enabled = useDataStore(S1_MINI_ENABLED)
+    val skipShort = useDataStore(S1_MINI_SKIP_SHORT_TRANSCRIPTS)
+    val builtInCleanup = useDataStore(org.futo.voiceinput.settings.SPEECH_BACKEND).value == "asr4all"
+    if (builtInCleanup) {
+        if (showTitle) ScreenTitle("Transcript cleanup")
+        Tip("ASR4ALL already adds punctuation, capital letters, and small corrections. S1-mini is skipped for this model.")
+        return
+    }
     val refresh = remember { mutableStateOf(0) }
     val benchmarking = remember { mutableStateOf(false) }
     refresh.value
@@ -84,66 +102,59 @@ fun S1MiniOptions(showTitle: Boolean = true) {
     if (showTitle) {
         ScreenTitle("Transcript cleanup")
     }
-    Tip(
-        "S1-mini by Superwhisper cleans final English transcripts on-device after you press Stop. " +
-            "English only • 484.2 MB download • experimental beta feature."
-    )
-
-    SettingItem(
-        title = "S1-mini by Superwhisper",
-        subtitle = if (installed) {
-            "Q4_K_M • v1 • Installed and verified"
-        } else {
-            "Q4_K_M • v1 • Download required (484.2 MB)"
-        },
-        onClick = { if (!installed) S1MiniModel.startDownload(context) }
-    ) {
+    val styling = useDataStore(S1_MINI_STYLING).value.toS1MiniStyling()
+    val structure = useDataStore(S1_MINI_STRUCTURE).value.toS1MiniStructure()
+    val rewriteContext = useDataStore(S1_MINI_CONTEXT).value.toS1MiniContext()
+    CleanupCard {
+        CleanupToggle("AI rewrite", enabled.value) { newValue ->
+            if (newValue && !installed) {
+                enabled.setValue(false)
+                S1MiniModel.startDownload(context, enableAfterDownload = true)
+            } else {
+                enabled.setValue(newValue)
+                if (!newValue) lifecycleOwner.lifecycleScope.launch { S1MiniClient.unload(context) }
+            }
+        }
+        CleanupText("Rewrites English transcripts for grammar, tone, and structure. May change your wording.")
+        Text("S1-mini by Superwhisper · Experimental", style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
+        CleanupText(if (installed) "Model installed and verified" else "484.2 MB model download required")
         if (installed) {
-            TextButton(onClick = {
+            TextButton(colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurface), onClick = {
                 lifecycleOwner.lifecycleScope.launch {
                     enabled.setValue(false)
                     S1MiniModel.delete(context)
                     refresh.value += 1
                 }
-            }) { Text("Delete") }
+            }) { Text("Delete model") }
         } else {
-            TextButton(onClick = { S1MiniModel.startDownload(context) }) { Text("Download") }
-        }
-    }
-
-    SettingToggleDataStoreItem(
-        title = "Enable S1-mini cleanup",
-        dataStoreItem = enabled,
-        subtitle = "Runs once on the final transcript. Assumes English when the recognizer cannot report a language; known non-English input is bypassed.",
-        onChanged = { newValue ->
-            if (newValue && !installed) {
-                enabled.setValue(false)
-                S1MiniModel.startDownload(context, enableAfterDownload = true)
-            } else if (!newValue) {
-                lifecycleOwner.lifecycleScope.launch { S1MiniClient.unload(context) }
+            Button(
+                onClick = { S1MiniModel.startDownload(context) }, modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            ) {
+                Text("Download S1-mini")
             }
         }
-    )
-
-    SettingRadio(
-        "Styling",
-        S1MiniStyling.entries.map { it.id },
-        S1MiniStyling.entries.map { it.label },
-        S1_MINI_STYLING
-    )
-    SettingRadio(
-        "Structure",
-        S1MiniStructure.entries.map { it.id },
-        S1MiniStructure.entries.map { it.label },
-        S1_MINI_STRUCTURE
-    )
-    SettingRadio(
-        "Context",
-        S1MiniContext.entries.map { it.id },
-        S1MiniContext.entries.map { it.label },
-        S1_MINI_CONTEXT
-    )
-    if (benchmarking.value) Tip("Optimizing S1-mini…")
+        CleanupDetails("What can it rewrite?") {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                CleanupText("Runs once after you stop recording. Can rewrite grammar and wording using the preferences below.")
+                CleanupText("English only. Assumes English when no language is reported; known non-English input is skipped. Works without Basic text cleanup.")
+                CleanupText("Model: Q4_K_M · v1. Processing stays on your device.")
+            }
+        }
+        CleanupText("${styling.label} · ${structure.label} · ${rewriteContext.label}")
+        CleanupDetails("Rewrite preferences") {
+            CleanupToggle("Skip short transcripts", skipShort.value) { skipShort.setValue(it) }
+            CleanupText("Skips AI rewrite for fewer than 10 words unless they contain a filler, a correction phrase, or a repeated word. May miss other useful edits. Off by default.")
+            CleanupRadio("Tone", S1MiniStyling.entries.map { it.id to it.label }, S1_MINI_STYLING)
+            CleanupRadio("Structure", S1MiniStructure.entries.map { it.id to it.label }, S1_MINI_STRUCTURE)
+            CleanupRadio("Context", S1MiniContext.entries.map { it.id to it.label }, S1_MINI_CONTEXT)
+        }
+        if (benchmarking.value) CleanupText("Optimizing S1-mini…")
+    }
 }
 
 @Composable
@@ -198,19 +209,48 @@ private fun DiagnosticOptions() {
     val showCaptureConsent = remember { mutableStateOf(false) }
     val showTranscriptExportConfirmation = remember { mutableStateOf(false) }
     val selectedCapture = remember { mutableStateOf<S1MiniTranscriptCapture?>(null) }
-    val transcriptCaptureResult = remember(refresh.value) {
-        S1MiniDiagnostics.transcriptCaptures(context)
+    val scope = rememberCoroutineScope()
+    val captures = remember { mutableStateOf<S1MiniTranscriptCaptureLoadResult?>(null) }
+    val busy = remember { mutableStateOf(false) }
+    val error = remember { mutableStateOf<String?>(null) }
+    val retry = remember { mutableStateOf<(() -> Unit)?>(null) }
+
+    val loadError = "Unable to load captured transcripts."
+    fun perform(message: String = loadError, action: suspend () -> Unit = {}) {
+        if (busy.value) return
+        busy.value = true
+        error.value = null
+        retry.value = null
+        scope.launch {
+            var actionCompleted = false
+            try {
+                action()
+                actionCompleted = true
+                captures.value = S1MiniDiagnostics.transcriptCaptures(context)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                if (actionCompleted) {
+                    error.value = loadError
+                    retry.value = { perform() }
+                } else {
+                    error.value = message
+                    retry.value = { perform(message, action) }
+                }
+            } finally {
+                busy.value = false
+            }
+        }
     }
+    val transcriptCaptureResult = captures.value
+    LaunchedEffect(refresh.value) { perform() }
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
-                S1MiniDiagnostics.purgeTranscriptCaptures(context)
                 refresh.value += 1
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
-        S1MiniDiagnostics.purgeTranscriptCaptures(context)
-        refresh.value += 1
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
@@ -233,23 +273,33 @@ private fun DiagnosticOptions() {
             },
             subtitle = "Captures eligible English S1-mini runs until you turn it off. Keeps the latest 10 for up to 7 days."
         )
-        SettingItem("Copy last report", onClick = {
-            val copied = S1MiniDiagnostics.copyLatest(context)
-            Toast.makeText(context, if (copied) "Report copied" else "No report yet", Toast.LENGTH_SHORT).show()
+        if (busy.value || (transcriptCaptureResult == null && error.value == null)) {
+            Tip("Loading captured transcripts…")
+        }
+        error.value?.let { message ->
+            Text(message, color = MaterialTheme.colorScheme.error)
+            TextButton(onClick = { retry.value?.invoke() }, enabled = !busy.value) { Text("Retry") }
+        }
+        SettingItem("Copy last report", disabled = busy.value, onClick = {
+            perform("Unable to copy the last report.") {
+                val copied = S1MiniDiagnostics.copyLatest(context)
+                Toast.makeText(context, if (copied) "Report copied" else "No report yet", Toast.LENGTH_SHORT).show()
+            }
         }) { }
         Tip("Use Export bug report above to share standard app and S1-mini diagnostics together.")
         SettingItem(
             title = "Export diagnostics WITH TRANSCRIPTS",
             subtitle = buildString {
-                append("${transcriptCaptureResult.captures.size} captured run(s)")
-                if (transcriptCaptureResult.unreadableCount > 0) {
+                if (transcriptCaptureResult == null) append("Captured runs have not loaded")
+                else append("${transcriptCaptureResult.captures.size} captured run(s)")
+                if (transcriptCaptureResult != null && transcriptCaptureResult.unreadableCount > 0) {
                     append(", ${transcriptCaptureResult.unreadableCount} unreadable")
                 }
             },
-            disabled = !transcriptCaptureResult.hasExportableEvidence,
+            disabled = busy.value || error.value != null || transcriptCaptureResult?.hasExportableEvidence != true,
             onClick = { showTranscriptExportConfirmation.value = true }
         ) { }
-        transcriptCaptureResult.captures.forEach { capture ->
+        transcriptCaptureResult?.captures.orEmpty().forEach { capture ->
             SettingItem(
                 title = DateFormat.getDateTimeInstance().format(Date(capture.capturedAtEpochMs)),
                 subtitle = capture.failureOrBypassReason?.let { "Cleanup failed or bypassed: $it" }
@@ -257,16 +307,21 @@ private fun DiagnosticOptions() {
                 onClick = { selectedCapture.value = capture }
             ) { }
         }
-        if (transcriptCaptureResult.captures.isNotEmpty() || transcriptCaptureResult.unreadableCount > 0) {
-            SettingItem("Clear captured transcripts", onClick = {
-                S1MiniDiagnostics.clearTranscriptCaptures(context)
-                refresh.value += 1
-                Toast.makeText(context, "Captured transcripts cleared", Toast.LENGTH_SHORT).show()
+        if (transcriptCaptureResult?.hasExportableEvidence == true) {
+            SettingItem("Clear captured transcripts", disabled = busy.value, onClick = {
+                perform("Unable to clear captured transcripts.") {
+                    S1MiniDiagnostics.clearTranscriptCaptures(context)
+                    selectedCapture.value = null
+                    Toast.makeText(context, "Captured transcripts cleared", Toast.LENGTH_SHORT).show()
+                }
             }) { }
         }
-        SettingItem("Clear S1-mini reports and transcript captures", onClick = {
-            S1MiniDiagnostics.clear(context)
-            Toast.makeText(context, "Diagnostics cleared", Toast.LENGTH_SHORT).show()
+        SettingItem("Clear S1-mini reports and transcript captures", disabled = busy.value, onClick = {
+            perform("Unable to clear S1-mini reports and transcript captures.") {
+                S1MiniDiagnostics.clear(context)
+                selectedCapture.value = null
+                Toast.makeText(context, "Diagnostics cleared", Toast.LENGTH_SHORT).show()
+            }
         }) { }
     }
 
@@ -298,15 +353,17 @@ private fun DiagnosticOptions() {
             title = { Text("Export dictated text?") },
             text = {
                 Text(
-                    "This readable ZIP will contain ${transcriptCaptureResult.captures.size} transcript run(s). " +
+                    "This readable ZIP will contain ${transcriptCaptureResult?.captures?.size ?: 0} transcript run(s). " +
                         "Only share it with someone you trust."
                 )
             },
             confirmButton = {
-                TextButton(onClick = {
+                TextButton(enabled = !busy.value, onClick = {
                     showTranscriptExportConfirmation.value = false
-                    if (!S1MiniDiagnostics.shareZip(context, includeTranscripts = true)) {
-                        Toast.makeText(context, "No transcript diagnostics to export", Toast.LENGTH_SHORT).show()
+                    perform("Unable to export transcript diagnostics.") {
+                        if (!S1MiniDiagnostics.shareZip(context, includeTranscripts = true)) {
+                            Toast.makeText(context, "No transcript diagnostics to export", Toast.LENGTH_SHORT).show()
+                        }
                     }
                 }) { Text("Export WITH TRANSCRIPTS") }
             },
@@ -326,19 +383,23 @@ private fun DiagnosticOptions() {
                 Column(Modifier.verticalScroll(rememberScrollState())) {
                     TranscriptStage("Raw transcript", capture.raw.status, capture.raw.text)
                     TranscriptStage("Cleaned transcript", capture.cleaned.status, capture.cleaned.text)
+                    TranscriptStage("Prepared transcript", capture.prepared.status, capture.prepared.text)
                     TranscriptStage(
-                        "Final delivered transcript",
+                        if (capture.delivery == org.futo.voiceinput.s1.S1MiniTranscriptDelivery.Unknown)
+                            "Final text (delivery unverified)" else "Final delivered transcript",
                         capture.finalDelivered.status,
                         capture.finalDelivered.text
                     )
+                    Text("Delivery: ${capture.delivery.name}")
                     capture.failureOrBypassReason?.let { Text("Reason: $it") }
                 }
             },
             confirmButton = {
-                TextButton(onClick = {
-                    S1MiniDiagnostics.deleteTranscriptCapture(context, capture.reportId)
-                    selectedCapture.value = null
-                    refresh.value += 1
+                TextButton(enabled = !busy.value, onClick = {
+                    perform("Unable to delete the captured transcript.") {
+                        S1MiniDiagnostics.deleteTranscriptCapture(context, capture.reportId)
+                        selectedCapture.value = null
+                    }
                 }) { Text("Delete") }
             },
             dismissButton = {
@@ -359,15 +420,6 @@ private fun TranscriptStage(
         S1MiniTranscriptStageStatus.NotProduced -> "Not produced"
     }
     Text("$label: $value")
-}
-
-@Composable
-@Preview
-fun TranscriptCleanupScreen(navController: NavHostController = rememberNavController()) {
-    ScrollableList {
-        ScreenTitle("Transcript Cleanup", showBack = true, navController = navController)
-        S1MiniOptions(showTitle = false)
-    }
 }
 
 @Composable

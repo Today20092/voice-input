@@ -24,6 +24,7 @@ data class RecognitionModelArtifact(
     val sha256: String
 ) {
     init {
+        require(name.isNotBlank() && name != "." && name != ".." && !name.contains('/') && !name.contains('\\'))
         require(url.startsWith("https://"))
         require(sizeBytes > 0L)
         require(sha256.matches(Regex("[0-9a-f]{64}")))
@@ -46,10 +47,21 @@ data class RecognitionModel(
     val artifacts: List<RecognitionModelArtifact>,
     val archive: RecognitionModelArtifact? = null,
     val archiveRoot: String? = null,
-    val completionMarker: String = ".download_complete"
+    val completionMarker: String = ".download_complete",
+    val supportedOlderVersions: List<RecognitionModel> = emptyList()
 ) {
     init {
+        require(id.isNotBlank() && version.isNotBlank())
+        require(directoryName.isNotBlank() && directoryName != "." && directoryName != ".." &&
+            !directoryName.contains('/') && !directoryName.contains('\\'))
+        require(artifacts.isNotEmpty() && artifacts.map { it.name }.distinct().size == artifacts.size)
         require((archive == null) == (archiveRoot == null))
+        require(supportedOlderVersions.all {
+            it.id == id && it.runtimeId == runtimeId && it.variantId == variantId &&
+                it.directoryName == directoryName && it.version != version &&
+                it.artifacts.map { artifact -> artifact.name } == artifacts.map { artifact -> artifact.name } &&
+                it.supportedOlderVersions.isEmpty()
+        })
     }
 
     val transferBytes = archive?.sizeBytes ?: artifacts.sumOf { it.sizeBytes }
@@ -68,6 +80,9 @@ data class RecognitionModelCard(
 )
 
 object RecognitionModelCatalog {
+    val whistle = org.futo.voiceinput.whistle.WhistleModel.model
+    val phonon = org.futo.voiceinput.phonon.PhononModel.model
+    val parakeetRedux = org.futo.voiceinput.redux.ReduxModel.model
     private const val MOONSHINE_REVISION = "2026-03-16-sha256"
     private const val MOONSHINE_SOURCE = "Moonshine AI"
 
@@ -76,7 +91,7 @@ object RecognitionModelCatalog {
         variantId = "small",
         directoryName = "moonshine-small-streaming-en",
         displayName = "Moonshine Small",
-        description = "Fast live English transcription with the lightest resource use.",
+        description = "Shows English text as you speak. Choose Small for fast recognition with less memory and processing than Moonshine Medium.",
         performance = PerformanceClass.LIGHT,
         baseUrl = "https://download.moonshine.ai/model/small-streaming-en/quantized",
         artifacts = listOf(
@@ -96,7 +111,7 @@ object RecognitionModelCatalog {
         variantId = "medium",
         directoryName = "moonshine-medium-streaming-en",
         displayName = "Moonshine Medium",
-        description = "Higher-accuracy live English transcription with greater resource use.",
+        description = "Shows English text as you speak. Aims for better accuracy than Moonshine Small, but needs more memory and processing.",
         performance = PerformanceClass.BALANCED,
         baseUrl = "https://download.moonshine.ai/model/medium-streaming-en/quantized",
         artifacts = listOf(
@@ -130,7 +145,8 @@ object RecognitionModelCatalog {
         source = "NVIDIA Parakeet Unified (NVIDIA Open Model License), Sherpa-ONNX export by k2-fsa",
         licenseAttribution = "NVIDIA Open Model License",
         displayName = "Parakeet Unified EN 0.6B",
-        description = "560 ms buffered live English transcription that recomputes left context; Nemotron is preferred for the fastest updates.",
+        description = "Shows English text as you speak, with a delay while it collects and processes audio. " +
+            "It processes 560 ms audio chunks and rechecks earlier speech, which needs more processing. Choose Nemotron for quicker updates.",
         transcription = TranscriptionBehavior.BUFFERED_LIVE,
         recognitionLanguages = "English",
         performanceClass = PerformanceClass.DEMANDING,
@@ -146,7 +162,8 @@ object RecognitionModelCatalog {
         latencyMs = 80,
         variantId = "low_latency",
         displayName = "Low latency",
-        description = "80 ms live English partials with the lowest latency and a lower-accuracy trade-off.",
+        description = "Shows English text as you speak. Processes short 80 ms audio chunks for quicker updates, " +
+            "with lower accuracy than the other Nemotron English profiles. All three profiles need similar model storage.",
         performanceClass = PerformanceClass.LIGHT,
         encoderSizeBytes = 652_916_847,
         encoderSha256 = "29a6aaf9155f25562a08a1aeea1f1a1a5d24b2f44a1d68211faf8a92073d1df6",
@@ -158,7 +175,8 @@ object RecognitionModelCatalog {
         latencyMs = 160,
         variantId = "balanced",
         displayName = "Balanced",
-        description = "Recommended 160 ms live English profile balancing latency and accuracy.",
+        description = "Shows English text as you speak. The recommended Nemotron English profile uses 160 ms audio chunks " +
+            "to balance update speed and accuracy. All three profiles need similar model storage.",
         performanceClass = PerformanceClass.BALANCED,
         encoderSizeBytes = 652_916_849,
         encoderSha256 = "71111f61b18e1e65e01e369434a5c0434868d2f44892742ae54240600c681209",
@@ -170,7 +188,8 @@ object RecognitionModelCatalog {
         latencyMs = 560,
         variantId = "accuracy",
         displayName = "Accuracy",
-        description = "Highest English accuracy with slower 560 ms live partials.",
+        description = "Shows English text as you speak. Uses longer 560 ms audio chunks to prioritize accuracy among " +
+            "the Nemotron English profiles, with longer waits between updates. All three profiles need similar model storage.",
         performanceClass = PerformanceClass.DEMANDING,
         encoderSizeBytes = 652_916_849,
         encoderSha256 = "7d932213491ad355c6e5576705dc3494731a52af87d7a1b954559340147909d8",
@@ -197,10 +216,10 @@ object RecognitionModelCatalog {
         directoryName = COHERE_DIRECTORY,
         source = "Cohere Labs, Sherpa-ONNX INT8 export by k2-fsa",
         licenseAttribution = "Apache 2.0",
-        displayName = "Cohere Transcribe (Beta)",
-        description = "Experimental final-only transcription in 14 languages, including Arabic. " +
-            "Requires about 2.89 GB of storage and substantial memory. Phone performance is unverified. " +
-            "Choose one recognition language; automatic detection and reliable mixed-language dictation are not supported.",
+        displayName = "Cohere Transcribe",
+        description = "Turns speech in 14 languages, including Arabic and English, into text after you stop recording. " +
+            "Choose one language before recording; automatic detection and reliable mixed-language dictation are not supported. " +
+            "This experimental model needs about 2.89 GB of storage and substantial memory. Phone performance has not been verified.",
         transcription = TranscriptionBehavior.FINAL_ONLY,
         recognitionLanguages = "14 languages, including Arabic and English",
         performanceClass = PerformanceClass.DEMANDING,
@@ -221,6 +240,39 @@ object RecognitionModelCatalog {
         )
 
     val cards = listOf(
+        RecognitionModelCard(
+            id = "phonon-2",
+            runtimeId = phonon.runtimeId,
+            displayName = phonon.displayName,
+            description = phonon.description,
+            transcription = phonon.transcription,
+            recognitionLanguages = phonon.recognitionLanguages,
+            performanceClasses = setOf(phonon.performanceClass),
+            models = listOf(phonon)
+        ),
+        RecognitionModelCard(
+            id = "whistle", runtimeId = whistle.runtimeId, displayName = whistle.displayName,
+            description = whistle.description, transcription = whistle.transcription,
+            recognitionLanguages = whistle.recognitionLanguages,
+            performanceClasses = setOf(whistle.performanceClass), models = listOf(whistle)
+        ),
+        RecognitionModelCard(
+            id = "asr4all", runtimeId = "asr4all", displayName = "ASR4ALL",
+            description = "English text as you speak, with built-in text cleanup.",
+            transcription = TranscriptionBehavior.LIVE, recognitionLanguages = "English",
+            performanceClasses = PerformanceClass.entries.toSet(),
+            models = org.futo.voiceinput.asr4all.Asr4allModels.models
+        ),
+        RecognitionModelCard(
+            id = "parakeet-redux",
+            runtimeId = parakeetRedux.runtimeId,
+            displayName = parakeetRedux.displayName,
+            description = parakeetRedux.description,
+            transcription = parakeetRedux.transcription,
+            recognitionLanguages = parakeetRedux.recognitionLanguages,
+            performanceClasses = setOf(parakeetRedux.performanceClass),
+            models = listOf(parakeetRedux)
+        ),
         RecognitionModelCard(
             id = "moonshine",
             runtimeId = "moonshine",
@@ -255,9 +307,9 @@ object RecognitionModelCatalog {
             id = "parakeet",
             runtimeId = "parakeet",
             displayName = "Parakeet TDT",
-            description = "Final-only NVIDIA recognition focused on accuracy.",
+            description = "Final-only multilingual NVIDIA recognition focused on accuracy.",
             transcription = TranscriptionBehavior.FINAL_ONLY,
-            recognitionLanguages = "English",
+            recognitionLanguages = ParakeetModel.recognitionModel.recognitionLanguages,
             performanceClasses = setOf(PerformanceClass.DEMANDING),
             models = listOf(ParakeetModel.recognitionModel)
         ),
@@ -411,7 +463,8 @@ object RecognitionModelCatalog {
             source = "NVIDIA Nemotron 3.5 (OpenMDW 1.1), Sherpa-ONNX export by k2-fsa",
             licenseAttribution = "OpenMDW 1.1",
             displayName = "Nemotron 3.5 Multilingual",
-            description = "560 ms live transcription with explicit language selection or Auto-detect.",
+            description = "Shows text as you speak in 28 supported languages. Choose a language or use Auto-detect. " +
+                "It needs substantial memory and processing, and uses longer 560 ms audio chunks than the faster Nemotron English profiles.",
             transcription = TranscriptionBehavior.LIVE,
             recognitionLanguages = "28 languages and Auto-detect",
             performanceClass = PerformanceClass.DEMANDING,
@@ -419,9 +472,7 @@ object RecognitionModelCatalog {
                 artifact("encoder.int8.onnx", 657_601_403, "012e9321373af99021415e0b0eb3ec827b4be3153be6f30d9b448fe65e896e68"),
                 artifact("decoder.int8.onnx", 14_978_075, "19f9c98fc6d0a2c33a65a43b36fdb2e914c26c0aa9764be3aebc502a1e982fb0"),
                 artifact("joiner.int8.onnx", 9_504_438, "4101c7c679a0bc30483794b27a059e34e79232aa2068d78d51231a22c8b0d7ce"),
-                artifact("tokens.txt", 131_440, "729cc103155bafa785f9cd45746cd41cabe97eab7182fc04d594129587958f8a"),
-                artifact("test_wavs/en.wav", 228_908, "eb1eb008904465b74c304aad8342e8c7d3c6e61ffe9f66adcaca9cf0f76a93f4"),
-                artifact("test_wavs/ja.wav", 719_916, "780f95a86ba6cc33a4431fcafeacd213417dfa0a6613f93e4400c18f4dd467b0")
+                artifact("tokens.txt", 131_440, "729cc103155bafa785f9cd45746cd41cabe97eab7182fc04d594129587958f8a")
             )
         )
     }
@@ -434,11 +485,70 @@ class SelectedModelDeletionException : IllegalStateException(
 
 class RecognitionModelStore(
     private val rootDirectory: File,
+    private val moveDirectory: (File, File) -> Boolean = { from, to -> from.renameTo(to) },
     private val hashFile: (File) -> String = ::sha256
 ) {
     fun modelDirectory(model: RecognitionModel) = File(rootDirectory, model.directoryName)
 
-    fun isInstalled(model: RecognitionModel, verifyHashes: Boolean = false): Boolean {
+    fun stagingDirectory(model: RecognitionModel) = File(rootDirectory,
+        ".${model.directoryName}-${model.version.toByteArray().let {
+            java.security.MessageDigest.getInstance("SHA-256").digest(it)
+                .joinToString("") { byte -> "%02x".format(byte) }
+        }}.staging")
+
+    private fun backupDirectory(model: RecognitionModel) = File(rootDirectory, ".${model.directoryName}.previous")
+    private fun journal(model: RecognitionModel) = File(rootDirectory, ".${model.directoryName}.activating")
+
+    fun recover(model: RecognitionModel) = synchronized(storageLock) {
+        val backup = backupDirectory(model)
+        if (journal(model).exists()) {
+            if (backup.exists()) {
+                check(modelDirectory(model).deleteRecursively())
+                check(moveDirectory(backup, modelDirectory(model))) { "Could not restore previous model" }
+            }
+            check(journal(model).delete())
+        } else if (backup.exists()) {
+            check(backup.deleteRecursively())
+        }
+    }
+
+    fun installedVersion(model: RecognitionModel, verifyHashes: Boolean = false): RecognitionModel? = synchronized(storageLock) {
+        recover(model)
+        return (listOf(model) + model.supportedOlderVersions).firstOrNull { isExactInstalled(it, verifyHashes) }
+    }
+
+    fun validateStaged(model: RecognitionModel): Boolean {
+        val directory = stagingDirectory(model)
+        if (!artifactsValid(model, true, directory)) return false
+        File(directory, model.completionMarker).writeText("${model.id}@${model.version}")
+        return true
+    }
+
+    fun activateStaged(model: RecognitionModel) = synchronized(storageLock) {
+        recover(model)
+        val staged = stagingDirectory(model)
+        check(File(staged, model.completionMarker).readText() == "${model.id}@${model.version}")
+        check(artifactsValid(model, false, staged))
+        val installed = modelDirectory(model)
+        val backup = backupDirectory(model)
+        journal(model).writeText(model.version)
+        try {
+            if (installed.exists()) check(moveDirectory(installed, backup)) { "Could not retain previous model" }
+            check(moveDirectory(staged, installed)) { "Could not activate validated model" }
+            check(isExactInstalled(model)) { "Activated model is not ready" }
+            check(journal(model).delete()) { "Could not commit model activation" }
+        } catch (failure: Throwable) {
+            recover(model)
+            throw failure
+        }
+        // Once committed, leftover backups are harmless and cleaned on the next readiness check.
+        backup.deleteRecursively()
+    }
+
+    fun isInstalled(model: RecognitionModel, verifyHashes: Boolean = false): Boolean =
+        installedVersion(model, verifyHashes) != null
+
+    private fun isExactInstalled(model: RecognitionModel, verifyHashes: Boolean = false): Boolean {
         val directory = modelDirectory(model)
         val marker = File(directory, model.completionMarker)
         if (!marker.isFile) return false
@@ -462,7 +572,8 @@ class RecognitionModelStore(
     }
 
     fun invalidate(model: RecognitionModel) {
-        File(modelDirectory(model), model.completionMarker).delete()
+        val marker = File(modelDirectory(model), model.completionMarker)
+        if (runCatching { marker.readText() }.getOrNull() == "${model.id}@${model.version}") marker.delete()
     }
 
     fun select(model: RecognitionModel, updateSelection: () -> Unit) {
@@ -480,6 +591,10 @@ class RecognitionModelStore(
         check(modelDirectory(model).deleteRecursively()) {
             "Failed to delete ${model.displayName}"
         }
+    }
+
+    companion object {
+        private val storageLock = Any()
     }
 
     private fun artifactsValid(

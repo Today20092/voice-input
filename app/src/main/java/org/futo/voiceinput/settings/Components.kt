@@ -47,12 +47,12 @@ import org.futo.voiceinput.theme.Typography
 import kotlin.math.roundToLong
 
 @Composable
-fun ScreenTitle(title: String, showBack: Boolean = false, navController: NavHostController = rememberNavController()) {
+fun ScreenTitle(title: String, showBack: Boolean = false, navController: NavHostController = rememberNavController(), onBack: (() -> Unit)? = null) {
     val navigateBack = stringResource(R.string.navigate_back)
     val rowModifier = if(showBack) {
         Modifier
             .fillMaxWidth()
-            .clickable(onClickLabel = navigateBack) { navController.navigateUp() }
+            .clickable(onClickLabel = navigateBack) { if (onBack != null) onBack() else navController.navigateUp() }
     } else {
         Modifier.fillMaxWidth()
     }
@@ -278,7 +278,8 @@ fun<T> SettingRadio(
     optionNames: List<String>,
     setting: SettingsKey<T>,
     onChanged: (() -> Unit)? = null,
-    disabled: Boolean = false
+    disabled: Boolean = false,
+    normalizeValue: (T) -> T = { it }
 ) {
     val (value, setValue) = useDataStore(key = setting.key, default = setting.default)
 
@@ -294,7 +295,7 @@ fun<T> SettingRadio(
                     }
                 },
                 disabled = disabled,
-                icon = { RadioButton(selected = value == it.first, onClick = {
+                icon = { RadioButton(selected = normalizeValue(value) == it.first, onClick = {
                     if(!disabled) {
                         setValue(it.first)
                         onChanged?.invoke()

@@ -1,0 +1,215 @@
+# Share beta finish plan
+
+## Active sequence, 2026-10-01
+
+Beta 3 is published and verified at `123f4e783e609cb66a5f51350e8ed733570f911b`,
+immutable tag `v1.4.6-share-beta.3`, version code 64.
+[CI 36820430244](https://github.com/Today20092/voice-input/actions/runs/36820430244)
+and [prerelease](https://github.com/Today20092/voice-input/releases/tag/v1.4.6-share-beta.3)
+passed: 200 JVM passes/one skip, zero lint errors, nine native Harper passes,
+assembly and signing/package checks; 24 combined local Android tests also passed.
+Published/CI/GitHub APK hashes agree and the stable signer is preserved.
+The ticket 07 worker returns the integration writer/build/device slot to the
+control tower. Final closure/master merge remains blocked on the precise criteria
+in [integration evidence](../testing/ticket-07-beta3-integration.md).
+
+October 1 integration owner: ticket 07 worker `/root`, task context
+`01a0f5e8-e6bb-78e3-85b6-bceba3b3b743`, dispatched by control tower
+`01a0f345-1363-7ee1-ba31-ee9c533599aa`. Ticket 03/04/05 workers released their
+slots and reviewed changes are integrated at `244e0be`. This worker alone owns
+the integration writer and local heavy-build/device slot for the completed verification
+and signed beta 3/version 64 publication pass. Final catalog release/master merge
+remain blocked. See [integration evidence](../testing/ticket-07-beta3-integration.md).
+Earlier slot assignments below are historical and superseded by this checkpoint.
+
+Current control-tower policy supersedes the serial policy below: the user requested
+independent ticket chats/worktrees and direct coordination without a schedule.
+The 10-minute heartbeat is paused. Tickets 03, 04 and 05 start from `bdedb17`
+in isolated worktrees; control tower alone integrates reviewed commits into
+`codex/share-beta-integration`. Workers never write the shared integration checkout.
+
+Queued worker attachments, resolve to actual thread IDs before waiting/messaging:
+Resolved active chats:
+- 03: `01a0f3d1-3f64-7221-bcfc-3b1355403ed0`
+- 04: `01a0f3d1-42c5-7313-8745-53c34547015f`
+- 05: `01a0f3d1-4edd-7742-902c-214e7ccb87e2`
+
+Local heavy-build/device slot is serialized. Ticket 05 released it after two
+successful ARM64 builds and the tinyBLAS notice regression fix. Ticket 04 now
+released local Gradle and emulator-5560 after six session checks, 189 JVM passes,
+APK/test APK assembly and zero-error lint. Ticket 03 now owns the heavy build
+and disposable emulator slot. Ticket 04 is reviewing and committing its fix.
+Ticket 05 is reviewing/committing evidence; JNI/coexistence, complete distribution
+provenance and phone benefit remain unverified, so production promotion is no-go.
+Overlap resolved: ticket 04 owns terminal OOM handling in runModel and
+loadModelInner. Ticket 03 owns store/lifecycle, staged downloads and readiness UI
+on codex/ticket-03-atomic-readiness in worktree 2f60; it edits neither function.
+
+- 03: `client-new-thread:e9f64026-c415-400f-8273-a66fb9cf2472`
+- 04: `client-new-thread:bdfc5613-081d-464d-b67a-5add1a24a12b`
+- 05: `client-new-thread:3c4d4b8f-7a6a-4b84-b6c7-52168228a979`
+
+Do not redispatch these tickets merely because pending setup is absent from
+list_threads. Actual worktree directories were created from the common checkpoint.
+Coordinate heavyweight local builds and shared devices to avoid resource contention.
+Ticket 02's local pass is committed at `bdedb17`; remaining physical-device criteria
+stay open. Ticket 06 needs reproduction input. Ticket 07's release closure waits
+for its dependencies; independent measurement preparation may proceed earlier.
+
+Ticket 02 active worker: `/root`, integration verification chat dispatched by
+control tower `01a0f345-1363-7ee1-ba31-ee9c533599aa`. Exclusive integration writer
+and local build slot claimed for this pass. Use installed Android Studio JBR/SDK,
+local Gradle and actual emulator/device execution. No connected device was found
+at initial inspection. Preserve Pixel_10 userdata; use a separate disposable test
+AVD for independent checks. Phone/headset and manual accessibility evidence stay
+open until measured. See [ticket 02 evidence](../testing/ticket-02-integrated-experience.md).
+
+[tickets.md](../../tickets.md) is the seven-ticket active queue. The detailed
+sections below are historical coordination evidence, including the earlier
+publication checkpoint; they do not override current ticket dependencies.
+
+1. 01: Restore the integrated beta build.
+2. 02: Verify the integrated voice-input experience.
+3. 03: Finish safe model updates and readiness.
+4. 04: Verify long dictation and bounded recovery.
+5. 05: Decide whether optional engines earn inclusion.
+6. 06: Resolve the intermittent waveform report.
+7. 07: Calibrate and release the tested catalog.
+
+Run one concrete slice at a time on `codex/share-beta-integration`; the final
+merge destination is `master`. Keep the unmerged adapter experiment separate.
+Start a new chat per ticket, using the current integration ledger and linked
+criteria. Record evidence and a commit/checkpoint before the next handoff.
+Use one integration writer/build at a time. The numbers are recommended order,
+not extra blockers. Ticket 06 waits for reproduction and can be skipped until ready.
+Read each ticket's linked detail before acting; consolidation closes no criteria.
+
+Each new ticket chat reads `C:/Users/User/.agents/skills/ask-matt/SKILL.md` and
+selects the applicable diagnosing-bugs, implement or research flow. Follow the
+selected skill's actual checks and code-review closeout. Use writing-for-agents
+when editing ticket or evidence documentation. Continue on the ticket's Working
+branch; SHARE-09 remains an isolated experiment until its feasibility decision.
+
+Ticket 01 checkpoint, 2026-09-30: signed
+[beta 2](https://github.com/Today20092/voice-input/releases/tag/v1.4.6-share-beta.2)
+published from `00d5e34b91f48df83b260bf2206706678e326989` after
+[CI 36754734286](https://github.com/Today20092/voice-input/actions/runs/36754734286)
+passed. [Build evidence](../testing/ticket-01-beta-build.md) records the artifact,
+signer, reports and unresolved original packaging cause. Ticket 01 remains open;
+physical-device acceptance and the final master merge remain later work.
+
+Ticket 02 checkpoint, 2026-09-30: local Android Studio toolchain validation passed
+189 JVM tests with one existing skip, APK/test APK assembly, lint with zero errors,
+and 35 Android tests on a separate API 37 AVD. Real gestures demonstrated and
+verified fixes for missing settings callback opt-in and overlapping page text.
+Standards and Spec reviews have zero findings. [Ticket 02 evidence](../testing/ticket-02-integrated-experience.md)
+records retained logs/APKs/videos and remaining requirements. Ticket 02 is
+`needs-info` for physical phone/headset and spoken TalkBack evidence. Its build/test
+pass has concluded; the checkpoint push returns the exclusive integration slot
+to the control tower. The original Pixel_10 data and SHARE-09 experiment were untouched.
+
+## Historical plan
+
+The user requires local Android Studio tooling for development builds and tests.
+Use its installed SDK/JDK, local Gradle and connected devices or emulator; record
+actual local results. CI complements local checks for signed release publication.
+Ticket 02 can proceed from verified beta 2 while ticket 01's original cause stays open.
+
+Updated 2026-09-28. This plan supersedes the parallel dispatch instructions in
+`share-beta-coordination.md`; that file remains historical evidence.
+
+## Ownership and checkpoint
+
+- Integration owner: chat `01a0e9d0-a7c3-73e0-8aa8-e14d9d1d84de`.
+- Branch: `codex/share-beta-integration`, based on `eb5e1da` from master.
+- The previous coordinator stopped dispatches and deleted the
+  `voice-input-ticket-coordination` heartbeat.
+- SHARE-06 paused at `e99f37f`; SHARE-09 paused at `ab10fa5`.
+- Other ticket chats stay idle. No automatic slot handoffs or new parallel builds.
+- Run one integration/build at a time. Only the integration owner edits the beta.
+
+## First test beta
+
+Publish `v1.4.6-share-beta.1` as a GitHub prerelease from this branch after the
+combined unit tests, lint, APK build and signing/package checks pass. The beta
+collects completed source changes for testing; it does not close acceptance
+criteria that require real devices or unfinished research.
+
+Merge existing branches one at a time in this order, preserving their history:
+
+1. SHARE-01 keyboard provider setup (`5351c2e`).
+2. SHARE-02 session-safe insertion (`2c8518f`).
+3. SHARE-05 model language controls (`daef16e`).
+4. Nemotron asset filtering (`7e98997`).
+5. Download resumption (`be5d7d3`), after Nemotron.
+6. Moonshine failure/lifetime fixes (`5c3a409`).
+7. Model Options (`76df21c`), after SHARE-05.
+8. SHARE-07 waveform/transcript UI (`50f3813`), after SHARE-02.
+9. SHARE-06 microphone routing (`e99f37f`), after SHARE-02/07.
+10. SHARE-12 help and comparison docs (`788cb24`), after SHARE-01.
+
+Inspect overlapping changes before committing conflict resolutions. In particular,
+SHARE-06 routing must wrap SHARE-07's shared recognition window, and duplicated
+dependency commits must not reintroduce old implementations. Check whitespace and
+conflict markers after every merge; run combined Gradle checks once the source set
+is assembled, then rerun affected checks for any fixes.
+
+## Finish remaining tickets in order
+
+| Order | Work | Exit condition |
+| --- | --- | --- |
+| 1 | Test the integrated beta's provider setup, insertion, language settings, Model Options, waveform/transcript and microphone selection | Record each ticket's real keyboard, TalkBack, phone and headset results; fix failures before a follow-up beta |
+| 2 | Finish download-resumption device checks, then SHARE-03 safe manual updates | Preserve the active usable model across interrupted/failed updates; expose the installed/update readiness contract |
+| 3 | SHARE-04 reactive readiness | Observe lifecycle invalidation and explicit update confirmation using SHARE-03's contract |
+| 4 | Predictive-back navigation | Validate against the integrated Model Options navigation and Android versions required by the ticket |
+| 5 | Long Moonshine dictation | Run the specified real-device long-dictation/segmentation checks; change segmentation only if evidence requires it |
+| 6 | SHARE-08 streaming recovery | First demonstrate a supported recoverable failure category; implement one bounded retry only if the backend contract supports it |
+| 7 | SHARE-09 adapter experiment | Complete full build/notice script, real JNI inference, runtime coexistence, packaging and phone measurements |
+| 8 | SHARE-10/11 optional models | Proceed only after SHARE-09's positive feasibility gate; record a justified negative outcome if infeasible |
+| 9 | Intermittent waveform report | Obtain the still-missing reproduction/entry-point description, then reproduce and fix |
+| 10 | Complete model catalog calibration/release | Resolve manual updates and all required model/device/performance evidence, refresh docs, publish the final tested release |
+
+`tickets.md` remains the acceptance checklist. Merging source, publishing a beta,
+or archiving a checkout does not by itself complete a ticket.
+
+## Device checkpoint
+
+The Pixel_10/API37 emulator is running, but `org.futo.voiceinput.dev` is currently
+uninstalled with data retained. Both prior and new APK installation failed with
+`INSTALL_FAILED_INSUFFICIENT_STORAGE`; approximately 739 MiB remained on `/data`.
+Do not wipe or resize the original AVD as part of branch cleanup. No AVD disk
+backup exists yet. A future recovery step must preserve userdata and snapshots.
+
+The prior APK is preserved outside the disposable checkout at:
+`C:/Users/User/.codex/visualizations/2026/09/26/01a0df6d-b800-7a42-bb07-d8851c9d7fac/share07-prior.apk`.
+SHA256: `031e2ba9cf2bff2ff6b30d109c6b502a16d3b9a90c5a43eea64423dd39c72e9c`.
+
+The first published beta must disclose that integrated device checks remain open.
+Use a physical arm64 device for the beta, or a separate suitable test AVD without
+altering the retained-data AVD.
+
+## Cleanup policy
+
+- Keep the primary checkout and beta integration worktree.
+- Preserve SHARE-09's unfinished experiment, including ignored native artifacts.
+- Archive idle, integrated feature worktrees through their owning chats' managed
+  worktree tools after verification. Preserve any necessary ignored evidence first.
+- Preserve unique unmerged research/contract commits before retiring their checkout.
+- Delete local feature branches only after their commits are reachable from the
+  integration branch or an explicit archival ref. Never force-delete unknown work.
+- Empty preparation branches at `eb5e1da` can be deleted once no checkout uses them;
+  recreate from the current beta when their ticket starts.
+- Keep chats available as evidence. Do not close PRs or delete remote branches merely
+  because their local checkout is no longer needed.
+
+## Completion record
+
+- All ten feature branches merged with history preserved. Release source commit:
+  `76844dae593c68f4d9f620e0d4eb8de823f04147`.
+- Tag `v1.4.6-share-beta.1` pushed; publication is gated by
+  [release CI](https://github.com/Today20092/voice-input/actions/runs/36484940228).
+- SHARE-03, SHARE-08 and waveform investigation documentation subsequently merged
+  into the integration branch; no runtime changes were added after the release tag.
+- Deleted empty local preparation branches `codex/catalog-release`,
+  `codex/predictive-back`, `codex/share-04`, `codex/share-10`, `codex/share-11`.
+- Pending: CI result, prerelease URL and final managed-worktree cleanup inventory.

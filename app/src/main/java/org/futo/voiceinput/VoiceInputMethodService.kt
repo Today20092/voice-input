@@ -10,14 +10,15 @@ import android.view.WindowManager
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
 import android.view.inputmethod.InputMethodSubtype
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.material.icons.Icons
@@ -31,15 +32,10 @@ import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.graphics.ColorFilter
-import androidx.compose.ui.graphics.drawscope.scale
-import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.platform.ComposeView
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.ViewCompositionStrategy
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
@@ -89,55 +85,24 @@ fun RecognizerInputMethodWindow(switchBack: (() -> Unit)? = null, allowClick: Bo
             modifier = Modifier
                 .recognizerSurfaceClickable(disabled = !allowClick, onPauseVAD = onPauseVAD, onFinish = onFinish)
                 .fillMaxWidth()
-                .wrapContentHeight(),
+                .wrapContentHeight()
+                .testTag("ime-panel"),
             color = MaterialTheme.colorScheme.surface
         ) {
-            val icon = painterResource(id = R.drawable.futo_o)
-            val bgIconTint = MaterialTheme.colorScheme.outline
-
-            Column(
-                modifier = Modifier.padding(0.dp, 0.dp, 0.dp, 64.dp).drawBehind {
-                    with(icon) {
-                        translate(left = -icon.intrinsicSize.width/2, top = -icon.intrinsicSize.height/2) {
-                            translate(left = size.width / 3, top = size.height / 2) {
-                                scale(scaleX = 1.3f, scaleY = 1.3f) {
-                                    draw(icon.intrinsicSize, colorFilter = ColorFilter.tint(bgIconTint))
-                                }
-
-                            }
+            Column(Modifier.padding(horizontal = 8.dp, vertical = 4.dp)) {
+                ConditionalUnpaidNoticeInVoiceInputWindow(switchBack)
+                Row(Modifier.fillMaxWidth().weight(1f, fill = false), verticalAlignment = Alignment.Top) {
+                    Column(Modifier.weight(1f)) { content() }
+                    if (switchBack != null) {
+                        IconButton(onClick = switchBack, modifier = Modifier.size(48.dp)) {
+                            Icon(
+                                Icons.Default.Close,
+                                contentDescription = stringResource(R.string.cancel),
+                                tint = MaterialTheme.colorScheme.onSurface
+                            )
                         }
                     }
                 }
-            ) {
-
-                val context = LocalContext.current
-                Box(modifier = Modifier.fillMaxWidth()) {
-                    Box(modifier = Modifier.align(Alignment.CenterStart)) {
-                        ConditionalUnpaidNoticeInVoiceInputWindow(switchBack)
-                    }
-
-                    Box(modifier = Modifier.align(Alignment.CenterEnd)) {
-                        if (switchBack != null) {
-                            IconButton(
-                                onClick = switchBack
-                            ) {
-                                Icon(
-                                    Icons.Default.Close,
-                                    contentDescription = stringResource(R.string.cancel),
-                                    tint = MaterialTheme.colorScheme.onSurface
-                                )
-                            }
-                        } else {
-                            Spacer(modifier = Modifier.height(32.dp))
-                        }
-                    }
-                }
-
-                Box(modifier = Modifier.padding(12.dp)) {
-                    
-                }
-
-                content()
                 Spacer(Modifier.height(navBarHeight()))
             }
         }
@@ -157,7 +122,7 @@ fun RecognizeIMELoadingPreview() {
 @Composable
 fun PreviewRecognizeViewLoadedIME() {
     RecognizerInputMethodWindow(switchBack = { }) {
-        InnerRecognize()
+        RecognitionContent(RecognitionUiState().start("Orukeet").recording(), compact = true)
     }
 }
 @Preview
@@ -169,7 +134,6 @@ fun PreviewRecognizeViewNoMicIME() {
 }
 
 
-val punctuationChars = setOf('!', '?', '.', ',')
 class VoiceInputMethodService : InputMethodService(), LifecycleOwner, ViewModelStoreOwner,
     SavedStateRegistryOwner {
     private val mSavedStateRegistryController = SavedStateRegistryController.create(this)
@@ -202,6 +166,9 @@ class VoiceInputMethodService : InputMethodService(), LifecycleOwner, ViewModelS
     }
 
     private val recognizer = object : RecognizerView() {
+        override val liveBenchmarkSession get() = org.futo.voiceinput.benchmark.LiveBenchmark.forEntry(
+            "ime", currentInputEditorInfo?.packageName == packageName)
+        override val compact: Boolean = true
         override val context: Context
             get() = this@VoiceInputMethodService
         override val lifecycleScope: LifecycleCoroutineScope
@@ -218,8 +185,7 @@ class VoiceInputMethodService : InputMethodService(), LifecycleOwner, ViewModelS
         }
 
         override fun onCancel() {
-            needsInitialization = true
-            reset()
+            inputSession.cancel()
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                 switchToPreviousInputMethod()
             } else {
@@ -227,54 +193,20 @@ class VoiceInputMethodService : InputMethodService(), LifecycleOwner, ViewModelS
             }
         }
 
-        var prevText: CharSequence? = null
-        var nextText: CharSequence? = null
-        override fun decodingStarted() {
-            this@VoiceInputMethodService.currentInputConnection.also {
-                prevText = it.getTextBeforeCursor(1, 0)
-                nextText = it.getTextAfterCursor(1, 0)
-            }
-        }
-
         override fun sendResult(result: String, detectedLanguage: String?): Boolean {
-            val inputConnection = this@VoiceInputMethodService.currentInputConnection ?: return false
-            var modifiedResult = result
-
-            // Insert space automatically if ended at punctuation
-            // TODO: Could send text before cursor as whisper prompt
-
-            if(!prevText.isNullOrBlank()) {
-                val lastChar = prevText?.last()
-
-                if (punctuationChars.contains(lastChar)) {
-                    modifiedResult = " $result"
-                }
+            if (inputSession.insertion?.finish(result, detectedLanguage) != true) return false
+            runCatching { onCancel() }.onFailure {
+                org.futo.voiceinput.diagnostics.AppDiagnostics.event(
+                    org.futo.voiceinput.diagnostics.DiagnosticEvent.KEYBOARD_SWITCH_FAILED, error = it)
             }
-
-            /*
-            if(!nextText.isNullOrBlank()) {
-                val oldPunctuation = nextText?.first()
-                val newPunctuation = result.last()
-
-                if (punctuationChars.contains(oldPunctuation) && punctuationChars.contains(newPunctuation)) {
-                    inputConnection.deleteSurroundingText(0, 1)
-                }
-            }
-            */
-
-            if (!inputConnection.commitText(modifiedResult, 1)) return false
-            onCancel()
             return true
         }
 
         override fun sendPartialResult(result: String): Boolean {
-            if(this@VoiceInputMethodService.currentInputConnection != null) {
-                this@VoiceInputMethodService.currentInputConnection.setComposingText(result, 1)
-                return true
-            } else {
-                return false
-            }
+            return inputSession.insertion?.partial(result) ?: false
         }
+
+        override fun decodingStarted() = Unit
 
         override fun requestPermission() {
             // We can't ask for permission from a service
@@ -356,7 +288,15 @@ class VoiceInputMethodService : InputMethodService(), LifecycleOwner, ViewModelS
         }
     }
 
-    private var needsInitialization = true
+    private val inputSession: ImeInputSessionLifecycle = ImeInputSessionLifecycle { recognizer.reset() }
+    private var changingConfiguration = false
+
+    override fun onStartInput(info: EditorInfo, restarting: Boolean) {
+        super.onStartInput(info, restarting)
+        inputSession.startInput(ImeEditorKey(info.packageName, info.fieldId, info.inputType),
+            currentInputConnection, restarting)
+    }
+
     override fun onStartInputView(info: EditorInfo, restarting: Boolean) {
         super.onStartInputView(info, restarting)
 
@@ -379,22 +319,36 @@ class VoiceInputMethodService : InputMethodService(), LifecycleOwner, ViewModelS
             }
         }
 
-        if(needsInitialization) {
-            needsInitialization = false
+        val connection = currentInputConnection
+        val editor = connection?.let { InputConnectionInsertionEditor(it) { currentInputConnection === it } }
+        val textClass = info.inputType and InputType.TYPE_MASK_CLASS == InputType.TYPE_CLASS_TEXT
+        val variation = info.inputType and InputType.TYPE_MASK_VARIATION
+        val prose = variation in setOf(InputType.TYPE_TEXT_VARIATION_NORMAL,
+            InputType.TYPE_TEXT_VARIATION_SHORT_MESSAGE, InputType.TYPE_TEXT_VARIATION_LONG_MESSAGE,
+            InputType.TYPE_TEXT_VARIATION_WEB_EDIT_TEXT)
+        if (inputSession.startView(connection, editor, automaticSpacing = textClass && prose)) {
             recognizer.reset()
             recognizer.init()
         } else {
-            println("Continuing recording, likely due to landscape/portrait switch")
             recognizer.refreshContent()
         }
         // TODO: Idle state
     }
 
     override fun onFinishInputView(finishingInput: Boolean) {
-        println("Finish input view")
-        recognizer.reset()
+        // super would finish composition even while the same session's view is being recreated.
+        inputSession.finishView(recreating = changingConfiguration)
+    }
 
-        needsInitialization = true
+    override fun onFinishInput() {
+        inputSession.finishInput()
+        super.onFinishInput()
+    }
+
+    override fun onUpdateSelection(oldSelStart: Int, oldSelEnd: Int, newSelStart: Int,
+        newSelEnd: Int, candidatesStart: Int, candidatesEnd: Int) {
+        super.onUpdateSelection(oldSelStart, oldSelEnd, newSelStart, newSelEnd, candidatesStart, candidatesEnd)
+        inputSession.insertion?.selectionChanged(newSelStart, newSelEnd, candidatesStart, candidatesEnd)
     }
 
     override fun onCurrentInputMethodSubtypeChanged(newSubtype: InputMethodSubtype) {
@@ -402,14 +356,18 @@ class VoiceInputMethodService : InputMethodService(), LifecycleOwner, ViewModelS
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
-        super.onConfigurationChanged(newConfig)
+        changingConfiguration = true
+        try {
+            super.onConfigurationChanged(newConfig)
+        } finally {
+            changingConfiguration = false
+        }
         updateNavigationBarVisibility()
     }
 
     override fun onDestroy() {
+        inputSession.cancel()
         super.onDestroy()
-
-        println("Destroy")
         handleLifecycleEvent(Lifecycle.Event.ON_DESTROY)
     }
 }

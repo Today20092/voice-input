@@ -156,6 +156,8 @@ fun PreviewRecognizeViewNoMic() {
 
 class RecognizeActivity : ComponentActivity() {
     private val recognizer = object : RecognizerView() {
+        override val liveBenchmarkSession get() = org.futo.voiceinput.benchmark.LiveBenchmark.forEntry(
+            "activity", callingActivity?.packageName == packageName)
         override val context: Context
             get() = this@RecognizeActivity
         override val lifecycleScope: LifecycleCoroutineScope

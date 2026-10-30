@@ -2,23 +2,29 @@ package org.futo.voiceinput.recognition
 
 import android.content.Context
 import androidx.lifecycle.LifecycleCoroutineScope
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.update
 import org.futo.voiceinput.WhisperGGMLBackend
 import org.futo.voiceinput.backend.SpeechBackend
-import org.futo.voiceinput.cohere.CohereBackend
+import org.futo.voiceinput.diagnostics.AppDiagnostics
+import org.futo.voiceinput.diagnostics.DiagnosticConfiguration
+import org.futo.voiceinput.diagnostics.DiagnosticEvent
+import org.futo.voiceinput.diagnostics.DiagnosticMetric
 import org.futo.voiceinput.ml.RunState
-import org.futo.voiceinput.moonshine.MoonshineBackend
-import org.futo.voiceinput.moonshine.getSelectedMoonshineModelVariant
-import org.futo.voiceinput.nemotron.SherpaStreamingBackend
 import org.futo.voiceinput.parakeet.acquireParakeetRuntime
-import org.futo.voiceinput.parakeet.orukeetBackend
-import org.futo.voiceinput.parakeet.parakeetUnifiedBackend
 import org.futo.voiceinput.parakeet.releaseParakeetArtifacts
 import org.futo.voiceinput.parakeet.releaseParakeetRuntime
 import org.futo.voiceinput.settings.MOONSHINE_MODEL_VARIANT
+import org.futo.voiceinput.settings.ASR4ALL_VARIANT
 import org.futo.voiceinput.settings.NEMOTRON_PROFILE
 import org.futo.voiceinput.settings.SPEECH_BACKEND
 import org.futo.voiceinput.settings.SpeechBackendType
@@ -29,12 +35,18 @@ import java.io.File
 data class RecognitionModelSelection(
     val runtimeId: String,
     val moonshineVariantId: String? = null,
-    val nemotronVariantId: String? = null
+    val nemotronVariantId: String? = null,
+    val asr4allVariantId: String? = null
 )
+
+enum class RecognitionModelRepairReason { MISSING, INVALID_OR_INCOMPATIBLE }
 
 data class RecognitionModelReadiness(
     val model: RecognitionModel,
-    val isReady: Boolean
+    val isReady: Boolean,
+    val installedModel: RecognitionModel? = null,
+    val optionalUpgrade: RecognitionModel? = null,
+    val repairReason: RecognitionModelRepairReason? = null
 )
 
 data class RecognitionRuntimeCallbacks(
@@ -55,89 +67,173 @@ class RecognitionModelLifecycle(
         val variantId = when (selection.runtimeId) {
             "moonshine" -> selection.moonshineVariantId
             "nemotron" -> selection.nemotronVariantId
+            "asr4all" -> org.futo.voiceinput.asr4all.Asr4allModels.selected(selection.asr4allVariantId ?: "m").variantId
             else -> null
         }
         val model = models.firstOrNull {
             it.runtimeId == selection.runtimeId && it.variantId == variantId
         } ?: return null
+        val installed = if (isBundled(model)) model else store.installedVersion(model, verifyHashes)
         return RecognitionModelReadiness(
             model = model,
-            isReady = isReady(model, verifyHashes)
+            isReady = installed != null,
+            installedModel = installed,
+            optionalUpgrade = installed?.takeIf { it.version != model.version }?.let { model },
+            repairReason = if (installed != null) null else if (store.modelDirectory(model).exists())
+                RecognitionModelRepairReason.INVALID_OR_INCOMPATIBLE else RecognitionModelRepairReason.MISSING
         )
     }
 
     fun isReady(model: RecognitionModel, verifyHashes: Boolean = false): Boolean =
-        isBundled(model) || store.isInstalled(model, verifyHashes)
+        isBundled(model) || store.installedVersion(model, verifyHashes) != null
 
-    fun selectionFor(model: RecognitionModel) = RecognitionModelSelection(
-        runtimeId = model.runtimeId,
-        moonshineVariantId = model.variantId.takeIf { model.runtimeId == "moonshine" },
-        nemotronVariantId = model.variantId.takeIf { model.runtimeId == "nemotron" }
-    )
+    fun downloadDirectory(model: RecognitionModel): File = store.stagingDirectory(model)
 
-    fun select(model: RecognitionModel, updateSelection: (RecognitionModelSelection) -> Unit) {
-        check(isReady(model)) { "${model.displayName} is not installed" }
-        updateSelection(selectionFor(model))
+    suspend fun acquireSession(model: RecognitionModel?): AutoCloseable = runtimeMutex.withLock {
+        check(!benchmarkOwned) { "Model comparison is running. Cancel it before dictation." }
+        val token = Any()
+        synchronized(activeSessions) { activeSessions[token] = model?.id ?: "whisper_ggml" }
+        AutoCloseable {
+            synchronized(activeSessions) { activeSessions.remove(token) }
+            runtimeChanges.update { it + 1 }
+        }
     }
 
-    fun completeInstallation(
-        model: RecognitionModel,
-        updateSelection: (RecognitionModelSelection) -> Unit
-    ): Boolean {
-        if (!store.completeInstall(model)) return false
+    suspend fun acquireBenchmark(): AutoCloseable = runtimeMutex.withLock {
+        check(!benchmarkOwned && activeRuntimes.isEmpty() && synchronized(activeSessions) { activeSessions.isEmpty() }) {
+            "Dictation or another comparison is active. Finish it before comparing models."
+        }
+        releaseParakeetArtifacts("parakeet")
+        benchmarkOwned = true
+        AutoCloseable { benchmarkOwned = false; runtimeChanges.update { it + 1 } }
+    }
+
+    private fun modelInUse(model: RecognitionModel): Boolean =
+        activeRuntimes.values.any { it == model.id } ||
+            synchronized(activeSessions) { activeSessions.values.any { it == model.id } }
+
+    suspend fun activateInstallation(model: RecognitionModel, updateSelection: (RecognitionModelSelection) -> Unit) {
+        try {
+            check(store.validateStaged(model)) { "Downloaded model failed validation" }
+            publishChange()
+            while (true) {
+                val revision = runtimeChanges.value
+                val activated = runtimeMutex.withLock {
+                    currentCoroutineContext().ensureActive()
+                    if (benchmarkOwned || modelInUse(model)) false else {
+                        val wasInstalled = store.installedVersion(model) != null
+                        releaseRuntimeArtifacts(model)
+                        store.activateStaged(model)
+                        if (!wasInstalled) updateSelection(selectionFor(model))
+                        true
+                    }
+                }
+                if (activated) break
+                runtimeChanges.first { it != revision }
+            }
+        } catch (failure: Throwable) {
+            recordOperationFailure(model, 1L, failure)
+            throw failure
+        } finally {
+            publishChange()
+        }
+    }
+
+    fun selectionFor(model: RecognitionModel) = model.selection()
+
+    fun select(model: RecognitionModel, updateSelection: (RecognitionModelSelection) -> Unit) {
+        check(!benchmarkOwned) { "Model comparison is running" }
+        check(isReady(model)) { "${model.displayName} is not installed" }
         updateSelection(selectionFor(model))
-        return true
+        publishChange()
     }
 
     suspend fun delete(model: RecognitionModel, selectedModelId: String?) {
-        store.delete(model, selectedModelId, ::releaseArtifacts)
+        try {
+            runtimeMutex.withLock {
+                check(!benchmarkOwned) { "Model comparison is running" }
+                check(!modelInUse(model)) { "Model is in use by dictation" }
+                store.delete(model, selectedModelId, ::releaseRuntimeArtifacts)
+            }
+        } catch (failure: Throwable) {
+            recordOperationFailure(model, 2L, failure)
+            throw failure
+        } finally { publishChange() }
     }
 
-    suspend fun releaseArtifacts(model: RecognitionModel) = runtimeMutex.withLock {
-        releaseRuntimeArtifacts(model)
+    fun invalidateInstallation(model: RecognitionModel) {
+        try { store.invalidate(model)
+        } catch (failure: Throwable) {
+            recordOperationFailure(model, 3L, failure)
+            throw failure
+        } finally { publishChange() }
+    }
+
+    private fun recordOperationFailure(model: RecognitionModel, operation: Long, error: Throwable) {
+        if (error is CancellationException) return
+        runCatching {
+            AppDiagnostics.event(
+                DiagnosticEvent.MODEL_OPERATION_FAILED, model = model.id,
+                metrics = mapOf(DiagnosticMetric.OPERATION to operation),
+                error = error, configuration = DiagnosticConfiguration(
+                    runtime = model.runtimeId, modelVersion = model.version))
+        }
     }
 
     private suspend fun releaseRuntimeArtifacts(model: RecognitionModel) {
-        val runtimes = activeRuntimes.filterValues { it == model.id }.keys.toList().also {
-            it.forEach(activeRuntimes::remove)
-        }
-        if (!releaseParakeetArtifacts(model.runtimeId)) {
-            runtimes.forEach { it.close() }
-        }
+        releaseParakeetArtifacts(model.runtimeId)
     }
 
     suspend fun load(
         context: Context,
         selection: RecognitionModelSelection,
         callbacks: RecognitionRuntimeCallbacks
-    ): SpeechBackend = runtimeMutex.withLock {
+    ): SpeechBackend = acquireRuntime(selection) {
         context.updateRecognitionModelSelection(selection)
-        val selectedModelId = readiness(selection)?.model?.id
-        val backend = when (selection.runtimeId.toSpeechBackendType()) {
+        val runtime = selection.runtimeId.toSpeechBackendType()
+        val backend = when (runtime) {
             SpeechBackendType.Parakeet -> acquireParakeetRuntime(context)
-            SpeechBackendType.Orukeet -> orukeetBackend()
-            SpeechBackendType.ParakeetUnified -> parakeetUnifiedBackend()
-            SpeechBackendType.Nemotron -> SherpaStreamingBackend()
-            SpeechBackendType.Cohere -> CohereBackend()
-            SpeechBackendType.Moonshine -> MoonshineBackend(context.getSelectedMoonshineModelVariant())
             SpeechBackendType.WhisperGGML -> WhisperGGMLBackend(
                 callbacks.onStatusUpdate,
                 callbacks.onPartialDecode,
                 callbacks.forceLanguageProvider
             )
+            else -> managedRecognitionBackend(context, selection.copy(runtimeId = runtime.id))
         }
         if (selection.runtimeId != SpeechBackendType.Parakeet.id) {
-            activeRuntimes.filterValues {
-                models.firstOrNull { model -> model.id == it }?.runtimeId ==
-                    SpeechBackendType.Parakeet.id
-            }.keys.toList().forEach {
-                activeRuntimes.remove(it)
+            models.firstOrNull { it.runtimeId == SpeechBackendType.Parakeet.id }?.let {
+                if (!modelInUse(it)) releaseParakeetArtifacts(SpeechBackendType.Parakeet.id)
             }
-            releaseParakeetArtifacts(SpeechBackendType.Parakeet.id)
             backend.loadOrCloseOnFailure { load(context) }
         }
-        selectedModelId?.let { activeRuntimes[backend] = it }
         backend
+    }
+
+    internal suspend fun acquireRuntime(
+        selection: RecognitionModelSelection,
+        preserveInstallation: Boolean = false,
+        load: suspend (RecognitionModelReadiness?) -> SpeechBackend
+    ): SpeechBackend = runtimeMutex.withLock {
+        check(!benchmarkOwned) { "Model comparison is running. Cancel it before dictation." }
+        val readiness = readiness(selection)
+        val backend = try {
+            load(readiness)
+        } catch (failure: Exception) {
+            if (!preserveInstallation && failure !is CancellationException) {
+                readiness?.installedModel?.let(::invalidateInstallation)
+            }
+            throw failure
+        }
+        readiness?.model?.id?.let { activeRuntimes[backend] = it }
+        backend
+    }
+
+    internal suspend fun releaseRuntime(backend: SpeechBackend, close: suspend () -> Unit): Unit = runtimeMutex.withLock {
+        try {
+            close()
+            activeRuntimes.remove(backend)
+            Unit
+        } finally { runtimeChanges.update { it + 1 } }
     }
 
     suspend fun release(
@@ -145,16 +241,19 @@ class RecognitionModelLifecycle(
         scope: LifecycleCoroutineScope,
         keepWarm: Boolean = false,
         timeoutMs: Long = 0L
-    ) = runtimeMutex.withLock {
-        activeRuntimes.remove(backend)
-        if (!releaseParakeetRuntime(backend, scope, keepWarm, timeoutMs)) {
-            backend.close()
-        }
+    ) = releaseRuntime(backend) {
+        if (!releaseParakeetRuntime(backend, scope, keepWarm, timeoutMs)) backend.close()
     }
 
     companion object {
+        @Volatile private var benchmarkOwned = false
         private val runtimeMutex = Mutex()
         private val activeRuntimes = mutableMapOf<SpeechBackend, String>()
+        private val activeSessions = mutableMapOf<Any, String>()
+        private val runtimeChanges = MutableStateFlow(0L)
+        private val changes = MutableStateFlow(0L)
+        val invalidations = changes.asStateFlow()
+        fun publishChange() { changes.update { it + 1 } }
 
         fun create(rootDirectory: File, parakeetBundled: Boolean) = RecognitionModelLifecycle(
             store = RecognitionModelStore(rootDirectory),
@@ -179,6 +278,7 @@ internal suspend fun SpeechBackend.loadOrCloseOnFailure(
 }
 
 fun Context.updateRecognitionModelSelection(selection: RecognitionModelSelection) {
+    selection.asr4allVariantId?.let { setSettingBlocking(ASR4ALL_VARIANT.key, it) }
     selection.moonshineVariantId?.let {
         setSettingBlocking(MOONSHINE_MODEL_VARIANT.key, it)
     }

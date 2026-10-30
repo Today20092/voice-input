@@ -17,6 +17,8 @@ object S1MiniEnglishGate {
         // Enabling English cleanup also covers recognizers that cannot report a language.
         return when (backend) {
             SpeechBackendType.Moonshine,
+            SpeechBackendType.Phonon,
+            SpeechBackendType.Asr4all,
             SpeechBackendType.Orukeet,
             SpeechBackendType.Parakeet,
             SpeechBackendType.ParakeetUnified -> true
@@ -26,6 +28,8 @@ object S1MiniEnglishGate {
 
             // Cohere always supplies its selected language. Do not assume English if absent.
             SpeechBackendType.Cohere -> false
+            SpeechBackendType.Whistle -> false
+            SpeechBackendType.ParakeetRedux -> false
 
             SpeechBackendType.WhisperGGML ->
                 enabledWhisperLanguages.isEmpty() || "en" in enabledWhisperLanguages

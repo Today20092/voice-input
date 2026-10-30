@@ -18,7 +18,7 @@ class RecognitionModelCatalogTest {
     fun catalogHasCompleteImmutableManifests() {
         val models = RecognitionModelCatalog.models
 
-        assertEquals(8, RecognitionModelCatalog.cards.size)
+        assertEquals(12, RecognitionModelCatalog.cards.size)
         assertEquals("orukeet-v0.1.0", RecognitionModelCatalog.defaultModel.id)
         assertTrue(models.isNotEmpty())
         models.forEach { model ->
@@ -67,8 +67,8 @@ class RecognitionModelCatalogTest {
         assertEquals("nemotron", multilingual.runtimeId)
         assertEquals("multilingual", multilingual.variantId)
         assertEquals("2026-06-11", multilingual.version)
-        assertEquals(6, multilingual.artifacts.size)
-        assertEquals(683_164_180, multilingual.transferBytes)
+        assertEquals(4, multilingual.artifacts.size)
+        assertEquals(682_215_356, multilingual.transferBytes)
         assertEquals(null, multilingual.archive)
         assertTrue(multilingual.artifacts.all { it.url.contains("ab43d895f5985b1bbab8b6eac8607fcdc05343f3") })
         assertTrue(multilingual.source.contains("OpenMDW 1.1"))
@@ -76,11 +76,19 @@ class RecognitionModelCatalogTest {
     }
 
     @Test
-    fun cohereIncludesExternalWeightsAndRemainsAnOptionalBeta() {
+    fun nemotronMultilingualInstallsOnlyRuntimeArtifacts() {
+        assertEquals(
+            listOf("encoder.int8.onnx", "decoder.int8.onnx", "joiner.int8.onnx", "tokens.txt"),
+            RecognitionModelCatalog.nemotronMultilingual.artifacts.map { it.name }
+        )
+    }
+
+    @Test
+    fun cohereIncludesExternalWeightsAndRemainsOptional() {
         val model = RecognitionModelCatalog.cohereTranscribe
         assertEquals("cohere", model.runtimeId)
         assertEquals(TranscriptionBehavior.FINAL_ONLY, model.transcription)
-        assertTrue(model.displayName.contains("Beta"))
+        assertEquals("Cohere Transcribe", model.displayName)
         assertEquals(2_888_052_036L, model.transferBytes)
         assertTrue(model.artifacts.all { it.url.contains(model.version) })
         assertEquals(2_731_503_072L, model.artifacts.single { it.name == "encoder.int8.onnx.data" }.sizeBytes)
@@ -94,6 +102,21 @@ class RecognitionModelCatalogTest {
             assertTrue(model.source.isNotBlank())
             assertTrue(model.licenseAttribution.isNotBlank())
         }
+    }
+
+    @Test
+    fun reduxUsesPackedWeightsWithItsOwnRuntimeAndPreservesDefault() {
+        val model = RecognitionModelCatalog.parakeetRedux
+        assertEquals("parakeet_redux", model.runtimeId)
+        assertEquals(null, model.variantId)
+        assertEquals(TranscriptionBehavior.FINAL_ONLY, model.transcription)
+        assertEquals(213_319_296L, model.transferBytes)
+        assertEquals("redux-packed.gguf", model.artifacts.single().name)
+        assertEquals(listOf(model), RecognitionModelCatalog.cards.single { it.id == "parakeet-redux" }.models)
+        val lifecycle = RecognitionModelLifecycle(RecognitionModelStore(temporaryFolder.root))
+        assertEquals(model, lifecycle.readiness(RecognitionModelSelection("parakeet_redux"))?.model)
+        assertFalse(lifecycle.readiness(RecognitionModelSelection("parakeet_redux"))!!.isReady)
+        assertEquals("orukeet", RecognitionModelCatalog.defaultModel.runtimeId)
     }
 
     @Test

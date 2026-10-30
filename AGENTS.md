@@ -68,6 +68,8 @@ Hashes in `ParakeetModel.kt` and `app/build.gradle` are currently nullable/blank
 
 ## Build And Test Commands
 
+When the maintainer requests low memory or sets a RAM limit, follow [the low-memory workflow](docs/development.md#low-memory-workflow) before verification or release work.
+
 Prereqs: JDK 17+, Android SDK platform 35, NDK `28.2.13676358`.
 
 Common commands:
@@ -107,7 +109,7 @@ Generated APK names are customized in `app/build.gradle`, but the GitHub workflo
 
 ### Issue tracker
 
-Tickets are tracked locally in `tickets.md`; external PRs are not a triage surface. See `docs/agents/issue-tracker.md`.
+Tickets are tracked in GitHub Issues at `Today20092/voice-input`. `tickets.md` is a historical migration record; external PRs are not a triage surface. See `docs/agents/issue-tracker.md`.
 
 ### Triage labels
 

@@ -7,7 +7,6 @@ import okhttp3.OkHttpClient
 import okhttp3.Protocol
 import okhttp3.Response
 import okhttp3.ResponseBody.Companion.toResponseBody
-import org.futo.voiceinput.recognition.RecognitionModelCatalog
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -21,9 +20,8 @@ class NestedDownloadTest {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val directory = File(context.filesDir, "nested-download-regression")
         directory.deleteRecursively()
-        val names = listOf("tokens.txt") + RecognitionModelCatalog.nemotronMultilingual.artifacts
-            .map { it.name }.filter { it.startsWith("test_wavs/") }
-        assertEquals(listOf("tokens.txt", "test_wavs/en.wav", "test_wavs/ja.wav"), names)
+        // Reproduce the nested paths from the 1.4.5 manifest; current Nemotron needs no test audio.
+        val names = listOf("tokens.txt", "test_wavs/en.wav", "test_wavs/ja.wav")
         val hash = "ec654fac9599f62e79e2706abef23dfb7c07c08185aa86db4d8695f0b718d1b3"
         val intent = Intent(context, DownloadActivity::class.java).apply {
             putStringArrayListExtra(EXTRA_DOWNLOAD_FILE_NAMES, ArrayList(names))

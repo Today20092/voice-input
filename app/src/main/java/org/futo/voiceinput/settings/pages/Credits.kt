@@ -108,6 +108,62 @@ fun CreditsScreen(openDependencies: () -> Unit = {}, navController: NavHostContr
         )
 
         CreditItem(
+            name = "Harper 2.11.0",
+            thanksFor = "Offline English punctuation and capitalization rules",
+            link = "https://github.com/Automattic/harper/tree/v2.11.0",
+            license = "Apache-2.0; dependency notices bundled in HARPER-NOTICES.txt",
+            copyright = "Harper contributors and Automattic"
+        )
+
+        CreditItem(
+            name = "Moonshine Voice 0.0.68",
+            thanksFor = "English speech recognition; complete license bundled in MOONSHINE-LICENSE.txt",
+            link = "https://github.com/moonshine-ai/moonshine/blob/0a99f2e31e6e2913c4c61e4c62f85ce57404ba60/LICENSE",
+            license = "MIT (Section 1: runtime and English models)",
+            copyright = "Copyright (c) 2025 Useful Sensors, Inc. (dba Moonshine AI)"
+        )
+
+        CreditItem(
+            name = "ONNX Runtime 1.23.0",
+            thanksFor = "Moonshine runtime with KleidiAI disabled; license and third-party notices bundled as ONNX-RUNTIME-*.txt",
+            link = "https://github.com/microsoft/onnxruntime/blob/be835efc56aca19b8e810538ec93c8e150e0fc61/ThirdPartyNotices.txt",
+            license = "MIT and included dependency licenses",
+            copyright = "Microsoft Corporation and ONNX Runtime contributors"
+        )
+
+        CreditItem(
+            name = "Moondream Parakeet Redux",
+            thanksFor = "Optional packed ternary speech recognition, derived from NVIDIA Parakeet TDT 0.6B V3",
+            link = "https://huggingface.co/moondream/parakeet-redux",
+            license = "CC BY 4.0; converted GGUF by mudler/parakeet.cpp",
+            copyright = "Moondream and NVIDIA"
+        )
+
+        CreditItem(
+            name = "parakeet.cpp",
+            thanksFor = "Redux CPU runtime; native notices bundled in REDUX-NOTICES.txt",
+            link = "https://github.com/mudler/parakeet.cpp",
+            license = "MIT",
+            copyright = "Copyright (c) 2026 the parakeet.cpp authors"
+        )
+
+        CreditItem(
+            name = "Fermion Research Phonon 2",
+            thanksFor = "Optional English recognition; repackaged weights and native notices in PHONON-NOTICES.txt",
+            link = "https://www.fermionresearch.com/models/phonon-2/",
+            license = "CC BY 4.0; phonon-2-c runtime MIT",
+            copyright = "Fermion Research, NVIDIA and phonon-2-c contributors"
+        )
+
+        CreditItem(
+            name = "Cactus Whistle",
+            thanksFor = "Optional multilingual recognition; notices in WHISTLE-NOTICES.txt",
+            link = "https://huggingface.co/Cactus-Compute/whistle",
+            license = "Apache 2.0",
+            copyright = "Cactus Compute"
+        )
+
+        CreditItem(
             name = "TensorFlow Lite",
             thanksFor = stringResource(R.string.thanks_for_the_machine_learning_inference_library),
             link = "https://mvnrepository.com/artifact/org.tensorflow/tensorflow-lite",

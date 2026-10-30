@@ -5,14 +5,40 @@ on:
     branches:
       - "master"
       - "codex/combined-release"
+      - "codex/harper-english-beta"
     tags:
       - "v*"
   workflow_dispatch:
+    inputs:
+      beta_tag:
+        description: Publish the verified signed APK under this new beta tag (must match app version)
+        type: string
+        default: ''
+      build_benchmark_apks:
+        description: Build paired dev app and instrumentation APKs for physical-phone benchmarking
+        type: boolean
+        default: false
+      build_moonshine_candidate:
+        description: 'Also build the experimental #41 ARM64 runtime and debug APK'
+        type: boolean
+        default: false
+      run_s1_speculation_proof:
+        description: 'Also run the experimental #40 real-model CPU parity proof'
+        type: boolean
+        default: false
 
 permissions:
   contents: write
 
 jobs:
+  s1-speculation-proof:
+    if: github.event_name == 'workflow_dispatch' && inputs.run_s1_speculation_proof
+    uses: ./.github/workflows/s1-speculation-proof.yml
+
+  moonshine-candidate:
+    if: github.event_name == 'workflow_dispatch' && inputs.build_moonshine_candidate
+    uses: ./.github/workflows/moonshine-runtime-candidate.yml
+
   build:
     name: Build APK
     runs-on: ubuntu-latest
@@ -35,6 +61,17 @@ jobs:
           printf 'storeFile=release-signing.jks\nkeyAlias=%s\nkeyPassword=%s\nstorePassword=%s\n' \
             "$RELEASE_KEY_ALIAS" "$RELEASE_KEY_PASSWORD" "$RELEASE_STORE_PASSWORD" > keystore.properties
 
+      - name: Validate requested beta tag
+        if: github.event_name == 'workflow_dispatch' && inputs.beta_tag != ''
+        env:
+          BETA_TAG: ${{ inputs.beta_tag }}
+        run: |
+          [[ "$BETA_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+-beta\.[0-9]+$ ]]
+          VERSION="$(sed -n 's/^[[:space:]]*versionName "\([^"]*\)"/\1/p' app/build.gradle)"
+          test "$BETA_TAG" = "v$VERSION"
+          EXISTING="$(git ls-remote --tags origin "refs/tags/$BETA_TAG")"
+          test -z "$EXISTING"
+
       - name: Set up JDK
         uses: actions/setup-java@v4
         with:
@@ -51,11 +88,71 @@ jobs:
           sdkmanager "platforms;android-35" "build-tools;35.0.0" "ndk;28.2.13676358" "cmake;3.22.1"
           yes | sdkmanager --licenses >/dev/null
 
-      - name: Build APK
+      - name: Set up pinned Rust toolchain
         run: |
-          ./gradlew :app:testStandaloneReleaseUnitTest :app:assembleStandaloneRelease
+          rustup toolchain install 1.98.1 --profile minimal
+          rustup target add --toolchain 1.98.1 aarch64-linux-android
+
+      - name: Verify Harper rules and bundle native licenses
+        run: |
+          python3 tools/harper_notices.py
+          cd app/src/main/rust/harper_android
+          cargo test --locked
+
+      - name: Verify Phonon package and reference transcription
+        run: |
+          PHONON_TEST_ARCHIVE="$RUNNER_TEMP/phonon-weights.tar.gz"
+          curl --fail --location --retry 3 -o "$PHONON_TEST_ARCHIVE" \
+            'https://huggingface.co/eschmidbauer/phonon-2-c/resolve/1c91a6a7a26809fecedb35d847bef69663dde8bb/phonon-2-c-weights-v1.tar.gz'
+          echo "48137a58011c4b0bc0a97087ea7e868daabf1525ca8447414be230b21faf99e6  $PHONON_TEST_ARCHIVE" | sha256sum --check
+          echo "PHONON_TEST_ARCHIVE=$PHONON_TEST_ARCHIVE" >> "$GITHUB_ENV"
+          mkdir -p "$RUNNER_TEMP/phonon-model"
+          tar -xzf "$PHONON_TEST_ARCHIVE" -C "$RUNNER_TEMP/phonon-model"
+          cmake -S app/src/main/cpp/third_party/phonon-2-c -B "$RUNNER_TEMP/phonon-host" -DPHONON2_BUILD_EXAMPLES=OFF
+          cmake --build "$RUNNER_TEMP/phonon-host" --parallel 2
+          "$RUNNER_TEMP/phonon-host/phonon2" --quiet --threads 2 "$RUNNER_TEMP/phonon-model/c_weights" \
+            app/src/androidTest/assets/redux-speech.wav > "$RUNNER_TEMP/phonon-transcript.txt"
+          cat "$RUNNER_TEMP/phonon-transcript.txt"
+          grep -qi 'like the old portrait' "$RUNNER_TEMP/phonon-transcript.txt"
+
+      - name: Verify pinned Orukeet archive
+        run: |
+          curl --fail --location --retry 3 -o "$RUNNER_TEMP/orukeet.tar.bz2" \
+            'https://huggingface.co/oruk/orukeet/resolve/55a984d46f68323301837194ce647c702f55facc/onnx/sherpa-onnx-orukeet-v0.1.0-int8.tar.bz2?download=true'
+          echo "f9191f30178cc9122ce2f023bf9fefafc822028307b0efa4caff645ba3fe8d0a  $RUNNER_TEMP/orukeet.tar.bz2" | sha256sum --check
+
+      - name: Verify Whistle package and reference transcription
+        run: |
+          curl --fail --location --retry 3 -o "$RUNNER_TEMP/whistle.cact" \
+            'https://huggingface.co/Cactus-Compute/whistle/resolve/741118687e1f008f06d1351a402a731274789790/whistle.cact'
+          echo "b6e02f048568ac5d01a2042556c658061e699acbc0aa2a1439f52f3d461dffeb  $RUNNER_TEMP/whistle.cact" | sha256sum --check
+          curl --fail --location --retry 3 -o "$RUNNER_TEMP/whistle-runner" \
+            'https://huggingface.co/Cactus-Compute/needle3/resolve/d6c7d6a2e9655505e0f8e23339356dd1705900eb/linux-x86_64/needle'
+          echo "77cd35ee75c53df8532b397e11ed7cf94a45d89a9f14f50881fd9c68ba54a2d0  $RUNNER_TEMP/whistle-runner" | sha256sum --check
+          chmod +x "$RUNNER_TEMP/whistle-runner"
+          "$RUNNER_TEMP/whistle-runner" --model "$RUNNER_TEMP/whistle.cact" --threads 2 \
+            --audio app/src/androidTest/assets/redux-speech.wav > "$RUNNER_TEMP/whistle-result.json"
+          jq -e '.language == "en" and (.text | contains("like the old portrait"))' "$RUNNER_TEMP/whistle-result.json"
+
+      - name: Build APK
+        env:
+          ORUKEET_TEST_ARCHIVE: ${{ runner.temp }}/orukeet.tar.bz2
+          WHISTLE_TEST_RUNNER: ${{ runner.temp }}/whistle-runner
+          WHISTLE_TEST_MODEL: ${{ runner.temp }}/whistle.cact
+        run: |
+          python3 -m unittest discover -s tools -p 'test_native_packaging.py'
+          ./gradlew --max-workers=2 '-Dorg.gradle.jvmargs=-Xmx4096m -Dfile.encoding=UTF-8' -Ps1NgramSpeculation=false :app:testStandaloneReleaseUnitTest :app:lintStandaloneRelease :app:compileDevDebugAndroidTestKotlin :app:assembleStandaloneRelease --stacktrace
           echo "APK_DIR=app/build/outputs/apk/standalone/release" >> "$GITHUB_ENV"
           echo "APK_NAME=futo-voice-input-moonshine" >> "$GITHUB_ENV"
+
+      - name: Upload release check reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-check-reports
+          path: |
+            app/build/test-results/testStandaloneReleaseUnitTest/*.xml
+            app/build/reports/lint-results-standaloneRelease.*
 
       - name: Verify APK contents and signature
         run: |
@@ -63,6 +160,22 @@ jobs:
           test -n "$APK_PATH"
           APK_LISTING="$(unzip -Z1 "$APK_PATH")"
           printf '%s\n' "$APK_LISTING" | grep -Fx 'lib/arm64-v8a/libs1mini.so'
+          printf '%s\n' "$APK_LISTING" | grep -Fx 'lib/arm64-v8a/libharper.so'
+          printf '%s\n' "$APK_LISTING" | grep -Fx 'assets/HARPER-NOTICES.txt'
+          printf '%s\n' "$APK_LISTING" | grep -Fx 'lib/arm64-v8a/libparakeet_redux.so'
+          printf '%s\n' "$APK_LISTING" | grep -Fx 'assets/REDUX-NOTICES.txt'
+          printf '%s\n' "$APK_LISTING" | grep -Fx 'lib/arm64-v8a/libphonon_jni.so'
+          printf '%s\n' "$APK_LISTING" | grep -Fx 'lib/arm64-v8a/libphonon_baseline.so'
+          printf '%s\n' "$APK_LISTING" | grep -Fx 'lib/arm64-v8a/libphonon_dotprod.so'
+          printf '%s\n' "$APK_LISTING" | grep -Fx 'assets/PHONON-NOTICES.txt'
+          printf '%s\n' "$APK_LISTING" | grep -Fx 'lib/arm64-v8a/libwhistle_runner.so'
+          printf '%s\n' "$APK_LISTING" | grep -Fx 'assets/WHISTLE-NOTICES.txt'
+          unzip -p "$APK_PATH" lib/arm64-v8a/libwhistle_runner.so > "$RUNNER_TEMP/whistle-android-runner"
+          echo "02a044e15489e19fa9f4f1cd1d5943d39dc0eefc08e0ba99d36279daf2351d46  $RUNNER_TEMP/whistle-android-runner" | sha256sum --check
+          printf '%s\n' "$APK_LISTING" | grep -Fx 'lib/arm64-v8a/libexecutorch.so'
+          printf '%s\n' "$APK_LISTING" | grep -Fx 'assets/ASR4ALL-NOTICES.txt'
+          printf '%s\n' "$APK_LISTING" | grep -Fx 'assets/ASR4ALL-APACHE-NOTICES.txt'
+          printf '%s\n' "$APK_LISTING" | grep -Fx 'assets/asr4all-geometry.json'
           printf '%s\n' "$APK_LISTING" | grep -Fx 'lib/arm64-v8a/libllama.so'
           printf '%s\n' "$APK_LISTING" | grep -Fx 'lib/arm64-v8a/libggml-opencl.so'
           printf '%s\n' "$APK_LISTING" | grep -Fx 'lib/arm64-v8a/libOpenCL.so'
@@ -73,12 +186,21 @@ jobs:
             echo 'Unexpected non-arm64 native library found'
             exit 1
           fi
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "$APK_PATH"
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$APK_PATH"
+          mkdir -p "$RUNNER_TEMP/moonshine-apk-validation/jni/arm64-v8a"
+          unzip -p "$APK_PATH" lib/arm64-v8a/libonnxruntime.so > "$RUNNER_TEMP/moonshine-apk-validation/jni/arm64-v8a/libonnxruntime.so"
+          unzip -p "$APK_PATH" lib/arm64-v8a/libmoonshine.so > "$RUNNER_TEMP/moonshine-apk-validation/jni/arm64-v8a/libmoonshine.so"
+          (cd "$RUNNER_TEMP/moonshine-apk-validation" && zip -q runtime.aar jni/arm64-v8a/*.so)
+          bash tools/test-moonshine-ort-validator.sh
+          bash tools/verify-moonshine-ort-candidate.sh "$RUNNER_TEMP/moonshine-apk-validation/runtime.aar" \
+            "$ANDROID_HOME/ndk/28.2.13676358/toolchains/llvm/prebuilt/linux-x86_64/bin"
 
       - name: Rename APK
+        env:
+          BETA_TAG: ${{ inputs.beta_tag }}
         run: |
           mkdir -p release
-          VERSION="${GITHUB_REF_NAME:-manual}"
+          VERSION="${BETA_TAG:-${GITHUB_REF_NAME:-manual}}"
           VERSION="${VERSION//\//-}"
           APK_PATH="$(find "$APK_DIR" -maxdepth 1 -type f -name '*.apk' | head -n 1)"
           if [ -z "$APK_PATH" ]; then
@@ -87,21 +209,56 @@ jobs:
           fi
           cp "$APK_PATH" "release/${APK_NAME}-${VERSION}.apk"
 
+      - name: Verify stripped native payload and separate symbols
+        run: |
+          APK_PATH="$(find "$APK_DIR" -maxdepth 1 -type f -name '*.apk' | head -n 1)"
+          python3 tools/verify_native_packaging.py "$APK_PATH" \
+            app/build/outputs/native-debug-symbols/standaloneRelease/native-debug-symbols.zip \
+            --readelf "$ANDROID_HOME/ndk/28.2.13676358/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-readelf"
+
+      - name: Upload native debug symbols
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-debug-symbols-${{ github.sha }}
+          path: app/build/outputs/native-debug-symbols/standaloneRelease/native-debug-symbols.zip
+          if-no-files-found: error
+
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: futo-voice-input-moonshine-apk
           path: release/*.apk
 
+      - name: Build benchmark device APKs
+        if: github.event_name == 'workflow_dispatch' && inputs.build_benchmark_apks
+        run: |
+          ./gradlew --max-workers=2 '-Dorg.gradle.jvmargs=-Xmx4096m -Dfile.encoding=UTF-8' :app:assembleDevDebug :app:assembleDevDebugAndroidTest --stacktrace
+          sha256sum app/build/outputs/apk/dev/debug/*.apk app/build/outputs/apk/androidTest/dev/debug/*.apk \
+            > app/build/outputs/apk/benchmark-apk-sha256.txt
+
+      - name: Upload benchmark device APKs
+        if: github.event_name == 'workflow_dispatch' && inputs.build_benchmark_apks
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-device-apks-${{ github.sha }}
+          if-no-files-found: error
+          path: |
+            app/build/outputs/apk/dev/debug/*.apk
+            app/build/outputs/apk/androidTest/dev/debug/*.apk
+            app/build/outputs/apk/benchmark-apk-sha256.txt
+
       - name: Create GitHub Release
-        if: startsWith(github.ref, 'refs/tags/')
+        if: startsWith(github.ref, 'refs/tags/') || (github.event_name == 'workflow_dispatch' && inputs.beta_tag != '')
         uses: softprops/action-gh-release@v2
         with:
-          name: FUTO Voice Input ${{ github.ref_name }}
-          body_path: docs/releases/v1.4.3.md
+          name: FUTO Voice Input ${{ inputs.beta_tag || github.ref_name }}
+          tag_name: ${{ inputs.beta_tag || github.ref_name }}
+          target_commitish: ${{ github.sha }}
+          body_path: docs/releases/${{ inputs.beta_tag || github.ref_name }}.md
           files: |
             release/*.apk
             docs/examples/arabic-transliteration.txt
+            docs/screenshots/${{ github.ref_name }}/*.png
           generate_release_notes: true
-          prerelease: ${{ contains(github.ref_name, '-beta') }}
-          make_latest: ${{ !contains(github.ref_name, '-beta') }}
+          prerelease: ${{ contains(inputs.beta_tag || github.ref_name, '-beta') }}
+          make_latest: ${{ !contains(inputs.beta_tag || github.ref_name, '-beta') }}

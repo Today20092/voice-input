@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="keyboard_provider_title">FUTO Keyboard</string>
+    <string name="keyboard_provider_intro">Choose this app for FUTO Keyboard microphone input.</string>
+    <string name="keyboard_provider_app">This app: %1$s</string>
+    <string name="keyboard_provider_missing">FUTO Keyboard is not installed or is disabled. Install or enable the stable or unstable version, then return here.</string>
+    <string name="keyboard_provider_selected">Selected keyboard: %1$s</string>
+    <string name="keyboard_provider_choose">Choose %1$s</string>
+    <string name="keyboard_provider_use">Use this app in FUTO Keyboard</string>
+    <string name="keyboard_provider_check">Refresh provider status</string>
+    <string name="keyboard_provider_settings">Open keyboard settings</string>
+    <string name="keyboard_provider_waiting">Waiting for keyboard response…</string>
+    <string name="keyboard_provider_switched">The keyboard confirmed switching to this app. Test its microphone to verify dictation.</string>
+    <string name="keyboard_provider_cancelled">Setup was cancelled. No switch was confirmed.</string>
+    <string name="keyboard_provider_unknown">The keyboard returned an unknown setup response. Verify the provider in keyboard settings.</string>
+    <string name="keyboard_provider_unavailable">Automatic setup or settings could not open. This keyboard version may not support it. Follow the manual steps below.</string>
+    <string name="keyboard_provider_remembered">The keyboard remembers this app as its provider. This check cannot tell whether external voice input is enabled.</string>
+    <string name="keyboard_provider_other">The keyboard remembers a different provider.</string>
+    <string name="keyboard_provider_unchecked">Provider status could not be verified. Check keyboard settings manually.</string>
+    <string name="keyboard_provider_manual">Manual setup: Open FUTO Keyboard from its app icon or keyboard settings key. In Voice Input, enable external or system voice input and choose this Voice Input app. Labels vary by keyboard version. If a provider picker is unavailable, enable external input, tap the keyboard microphone, and choose this app in the Android app chooser. If another app opens automatically, clear its defaults in Android Settings first.\n\nReturn here to refresh status, then test the keyboard microphone in a text field. Dictation should open this app and return text; cancelling should return to typing.</string>
+</resources>

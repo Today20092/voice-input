@@ -13,6 +13,8 @@ import android.os.SystemClock
 import androidx.core.content.FileProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
@@ -33,48 +35,50 @@ object AppDiagnostics {
     @Volatile private var store: DiagnosticStore? = null
     @Volatile private var application: Context? = null
     private val dropped = AtomicLong()
-    private val queue = ThreadPoolExecutor(1, 1, 0, TimeUnit.MILLISECONDS, ArrayBlockingQueue(128),
+    private val queue by lazy { ThreadPoolExecutor(1, 1, 0, TimeUnit.MILLISECONDS, ArrayBlockingQueue(128),
         { runnable -> Thread(runnable, "voice-diagnostics").apply { isDaemon = true } },
-        { _, _ -> dropped.incrementAndGet() })
+        { _, _ -> dropped.incrementAndGet() }) }
 
     fun initialize(context: Context) {
-        // The cleanup service is a separate process. Its failures are observed by the main-process client.
-        val process = if (Build.VERSION.SDK_INT >= 28) Application.getProcessName() else {
-            (context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager)
-                .runningAppProcesses?.firstOrNull { it.pid == Process.myPid() }?.processName
-        }
-        if (process != context.packageName) return
-        application = context.applicationContext
-        queue.execute {
-            runCatching {
-                store = DiagnosticStore(File(context.filesDir, "app-diagnostics"),
-                    maxBytes = 7L * 1024 * 1024 - 4096,
-                    knownModels = RecognitionModelCatalog.models.map { it.id }.toSet() +
-                        SpeechBackendType.values().map { it.id } + "s1_mini")
-                store?.snapshot() // purge expired evidence on launch, even while opted out
-                S1MiniDiagnostics.purgeStandard(context)
-                DiagnosticArchive.purgePrepared(File(context.cacheDir, "app-diagnostics-export"))
-                // Retire cached standalone standard exports now that the UI uses the combined report.
-                File(context.cacheDir, "s1-diagnostics-export").listFiles().orEmpty()
-                    .filter { !it.name.contains("WITH-TRANSCRIPTS") }.forEach { it.delete() }
-                store?.record(DiagnosticEvent.APP_STARTED)
-                recordProcessExits(context)
-            }.onFailure { dropped.incrementAndGet() }
-        }
-        val previous = Thread.getDefaultUncaughtExceptionHandler()
-        Thread.setDefaultUncaughtExceptionHandler { thread, error ->
-            // Do not wait on the writer: it may itself have crashed while owning the store monitor.
-            val saved = java.util.concurrent.CountDownLatch(1)
+        runCatching {
+            // The cleanup service is a separate process. Its failures are observed by the main-process client.
+            val process = if (Build.VERSION.SDK_INT >= 28) Application.getProcessName() else {
+                (context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager)
+                    .runningAppProcesses?.firstOrNull { it.pid == Process.myPid() }?.processName
+            }
+            if (process != context.packageName) return
+            application = context.applicationContext
             queue.execute {
-                try { runCatching { store?.record(DiagnosticEvent.MANAGED_CRASH, error = error) } }
-                finally { saved.countDown() }
+                runCatching {
+                    store = DiagnosticStore(File(context.filesDir, "app-diagnostics"),
+                        maxBytes = 7L * 1024 * 1024 - 4096,
+                        knownModels = RecognitionModelCatalog.models.map { it.id }.toSet() +
+                            SpeechBackendType.values().map { it.id } + "s1_mini")
+                    store?.snapshot() // purge expired evidence on launch, even while opted out
+                    S1MiniDiagnostics.purgeStandard(context)
+                    DiagnosticArchive.purgePrepared(File(context.cacheDir, "app-diagnostics-export"))
+                    // Retire cached standalone standard exports now that the UI uses the combined report.
+                    File(context.cacheDir, "s1-diagnostics-export").listFiles().orEmpty()
+                        .filter { !it.name.contains("WITH-TRANSCRIPTS") }.forEach { it.delete() }
+                    store?.record(DiagnosticEvent.APP_STARTED)
+                    recordProcessExits(context)
+                }.onFailure { dropped.incrementAndGet() }
             }
-            runCatching { saved.await(300, TimeUnit.MILLISECONDS) }
-            previous?.uncaughtException(thread, error) ?: run {
-                Process.killProcess(Process.myPid())
-                kotlin.system.exitProcess(10)
+            val previous = Thread.getDefaultUncaughtExceptionHandler()
+            Thread.setDefaultUncaughtExceptionHandler { thread, error ->
+                // Do not wait on the writer: it may itself have crashed while owning the store monitor.
+                val saved = java.util.concurrent.CountDownLatch(1)
+                queue.execute {
+                    try { runCatching { store?.record(DiagnosticEvent.MANAGED_CRASH, error = error) } }
+                    finally { saved.countDown() }
+                }
+                runCatching { saved.await(300, TimeUnit.MILLISECONDS) }
+                previous?.uncaughtException(thread, error) ?: run {
+                    Process.killProcess(Process.myPid())
+                    kotlin.system.exitProcess(10)
+                }
             }
-        }
+        }.onFailure { dropped.incrementAndGet() }
     }
 
     fun event(
@@ -83,18 +87,23 @@ object AppDiagnostics {
         model: String? = null,
         metrics: Map<DiagnosticMetric, Long> = emptyMap(),
         error: Throwable? = null,
-        detailed: Boolean = false
+        detailed: Boolean = false,
+        configuration: DiagnosticConfiguration? = null,
+        reportId: String? = null
     ) {
-        if (store?.policy()?.enabled == false) return
-        if (detailed && detailedRemainingMs() == 0L) return
-        val copiedMetrics = metrics.toMap()
-        queue.execute {
-            runCatching { store?.record(event, sessionId, model, copiedMetrics, error, detailed) }
-                .onFailure { dropped.incrementAndGet() }
-        }
+        runCatching {
+            if (store?.policy()?.enabled == false) return
+            if (detailed && detailedRemainingMs() == 0L) return
+            val copiedMetrics = metrics.toMap()
+            queue.execute {
+                runCatching { store?.record(event, sessionId, model, copiedMetrics, error, detailed, configuration, reportId) }
+                    .onFailure { dropped.incrementAndGet() }
+            }
+        }.onFailure { dropped.incrementAndGet() }
     }
 
-    fun session(model: String? = null) = DiagnosticSession(model)
+    fun session(model: String? = null): DiagnosticSession? = runCatching { DiagnosticSession(model) }
+        .onFailure { dropped.incrementAndGet() }.getOrNull()
 
     fun collectionEnabled() = store?.policy()?.enabled == true
     fun detailedRemainingMs() = store?.detailedRemainingMs() ?: 0L
@@ -116,36 +125,47 @@ object AppDiagnostics {
     }
 
     fun sample(sessionId: String, model: String?, detailed: Boolean = false) {
-        if (!collectionEnabled() || (detailed && detailedRemainingMs() == 0L)) return
-        queue.execute {
-            runCatching {
-                val context = application ?: return@runCatching
-                val memory = ActivityManager.MemoryInfo()
-                (context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager).getMemoryInfo(memory)
-                val metrics = mutableMapOf(
-                    DiagnosticMetric.PSS_KB to Debug.MemoryInfo().also(Debug::getMemoryInfo).totalPss.toLong(),
-                    DiagnosticMetric.JAVA_BYTES to Runtime.getRuntime().let { it.totalMemory() - it.freeMemory() },
-                    DiagnosticMetric.NATIVE_BYTES to Debug.getNativeHeapAllocatedSize(),
-                    DiagnosticMetric.AVAILABLE_BYTES to memory.availMem,
-                    DiagnosticMetric.LOW_MEMORY to if (memory.lowMemory) 1L else 0L,
-                    DiagnosticMetric.PROCESS_CPU_MS to Process.getElapsedCpuTime()
-                )
-                if (Build.VERSION.SDK_INT >= 29) metrics[DiagnosticMetric.THERMAL_STATUS] =
-                    (context.getSystemService(Context.POWER_SERVICE) as PowerManager).currentThermalStatus.toLong()
-                store?.record(DiagnosticEvent.RESOURCE_SAMPLE, sessionId, model, metrics, detailed = detailed)
-            }.onFailure { dropped.incrementAndGet() }
-        }
+        runCatching {
+            if (!collectionEnabled() || (detailed && detailedRemainingMs() == 0L)) return
+            queue.execute {
+                runCatching {
+                    val context = application ?: return@runCatching
+                    val memory = ActivityManager.MemoryInfo()
+                    (context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager).getMemoryInfo(memory)
+                    val metrics = mutableMapOf(
+                        DiagnosticMetric.PSS_KB to Debug.MemoryInfo().also(Debug::getMemoryInfo).totalPss.toLong(),
+                        DiagnosticMetric.JAVA_BYTES to Runtime.getRuntime().let { it.totalMemory() - it.freeMemory() },
+                        DiagnosticMetric.NATIVE_BYTES to Debug.getNativeHeapAllocatedSize(),
+                        DiagnosticMetric.AVAILABLE_BYTES to memory.availMem,
+                        DiagnosticMetric.LOW_MEMORY to if (memory.lowMemory) 1L else 0L,
+                        DiagnosticMetric.PROCESS_CPU_MS to Process.getElapsedCpuTime()
+                    )
+                    if (Build.VERSION.SDK_INT >= 29) metrics[DiagnosticMetric.THERMAL_STATUS] =
+                        (context.getSystemService(Context.POWER_SERVICE) as PowerManager).currentThermalStatus.toLong()
+                    store?.record(DiagnosticEvent.RESOURCE_SAMPLE, sessionId, model, metrics, detailed = detailed)
+                }.onFailure { failure ->
+                    dropped.incrementAndGet()
+                    runCatching { store?.record(DiagnosticEvent.RESOURCE_SAMPLE, sessionId, model,
+                        mapOf(DiagnosticMetric.RESOURCE_UNAVAILABLE to 1L), error = failure, detailed = detailed) }
+                }
+            }
+        }.onFailure { dropped.incrementAndGet() }
     }
 
     suspend fun export(context: Context, happened: String, expected: String): File = withContext(Dispatchers.IO) {
         flush()
-        val snapshot = requireNotNull(store) { "Diagnostics not ready" }.snapshot()
+        val snapshot = runCatching { store?.snapshot() }.getOrNull()
+            ?: DiagnosticSnapshot(emptyList(), 0, collectionUnavailable = true)
         val directory = File(context.cacheDir, "app-diagnostics-export").apply { mkdirs() }
         DiagnosticArchive.purgePrepared(directory)
         val output = File(directory, "voice-input-diagnostics-${System.currentTimeMillis()}.zip")
         try {
-            DiagnosticArchive.write(output, snapshot, environment(context).toString(), settings(context).toString(),
-                happened, expected, S1MiniDiagnostics.standardReportEntries(context), dropped.get())
+            val settings = runCatching { settings(context).toString() }.getOrElse { "{\"unavailable\":true}" }
+            val environment = runCatching { environment(context).toString() }.getOrElse { "{\"unavailable\":true}" }
+            val s1Reports = runCatching { S1MiniDiagnostics.standardReportEntries(context) }.getOrElse { emptyMap() }
+            currentCoroutineContext().ensureActive()
+            DiagnosticArchive.write(output, snapshot, environment, settings,
+                happened, expected, s1Reports, dropped.get())
             DiagnosticArchive.purgePrepared(directory)
             check(output.exists()) { "Report evidence expired; prepare another report" }
             output
@@ -179,6 +199,7 @@ object AppDiagnostics {
         put("schemaVersion", 1)
         put("appVersion", BuildConfig.VERSION_NAME)
         put("versionCode", BuildConfig.VERSION_CODE)
+        put("gitRevision", BuildConfig.GIT_REVISION)
         put("buildFlavor", BuildConfig.FLAVOR)
         put("debug", BuildConfig.DEBUG)
         put("manufacturer", Build.MANUFACTURER)
@@ -198,6 +219,7 @@ object AppDiagnostics {
         val variant = when (backend) {
             SpeechBackendType.Moonshine -> context.getSetting(MOONSHINE_MODEL_VARIANT)
             SpeechBackendType.Nemotron -> context.getSetting(NEMOTRON_PROFILE)
+            SpeechBackendType.Asr4all -> context.getSetting(ASR4ALL_VARIANT)
             else -> null
         }
         val model = RecognitionModelCatalog.modelFor(backend.id, variant)
@@ -210,8 +232,12 @@ object AppDiagnostics {
             put("manualStopDrainMs", context.getSetting(MANUAL_STOP_DRAIN_MS))
             put("keepWarm", context.getSetting(PARAKEET_KEEP_WARM))
             put("cleanupEnabled", context.getSetting(S1_MINI_ENABLED))
+            put("harperEnabled", context.getSetting(HARPER_ENABLED))
+            put("harperExplicitEnglish", context.getSetting(HARPER_EXPLICIT_ENGLISH))
+            put("harperVersion", "2.11.0")
             put("cleanupRuntime", context.getSetting(S1_MINI_RUNTIME).toS1MiniRuntime().id)
             put("audioHistoryEnabled", context.getSetting(AUDIO_HISTORY_ENABLED))
+            put("unobtrusiveRecognizer", context.getSetting(UNOBTRUSIVE_RECOGNIZER))
         }
     }
 
@@ -244,9 +270,13 @@ class DiagnosticSession internal constructor(val model: String?) {
         private set
 
     fun event(event: DiagnosticEvent, metrics: Map<DiagnosticMetric, Long> = emptyMap(),
-              error: Throwable? = null, detailed: Boolean = false) {
-        AppDiagnostics.event(event, id, model,
-            metrics + (DiagnosticMetric.ELAPSED_MS to (SystemClock.elapsedRealtime() - started)), error, detailed)
+              error: Throwable? = null, detailed: Boolean = false,
+              configuration: DiagnosticConfiguration? = null, reportId: String? = null) {
+        runCatching {
+            AppDiagnostics.event(event, id, model,
+                metrics + (DiagnosticMetric.ELAPSED_MS to (SystemClock.elapsedRealtime() - started)), error, detailed,
+                configuration, reportId)
+        }
     }
 
     @Synchronized fun partial(characters: Int) {

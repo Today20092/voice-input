@@ -1,405 +1,228 @@
-# Tickets: Selectable NVIDIA models and live transcription
+# Tickets: Voice Input
 
-Build the recognition model catalog and replace the custom NVIDIA runtime with Sherpa-ONNX through dependency-ordered vertical slices. Source: [selectable NVIDIA recognition models and live transcription spec](docs/specs/selectable-nvidia-models-and-live-streaming.md).
+Migrated to [GitHub Issues](https://github.com/Today20092/voice-input/issues) on October 4, 2026. Update criteria, blockers, claims and resolutions in GitHub. The sections below preserve the historical queue; its instructions and frontier statements describe previous status and authorization. Linked specifications and evidence remain supporting documents.
 
-Work the **frontier**: any ticket whose blockers are all done.
+| Former local ticket | Active issue |
+| --- | --- |
+| 01 | [#9: Integrated beta build](https://github.com/Today20092/voice-input/issues/9) |
+| 02 | [#10: Voice-input verification](https://github.com/Today20092/voice-input/issues/10) |
+| 03 | [#11: Model updates and readiness](https://github.com/Today20092/voice-input/issues/11) |
+| 04 | [#12: Long dictation and recovery](https://github.com/Today20092/voice-input/issues/12) |
+| 05 | [#13: Optional engines](https://github.com/Today20092/voice-input/issues/13) |
+| 06 | [#14: Waveform report](https://github.com/Today20092/voice-input/issues/14) |
+| 07 | [#15: Catalog calibration and release](https://github.com/Today20092/voice-input/issues/15) |
+| 08 | [#16: FUTO Keyboard setup](https://github.com/Today20092/voice-input/issues/16) |
 
-## Create the managed recognition model catalog
+Existing GitHub #7 and #8 are separate bug reports, unrelated to former local numbering.
 
-**What to build:** Give people one Model Options catalog for the existing Moonshine and Parakeet choices. Each recognition model shows why to choose it, approximate transfer/storage requirements derived from its manifest, transcription behavior, language support, performance class, source, installation state, and selection state. Selecting an uninstalled choice confirms and validates its download; installed choices are retained and inactive choices can be deleted.
+## 08: Restore FUTO Keyboard setup after upstream release support
 
-**Blocked by:** None — can start immediately.
+**What to build:** Restore the FUTO Keyboard settings entry once a published upstream keyboard release supports choosing this fork as its external voice-input provider. Preserve the existing setup screen, route, provider helpers, strings and tests for reuse.
 
-- [x] Moonshine Small remains the default and existing Moonshine and Whisper recognition continue working.
-- [x] Existing recognition models are represented by one authoritative catalog/store rather than model-specific UI state.
-- [x] Every downloadable package has an immutable identity, pinned source revision, complete artifact manifest, non-null hashes, and completion marker.
-- [x] Selecting an uninstalled package shows its source, actual manifest size, required free space, and cellular status before confirmation.
-- [x] A confirmed successful download is validated, marked complete, and selected automatically.
-- [x] Interrupted, insufficient-space, HTTP-failed, and hash-mismatched downloads never appear installed or selected.
-- [x] Installed packages remain available when another model is selected.
-- [x] Inactive packages can be deleted after their runtime is released.
-- [x] The selected package cannot be deleted and explains that another installed model must be selected first.
-- [x] JVM tests cover catalog metadata, manifest totals, installation detection, selection, validation, deletion guards, and failed downloads.
-- [x] Thin UI tests cover descriptions, status, confirmation, progress, selection, and deletion behavior.
+**Blocked by:** A compatible upstream FUTO Keyboard release and physical-device verification of its external-provider setup flow.
 
-### Resolution
+**Triage:** needs-info
 
-Implemented by `4310f7a` (`feat: add managed recognition model catalog`).
+**Context:** On 2026-10-04, the user reported that the installed FUTO Keyboard cannot use this app's setup flow. Hide the settings entry for now. The user believes upstream Keyboard and Voice Input are working on support; this is not yet verified. The latest listed keyboard release at review was v0.1.30, whose release notes do not confirm support for this flow. This deferral supersedes exposing SHARE-01 setup during ticket 02 verification; recognition activity and IME functionality remain available.
 
-## Ship Nemotron English Balanced live transcription
+**Upstream:** [Keyboard repository](https://github.com/futo-org/android-keyboard), [Keyboard releases](https://github.com/futo-org/android-keyboard/releases), [Voice Input repository](https://github.com/futo-org/voice-input).
 
-**What to build:** Add Nemotron Speech Streaming EN 0.6B with its 160 ms Balanced package as the first complete Sherpa-ONNX recognition path. A person can download it from its model card, select it, dictate with revisable live text, and receive a complete final transcript without dropped speech.
+- [x] Hide the FUTO Keyboard settings entry while preserving its implementation.
+- [ ] Identify a published compatible keyboard release; record its tag, provider contract and release URL.
+- [ ] Verify setup, provider status, cancellation and microphone dictation with this fork on the S25 Ultra; record keyboard/app versions.
+- [ ] Restore the settings entry, update outdated instructions, and rerun affected navigation/provider checks.
 
-**Blocked by:** Create the managed recognition model catalog.
+Seven outcome tickets replace the 18 open tickets. All previous acceptance criteria, statuses and completed-work evidence remain in [ticket detail and history](docs/plans/ticket-detail-2026-09-30.md). Organization changes; scope and completion status do not.
 
-- [x] A pinned Sherpa-ONNX Android runtime is integrated for arm64 without incompatible duplicate native libraries.
-- [x] The pinned 160 ms INT8 Nemotron package downloads, validates, installs, selects, loads, and releases through the shared model flow.
-- [x] The IME publishes live recognition as composing text and commits one final result without duplication.
-- [x] Recognition-activity callers see partial text in the overlay and receive only the final result.
-- [x] Personal vocabulary is applied consistently to partial and final results.
-- [x] Streaming preserves all recorded audio when decoding falls behind.
-- [x] Partial publication pauses when necessary, exposes Catching up, and resumes or finalizes from the complete audio stream.
-- [x] Cancellation, runtime initialization failure, out-of-memory loading, and unavailable input connections fail safely.
-- [x] A failed load retains the valid download and offers another installed recognition model.
-- [x] Contract tests use a fake streaming backend to cover chunk forwarding, partials, Catching up, finalization, cancellation, and errors.
-- [x] An opt-in native smoke check transcribes a known short sample with the pinned package.
-- [x] APK inspection proves the selected Sherpa packaging works on arm64 and records its size impact.
+Work on `codex/share-beta-integration`, then merge the tested release into `master`. Keep the unmerged `codex/share-09` experiment isolated until its feasibility decision. Start one new chat per numbered ticket and work one runnable slice at a time. Read the current integration ledger and linked details at the start; record evidence and the commit/checkpoint before handing off to the next chat. Run only one integration writer/build at a time. Numbers indicate recommended order, not additional blockers; skip a blocked ticket and return when its missing input is available.
 
-### Resolution
+Before working a ticket, read its linked sections. Their unchecked criteria are required detail; checked criteria and resolutions are existing evidence. Record verification there and check the summary only when its requirements are met. The detail file is not a second queue; do not reopen completed work. Historical claims/blockers are superseded by this queue.
 
-Implemented by `ec0f6a7` (`feat: add Nemotron Balanced streaming`).
+The frontier is 01. Signed beta 3 is published and its release checks passed; the
+original packaging cause remains unproven. See [finish plan](docs/plans/share-beta-finish.md).
 
-## Add Low-latency and Accuracy Nemotron profiles
+## 01: Restore the integrated beta build
 
-**What to build:** Extend the English Nemotron card with separately downloadable 80 ms Low latency and 560 ms Accuracy profiles. People can see, install, select, retain, and delete each profile independently without cluttering the main model list.
+**Working branch:** `codex/share-beta-integration`
 
-**Blocked by:** Ship Nemotron English Balanced live transcription.
+**What to build:** Fix the failed release build, pass the combined release gates and publish a signed test beta.
 
-- [x] One Nemotron English card contains Low latency, Balanced, and Accuracy controls.
-- [x] Balanced remains the default profile.
-- [x] Each profile clearly states its latency/accuracy trade-off and separate download requirement.
-- [x] The 80 and 560 ms packages use pinned revisions, complete manifests, hashes, and independent completion markers.
-- [x] Installing or deleting one profile does not change another profile's installed assets.
-- [x] The selected profile is protected by the same inactive-only deletion rule as other recognition models.
-- [x] Switching to an installed profile requires no download; switching to an uninstalled profile uses the shared confirmation flow.
-- [x] UI and store tests cover grouped presentation, independent state, selection, retention, and deletion.
-- [x] Opt-in smoke checks prove all three profiles can load and transcribe.
-
-### Resolution
-
-Implemented by `1aa54e6` (`feat: add Nemotron latency profiles`).
-
-## Add safe manual model updates
-
-**What to build:** Let people update installed recognition model packages explicitly without risking the currently working version. The catalog reports an available immutable version, confirms the large transfer, validates it alongside the old version, and switches only after success.
-
-**Blocked by:** Create the managed recognition model catalog.
-
-- [x] No recognition model or profile updates automatically.
-- [x] The catalog can distinguish the installed immutable version from an available immutable version.
-- [x] Update available appears only when a different valid pinned version exists.
-- [x] Starting an update shows the same source, size, space, and cellular confirmation as a new installation.
-- [x] The working version remains selected and usable while the replacement downloads.
-- [x] A validated replacement is activated atomically before the previous version is removed.
-- [x] Interrupted, corrupt, or failed updates retain the previous valid version and selection.
-- [x] Tests cover update discovery, confirmation, parallel-version storage, failed validation, activation, and cleanup.
-
-### Resolution
-
-Implemented by `683be27` (`feat: add safe manual model updates`).
-
-## Move Parakeet TDT to Sherpa-ONNX
-
-**What to build:** Run Parakeet TDT 0.6B V3 through Sherpa-ONNX as an accuracy-focused final-only choice. Existing Parakeet users keep working while the custom Rust decoder becomes unnecessary for this model.
-
-**Blocked by:** Ship Nemotron English Balanced live transcription.
-
-- [x] Parakeet TDT appears as its own recognition model with a concise final-only explanation and demanding performance class.
-- [x] Its package uses immutable community or publisher artifacts, complete manifests, hashes, and visible source attribution.
-- [x] CC BY 4.0 attribution is included in model details/notices.
-- [x] Selection, download, retention, inactive deletion, update, loading, transcription, and release use the shared flows.
-- [x] No live-text claim or cache-aware claim is made for TDT.
-- [x] Representative known utterances produce acceptable final-text parity before the Rust TDT path is retired.
-- [x] Load failure retains assets and offers another installed model.
-- [x] Store/UI tests and an opt-in native smoke check cover the end-to-end TDT choice.
-
-### Resolution
-
-Implemented by `fb5e00f` (`feat: run Parakeet TDT with Sherpa-ONNX`).
-
-## Move Parakeet Unified to buffered Sherpa streaming
-
-**What to build:** Offer Parakeet Unified EN 0.6B as a distinct model using Sherpa's buffered streaming path. People receive live partial text with accurate guidance that Unified recomputes buffered context and is not the preferred 80 ms cache-aware model.
-
-**Blocked by:** Ship Nemotron English Balanced live transcription.
-
-- [x] Unified has a distinct model identity, directory, manifest, status, and card; it cannot share or masquerade as TDT assets.
-- [x] Its package uses immutable artifacts, complete manifests, hashes, and visible source attribution.
-- [x] The card describes buffered live transcription without claiming cache-aware behavior.
-- [x] The card does not advertise an unsupported 80 ms Unified profile.
-- [x] Download, selection, retention, deletion, update, loading, live partials, finalization, and release use the shared flows.
-- [x] Buffered processing preserves audio and uses Catching up when it falls behind.
-- [x] Representative known utterances produce acceptable partial/final parity before the custom Unified path is retired.
-- [x] Store/UI/streaming-contract tests and an opt-in native smoke check cover the end-to-end Unified choice.
-
-### Resolution
-
-Implemented by `8e7a7dd` (`feat: add Parakeet Unified streaming`).
-
-## Add multilingual Nemotron 3.5
-
-**What to build:** Add Nemotron 3.5 ASR Streaming 0.6B for people who need live multilingual dictation. They can choose a supported recognition language or Auto-detect, while languages requiring fine-tuning remain hidden.
-
-**Blocked by:** Ship Nemotron English Balanced live transcription.
-
-- [x] Nemotron 3.5 has its own model card, package identity, manifest, source, installation state, and demanding performance guidance.
-- [x] Only NVIDIA's transcription-ready and broad-coverage languages are selectable.
-- [x] Adaptation-ready languages are absent from the user-facing language list.
-- [x] Auto-detect uses the model's supported prompt/detection behavior and reports the detected recognition language where useful.
-- [x] The default explicit prompt remains compatible with English when Auto-detect is not selected.
-- [x] Package downloads are immutable, hash-checked, retained, deletable when inactive, and manually updateable.
-- [x] Live partials, Catching up, finalization, cancellation, and failure fallback use the shared streaming behavior.
-- [x] OpenMDW 1.1 license/source information is included in model details/notices.
-- [x] Tests cover eligible-language filtering, prompt selection, Auto-detect, model state, and live-stream behavior.
-- [x] Opt-in smoke checks cover English, at least one additional transcription-ready language, and Auto-detect.
-
-### Resolution
-
-Implemented by `cfb42c4` (`feat: add multilingual Nemotron 3.5`).
-
-## Remove the redundant Rust NVIDIA runtime
-
-**What to build:** Complete the expand-contract migration by removing the project-owned Rust/JNI NVIDIA inference stack once Sherpa serves TDT and Unified with proven parity. The APK and build use one maintained NVIDIA runtime while legacy Whisper remains intact.
-
-**Blocked by:** Move Parakeet TDT to Sherpa-ONNX; Move Parakeet Unified to buffered Sherpa streaming.
-
-- [x] No production NVIDIA recognition model calls the custom Rust/JNI runtime.
-- [x] Custom Parakeet Rust engine, decoder, JNI bridge, tests, and generated native outputs are removed.
-- [x] Cargo/NDK build tasks and obsolete ONNX Runtime extraction/copy wiring are removed.
-- [x] Native packaging no longer relies on first-match behavior to mask incompatible duplicate ONNX Runtime libraries.
-- [x] Legacy Whisper/GGML native code and behavior remain present and tested.
-- [x] Moonshine behavior remains present and tested.
-- [x] Normal debug assembly, unit tests, and lint complete without Rust/cargo-ndk prerequisites.
-- [x] APK inspection proves there is one compatible NVIDIA inference stack and only intended arm64 native libraries.
-- [x] Documentation no longer instructs contributors to build or maintain the removed runtime.
-
-### Resolution
-
-Commit `d12ee49` removes the Rust/JNI runtime, Cargo/NDK wiring, duplicate-library packaging workaround, generated outputs, and obsolete build documentation. Follow-up backend contract tests cover Whisper transcription/cleanup and Moonshine buffered and streaming behavior. Unit tests, debug assembly, and lint pass; the broken Compose mutable-collection detector is disabled, the microphone foreground-service permission is explicit, and the obsolete billing activity declaration is removed. APK inspection shows Sherpa, one ONNX Runtime library, legacy Whisper, and Moonshine libraries with no `libparakeet_voiceinput.so`.
-
-## Calibrate and release the complete model catalog
-
-**What to build:** Validate the complete catalog on real hardware and finalize the guidance people use to choose models. Release checks cover speed, memory, thermals, licenses, downloads, existing backends, and APK contents.
-
-**Blocked by:** Add Low-latency and Accuracy Nemotron profiles; Add safe manual model updates; Add multilingual Nemotron 3.5; Remove the redundant Rust NVIDIA runtime.
-
-- [ ] Actual pinned manifest sizes, not planning estimates, are displayed for every model/profile.
-- [ ] Light, Balanced, and Demanding labels are reviewed against measured memory and real-time factor rather than phone-name heuristics.
-- [ ] On an S24/S25-class device, English Nemotron Balanced produces first useful text within one second.
-- [ ] On the same class of device, Balanced keeps pace with incoming audio and produces a caught-up final within one second after stopping.
-- [ ] Every tested slower-device failure mode preserves audio and either catches up or offers a safe model switch.
-- [ ] Latency, real-time factor, peak memory, sustained thermals, and backlog behavior are recorded for all English Nemotron profiles.
-- [ ] Model descriptions accurately distinguish live, final-only, buffered, cache-aware, English, and multilingual choices.
-- [ ] Sherpa and every model family have correct source, license, and attribution notices.
-- [ ] Download, cellular confirmation, insufficient space, corruption, retention, deletion, and manual update flows pass end-to-end regression checks.
-- [ ] Moonshine, Whisper, IME, recognition activity, VAD, cancellation, personal vocabulary, and error behavior pass regression checks.
-- [ ] Release APK contents, ABI, native-library count, and size are reviewed and documented.
-- [ ] The user-facing catalog remains advisory and does not block installation based on guessed device capability.
-
-## Add predictive-back transitions to settings navigation
-
-**What to build:** Make Android edge-back gestures interactively cross-fade from any settings destination to the previous destination, eliminating the frozen pause before the settings home screen appears. Preserve forward navigation, cancelled gestures, system back, and the in-app back arrow. See [the predictive-back settings specification](docs/specs/predictive-back-settings-navigation.md).
-
-**Blocked by:** None — can start immediately.
-
-**Triage:** ready-for-human
-
-- [x] The compatible Compose navigation stack uses Navigation Compose 2.8.0 or newer without raising the minimum supported Android version.
-- [ ] Swiping back from Model Options on Android 15 or newer previews the settings home screen with an interactive cross-fade instead of freezing until commit.
-- [ ] Swiping back from Input keeps the outgoing and incoming page text visually distinct instead of compositing both pages' text on top of each other.
-- [x] Committing the gesture returns to the correct previous destination, while cancelling it retains the current destination.
-- [x] Another settings destination exhibits the same predictive-back behavior through the shared navigation host.
-- [x] System back and the in-app back arrow continue to return to the correct previous destination.
-- [x] Forward navigation retains clear transition feedback.
-- [ ] An instrumentation check covers settings back-stack behavior at the shared navigation-host seam, and a real-device or emulator check verifies the interactive animation.
-- [ ] Relevant unit, instrumentation, build, and lint checks pass after the dependency upgrade.
-
-### Beta observation
-
-Confirmed in the signed `v1.4.2-beta.5` prerelease: start on Input, swipe from the left edge toward the right to return to the settings home screen, and hold or continue the gesture. Text from both pages remains visible in the same area and overlaps during the transition. A screen recording supplied during beta testing captures the behavior.
-
-## Exclude test audio from the Nemotron 3.5 Multilingual installation
-
-**What to build:** Install only the files required to run Nemotron 3.5 Multilingual so beta testers are not blocked waiting for packaged English and Japanese test recordings.
-
-**Blocked by:** None — can start immediately.
+**Blocked by:** None.
 
 **Triage:** ready-for-agent
 
-- [ ] Starting a Nemotron 3.5 Multilingual download does not request `test_wavs/en.wav` or `test_wavs/ja.wav`.
-- [ ] The model becomes installed after its runtime model and token files download and validate.
-- [ ] Existing incomplete installations that are waiting on test recordings can recover without downloading completed runtime files again.
-- [ ] A focused catalog check prevents non-runtime test assets from returning to the installation manifest.
+- [ ] Record the actual failed CI command/error and reproduce or establish its cause.
+- [ ] Fix the cause; pass unit tests, lint, UI-test compilation, native checks, APK build and signature/package verification.
+- [x] Record successful CI, tested commit, tag, prerelease URL and artifacts.
 
-### Beta observation
+**Evidence:** [Build diagnosis and beta verification](docs/testing/ticket-01-beta-build.md).
+Diagnostic CI passed unchanged packaging/signing configuration; the original
+underlying exception is absent from the failed log. Cause and fix remain unverified.
 
-In the signed `v1.4.2-beta.5` prerelease, Download Progress remained at 4 of 6 files while showing `test_wavs/en.wav` and `test_wavs/ja.wav` as the final two resources.
+**Checkpoint:** Tested source `00d5e34b91f48df83b260bf2206706678e326989`,
+tag `v1.4.6-share-beta.2`, [successful CI](https://github.com/Today20092/voice-input/actions/runs/36754734286),
+[signed prerelease](https://github.com/Today20092/voice-input/releases/tag/v1.4.6-share-beta.2).
+Unit tests: 189 passed, one skipped; lint: zero errors; UI-test compilation,
+nine native Harper tests, assembly and package/signature verification passed.
+The published APK matches the CI APK and GitHub digest and preserves the stable signer.
+The first two criteria remain open because successful reruns do not prove a root-cause fix.
 
-## Resume interrupted model downloads across retries
+## 02: Verify the integrated voice-input experience
 
-**What to build:** Preserve validated files and partial transfer progress when a large recognition-model download stalls or is retried, avoiding another full transfer of completed data.
+**Working branch:** `codex/share-beta-integration`
 
-**Blocked by:** None — can start immediately.
+**What to build:** Finish integrated keyboard/editor, settings, download and microphone validation and fix demonstrated failures.
 
-**Triage:** ready-for-agent
+**Blocked by:** Ticket 01's signed test-beta publication milestone, verified at `00d5e34` with `v1.4.6-share-beta.2`. Its unresolved historical packaging cause does not block testing this verified artifact.
 
-- [ ] Retrying an interrupted model installation skips files that already downloaded and validated.
-- [ ] Retrying a partially downloaded file continues from its saved byte position when the server supports range requests.
-- [ ] If a server cannot resume safely, the UI explains that the affected file must restart instead of silently presenting it as resumed.
-- [ ] A failed retry cannot replace a previously validated file or mark an incomplete model as installed.
-- [ ] A focused download check covers interruption and retry of a large model artifact.
+**Triage:** needs-info
 
-### Beta observation
+- [ ] Verify every remaining criterion in the linked sections, including phone/editor interoperability, TalkBack, Bluetooth hardware and predictive-back animation.
+- [ ] Record device/software/headset versions, settings and results; compilation or emulator checks do not substitute for required phone/headset evidence.
+- [x] Refresh help to describe verified behavior; rerun affected checks after fixes.
 
-In the signed `v1.4.2-beta.5` prerelease, retrying the stalled Nemotron 3.5 Multilingual installation appeared to restart the full 657.6 MB `encoder.int8.onnx` transfer.
+**Evidence:** [September 30 local integrated verification](docs/testing/ticket-02-integrated-experience.md).
+Android Studio local build, 189 JVM passes, one existing skip, lint with zero
+errors, and 35 emulator Android tests passed. Real edge gestures exposed and
+verified fixes for missing settings predictive-back opt-in and overlapping text.
+No physical device was connected; phone/editor dictation, headset routing and
+spoken TalkBack remain open. Hardware details were requested. Published beta 3
+includes these newer integration fixes and the reviewed ticket 03/04 changes;
+required hardware evidence remains open.
 
-## Return truthful recognition activity results
+**Required detail:**
 
-**What to build:** Make one-shot Android speech-recognition callers receive the recognized transcript without invented metadata. Successful recognition returns one final result, while cancellation returns no transcript. See [the Android voice-input protocol alignment spec](docs/specs/android-voice-input-protocol-alignment.md).
+- [Add predictive-back transitions to settings navigation](docs/plans/ticket-detail-2026-09-30.md#add-predictive-back-transitions-to-settings-navigation)
+- [Resume interrupted model downloads across retries](docs/plans/ticket-detail-2026-09-30.md#resume-interrupted-model-downloads-across-retries)
+- [Clarify and reorganize Model Options](docs/plans/ticket-detail-2026-09-30.md#clarify-and-reorganize-model-options)
+- [SHARE-01: Integrate FUTO Keyboard external-provider setup](docs/plans/ticket-detail-2026-09-30.md#share-01-integrate-futo-keyboard-external-provider-setup)
+- [SHARE-02: Make IME text insertion session-safe](docs/plans/ticket-detail-2026-09-30.md#share-02-make-ime-text-insertion-session-safe)
+- [SHARE-05: Make language settings follow the selected model](docs/plans/ticket-detail-2026-09-30.md#share-05-make-language-settings-follow-the-selected-model)
+- [SHARE-06: Add explicit Bluetooth microphone selection](docs/plans/ticket-detail-2026-09-30.md#share-06-add-explicit-bluetooth-microphone-selection)
+- [SHARE-07: Keep waveform and live transcript visible together](docs/plans/ticket-detail-2026-09-30.md#share-07-keep-waveform-and-live-transcript-visible-together)
+- [SHARE-12: Refresh keyboard help and upstream comparison documentation](docs/plans/ticket-detail-2026-09-30.md#share-12-refresh-keyboard-help-and-upstream-comparison-documentation)
 
-**Blocked by:** None — can start immediately.
+## 03: Finish safe model updates and readiness
 
-- [x] A successful recognition activity result contains one non-empty transcript.
-- [x] Results omit confidence scores when the selected backend does not supply a real calibrated confidence value.
-- [x] Cancellation returns a canceled result with no transcript.
-- [x] A focused contract test covers successful and canceled result construction.
-- [x] Relevant unit tests and lint pass.
+**Working branch:** `codex/ticket-03-atomic-readiness`
 
-### Resolution
+**What to build:** Finish explicit atomic pinned updates, then reactive readiness and optional upgrade notices.
 
-Implemented by `14b268c` (`fix: return truthful recognition activity results`).
+**Blocked by:** None.
 
-## Remove the nonfunctional recognition service
+**Triage:** needs-info
 
-**What to build:** Make the installed app advertise only voice-input protocols it actually supports by removing the empty recognition-service implementation and its disabled production declaration, while preserving the IME, recognition activity, and existing keyboard compatibility workaround. See [the Android voice-input protocol alignment spec](docs/specs/android-voice-input-protocol-alignment.md).
+- [ ] Verify every remaining manual-update criterion first, including active-session coordination, staged validation, rollback and reload.
+- [ ] Then verify every reactive-readiness criterion through the update lifecycle contract.
+- [x] Preserve the usable installation, explicit confirmation and cheap startup checks. No automatic transfer or fabricated successor.
 
-**Blocked by:** None — can start immediately.
+**Required detail:**
 
-- [x] The empty recognition-service implementation and misleading disabled declaration are removed.
-- [x] The merged manifest still exposes the input method and one-shot recognition activity.
-- [x] The existing test-category keyboard compatibility workaround remains unchanged.
-- [x] No production `RecognitionService` provider is advertised.
-- [x] Relevant unit tests, manifest processing, assembly, and lint pass.
+- [Add safe manual model updates](docs/plans/ticket-detail-2026-09-30.md#add-safe-manual-model-updates)
+- [SHARE-04: Show reactive model readiness and upgrade notices](docs/plans/ticket-detail-2026-09-30.md#share-04-show-reactive-model-readiness-and-upgrade-notices)
 
-### Resolution
+**Evidence:** [Atomic updates and reactive readiness verification](docs/testing/ticket-03-model-updates.md).
+Tested source `a63e4f8`: 198 JVM passes, one existing skip, zero lint errors,
+app/test APK assembly and 18 disposable-emulator tests passed. Two explicit pinned
+fixtures verify staging, rollback, interruption, recording/runtime leases, payload
+reload and reactive notices. Production has no declared successor and shows no
+upgrade offer. Required physical-device successor inference and interrupted-update/
+notice-clearance evidence remain open. Control tower alone integrates the scoped commits.
 
-Implemented by `650bebb` (`Remove nonfunctional recognition service`).
+## 04: Verify long dictation and bounded recovery
 
-## Make recognition-model readiness catalog-driven
+**Working branch:** `codex/ticket-04`
 
-**Triage:** ready-for-agent
+**What to build:** Measure long Moonshine dictation and add only demonstrated corrections and supported bounded replay recovery.
 
-**What to build:** Make every managed recognition model use one lifecycle module for selection, installed-model validation, and download requirements, so starting voice input and viewing Model Options agree about whether the selected model is ready.
+**Blocked by:** None.
 
-**Blocked by:** None — can start immediately.
+**Triage:** needs-info
 
-- [x] The selected recognition model is resolved from runtime and variant settings in one place.
-- [x] Readiness checks use the selected model's validated artifacts, including bundled-model behavior.
-- [x] Starting voice input requests the correct model download when the selected model is not installed.
-- [x] Model Options displays readiness from the same lifecycle behavior used by voice input.
-- [x] Focused tests cover at least one installed and one missing model for each supported runtime family.
-- [x] Relevant unit tests, assembly, and lint pass.
+- [ ] Verify all linked long-dictation criteria with phone baselines, continuity, memory and Stop-to-final measurements.
+- [ ] Classify recoverable failures before implementation; verify every recovery criterion including injected failure and cancellation on-device.
+- [ ] Preserve complete audio, session guards, one final result, cleanup and defaults. New modes or VAD models require the agreement specified in the original criteria.
 
-### Resolution
+**Required detail:**
 
-Implemented by `149f568` (`refactor: centralize recognition model readiness`).
+- [Verify long Moonshine dictation and improve segmentation only if needed](docs/plans/ticket-detail-2026-09-30.md#verify-long-moonshine-dictation-and-improve-segmentation-only-if-needed)
+- [SHARE-08: Recover once from a recoverable streaming failure](docs/plans/ticket-detail-2026-09-30.md#share-08-recover-once-from-a-recoverable-streaming-failure)
 
-## Route recognition-model loading and management through the lifecycle module
+**Evidence:** [September 30 terminal OOM and recovery-gate verification](docs/testing/ticket-04-long-dictation-recovery.md).
+Pinned-runtime source admits no supported recoverable category, so automatic
+recovery remains disabled. Removed model-load and recursive decoding OOM retries,
+including the Stop-after-failed-load fallback. Six real-session fake-backend
+Android checks passed after two baseline failures; 189 JVM tests passed with one
+existing skip, assembly passed and lint had zero errors. Defaults and segmentation
+are unchanged. Physical-phone long-dictation measurements and native/phone
+recoverable-failure/canceled-recovery validation remain open.
 
-**Triage:** ready-for-agent
+## 05: Decide whether optional engines earn inclusion
 
-**What to build:** Make recording, Model Options, and model downloads use the recognition-model lifecycle module for loading, selection updates, installation, deletion, and runtime release, leaving no duplicated per-model lifecycle policy in callers.
+**Working branch:** `codex/ticket-05` for the continued isolated adapter experiment.
+Original `codex/share-09` and its orphaned retained artifacts are preserved read-only.
+Production promotion uses `codex/share-beta-integration` after a positive feasibility decision.
 
-**Blocked by:** Make recognition-model readiness catalog-driven.
+**What to build:** Finish the isolated transcribe.cpp experiment, then evaluate ASR4ALL Small and Parakeet 110M only if justified.
 
-- [x] Loading the selected recognition model is initiated through the lifecycle module while preserving warm-runtime behavior.
-- [x] Successful installation and selection update the correct runtime and variant settings through one path.
-- [x] Deleting or replacing a model safely releases any runtime that owns its artifacts.
-- [x] Repeated runtime-family branches for lifecycle policy are removed from recording, settings, and download callers.
-- [x] Existing live transcription and final-only transcription behavior remains unchanged across supported recognition models.
-- [x] Relevant unit, instrumentation, assembly, and lint checks pass.
+**Blocked by:** None for adapter feasibility; optional-model work requires a positive adapter feasibility decision.
 
-## Lock down recording-session behavior
+**Triage:** needs-info
 
-**Triage:** ready-for-agent
+- [ ] Resolve every adapter source/build/coexistence/inference/notice/measurement criterion; record a go/no-go decision.
+- [ ] On a positive decision, verify every optional-model criterion before production promotion.
+- [x] A negative decision may defer dependent work with evidence and explicit disposition; unperformed checks are not passed. Preserve existing defaults and runtimes.
 
-**What to build:** Add runnable checks that preserve the current utterance lifecycle before it is deepened, covering recorder initialization, stop policy, streaming and final-only recognition, cancellation, and cleanup without changing user-visible behavior.
+**Evidence:** [September 30 experiment checkpoint](docs/testing/ticket-05-optional-engines.md)
+and [current primary-source audit](docs/research/ticket-05-source-gates-2026-09-30.md).
+Three host tests and a fresh ARM64 build/export/dependency check passed. The
+reproduced tinyBLAS notice omission is fixed and verified by a full script rerun.
+No-go for production promotion; ASR4ALL Small and Parakeet 110M catalog work is
+deferred. Actual JNI inference, legacy/S1 coexistence, complete notice provenance
+and phone benefit remain unverified. These open criteria are not passed. Original
+share-09 artifacts and all production sources/defaults are preserved.
 
-**Blocked by:** None — can start immediately.
+**Required detail:**
 
-- [x] Checks cover recorder initialization failure and bounded retry behavior.
-- [x] Checks cover manual, end-of-speech, and duration-limit stopping, including buffered tail handling.
-- [x] Checks cover partial live transcription followed by one final transcript.
-- [x] Checks cover final-only transcription without intermediate text.
-- [x] Checks prove cancellation and reset release jobs, recorder state, buffers, and recognition-model ownership.
-- [x] The checks run with the existing test toolchain and pass reliably without microphone hardware.
+- [SHARE-09: Evaluate a reproducible transcribe.cpp adapter](docs/plans/ticket-detail-2026-09-30.md#share-09-evaluate-a-reproducible-transcribecpp-adapter)
+- [SHARE-10: Evaluate ASR4ALL Small as an optional model](docs/plans/ticket-detail-2026-09-30.md#share-10-evaluate-asr4all-small-as-an-optional-model)
+- [SHARE-11: Evaluate Parakeet 110M as an optional model](docs/plans/ticket-detail-2026-09-30.md#share-11-evaluate-parakeet-110m-as-an-optional-model)
 
-### Resolution
+## 06: Resolve the intermittent waveform report
 
-Implemented by `f233072`, `4a61d22`, and `5ab3750`.
+**Working branch:** `codex/share-beta-integration`
 
-## Deepen the recording session behind AudioRecognizer
+**What to build:** Reproduce the reported waveform failure, fix its cause and verify the reported phone scenario.
 
-**Triage:** ready-for-agent
+**Blocked by:** User description of the symptom, entry point and reproducible scenario.
 
-**What to build:** Concentrate one utterance lifecycle behind the existing AudioRecognizer seam so recorder state, jobs, audio buffers, voice-activity detection, streaming callbacks, stop reasons, final recognition, and cleanup change together while Activity and IME behavior remains stable.
+**Triage:** needs-info
 
-**Blocked by:** Lock down recording-session behavior.
+- [ ] Obtain the missing symptom and compare popup enabled/disabled in the affected entry point.
+- [ ] Verify every remaining source criterion with a failing regression check and phone evidence. General layout checks do not close the report.
 
-- [x] One recording-session implementation owns the mutable state and ordering rules for a single utterance.
-- [x] AudioRecognizer retains a small caller interface for starting, stopping, canceling, and receiving recognition progress and results.
-- [x] Existing recognition-model adapters remain internal to the recording flow; no hypothetical adapter is introduced.
-- [x] Recorder retry, microphone-blocked detection, voice-activity stopping, buffer growth, and tail draining preserve their verified behavior.
-- [x] Activity and IME callers require no recognition-session policy of their own.
-- [x] The recording-session checks and relevant unit, instrumentation, assembly, and lint checks pass.
+**Required detail:**
 
-### Resolution
+- [Diagnose intermittent waveform behavior when opening voice input](docs/plans/ticket-detail-2026-09-30.md#diagnose-intermittent-waveform-behavior-when-opening-voice-input)
 
-`RecordingSession` now owns each utterance's recorder, jobs, audio, stop/VAD state, streaming replay, and recognition-model ownership. `AudioRecognizer` keeps its existing Activity/IME-facing contract.
+## 07: Calibrate and release the tested catalog
 
-## Remove full model hashing from interactive startup
+**Working branch:** `codex/share-beta-integration`
 
-**Triage:** ready-for-agent
+**What to build:** Complete catalog performance/regression evidence and release the verified scope.
 
-**What to build:** Keep model integrity validation at download/install time, but make voice-input startup and Model Options trust a versioned completion marker plus cheap artifact metadata so opening the microphone never hashes entire model files.
-
-**Blocked by:** Make recognition-model readiness catalog-driven.
-
-- [x] Successful model installation verifies configured hashes before writing a versioned completion marker.
-- [x] Voice-input startup performs no full-file hashing on the main thread.
-- [x] Model Options performs no full-file hashing during composition or recomposition.
-- [x] Missing, truncated, or version-mismatched artifacts are still reported as not installed.
-- [x] Backend load failure invalidates readiness or produces a clear recovery/download path.
-- [x] A focused test proves interactive readiness checks do not read complete artifact contents.
-- [x] Relevant unit tests, startup tracing, assembly, and lint pass.
-
-### Resolution
-
-Implemented by `44fb6fe`, `5ab3750`, and `bef4320`.
-
-## Verify long Moonshine dictation and improve segmentation only if needed
-
-**Triage:** ready-for-agent
-
-**What to build:** Establish whether Moonshine's existing streaming segmentation adequately handles longer dictation, and make the smallest demonstrated improvement only if it does not. Short-message dictation must retain its current stopping behavior. Do not add a separate VAD model or a new recording mode merely because recordings can exceed 30 seconds; a documented finding that no change is needed is a valid resolution.
-
-**Blocked by:** None — can start immediately.
-
-- [ ] Inspect the installed Moonshine runtime and current recording flow to distinguish built-in speech segmentation from app-level silence auto-stop and duration limits; document which behavior is already available.
-- [ ] Establish a baseline with short messages, approximately 30-second recordings, and recordings of at least two minutes, including natural pauses, extended thinking pauses, and uninterrupted speech. Use existing manual-stop controls where available and record the settings used.
-- [ ] Check partial and final transcript continuity, missing or repeated words at segment boundaries, premature stopping, and whether processing falls behind recording. Measure processing overhead, memory growth, and time from Stop to the final speech-recognition transcript on the user's phone; report S1 rewriting separately. Do not infer audio/VAD performance from the existing S1 diagnostic archive.
-- [ ] Record an evidence-based decision. If existing behavior is adequate, close with the results and no production changes. If a problem is demonstrated, implement only the necessary correction, preferring Moonshine's existing VAD, segment completion, and configuration over an additional detector.
-- [ ] Any changed long-recording path continues capture across segment boundaries until manual Stop, preserves boundary audio and transcript ordering, and handles uninterrupted speech without unbounded segments. Preserve current short-message behavior and defaults in both Activity and IME entry points; elapsed duration alone must not silently change stop behavior.
-- [ ] If evidence requires a new user-facing long-dictation mode or a separate VAD model, document the concrete need and proposed behavior for user agreement before expanding scope. Neither is pre-authorized by this ticket. Leave other recognition backends and S1 rewriting unchanged.
-- [ ] For production changes, add focused runnable regression checks for the demonstrated failure and short-message behavior, run relevant build/test/lint checks, and repeat the affected device scenarios. If device measurements are unavailable, document that validation gap rather than claiming a benefit or completing unverified criteria.
-
----
-
-## Clarify and reorganize Model Options
+**Blocked by:** 02: Verify the integrated voice-input experience; 03: Finish safe model updates and readiness.
 
 **Triage:** ready-for-agent
 
-**What to build:** Make Model Options accurately explain recognition behavior and keep recognition-model selection separate from transcript cleanup. Present concise model choices first, with technical attribution and version details available on demand.
+**Independent beta milestone:** [Beta 3 integration evidence](docs/testing/ticket-07-beta3-integration.md).
+Worker `/root` owns combined verification and authorized signed test-beta publication.
+This milestone does not close the blocked catalog release or authorize master merge.
 
-**Blocked by:** None — can start immediately.
+- [ ] Verify every remaining calibration criterion, including measured latency/memory/thermals/backlog, attribution, regression checks and APK inspection.
+- [x] Record disposition of 04, 05 and 06; explicitly disclose or defer unfinished work.
+- [ ] Publish from the tested commit and merge codex/share-beta-integration into master after applicable release checks pass.
 
-- [ ] Whisper is described as final-only transcription rather than live transcription.
-- [ ] Model information distinguishes live transcription, buffered live transcription, and final-only transcription: Moonshine and Nemotron are live, Parakeet Unified is buffered live, and Parakeet TDT and Whisper are final-only.
-- [ ] S1-mini transcript cleanup has a dedicated settings destination and is no longer presented inside the recognition-model catalog flow.
-- [ ] Recognition-model rows show a compact summary containing recognition behavior, languages, download size, installed size, and installation/selection status.
-- [ ] Source, license/attribution, version, and other technical information remain available from a model-details action instead of crowding the primary row.
-- [ ] Whisper English and multilingual variants appear directly with the Whisper choice rather than at the bottom of the catalog after selection.
-- [ ] Model Options and its parent settings summary identify the exact selected variant where a family has multiple choices.
-- [ ] Focused tests cover model-presentation metadata and the settings navigation/placement behavior at stable public seams.
-- [ ] Relevant unit tests, instrumentation tests, assembly, and lint pass.
-- [ ] Whisper native-runtime modernization and Whisper large-v3-turbo Q5/Q8 models remain out of scope.
+**Required detail:**
+
+- [Calibrate and release the complete model catalog](docs/plans/ticket-detail-2026-09-30.md#calibrate-and-release-the-complete-model-catalog)

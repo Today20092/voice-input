@@ -1,0 +1,342 @@
+package org.futo.voiceinput.benchmark
+
+import android.content.Context
+import android.content.Intent
+import android.graphics.Bitmap
+import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.width
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.test.*
+import androidx.compose.ui.test.junit4.createEmptyComposeRule
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.ViewModelProvider
+import androidx.test.core.app.ActivityScenario
+import androidx.test.core.app.ApplicationProvider
+import kotlinx.coroutines.runBlocking
+import org.futo.voiceinput.settings.THEME_KEY
+import org.futo.voiceinput.settings.getSetting
+import org.futo.voiceinput.settings.setSetting
+import org.futo.voiceinput.theme.ThemeOption
+import org.futo.voiceinput.theme.presets.ClassicMaterialLight
+import org.futo.voiceinput.theme.presets.DevThemeYellow
+import org.futo.voiceinput.theme.presets.VoiceInputTheme
+import org.junit.Assert.*
+import org.junit.Rule
+import org.junit.Test
+import java.io.File
+
+class ModelComparisonUiTest {
+    @get:Rule val compose = createEmptyComposeRule()
+    private var layoutLabel: String? = null
+
+    private fun withComparison(theme: ThemeOption, width: Int? = null, fontScale: Float = 1f,
+        block: (ModelComparisonActivity, BenchmarkViewModel) -> Unit) {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val previous = runBlocking { context.getSetting(THEME_KEY) }
+        try {
+            runBlocking { context.setSetting(THEME_KEY, theme.key) }
+            ActivityScenario.launch<ModelComparisonActivity>(Intent(context, ModelComparisonActivity::class.java)).use { scenario ->
+                lateinit var activity: ModelComparisonActivity
+                lateinit var model: BenchmarkViewModel
+                scenario.onActivity {
+                    activity = it; model = ViewModelProvider(it)[BenchmarkViewModel::class.java]
+                    if (width != null) {
+                        layoutLabel = "${width}dp-${fontScale}x"
+                        it.setContent {
+                            val density = minOf(LocalDensity.current.density, it.resources.displayMetrics.widthPixels.toFloat() / width)
+                            CompositionLocalProvider(LocalDensity provides Density(density, fontScale)) {
+                                Box(Modifier.width(width.dp).testTag("comparison-layout")) { it.ComparisonPage() }
+                            }
+                        }
+                    }
+                }
+                compose.waitUntil(30000) { !model.busy }
+                block(activity, model)
+            }
+        } finally { runBlocking { context.setSetting(THEME_KEY, previous) } }
+    }
+
+    private fun capture(activity: ModelComparisonActivity, name: String) {
+        compose.waitForIdle()
+        val config = activity.resources.configuration
+        val label = layoutLabel ?: "${config.screenWidthDp}dp-${config.fontScale}"
+        val root = if (layoutLabel == null) compose.onRoot() else compose.onNodeWithTag("comparison-layout")
+        File(activity.filesDir, "comparison-$name-$label.png").outputStream().use {
+            check(root.captureToImage().asAndroidBitmap().compress(Bitmap.CompressFormat.PNG, 100, it))
+        }
+    }
+
+    private fun assertSingleLineLabel(text: String) {
+        val layouts = mutableListOf<TextLayoutResult>()
+        compose.onNodeWithText(text, useUnmergedTree = true).performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
+        assertEquals("Button label must not split: $text", 1, layouts.single().lineCount)
+    }
+
+    @Test fun darkDraftGroupsActionsAndModels() = withComparison(DevThemeYellow) { activity, model ->
+        compose.onNodeWithText("Model comparison").assertIsDisplayed()
+        compose.onNodeWithText("Import audio").performScrollTo().assertIsEnabled()
+        capture(activity, "dark-audio")
+        compose.onNodeWithText("Compare selected models").performScrollTo().assertIsNotEnabled()
+        compose.onNodeWithText("Recording tips and file limits").performScrollTo().performClick()
+        compose.onNodeWithText("Up to 8 recordings", substring = true).performScrollTo().assertIsDisplayed()
+        val candidate = model.models.first { it.managed?.runtimeId == "moonshine" }
+        compose.onNodeWithText(candidate.name).performScrollTo().assertIsOff().performClick().assertIsOn()
+        compose.runOnIdle { assertTrue(candidate.id in model.selected) }
+        capture(activity, "dark-models")
+    }
+
+    @Test fun lightResultsKeepTranscriptsAndExportsDiscoverable() = withComparison(ClassicMaterialLight) { activity, model ->
+        val candidate = model.models.first()
+        val clip = BenchmarkClip("preview", "original", "canonical", 16000, "hello world", "reference")
+        val result = BenchmarkCaseResult(candidate.id, status = "completed", initializationNs = 1000000L,
+            observations = mutableListOf(DecodeObservation(clip.id, "first", 0, 2000000L,
+                "hello word", BenchmarkScoring.score(clip.reference, "hello word"))), identity = candidate.identity(activity))
+        compose.runOnIdle {
+            model.report = BenchmarkReport(status = "completed", clips = listOf(clip), selectedModelIds = listOf(candidate.id),
+                installedBefore = emptyList(), cases = mutableListOf(result))
+        }
+        compose.onNodeWithText("Recognized: hello word").performScrollTo().assertIsDisplayed()
+        compose.onNode(hasText("Model load and setup") and hasText("1.0 ms")).performScrollTo().assertIsDisplayed()
+        compose.onNode(hasText("First decode") and hasText("2.0 ms")).performScrollTo().assertIsDisplayed()
+        compose.onNode(hasText("Load + first decode") and hasText("3.0 ms")).performScrollTo().assertIsDisplayed()
+        compose.runOnIdle {
+            val warm = listOf(4000000L, 6000000L).mapIndexed { index, elapsed ->
+                DecodeObservation(clip.id, "warm", index + 1, elapsed,
+                    "hello word", BenchmarkScoring.score(clip.reference, "hello word"))
+            }
+            model.report = model.report!!.copy(cases = mutableListOf(result.copy(observations = (result.observations + warm).toMutableList())))
+        }
+        compose.onNode(hasText("Loaded median") and hasText("5.0 ms")).performScrollTo().assertIsDisplayed()
+        capture(activity, "light-results")
+        compose.onNodeWithText("Every transcript and timing").performScrollTo().performClick()
+        compose.onNode(hasText("Pass 1") and hasText("4.0 ms")).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Export JSON").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Export Markdown").performScrollTo().assertIsDisplayed()
+        capture(activity, "light-exports")
+    }
+
+    @Test fun errorsAndProgressStayNearTheHeader() = withComparison(DevThemeYellow) { activity, model ->
+        compose.runOnIdle {
+            model.report = BenchmarkReport(clips = emptyList(), selectedModelIds = emptyList(), installedBefore = emptyList())
+            model.error = "Cannot import audio. Choose another recording."; model.busy = true; model.progress = "Comparing models"
+        }
+        compose.onNodeWithText("Cannot import audio. Choose another recording.").assertIsDisplayed()
+        compose.onNodeWithText("Cancel comparison").performScrollTo().assertIsEnabled()
+        capture(activity, "error-progress")
+        compose.runOnIdle { model.busy = false }
+    }
+
+    @Test fun whistleTimingsDoNotClaimAnAlreadyLoadedModel() = withComparison(DevThemeYellow) { _, model ->
+        val clip = BenchmarkClip("preview", "original", "canonical", 16000, null, "reference")
+        compose.runOnIdle {
+            model.report = BenchmarkReport(status = "completed", clips = listOf(clip), selectedModelIds = listOf("whistle"),
+                installedBefore = emptyList(), cases = mutableListOf(BenchmarkCaseResult("whistle", status = "completed",
+                    initializationNs = 1000000L, observations = mutableListOf(
+                        DecodeObservation(clip.id, "warm", 1, 4000000L, "hello", BenchmarkScoring.score(null, "hello"))))))
+        }
+        compose.onNode(hasText("Backend setup") and hasText("1.0 ms")).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Whistle reloads a worker every pass.", substring = true).performScrollTo().assertIsDisplayed()
+        compose.onNode(hasText("Median incl. worker load") and hasText("4.0 ms")).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Loaded median").assertDoesNotExist()
+    }
+
+    @Test fun referenceEditingKeepsKeyboardFocusAndBackNavigation() = withComparison(DevThemeYellow) { activity, _ ->
+        val passage = "Please compare this recording. ".repeat(30)
+        compose.onNodeWithText("Passage").performScrollTo().performClick()
+            .performTextReplacement(passage)
+        compose.onNodeWithText("Passage").assertIsFocused()
+        capture(activity, "editing")
+        androidx.test.espresso.Espresso.closeSoftKeyboard()
+        compose.onNodeWithText("Import audio").performScrollTo().assertIsEnabled()
+        compose.onNodeWithText("Model comparison").performClick()
+        compose.waitUntil(5000) { activity.isFinishing }
+    }
+
+    @Test fun recordingKeepsPassageInPlace() = checkRecordingPassagePosition()
+
+    @Test fun longPassagesExpandWithoutInternalScrolling() = checkPassageExpansion()
+
+    @Test fun longPassagesExpandAtLargeText() = checkPassageExpansion(320, 2f)
+
+    private fun checkPassageExpansion(width: Int? = null, fontScale: Float = 1f) =
+        withComparison(DevThemeYellow, width, fontScale) { activity, model ->
+            val text = (1..12).joinToString("\n") { "Passage line $it" }
+            compose.onNodeWithText("Passage").performScrollTo().performTextReplacement(text)
+            androidx.test.espresso.Espresso.closeSoftKeyboard()
+            compose.runOnIdle {
+                model.clips = listOf(BenchmarkClip("long", "original", "canonical", 16000, text, "reference"))
+            }
+            for (label in listOf("Passage", "Words spoken")) {
+                val field = compose.onNodeWithText(label)
+                field.performScrollTo()
+                val layouts = mutableListOf<TextLayoutResult>()
+                field.performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
+                val layout = layouts.single()
+                assertTrue("Expected a long reference", layout.lineCount >= 12)
+                assertTrue("$label must expand to fit every line",
+                    field.fetchSemanticsNode().layoutInfo.height >= layout.size.height)
+            }
+            compose.onNodeWithText("Passage").performScrollTo()
+            capture(activity, "expanded-passage")
+        }
+
+    @Test fun multiplePassagesExplainThatEveryRecordingIsCompared() = withComparison(DevThemeYellow) { _, model ->
+        compose.runOnIdle {
+            model.clips = (1..3).map { index ->
+                BenchmarkClip("clip-$index", "original", "canonical", 16000, "Passage $index", "reference")
+            }
+            model.selected = setOf(model.models.first { it.supportsLanguage(model.language) }.id)
+        }
+        compose.onNodeWithText("Record another").performScrollTo().assertIsEnabled()
+        compose.onNodeWithText("3 of 8 recordings added.", substring = true).assertExists()
+        for (index in 1..3) {
+            compose.onNodeWithText("Recording $index").performScrollTo().assertIsDisplayed()
+            compose.onNodeWithText("Passage $index").performScrollTo().assertIsDisplayed()
+        }
+        compose.onNodeWithText("Compare selected models").performScrollTo().performClick()
+        compose.onNodeWithText("Every selected model will transcribe all 3 recordings.").assertIsDisplayed()
+        compose.onNodeWithText("Cancel").performClick()
+    }
+
+    @Test fun recordingKeepsLargeTextPassageInPlace() = checkRecordingPassagePosition(320, 2f)
+
+    private fun checkRecordingPassagePosition(width: Int? = null, fontScale: Float = 1f) =
+        withComparison(DevThemeYellow, width, fontScale) { activity, model ->
+            val passage = compose.onNodeWithText("Passage")
+            passage.performScrollTo()
+            val before = passage.fetchSemanticsNode().boundsInRoot
+            compose.runOnIdle { model.busy = true }
+            assertEquals(before, passage.fetchSemanticsNode().boundsInRoot)
+            compose.runOnIdle {
+                model.recording = true
+                model.progress = "Recording. Stop after reading the passage. Limit: 180 seconds."
+            }
+            assertEquals(before, passage.fetchSemanticsNode().boundsInRoot)
+            capture(activity, "recording-passage")
+            compose.onNodeWithText("Stop recording").performScrollTo().assertIsEnabled().performClick()
+            compose.runOnIdle { assertFalse(model.recording); model.busy = false }
+        }
+
+    @Test fun whistleSelectionRequiresAudioAndASupportedLanguage() = withComparison(DevThemeYellow) { activity, model ->
+        compose.runOnIdle { model.selected = emptySet(); model.language = "fr" }
+        compose.onNode(hasText("Whistle") and isToggleable()).performScrollTo().assertIsOff().performClick().assertIsOn()
+        capture(activity, "whistle-selected")
+        compose.onNodeWithText("Compare selected models").performScrollTo().assertIsNotEnabled()
+        compose.runOnIdle { model.clips = listOf(BenchmarkClip("readiness", "original", "canonical", 16000, null, "reference")) }
+        compose.onNodeWithText("Compare selected models").performScrollTo().assertIsEnabled()
+        compose.runOnIdle { model.language = "ar" }
+        compose.onNode(hasText("Whistle") and isToggleable()).performScrollTo().assertIsNotEnabled()
+        compose.onNodeWithText("Compare selected models").performScrollTo().assertIsNotEnabled()
+    }
+
+    @Test fun comparisonTextMeetsContrastInBothThemes() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        for (theme in listOf(DevThemeYellow, ClassicMaterialLight, VoiceInputTheme)) {
+            val colors = theme.obtainColors(context)
+            for ((foreground, background) in listOf(colors.onSurface to colors.surfaceContainer,
+                colors.onSurfaceVariant to colors.surfaceContainer, colors.onSurfaceVariant to colors.background,
+                colors.onSecondaryContainer to colors.secondaryContainer, colors.onErrorContainer to colors.errorContainer,
+                colors.onSecondary to colors.secondary)) {
+                val a = foreground.luminance(); val b = background.luminance()
+                assertTrue("Insufficient comparison text contrast in ${theme.key}",
+                    (maxOf(a, b) + 0.05f) / (minOf(a, b) + 0.05f) >= 4.5f)
+            }
+        }
+    }
+
+    @Test fun narrowLargeTextKeepsChoicesAndEditingAccessible() = withComparison(DevThemeYellow, 320, 2f) { activity, _ ->
+        compose.onNodeWithText("Import audio").performScrollTo().assertIsEnabled()
+        assertSingleLineLabel("Record")
+        assertSingleLineLabel("Import audio")
+        capture(activity, "narrow-audio")
+        compose.onNodeWithText("Select all").performScrollTo()
+        assertSingleLineLabel("Select all")
+        assertSingleLineLabel("Select none")
+        assertSingleLineLabel("Installed only")
+        compose.onNode(hasText("Whistle") and isToggleable()).performScrollTo().assertIsEnabled().performClick().assertIsOn()
+        capture(activity, "narrow-models")
+        compose.onNodeWithText("Compare selected models").performScrollTo().assertIsNotEnabled()
+        compose.onNodeWithText("Passage").performScrollTo().performClick()
+            .performTextReplacement("A longer passage for checking text editing. ".repeat(30))
+        compose.onNodeWithText("Passage").assertIsFocused()
+        capture(activity, "narrow-editing")
+        androidx.test.espresso.Espresso.closeSoftKeyboard()
+    }
+
+    @Test fun wideLightLayoutKeepsAudioAndModelChoicesReadable() = withComparison(ClassicMaterialLight, 640) { activity, _ ->
+        compose.onNodeWithText("Import audio").assertIsDisplayed()
+        capture(activity, "wide-audio")
+        compose.onNode(hasText("Whistle") and isToggleable()).performScrollTo().assertIsEnabled()
+        capture(activity, "wide-models")
+    }
+
+    @Test fun allModelsAreDirectlySelectableAndSelectNoneClearsThem() = withComparison(DevThemeYellow) { _, model ->
+        compose.onAllNodes(isToggleable()).assertCountEquals(model.models.size)
+        compose.onNodeWithText("Select all").performScrollTo().performClick()
+        compose.runOnIdle {
+            assertEquals(model.models.filter { it.supportsLanguage(model.language) }.map { it.id }.toSet(), model.selected)
+            assertTrue(model.selected.isNotEmpty())
+        }
+        compose.onNodeWithText("Select none").performScrollTo().performClick()
+        compose.runOnIdle { assertTrue(model.selected.isEmpty()) }
+        compose.onNode(hasText("Whistle") and isToggleable()).performScrollTo().assertIsOff().performClick().assertIsOn()
+        compose.onNodeWithText("Select none").performScrollTo().performClick()
+        compose.onNode(hasText("Whistle") and isToggleable()).performScrollTo().assertIsOff()
+    }
+
+    private fun chartReport(): BenchmarkReport {
+        val catalog = BenchmarkModel.all()
+        val ids = listOf(catalog.first { it.managed?.runtimeId == "orukeet" }.id,
+            catalog.first { it.managed?.runtimeId == "phonon" }.id, "whistle")
+        val clip = BenchmarkClip("chart", "original", "canonical", 16000, "hello world", "reference")
+        return BenchmarkReport(status = "completed", clips = listOf(clip), selectedModelIds = ids, installedBefore = emptyList(),
+            warmRepetitions = 2, cases = ids.mapIndexed { index, id ->
+                val transcript = if (index == 1) "hello word" else "hello world"
+                BenchmarkCaseResult(id, status = "completed", initializationNs = 1000000L, sampledPeakPssKb = 204800L + index * 102400,
+                    observations = mutableListOf(
+                        DecodeObservation(clip.id, "first", 0, (index + 2) * 1000000L, transcript, BenchmarkScoring.score(clip.reference, transcript)),
+                        DecodeObservation(clip.id, "warm", 1, (index + 1) * 4000000L, transcript, BenchmarkScoring.score(clip.reference, transcript)),
+                        DecodeObservation(clip.id, "warm", 2, (index + 1) * 6000000L, transcript, BenchmarkScoring.score(clip.reference, transcript))))
+            }.toMutableList())
+    }
+
+    @Test fun chartsSwitchMetricsAndKeepMissingWorkerMeasurementsExplicit() = withComparison(ClassicMaterialLight) { activity, model ->
+        compose.runOnIdle { model.report = chartReport() }
+        compose.onNodeWithText("At a glance").assertIsDisplayed()
+        compose.onNode(hasText("Orukeet") and hasText("5.0 ms")).performScrollTo().assertIsDisplayed()
+        capture(activity, "charts-speed")
+        compose.onNodeWithText("Load + first run").performScrollTo().performClick()
+        compose.onNode(hasText("Whistle") and hasText("5.0 ms")).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Accuracy", substring = false).performScrollTo().performClick()
+        compose.onNode(hasText("Orukeet") and hasText("0.0%")).performScrollTo().assertIsDisplayed()
+        capture(activity, "charts-accuracy")
+        compose.onNodeWithText("RAM", substring = false).performScrollTo().performClick()
+        compose.onNodeWithText("Worker RAM is not measured").performScrollTo().assertIsDisplayed()
+        compose.onNode(hasText("Orukeet") and hasText("200.0 MiB")).performScrollTo().assertIsDisplayed()
+        capture(activity, "charts-memory")
+        compose.onNodeWithText("Smallest model", substring = false).performScrollTo().performClick()
+        compose.onNodeWithText("Sort by · Smallest model").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("clip-metrics-whistle-chart").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Recordings and references").performScrollTo().performClick()
+        compose.onAllNodesWithText("hello world", substring = false).assertCountEquals(1)
+    }
+
+    @Test fun narrowLargeTextChartsAndTablesRemainReadable() = withComparison(DevThemeYellow, 320, 2f) { activity, model ->
+        compose.runOnIdle { model.report = chartReport() }
+        compose.onNodeWithText("Transcription time").performScrollTo().assertIsDisplayed()
+        capture(activity, "charts-narrow")
+        val orukeet = model.models.first { it.managed?.runtimeId == "orukeet" }.id
+        compose.onNodeWithTag("clip-metrics-$orukeet-chart").performScrollTo().assertIsDisplayed()
+        compose.onNode(hasText("Load + first decode") and hasText("3.0 ms")).performScrollTo().assertIsDisplayed()
+        capture(activity, "table-narrow")
+    }
+}

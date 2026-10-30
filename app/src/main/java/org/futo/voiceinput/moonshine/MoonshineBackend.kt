@@ -7,12 +7,13 @@ import ai.moonshine.voice.TranscriptEventListener
 import android.content.Context
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.async
 import kotlinx.coroutines.withContext
 import org.futo.voiceinput.backend.StreamingSpeechBackend
 
@@ -22,8 +23,10 @@ class MoonshineBackend internal constructor(
 ) : StreamingSpeechBackend {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private val engineLock = Any()
     private var audio: Channel<FloatArray>? = null
-    private var worker: Job? = null
+    private var worker: Deferred<Unit>? = null
+    @Volatile private var streamFailure: Throwable? = null
     private var completedText = ""
     private var currentText = ""
 
@@ -38,13 +41,15 @@ class MoonshineBackend internal constructor(
     }
 
     override suspend fun transcribe(samples: FloatArray): String = withContext(Dispatchers.Default) {
-        engineOrThrow().transcribe(samples)
+        synchronized(engineLock) { engineOrThrow().transcribe(samples) }
     }
 
     override fun startStreaming(
         onPartial: (String) -> Unit,
         onCatchingUp: (Boolean) -> Unit
-    ) {
+    ) = synchronized(engineLock) {
+        check(audio == null) { "Moonshine stream is already started" }
+        streamFailure = null
         completedText = ""
         currentText = ""
         val engine = engineOrThrow()
@@ -59,37 +64,55 @@ class MoonshineBackend internal constructor(
             }
             onPartial(currentTranscript())
         }
-        audio = Channel(Channel.UNLIMITED)
-        worker = scope.launch {
-            for (chunk in audio!!) engine.addAudio(chunk)
+        val queue = Channel<FloatArray>(Channel.UNLIMITED)
+        audio = queue
+        worker = scope.async {
+            try {
+                for (chunk in queue) {
+                    synchronized(engineLock) { engineOrThrow().addAudio(chunk) }
+                }
+            } catch (failure: Throwable) {
+                streamFailure = failure
+                queue.close(failure)
+                throw failure
+            }
         }
     }
 
     override fun acceptAudio(samples: FloatArray) {
-        audio?.trySend(samples)
+        streamFailure?.let { throw it }
+        checkNotNull(audio) { "Moonshine stream is not started" }.trySend(samples).getOrThrow()
     }
 
     override suspend fun finishStreaming(): String {
         audio?.close()
-        worker?.join()
-        withContext(Dispatchers.Default) { engineOrThrow().stop() }
+        worker?.await()
+        withContext(Dispatchers.Default) {
+            synchronized(engineLock) { engineOrThrow().stop() }
+        }
         audio = null
         worker = null
         return currentTranscript()
     }
 
-    override suspend fun close() {
+    override suspend fun close(): Unit = withContext(NonCancellable) {
         val wasStreaming = audio != null
-        audio?.close()
+        audio?.cancel()
         worker?.cancelAndJoin()
-        if (wasStreaming) {
-            runCatching { withContext(Dispatchers.Default) { engine?.stop() } }
-        }
         audio = null
         worker = null
-        engine?.close()
-        engine = null
-        scope.cancel()
+        try {
+            withContext(Dispatchers.Default) {
+                synchronized(engineLock) {
+                    val engineToClose = engine
+                    engine = null
+                    if (wasStreaming) runCatching { engineToClose?.stop() }
+                    engineToClose?.close()
+                }
+            }
+        } finally {
+            scope.cancel()
+        }
     }
 
     private fun currentTranscript() = listOf(completedText, currentText)
@@ -110,7 +133,18 @@ internal interface MoonshineEngine {
 }
 
 private class MoonshineTranscriberEngine(modelPath: String, architecture: Int) : MoonshineEngine {
-    private val transcriber = Transcriber().apply { loadFromFiles(modelPath, architecture) }
+    private val transcriber = ReleasableMoonshineTranscriber().apply {
+        try {
+            loadFromFiles(modelPath, architecture)
+        } catch (failure: Throwable) {
+            try {
+                releaseNative()
+            } catch (closeFailure: Throwable) {
+                failure.addSuppressed(closeFailure)
+            }
+            throw failure
+        }
+    }
 
     override fun transcribe(samples: FloatArray) =
         transcriber.transcribeWithoutStreaming(samples, 16_000).lines
@@ -134,5 +168,14 @@ private class MoonshineTranscriberEngine(modelPath: String, architecture: Int) :
 
     override fun addAudio(samples: FloatArray) = transcriber.addAudio(samples, 16_000)
     override fun stop() = transcriber.stop()
-    override fun close() = transcriber.removeAllListeners()
+    override fun close() {
+        transcriber.removeAllListeners()
+        transcriber.releaseNative()
+    }
+}
+
+private class ReleasableMoonshineTranscriber : Transcriber() {
+    // Pinned 0.0.68 exposes release only through finalize(), which frees both native
+    // handles and resets them to -1. Replace this bridge when upgrading its API.
+    fun releaseNative() = super.finalize()
 }

@@ -5,9 +5,52 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import java.util.zip.ZipFile
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonPrimitive
 
 class DiagnosticArchiveTest {
     @get:Rule val temporary = TemporaryFolder()
+
+    @Test fun `S1 speculation counters survive the public privacy projection without native messages`() {
+        val metrics = """[{"draftedTokens":9,"acceptedDraftTokens":7,"decodeCalls":4,"ngramPoolBytes":8192,"unknown":"Avery cobalt orchard","threads":"private message"}]"""
+        val source = """{"nativeMetricsJson":${JsonPrimitive(metrics)}}"""
+        val projected = requireNotNull(StandardS1Reports.project(source))
+        val repeated = requireNotNull(StandardS1Reports.project(projected))
+        val safe = Json.parseToJsonElement(Json.parseToJsonElement(repeated).jsonObject
+            .getValue("nativeMetricsJson").jsonPrimitive.content).jsonArray.single().jsonObject
+
+        assertEquals("9", safe.getValue("draftedTokens").toString())
+        assertEquals("7", safe.getValue("acceptedDraftTokens").toString())
+        assertEquals("4", safe.getValue("decodeCalls").toString())
+        assertEquals("8192", safe.getValue("ngramPoolBytes").toString())
+        assertEquals(setOf("draftedTokens", "acceptedDraftTokens", "decodeCalls", "ngramPoolBytes"), safe.keys)
+        assertFalse(repeated.contains("Avery"))
+        assertFalse(repeated.contains("private message"))
+    }
+
+    @Test fun `history completion is terminal and distinct from live dictation`() {
+        val output = temporary.newFile("history.zip")
+        val snapshot = DiagnosticSnapshot(listOf(
+            DiagnosticRecord(timestampMs = 1000, event = DiagnosticEvent.SESSION_STARTED,
+                sessionId = "history-session", metrics = mapOf(DiagnosticMetric.RETRANSCRIPTION to 1L)),
+            DiagnosticRecord(timestampMs = 1200, event = DiagnosticEvent.RECOGNITION_FINISHED,
+                sessionId = "history-session", metrics = mapOf(DiagnosticMetric.DURATION_MS to 200L)),
+            DiagnosticRecord(timestampMs = 1300, event = DiagnosticEvent.RETRANSCRIPTION_FINISHED,
+                sessionId = "history-session"),
+            DiagnosticRecord(timestampMs = 1400, event = DiagnosticEvent.WAVEFORM_FIRST_FRAME,
+                sessionId = "live-session")
+        ), 0)
+        DiagnosticArchive.write(output, snapshot, "{}", "{}", "", "", emptyMap(), 0)
+        ZipFile(output).use { zip ->
+            val summary = zip.getInputStream(zip.getEntry("summary.txt")).bufferedReader().readText()
+            assertTrue(summary.contains("source=history last=RETRANSCRIPTION_FINISHED terminal=true"))
+            assertTrue(summary.contains("RECOGNITION_FINISHED: 200 ms"))
+            assertTrue(summary.contains("source=other last=WAVEFORM_FIRST_FRAME terminal=false"))
+        }
+    }
 
     @Test fun `bug report contains readable summary and structured records without private files`() {
         val output = temporary.newFile("report.zip")
@@ -20,11 +63,12 @@ class DiagnosticArchiveTest {
         DiagnosticArchive.write(output, snapshot, "{}", "{}", "It stopped", "Finish dictation", emptyMap(), 2)
         ZipFile(output).use { zip ->
             val names = zip.entries().asSequence().map { it.name }.toSet()
-            assertEquals(setOf("README.txt", "summary.txt", "environment.json", "settings.json", "events.jsonl", "notes.txt"), names)
+            assertEquals(setOf("README.txt", "summary.txt", "environment.json", "settings.json", "events.jsonl", "notes.txt", "collection-modes.json"), names)
             val summary = zip.getInputStream(zip.getEntry("summary.txt")).bufferedReader().readText()
             assertTrue(summary.contains("MODEL_LOAD_FAILED"))
             assertTrue(summary.contains("Unreadable records skipped: 1"))
-            assertTrue(summary.contains("Dropped events: 2"))
+            assertTrue(summary.contains("Writer drops (current process): 2"))
+            assertTrue(summary.contains("Records omitted for export budget: 0"))
             val contents = zip.entries().asSequence().joinToString { zip.getInputStream(it).bufferedReader().readText() }
             assertFalse(contents.contains("SECRET"))
             assertTrue(contents.contains("It stopped"))

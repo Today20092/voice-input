@@ -7,6 +7,9 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -45,6 +48,7 @@ import org.futo.voiceinput.settings.pages.DiagnosticsScreen
 import org.futo.voiceinput.settings.pages.PersonalDictionaryScreen
 import org.futo.voiceinput.settings.pages.HelpScreen
 import org.futo.voiceinput.settings.pages.HomeScreen
+import org.futo.voiceinput.settings.pages.KeyboardProviderScreen
 import org.futo.voiceinput.settings.pages.InputScreen
 import org.futo.voiceinput.settings.pages.LanguagesScreen
 import org.futo.voiceinput.settings.pages.ModelsScreen
@@ -144,9 +148,12 @@ fun SettingsMain(
 
     NavHost(
         navController = navController,
-        startDestination = initialDestination
+        startDestination = initialDestination,
+        popExitTransition = { fadeOut(tween(100)) },
+        popEnterTransition = { fadeIn(tween(100, delayMillis = 100)) }
     ) {
         composable(SettingsDestination.Home.route) { HomeScreen(settingsViewModel, navController) }
+        composable(SettingsDestination.KeyboardProvider.route) { KeyboardProviderScreen(navController, settingsViewModel) }
         composable(SettingsDestination.AudioHistory.route) { AudioHistoryScreen(navController) }
         composable(SettingsDestination.Advanced.route) { AdvancedScreen(settingsViewModel, navController) }
         composable(SettingsDestination.Help.route) { HelpScreen(navController) }

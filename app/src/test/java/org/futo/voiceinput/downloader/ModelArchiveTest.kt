@@ -80,26 +80,24 @@ class ModelArchiveTest {
     fun rejectsWrongRangesAndSafelyRestartsWhenRangeIsIgnored() {
         val bytes = archive("model/model.bin", "valid".toByteArray())
         val saved = temporaryFolder.root.resolve("archive.download")
-        saved.writeBytes(bytes.copyOfRange(0, 10))
         val artifact = RecognitionModelArtifact("model.bin", "https://example.com/model", 5, sha256("valid".toByteArray()))
         val archive = artifact.copy(name = "model.tar.bz2", sizeBytes = bytes.size.toLong(), sha256 = sha256(bytes))
         val target = temporaryFolder.root.resolve("model")
         for (code in listOf(206, 200)) {
+            saved.writeBytes(bytes.copyOfRange(0, 10))
+            val requests = mutableListOf<String?>()
             val client = OkHttpClient.Builder().addInterceptor { chain ->
-                assertEquals("bytes=10-", chain.request().header("Range"))
+                requests += chain.request().header("Range")
                 Response.Builder().request(chain.request()).protocol(Protocol.HTTP_1_1)
-                    .code(code).message("OK").body(bytes.toResponseBody())
+                    .code(if (requests.size == 1) code else 200).message("OK").body(bytes.toResponseBody())
                     .header("Content-Range", "bytes 0-${bytes.lastIndex}/${bytes.size}").build()
             }.build()
-            if (code == 206) {
-                assertThrows(IOException::class.java) {
-                    downloadModelArchive(client, archive, saved, target, "model", listOf(artifact))
-                }
-                assertEquals(10L, saved.length())
-            } else {
-                downloadModelArchive(client, archive, saved, target, "model", listOf(artifact))
-                assertEquals("valid", target.resolve("model.bin").readText())
-            }
+            var restarts = 0
+            downloadModelArchive(client, archive, saved, target, "model", listOf(artifact),
+                onRestart = { restarts++ })
+            assertEquals(1, restarts)
+            assertEquals(if (code == 206) listOf("bytes=10-", null) else listOf("bytes=10-"), requests)
+            assertEquals("valid", target.resolve("model.bin").readText())
         }
     }
 
@@ -158,6 +156,43 @@ class ModelArchiveTest {
         org.junit.Assert.assertTrue(store.completeInstall(model))
     }
 
+    @Test fun installationReportsWorkAfterTransferAndCompletesOnlyAfterValidatedFilesAreInstalled() {
+        val contents = ByteArray(512 * 1024).also { java.util.Random(42).nextBytes(it) }
+        val bytes = archive("model/model.bin", contents)
+        val target = temporaryFolder.root.resolve("progress-model")
+        val progress = mutableListOf<Float>()
+        val artifact = RecognitionModelArtifact("model.bin", "https://example.com/model", contents.size.toLong(), sha256(contents))
+        extractModelArchive(ByteArrayInputStream(bytes), target, "model", listOf(artifact), sha256(bytes)) {
+            progress += it
+            if (it == 1f) assertEquals(sha256(contents), sha256(target.resolve("model.bin").readBytes()))
+        }
+        assertEquals(0f, progress.first(), 0f)
+        assertEquals(1f, progress.last(), 0f)
+        assertTrue(progress.any { it > 0 && it < 0.5f })
+        assertTrue(progress.zipWithNext().all { (a, b) -> a <= b })
+    }
+
+    @Test fun cancellingUnpackingRetainsTheInstalledModelAndCompleteArchiveForRetry() {
+        val contents = ByteArray(512 * 1024).also { java.util.Random(42).nextBytes(it) }
+        val bytes = archive("model/model.bin", contents)
+        val saved = temporaryFolder.root.resolve("archive.download").apply { writeBytes(bytes) }
+        val target = temporaryFolder.newFolder("cancel-model")
+        target.resolve("model.bin").writeText("previous working model")
+        val artifact = RecognitionModelArtifact("model.bin", "https://example.com/model", contents.size.toLong(), sha256(contents))
+        val packed = artifact.copy(name = "model.tar.bz2", sizeBytes = bytes.size.toLong(), sha256 = sha256(bytes))
+        val client = OkHttpClient.Builder().addInterceptor { error("Saved archive must not be downloaded again") }.build()
+        assertThrows(kotlinx.coroutines.CancellationException::class.java) {
+            downloadModelArchive(client, packed, saved, target, "model", listOf(artifact), onInstallationProgress = {
+                if (it > 0) throw kotlinx.coroutines.CancellationException("Cancelled")
+            })
+        }
+        assertEquals("previous working model", target.resolve("model.bin").readText())
+        assertTrue(saved.isFile)
+        assertTrue(!temporaryFolder.root.resolve(".cancel-model.download").exists())
+        downloadModelArchive(client, packed, saved, target, "model", listOf(artifact))
+        assertEquals(sha256(contents), sha256(target.resolve("model.bin").readBytes()))
+    }
+
     @Test
     fun validatesArchiveBeforeReplacingInstalledFiles() {
         val archive = archive("model/model.bin", "valid".toByteArray())
@@ -201,6 +236,44 @@ class ModelArchiveTest {
                 5, sha256("valid".toByteArray()))), sha256(bytes)
         )
         assertEquals("valid", target.resolve("model.bin").readText())
+    }
+
+    @Test
+    fun gzipArchivesValidateBeforeReplacingInstalledFiles() {
+        val contents = "valid".toByteArray()
+        val output = ByteArrayOutputStream()
+        java.util.zip.GZIPOutputStream(output).use { gzip ->
+            TarArchiveOutputStream(gzip).use { tar ->
+                tar.putArchiveEntry(TarArchiveEntry("model/model.bin").apply { size = contents.size.toLong() })
+                tar.write(contents)
+                tar.closeArchiveEntry()
+            }
+        }
+        val bytes = output.toByteArray()
+        val target = temporaryFolder.newFolder("gzip")
+        val installed = target.resolve("model.bin").apply { writeText("previous") }
+        val artifacts = listOf(RecognitionModelArtifact("model.bin", "https://example.com/model.tar.gz",
+            contents.size.toLong(), sha256(contents)))
+        assertThrows(IllegalArgumentException::class.java) {
+            extractModelArchive(ByteArrayInputStream(bytes), target, "model", artifacts, "0".repeat(64))
+        }
+        assertEquals("previous", installed.readText())
+        extractModelArchive(ByteArrayInputStream(bytes), target, "model", artifacts, sha256(bytes))
+        assertEquals("valid", installed.readText())
+    }
+
+    @Test
+    fun installsPublishedPhononArchive() {
+        val path = System.getenv("PHONON_TEST_ARCHIVE")
+        assumeTrue("Set PHONON_TEST_ARCHIVE to the pinned download", path != null)
+        val model = org.futo.voiceinput.phonon.PhononModel.model
+        val store = RecognitionModelStore(temporaryFolder.root)
+        File(requireNotNull(path)).inputStream().use { input ->
+            extractModelArchive(input, store.modelDirectory(model), requireNotNull(model.archiveRoot),
+                model.artifacts, requireNotNull(model.archive).sha256)
+        }
+        org.junit.Assert.assertTrue(store.completeInstall(model))
+        org.junit.Assert.assertTrue(store.isInstalled(model, verifyHashes = true))
     }
 
     private fun archive(name: String, contents: ByteArray, blockSize: Int = 512): ByteArray {

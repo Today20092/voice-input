@@ -139,7 +139,7 @@ fun HomeScreen(
 
         NavigationItem(
             title = "Transcript Cleanup",
-            subtitle = "Optional S1-mini cleanup after final recognition",
+            subtitle = "Basic text cleanup and optional AI rewrite",
             style = NavigationItemStyle.Misc,
             navigate = { navController.navigate(SettingsDestination.TranscriptCleanup.route) },
             icon = painterResource(R.drawable.edit)
@@ -177,6 +177,15 @@ fun HomeScreen(
         )
 
         SettingsSeparator(stringResource(R.string.settings_support))
+        /* Hidden until a compatible upstream keyboard release is verified. See GitHub issue #16.
+        NavigationItem(
+            title = stringResource(R.string.keyboard_provider_title),
+            subtitle = stringResource(R.string.keyboard_provider_intro),
+            style = NavigationItemStyle.Misc,
+            navigate = { navController.navigate(SettingsDestination.KeyboardProvider.route) },
+            icon = painterResource(R.drawable.mic_2_)
+        )
+        */
         NavigationItem(
             title = stringResource(R.string.diagnostics),
             subtitle = stringResource(R.string.diagnostics_subtitle),

@@ -11,48 +11,30 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import okhttp3.internal.closeQuietly
-import org.futo.voiceinput.BuildConfig
+import kotlinx.coroutines.CancellationException
+import java.util.concurrent.TimeUnit
 import org.futo.voiceinput.settings.LAST_UPDATE_CHECK_RESULT
 import org.futo.voiceinput.settings.getSetting
 import org.futo.voiceinput.settings.setSetting
 
-const val UPDATE_URL = "https://voiceinput.futo.org/VoiceInput/voice_input_version_${BuildConfig.FLAVOR}"
+const val UPDATE_URL = "https://api.github.com/repos/Today20092/voice-input/releases/latest"
+private val updateClient = OkHttpClient.Builder().callTimeout(20, TimeUnit.SECONDS).build()
 
 suspend fun checkForUpdate(): UpdateResult? {
     return withContext(Dispatchers.IO) {
-        val httpClient = OkHttpClient()
-
-        val request = Request.Builder().method("GET", null).url(UPDATE_URL).build()
+        val request = Request.Builder().url(UPDATE_URL)
+            .header("Accept", "application/vnd.github+json")
+            .header("X-GitHub-Api-Version", "2022-11-28")
+            .header("User-Agent", "Today20092-VoiceInput")
+            .build()
 
         try {
-            val response = httpClient.newCall(request).execute()
-
-            val body = response.body
-
-            val result = if (body != null) {
-                val data = body.string().lines()
-                body.closeQuietly()
-
-                val latestVersion = data[0].toInt()
-                val latestVersionUrl = data[1]
-                val latestVersionString = data[2]
-                if(latestVersionUrl.startsWith("https://voiceinput.futo.org/")){
-                    UpdateResult(
-                        nextVersion = latestVersion,
-                        apkUrl = latestVersionUrl,
-                        nextVersionString = latestVersionString
-                    )
-                } else {
-                    null
-                }
-            } else {
-                null
+            updateClient.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) return@use null
+                response.body?.string()?.let(::parseGitHubRelease)
             }
-
-            response.closeQuietly()
-
-            result
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             null
         }

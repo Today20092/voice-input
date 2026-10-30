@@ -36,6 +36,46 @@ def downloadSherpaOnnx = tasks.register('downloadSherpaOnnx') {
 }
 def sherpaOnnxFiles = files(sherpaOnnxAar).builtBy(downloadSherpaOnnx)
 
+def moonshineRuntimeAar = layout.buildDirectory.file('downloads/moonshine-voice-0.0.68-ort-no-kleidiai.aar')
+def moonshineAssets = layout.buildDirectory.dir('generated/moonshineAssets')
+def downloadMoonshineRuntime = tasks.register('downloadMoonshineRuntime') {
+    outputs.file moonshineRuntimeAar
+    outputs.dir moonshineAssets
+    outputs.upToDateWhen { false }
+    doLast {
+        def release = 'https://github.com/Today20092/voice-input/releases/download/experiment-issues-40-41-7a6c546/'
+        def artifacts = [
+            [file: moonshineRuntimeAar.get().asFile,
+             url: release + 'moonshine-voice-0.0.68-ort-no-kleidiai.aar',
+             sha: 'b43d0fb31657e1984b7c6513578dc4a71a2a8a4b581683dc9d0bb27b221d45c7'],
+            [file: new File(moonshineAssets.get().asFile, 'MOONSHINE-LICENSE.txt'),
+             url: 'https://raw.githubusercontent.com/moonshine-ai/moonshine/0a99f2e31e6e2913c4c61e4c62f85ce57404ba60/LICENSE',
+             sha: '6148d7574a6554b7379b633cfd4c4fe5840c3f548d13bc83e00b52dc6fa00abd'],
+            [file: new File(moonshineAssets.get().asFile, 'ONNX-RUNTIME-LICENSE.txt'),
+             url: release + 'ONNX-Runtime-LICENSE',
+             sha: '2f07c72751aed99790b8a4869cf2311df85a860b22ded05fa22803587a48922c'],
+            [file: new File(moonshineAssets.get().asFile, 'ONNX-RUNTIME-THIRD-PARTY-NOTICES.txt'),
+             url: release + 'ONNX-Runtime-ThirdPartyNotices.txt',
+             sha: 'e9e90971a8e75a9a8ac0c6412e29c1202d079998389915aa485f46c816c3b4cc']
+        ]
+        artifacts.each { artifact ->
+            def target = artifact.file
+            if (target.isFile() && sha256(target) == artifact.sha) return
+            target.parentFile.mkdirs()
+            def temporary = new File(target.parentFile, target.name + '.download')
+            try {
+                def curl = org.gradle.internal.os.OperatingSystem.current().isWindows() ? 'curl.exe' : 'curl'
+                exec {
+                    commandLine curl, '--fail', '--location', '--retry', '3', '--output', temporary.absolutePath, artifact.url
+                }
+                if (sha256(temporary) != artifact.sha) throw new GradleException("Moonshine checksum mismatch: ${target.name}")
+                java.nio.file.Files.move(temporary.toPath(), target.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+            } finally { temporary.delete() }
+        }
+    }
+}
+def moonshineRuntimeFiles = files(moonshineRuntimeAar).builtBy(downloadMoonshineRuntime)
+
 def gitShortHash = {
     try {
         def output = new ByteArrayOutputStream()
@@ -57,10 +97,15 @@ android {
         applicationId "org.futo.voiceinput"
         minSdk 26
         targetSdk 35
-        versionCode 57
-        versionName "1.4.3"
+        versionCode 83
+        versionName "1.4.11-beta.1"
         buildConfigField "boolean", "BUNDLE_PARAKEET_MODEL", bundleParakeetModel.toString()
         buildConfigField "String", "S1_LLAMA_COMMIT", '"b19cbe925be361d229f0fe03435affe4a2717f37"'
+        buildConfigField "String", "GIT_REVISION", '"' + gitShortHash + '"'
+        buildConfigField "String", "SHERPA_ONNX_VERSION", '"' + sherpaOnnxVersion + '"'
+
+        buildConfigField "String", "MOONSHINE_RUNTIME_VERSION", groovy.json.JsonOutput.toJson(
+            project.hasProperty('moonshineCandidateAar') ? 'experimental AAR override' : '0.0.68 / ORT 1.23.0, KleidiAI disabled')
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -69,6 +114,7 @@ android {
         externalNativeBuild {
             cmake {
                 cppFlags '-O3'
+                arguments "-DS1_NGRAM_SPECULATION=${project.findProperty('s1NgramSpeculation')?.toString()?.toBoolean() ? 'ON' : 'OFF'}"
             }
         }
 
@@ -103,6 +149,7 @@ android {
     buildTypes {
         release {
             minifyEnabled false
+            ndk.debugSymbolLevel 'FULL'
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             signingConfig releaseSigning
         }
@@ -147,7 +194,8 @@ android {
         }
         jniLibs {
             useLegacyPackaging true
-            keepDebugSymbols += '**/*.so'
+            // Preserve hash-pinned payloads; the Moonshine runtime already has debug sections removed.
+            keepDebugSymbols += ['**/libwhistle_runner.so', '**/libonnxruntime.so']
         }
     }
 
@@ -181,7 +229,9 @@ android {
 
     sourceSets {
         main {
+            assets.srcDir moonshineAssets
             jniLibs.srcDirs 'src/main/jniLibs'
+            jniLibs.srcDir layout.buildDirectory.dir('generated/whistleJni')
         }
 
         dev {
@@ -277,7 +327,7 @@ dependencies {
     implementation 'androidx.compose.ui:ui-graphics'
     implementation 'androidx.compose.ui:ui-tooling-preview'
     implementation 'androidx.compose.material3:material3'
-    implementation 'com.google.android.material:material:1.9.0'
+    implementation 'com.google.android.material:material:1.10.0'
     implementation 'androidx.appcompat:appcompat:1.6.1'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
     implementation 'androidx.navigation:navigation-compose:2.9.8'
@@ -300,7 +350,18 @@ dependencies {
     implementation 'com.squareup.okhttp3:okhttp:4.11.0'
     implementation 'org.apache.commons:commons-compress:1.28.0'
 
-    implementation 'ai.moonshine:moonshine-voice:0.0.68'
+    // Preserve the explicit experiment override; normal builds use the verified #41 workaround.
+    if (project.hasProperty('moonshineCandidateAar')) {
+        def candidate = file(project.property('moonshineCandidateAar'))
+        def expected = project.findProperty('moonshineCandidateAarSha256')?.toString()
+        if (!expected || !(expected ==~ /[0-9a-f]{64}/) || !candidate.isFile() || sha256(candidate) != expected) {
+            throw new GradleException('Moonshine candidate requires an existing AAR and its verified lowercase SHA-256')
+        }
+        implementation files(candidate)
+    } else {
+        implementation moonshineRuntimeFiles
+    }
+    implementation 'org.pytorch:executorch-android:1.2.0'
     implementation sherpaOnnxFiles
 
     implementation 'ch.acra:acra-http:5.11.1'
@@ -388,8 +449,33 @@ tasks.register('downloadParakeetModels') {
 }
 
 tasks.named('preBuild') {
+    dependsOn downloadMoonshineRuntime
+    dependsOn 'downloadWhistleRuntime'
     if (bundleParakeetModel) {
         dependsOn tasks.named('downloadParakeetModels')
+    }
+}
+
+tasks.register('downloadWhistleRuntime') {
+    description = 'Fetch the pinned Whistle ARM64 runner (packaged as an executable native library)'
+    def destination = layout.buildDirectory.file('generated/whistleJni/arm64-v8a/libwhistle_runner.so')
+    outputs.file destination
+    outputs.upToDateWhen { false }
+    doLast {
+        def target = destination.get().asFile
+        def expected = '02a044e15489e19fa9f4f1cd1d5943d39dc0eefc08e0ba99d36279daf2351d46'
+        if (target.exists() && sha256(target) == expected) return
+        target.parentFile.mkdirs()
+        def temporary = new File(target.parentFile, 'needle.download')
+        try {
+            def curl = org.gradle.internal.os.OperatingSystem.current().isWindows() ? 'curl.exe' : 'curl'
+            exec {
+                commandLine curl, '--fail', '--location', '--retry', '3', '--output', temporary.absolutePath,
+                    'https://huggingface.co/Cactus-Compute/needle3/resolve/d6c7d6a2e9655505e0f8e23339356dd1705900eb/android-arm64/needle'
+            }
+            if (sha256(temporary) != expected) throw new GradleException('Whistle runtime checksum mismatch')
+            java.nio.file.Files.move(temporary.toPath(), target.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+        } finally { temporary.delete() }
     }
 }
 
