@@ -12,6 +12,21 @@ For model testing, report recording length, time from Stop to final text, recogn
 
 For code changes, read [AGENTS.md](../AGENTS.md), link the relevant GitHub issue, keep changes focused and preserve upstream attribution and model notices. Follow the build steps below and run the unit tests and lint for affected code. Changes to microphone routing, text insertion or model inference also need device evidence; document any checks you could not perform. Do not commit signing keys, private recordings or local SDK configuration.
 
+## Git workflow
+
+- `development` is the working and integration branch. Use it for new changes and external pull requests. For one task at a time, commit directly there and push useful checkpoints to `origin/development` as a backup.
+- `master` is the reviewed release-source branch and remains the GitHub default. This repository uses the name `master` for the owner's main branch.
+- For parallel work, create temporary `codex/<scope>` branches/worktrees from current `development`. Merge finished work into `development`, then check the combined source. New changes on an old task branch need another merge before they are included.
+- Fetch before synchronization. Use `git pull --ff-only` when the branch has not diverged. Inspect divergent commits and merge deliberately; preserve existing work.
+- Promote a tested batch through a `development` → `master` pull request. Use a merge commit to preserve ancestry. Record the source commit, CI run and remaining device checks. Merge any `master`-only fixes or release metadata back into `development` before the next batch.
+- Remove temporary branches/worktrees after their work and required artifacts are retained. Preserve uncommitted files and unrelated active work. Historical branch tips can be retained as `archive/<branch>` tags; those tags do not publish a release.
+
+Before promotion, run affected unit tests and lint using the commands below. The release workflow also runs standalone release unit tests, lint, Android-test compilation and signed APK/package checks. Benchmark changes under `tools/s1_speculation/` additionally use the manually dispatched `s1-speculation-proof.yml` workflow on the development ref. Android-test compilation does not replace device testing.
+
+The release workflow builds pushes to `development` and `master` and uploads CI artifacts. It publishes APKs on `v*` tag pushes or a manual dispatch with a nonempty `beta_tag`. Leave `beta_tag` empty for build-only verification. Source promotion, version changes and release publication are separate actions; follow the release requirements below when publication is requested.
+
+The [October 30 branch cleanup](branch-cleanup-2026-10-30.md) records what was recovered from retired branches.
+
 ## Low-memory workflow
 
 When the maintainer requests low memory or sets a RAM limit, perform compilation, tests, lint, native/model checks and APK assembly in GitHub CI. Keep local work to source edits and lightweight static checks. Use a connected phone, an emulator or local heavyweight builds only after the user explicitly allows their memory use; a connected device alone is not permission.
@@ -21,7 +36,9 @@ After the applicable CI checks pass, publish the signed APK as a GitHub prerelea
 ## Build locally
 
 
-Install JDK 17 or newer, Android SDK platform 35, NDK `28.2.13676358`, and CMake `3.22.1`. Initialize the repository's submodules. Point `local.properties` at your Android SDK, or set `ANDROID_HOME`.
+Install JDK 17 or newer (prefer JDK 21 to match release CI), Android SDK platform 35, NDK `28.2.13676358`, and CMake `3.22.1`. Initialize the repository's submodules. Point `local.properties` at your Android SDK, or set `ANDROID_HOME`.
+
+Native Harper builds also require Rust `1.98.1` with the `aarch64-linux-android` target. Install them with `rustup toolchain install 1.98.1 --profile minimal` and `rustup target add --toolchain 1.98.1 aarch64-linux-android`. Install Python 3 and run `python3 tools/harper_notices.py` before packaging outside CI (use `python` on Windows if that is your Python 3 command). See [Harper's notice](third-party/Harper-NOTICE.md) for the native integration.
 
 On macOS or Linux:
 
@@ -39,7 +56,7 @@ Standalone builds use `:app:assembleStandaloneRelease` and write to `app/build/o
 
 ## Releases and repository
 
-[`master`](https://github.com/Today20092/voice-input/tree/master) contains the combined work. Release tags preserve the source for published APKs; historical beta branches may remain available. Historical downloads remain in [GitHub Releases](https://github.com/Today20092/voice-input/releases).
+[`development`](https://github.com/Today20092/voice-input/tree/development) contains ongoing combined work; [`master`](https://github.com/Today20092/voice-input/tree/master) contains reviewed release source. Follow [the Git workflow](#git-workflow) for integration and promotion. Release tags preserve the source for published APKs. Historical downloads remain in [GitHub Releases](https://github.com/Today20092/voice-input/releases).
 
 The [release workflow](../.github/workflows/release-apk.yml) builds on configured branch pushes and `v*` tags. A tag run publishes an APK; a branch run uploads an artifact. Before a new release, update the app version and add notes at `docs/releases/<tag>.md`, which the workflow selects automatically. Do not reuse an existing release tag.
 

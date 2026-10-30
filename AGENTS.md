@@ -17,6 +17,10 @@ The goal is to preserve FUTO Voice Input's Android IME/activity UX with Orukeet 
 - Android app module: `app/`
 - Kotlin/Compose UI, settings, recording flow: `app/src/main/java/org/futo/voiceinput/`
 - Sherpa-ONNX Parakeet backend: `app/src/main/java/org/futo/voiceinput/parakeet/`
+- Shared model catalog, storage, and lifecycle: `app/src/main/java/org/futo/voiceinput/recognition/`
+- Optional transcript cleanup: `app/src/main/java/org/futo/voiceinput/s1/` and `app/src/main/java/org/futo/voiceinput/harper/`
+- Saved recordings and retranscription: `app/src/main/java/org/futo/voiceinput/history/`
+- Local diagnostics and bug-report export: `app/src/main/java/org/futo/voiceinput/diagnostics/`
 - Legacy Whisper/GGML native code: `app/src/main/cpp/`
 - Parakeet ONNX export tooling: `tools/parakeet_export/`
 - Build flavors and native build wiring: `app/build.gradle`
@@ -39,38 +43,25 @@ Primary runtime flow:
 - `app/src/main/java/org/futo/voiceinput/RecognizeActivity.kt`: speech recognizer activity entry point.
 - `app/src/main/java/org/futo/voiceinput/VoiceInputMethodService.kt`: IME entry point, commits final/partial text to the active input connection, switches back on cancel.
 - `app/src/main/java/org/futo/voiceinput/settings/Settings.kt`: DataStore keys. `SPEECH_BACKEND` defaults to `orukeet`; saved selections are preserved.
-- `app/src/main/java/org/futo/voiceinput/settings/pages/Models.kt`: Model Options UI for Moonshine, Parakeet, and Whisper/GGML.
+- `app/src/main/java/org/futo/voiceinput/settings/pages/Models.kt`: Model Options UI.
 - `app/src/main/java/org/futo/voiceinput/downloader/DownloadActivity.kt`: shared model downloader. Supports explicit file URLs/hashes for Parakeet and legacy FUTO model names for Whisper.
-- `app/src/main/java/org/futo/voiceinput/parakeet/ParakeetModel.kt`: Parakeet file list, Hugging Face URLs, download marker, hash verification, model download intent.
+- `app/src/main/java/org/futo/voiceinput/parakeet/ParakeetModel.kt`: Parakeet TDT artifact declarations and download helpers.
+- `app/src/main/java/org/futo/voiceinput/recognition/RecognitionModelCatalog.kt`: shared model definitions and `RecognitionModelStore`.
+- `app/src/main/java/org/futo/voiceinput/recognition/RecognitionModelLifecycle.kt`: shared model loading and release.
 - `app/src/main/java/org/futo/voiceinput/parakeet/ParakeetEngineManager.kt`: shared/warm Sherpa-ONNX Parakeet backend and idle unload timeout.
 - `app/src/main/cpp/`: legacy `voiceinput` C++/GGML/Whisper library built by CMake.
 
 ## Model Storage And Downloads
 
-Normal APKs do not bundle Parakeet model files. Runtime download target:
+Normal APKs download recognition assets separately. For Parakeet TDT, `ParakeetModel.recognitionModel` declares the directory, pinned URLs, sizes, and SHA-256 hashes; `RecognitionModelStore` owns device storage and validation. Consult these definitions before changing downloads or deleting model files.
 
-```text
-filesDir/parakeet-unified-en-0.6b-onnx/
-```
-
-Required files are listed in `ParakeetModel.files`:
-
-- `config.json`
-- `vocab.txt`
-- `encoder-model.int8.onnx`
-- `decoder_joint-model.int8.onnx`
-- `preprocessor.onnx` downloaded from remote `nemo128.onnx`
-- `.download_complete` marker after all requested files validate
-
-`BuildConfig.BUNDLE_PARAKEET_MODEL` is controlled by Gradle property `-PbundleParakeetModel=true`. In that mode, `downloadParakeetModels` places assets under `app/src/main/assets/parakeet-unified-en-0.6b-onnx`, and Sherpa-ONNX loads them from the APK.
-
-Hashes in `ParakeetModel.kt` and `app/build.gradle` are currently nullable/blank placeholders. If validated hashes become available, update both places consistently.
+`-PbundleParakeetModel=true` enables `BuildConfig.BUNDLE_PARAKEET_MODEL` and the `downloadParakeetModels` task in `app/build.gradle`. Keep its bundled artifact names, revision, and hashes consistent with `ParakeetModel.recognitionModel`. See [the model guide](docs/model-guide.md) for user-facing model behavior.
 
 ## Build And Test Commands
 
 When the maintainer requests low memory or sets a RAM limit, follow [the low-memory workflow](docs/development.md#low-memory-workflow) before verification or release work.
 
-Prereqs: JDK 17+, Android SDK platform 35, NDK `28.2.13676358`.
+Before building, follow [local setup](docs/development.md#build-locally), including native submodules, Android tools, and the pinned Rust toolchain.
 
 Common commands:
 
@@ -81,7 +72,15 @@ Common commands:
 .\gradlew.bat :app:lintDevDebug
 ```
 
-First supported ABI is `arm64-v8a`.
+Focused unit-test example:
+
+```powershell
+.\gradlew.bat :app:testDevDebugUnitTest --tests 'org.futo.voiceinput.benchmark.BenchmarkRunnerTest'
+```
+
+For native packaging changes, follow [model catalog release verification](docs/release/model-catalog-verification.md). Microphone routing, text insertion, and inference changes also require device evidence under [contribution guidance](docs/development.md#contributing); report checks you could not run. Compiling instrumentation tests does not execute them on a device.
+
+Only `arm64-v8a` is packaged. [Release CI](.github/workflows/release-apk.yml) uses JDK 21 and runs standalone release unit tests, lint, dev-debug instrumentation compilation, release assembly, and APK content/signature checks. Use the workflow as the source for current CI commands.
 
 ## Product Flavors
 
@@ -93,13 +92,15 @@ Declared in `app/build.gradle`:
 - `playStore`: no update checking, Play billing, non-dev settings
 - `fDroid`: no update checking, PayPal billing, non-dev settings
 
-Generated APK names are customized in `app/build.gradle`, but the GitHub workflow currently expects/copies `app/build/outputs/apk/dev/debug/app-dev-debug.apk`; verify this if release automation changes.
+Generated APK names are customized in `app/build.gradle`. Debug output is under `app/build/outputs/apk/dev/debug/`; release CI discovers the APK under `app/build/outputs/apk/standalone/release/`. Before contribution or release work, read [development and release guidance](docs/development.md) for PR conventions, signing, versioning, and tag requirements.
 
 ## Development Notes
 
+- Before branch setup, integration, promotion or cleanup, read [the Git workflow](docs/development.md#git-workflow).
 - Prefer existing Compose/settings patterns in `settings/Components.kt`, `settings/Hooks.kt`, and `settings/pages/*`.
 - Keep backend-agnostic recognition behavior in `AudioRecognizer` or `RecognizerView`; keep Parakeet specifics in `parakeet/*`.
-- Parakeet currently returns only a final transcript after recording stops. Legacy Whisper/GGML can emit partials through `onPartialDecode`.
+- Check each recognition model's declared `TranscriptionBehavior` before changing live or final-only transcription; Parakeet variants differ. See [the NVIDIA runtime decision](docs/adr/0001-use-sherpa-onnx-for-nvidia-streaming.md).
+- Before changing logging, transcript capture, or export, read [the vocabulary and capture boundary](CONTEXT.md), [diagnostics design and known gaps](docs/diagnostics.md), and [ADR 0003](docs/adr/0003-local-content-free-app-diagnostics.md). Keep dictated content out of standard diagnostics and Logcat; transcript capture remains a separate explicit option. Preserve separate audio-history retention.
 - `ParakeetEngineManager` keeps Parakeet warm by default via `PARAKEET_KEEP_WARM`; force-close it before deleting/replacing model files.
 - The IME cannot request microphone permission directly; `VoiceInputMethodService.requestPermission()` rejects and shows settings/error UI.
 - Do not remove legacy Whisper/GGML paths unless explicitly requested; this fork intentionally keeps them as selectable fallback.
@@ -117,4 +118,4 @@ Use the canonical labels `needs-triage`, `needs-info`, `ready-for-agent`, `ready
 
 ### Domain docs
 
-This is a single-context repository. See `docs/agents/domain.md`.
+Before exploring this single-context repository, read [domain guidance](docs/agents/domain.md), then `CONTEXT.md` and relevant decisions under `docs/adr/` as directed there.

@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - "master"
+      - "development"
       - "codex/combined-release"
       - "codex/harper-english-beta"
     tags:
