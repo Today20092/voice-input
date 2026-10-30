@@ -21,7 +21,9 @@ After the applicable CI checks pass, publish the signed APK as a GitHub prerelea
 ## Build locally
 
 
-Install JDK 17 or newer, Android SDK platform 35, NDK `28.2.13676358`, and CMake `3.22.1`. Initialize the repository's submodules. Point `local.properties` at your Android SDK, or set `ANDROID_HOME`.
+Install JDK 21, Android SDK platform 36, build tools `36.0.0`, NDK `28.2.13676358`, and CMake `3.22.1`. Initialize the repository's submodules. Point `local.properties` at your Android SDK, or set `ANDROID_HOME`. On Windows, use `git -c core.longpaths=true submodule update --init --recursive` to check out the nested native dependencies.
+
+The Gradle wrapper and Android Gradle Plugin follow the upstream integration documented in [the merge record](testing/upstream-master-integration-2026-10-30.md). The app keeps its existing target SDK, package IDs, version sequence, model defaults, and native-runtime pins.
 
 On macOS or Linux:
 

@@ -108,7 +108,8 @@ class ManagedRecognitionModelCatalogTest {
         }
         assertEquals("orukeet", runBlocking { appContext.dataStore.data.first()[SPEECH_BACKEND.key] })
         openDetails("ASR4ALL Medium")
-        compose.onNodeWithText("Shows English text as you speak. Adds punctuation, capital letters, and small corrections.")
+        compose.onNodeWithText("Shows English text as you speak. Adds punctuation, capital letters, and small corrections.",
+            substring = true)
             .assertIsDisplayed()
         android.os.SystemClock.sleep(500) // Let the platform dialog animation finish before capture.
         File(appContext.filesDir, "asr4all-details.png").outputStream().use {
