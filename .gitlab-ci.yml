@@ -19,7 +19,7 @@ unit-test-job:
   before_script:
     - git fetch origin $CI_COMMIT_BRANCH:$CI_COMMIT_BRANCH master:master
     - export VERSION_NAME=`git describe --tags --dirty`
-    - export VERSION_CODE=`git rev-list --first-parent --count master`
+    - export VERSION_CODE=`git rev-list --count master`
     - echo $VERSION_CODE $VERSION_NAME
     - ./setUpPropertiesCI.sh
   script:
@@ -36,7 +36,7 @@ buildDev:
   before_script:
     - git fetch origin $CI_COMMIT_BRANCH:$CI_COMMIT_BRANCH master:master
     - export VERSION_NAME=`git describe --tags --dirty`
-    - export VERSION_CODE=`git rev-list --first-parent --count $CI_COMMIT_BRANCH`
+    - export VERSION_CODE=`git rev-list --count $CI_COMMIT_BRANCH`
     - echo $VERSION_CODE $VERSION_NAME
     - ./setUpPropertiesCI.sh
   script:
@@ -61,7 +61,7 @@ buildRelease:
   before_script:
     - git fetch origin $CI_COMMIT_BRANCH:$CI_COMMIT_BRANCH master:master
     - export VERSION_NAME=`git describe --tags --dirty`
-    - export VERSION_CODE=`git rev-list --first-parent --count master`
+    - export VERSION_CODE=`git rev-list --count master`
     - echo $VERSION_CODE $VERSION_NAME
     - ./setUpPropertiesCI.sh
   script:

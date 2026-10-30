@@ -19,7 +19,7 @@ def getVersionCode = { ->
 
     try {
         def result = providers.exec {
-            commandLine 'git', 'rev-list', '--first-parent', '--count', 'master'
+            commandLine 'git', 'rev-list', '--count', 'master'
         }.standardOutput.asText.get()
 
         return Integer.parseInt(result.toString().trim())
