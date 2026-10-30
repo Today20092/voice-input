@@ -17,13 +17,13 @@ import org.futo.voiceinput.settings.LAST_UPDATE_CHECK_RESULT
 import org.futo.voiceinput.settings.getSetting
 import org.futo.voiceinput.settings.setSetting
 
-const val UPDATE_URL = "https://voiceinput.futo.org/VoiceInput/voice_input_version_${BuildConfig.FLAVOR}"
+const val UPDATE_URL = "https://dl.voiceinput.futo.org/VoiceInput/voice_input_version_${BuildConfig.FLAVOR}"
 
 suspend fun checkForUpdate(): UpdateResult? {
     return withContext(Dispatchers.IO) {
         val httpClient = OkHttpClient()
 
-        val request = Request.Builder().method("GET", null).url(UPDATE_URL).build()
+        val request = Request.Builder().method("GET", null).url(UPDATE_URL + "?hr=${System.currentTimeMillis() / 1000L / 3600L}").build()
 
         try {
             val response = httpClient.newCall(request).execute()
@@ -37,7 +37,10 @@ suspend fun checkForUpdate(): UpdateResult? {
                 val latestVersion = data[0].toInt()
                 val latestVersionUrl = data[1]
                 val latestVersionString = data[2]
-                if(latestVersionUrl.startsWith("https://voiceinput.futo.org/")){
+                if(latestVersionUrl.startsWith("https://dl.voiceinput.futo.tech/")
+                    || latestVersionUrl.startsWith("https://dl.voiceinput.futo.org/")
+                    || latestVersionUrl.startsWith("https://voiceinput.futo.tech/")
+                    || latestVersionUrl.startsWith("https://voiceinput.futo.org/")){
                     UpdateResult(
                         nextVersion = latestVersion,
                         apkUrl = latestVersionUrl,
@@ -71,7 +74,7 @@ suspend fun checkForUpdateAndSaveToPreferences(context: Context): Boolean {
     return false
 }
 
-suspend fun retrieveSavedLastUpdateCheckResult(context: Context): UpdateResult? {
+fun retrieveSavedLastUpdateCheckResult(context: Context): UpdateResult? {
     return UpdateResult.fromString(context.getSetting(LAST_UPDATE_CHECK_RESULT))
 }
 
@@ -84,8 +87,13 @@ fun scheduleUpdateCheckingJob(context: Context) {
         return
     }
 
+    val period = when {
+        BuildConfig.FLAVOR.startsWith("dev") -> 1000 * 60 * 60 * 6L // every 6 hours
+        else -> 1000 * 60 * 60 * 24 * 2L // every 2 days
+    }
+
     var jobInfoBuilder = JobInfo.Builder(JOB_ID, ComponentName(context, UpdateCheckingService::class.java))
-        .setPeriodic(1000 * 60 * 60 * 24 * 2) // every two days
+        .setPeriodic(period)
         .setRequiredNetworkType(JobInfo.NETWORK_TYPE_UNMETERED) // on unmetered Wi-Fi
         .setPersisted(true) // persist after reboots
 

@@ -19,17 +19,17 @@ import kotlinx.coroutines.launch
 import org.futo.voiceinput.R
 import org.futo.voiceinput.payments.BillingManager
 import org.futo.voiceinput.theme.UixThemeAuto
+import org.futo.voiceinput.updates.checkForUpdateAndSaveToPreferences
 import org.futo.voiceinput.updates.scheduleUpdateCheckingJob
 
 class SettingsActivity : ComponentActivity() {
     internal lateinit var billing: BillingManager
     private fun updateContent() {
         setContent {
-            UixThemeAuto {
-                // A surface container using the 'background' color from the theme
+            UixThemeAuto(false) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
+                    color = MaterialTheme.colorScheme.surfaceContainer
                 ) {
                     SetupOrMain(billing = billing)
                 }
@@ -98,6 +98,10 @@ class SettingsActivity : ComponentActivity() {
 
         billing.startConnection {
             it.checkAlreadyOwnsProduct()
+        }
+
+        lifecycleScope.launch {
+            checkForUpdateAndSaveToPreferences(this@SettingsActivity)
         }
     }
 

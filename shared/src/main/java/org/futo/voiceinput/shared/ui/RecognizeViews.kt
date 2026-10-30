@@ -1,0 +1,356 @@
+package org.futo.voiceinput.shared.ui
+
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.contentColorFor
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableFloatState
+import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Fill
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.text
+import androidx.compose.ui.semantics.toggleableState
+import androidx.compose.ui.state.ToggleableState
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.drawText
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.delay
+import org.futo.voiceinput.shared.R
+import org.futo.voiceinput.shared.types.Language
+import org.futo.voiceinput.shared.types.MagnitudeState
+import org.futo.voiceinput.shared.ui.theme.Typography
+import kotlin.math.roundToInt
+
+data class MicrophoneDeviceState(
+    val bluetoothAvailable: Boolean,
+    val bluetoothActive: Boolean,
+    val bluetoothPreferredByUser: Boolean,
+    val setBluetooth: (Boolean) -> Unit,
+    val deviceName: String
+)
+
+@Composable
+fun BoxScope.AnimatedRecognizeCircle(magnitude: MutableFloatState = mutableFloatStateOf(0.5f)) {
+    val radius = animateValueChanges(magnitude.floatValue, 100)
+    val color = MaterialTheme.colorScheme.primaryContainer
+
+    val radiusMod = with(LocalDensity.current) {
+        80.dp.toPx()
+    }
+
+    Canvas(modifier = Modifier.matchParentSize()) {
+        val drawRadius = radiusMod * (0.8f + radius * 2.0f)
+        drawCircle(color = color, radius = drawRadius)
+    }
+}
+
+@Composable
+private fun FakeToast(modifier: Modifier, message: String?) {
+    val visible = remember { mutableStateOf(false) }
+
+    LaunchedEffect(message) {
+        if(message != null) {
+            visible.value = true
+            delay(2500L)
+            visible.value = false
+        } else {
+            visible.value = false
+        }
+    }
+
+    if(message != null) {
+        AnimatedVisibility(
+            visible = visible.value,
+            modifier = modifier
+                .alpha(0.9f)
+                .background(MaterialTheme.colorScheme.surfaceDim, RoundedCornerShape(100))
+                .padding(16.dp),
+            enter = fadeIn(),
+            exit = fadeOut()
+        ) {
+            Box {
+                Text(message, modifier = Modifier.align(Alignment.Center), style = Typography.labelSmall, color = MaterialTheme.colorScheme.onSurface)
+            }
+        }
+    }
+}
+
+@Composable
+private fun BoxScope.BluetoothToggleIcon(device: MutableState<MicrophoneDeviceState>? = null) {
+    FakeToast(modifier = Modifier.align(Alignment.BottomCenter).offset(y = (-16).dp),
+        message = if(device?.value?.bluetoothActive == true) {
+            stringResource(R.string.using_bluetooth_mic, device.value.deviceName)
+        } else if(device?.value?.bluetoothAvailable == true || device?.value?.bluetoothPreferredByUser == true) {
+            stringResource(R.string.using_built_in_mic, device.value.deviceName)
+        } else {
+            null
+        }
+    )
+
+    if(device?.value?.bluetoothAvailable == true) {
+        val bluetoothColor = MaterialTheme.colorScheme.primary
+        val iconColor = if(device.value.bluetoothActive) {
+            MaterialTheme.colorScheme.onPrimary
+        } else {
+            MaterialTheme.colorScheme.onSurface
+        }
+
+        IconButton(modifier = Modifier
+            .align(Alignment.BottomEnd)
+            .offset(x = (-16).dp, y = (-16).dp)
+            .drawBehind {
+                val radius = size.height / 4.0f
+                drawRoundRect(
+                    bluetoothColor,
+                    topLeft = Offset(size.width * 0.1f, size.height * 0.05f),
+                    size = Size(size.width * 0.8f, size.height * 0.9f),
+                    cornerRadius = CornerRadius(radius, radius),
+                    style = if (device.value.bluetoothActive) {
+                        Fill
+                    } else {
+                        Stroke(width = 4.0f)
+                    }
+                )
+            }
+            .clearAndSetSemantics {
+                this.text = AnnotatedString("Use bluetooth mic")
+                this.role = Role.Switch
+                this.toggleableState = ToggleableState(device.value.bluetoothActive)
+            },
+            onClick = {
+                device.value.setBluetooth(!device.value.bluetoothActive)
+            },
+        ) {
+            Icon(
+                painter = painterResource(id = R.drawable.bluetooth),
+                contentDescription = null,
+                tint = iconColor
+            )
+        }
+    }
+}
+
+@Composable
+fun InnerRecognize(
+    magnitude: MutableFloatState = mutableFloatStateOf(0.5f),
+    state: MutableState<MagnitudeState> = mutableStateOf(MagnitudeState.MIC_MAY_BE_BLOCKED),
+    device: MutableState<MicrophoneDeviceState>? = null,
+    partialText: String? = ""
+) {
+    Box(modifier = Modifier, contentAlignment = Alignment.Center) {
+        AnimatedRecognizeCircle(magnitude = magnitude)
+
+        Icon(
+            painter = painterResource(R.drawable.mic_2_),
+            contentDescription = stringResource(R.string.stop_recording),
+            modifier = Modifier.size(48.dp),
+            tint = MaterialTheme.colorScheme.onPrimaryContainer
+        )
+
+        val text = when (state.value) {
+            MagnitudeState.NOT_TALKED_YET -> stringResource(R.string.try_saying_something)
+            MagnitudeState.MIC_MAY_BE_BLOCKED -> stringResource(R.string.no_audio_detected_is_your_microphone_blocked)
+            MagnitudeState.TALKING -> stringResource(R.string.listening)
+        }
+
+        if(partialText?.isNotEmpty() == true) {
+            RecognizePartialText(partialText, modifier = Modifier.offset(x = 0.dp, y = 64.dp))
+        } else {
+            Text(
+                text,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .offset(x = 0.dp, y = 48.dp),
+                textAlign = TextAlign.Center,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
+
+        BluetoothToggleIcon(device)
+    }
+}
+
+
+@Composable
+private fun RecognizePartialText(partialText: String, modifier: Modifier = Modifier) {
+    val color = contentColorFor(MaterialTheme.colorScheme.surfaceContainerLow)
+    val style = Typography.bodyMedium.copy(color = color)
+    val lineHeight = style.lineHeight
+
+
+    val measurer = rememberTextMeasurer()
+    val availableHeight = with(LocalDensity.current) {
+        (lineHeight * 2).toDp()
+    }
+
+    Surface(
+        modifier = modifier
+            .padding(4.dp)
+            .fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        shape = RoundedCornerShape(8.dp)
+    ) {
+        Canvas(Modifier.fillMaxWidth().padding(8.dp).height(availableHeight)) {
+            val measurement = measurer.measure(partialText, style, constraints = Constraints(
+                maxWidth = size.width.roundToInt()
+            ))
+
+            val line0 = if(measurement.lineCount >= 2) {
+                val start = measurement.getLineStart(measurement.lineCount - 2)
+                val end = measurement.getLineEnd(measurement.lineCount - 2)
+                partialText.substring(start, end)
+            } else ""
+
+            val line1 = if(measurement.lineCount >= 1) {
+                val start = measurement.getLineStart(measurement.lineCount - 1)
+                val end = measurement.getLineEnd(measurement.lineCount - 1)
+                partialText.substring(start, end)
+            } else ""
+
+
+
+            drawText(measurer, line0, style = style, topLeft = Offset(0.0f, 0.0f))
+            drawText(measurer, line1, style = style, topLeft = Offset(0.0f, lineHeight.toPx()))
+        }
+    }
+}
+
+@Composable
+fun RecognizeLoadingCircle(text: String = "Initializing...", partialText: String? = null) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+        Spacer(modifier = Modifier.height(8.dp))
+        if(partialText?.isNotEmpty() == true) {
+            RecognizePartialText(partialText)
+        } else {
+            Text(text)
+        }
+    }
+}
+
+@Composable
+fun ColumnScope.RecognizeMicError(openSettings: () -> Unit) {
+    Box(Modifier
+        .fillMaxSize()
+        .clickable { openSettings() }) {
+        Column(Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                stringResource(R.string.grant_microphone_permission_to_use_voice_input),
+                modifier = Modifier
+                    .padding(8.dp, 2.dp)
+                    .align(Alignment.CenterHorizontally),
+                textAlign = TextAlign.Center,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Icon(
+                Icons.Default.Settings,
+                contentDescription = stringResource(R.string.grant_microphone_permission_to_use_voice_input),
+                modifier = Modifier.size(32.dp),
+                tint = MaterialTheme.colorScheme.onSurface
+            )
+        }
+    }
+}
+
+@Composable
+fun SelectLanguage(languages: Set<Language>, onSelected: (Language) -> Unit) {
+    val languageItems = languages.toList()
+    LazyVerticalGrid(columns = GridCells.Adaptive(minSize = 140.dp), modifier = Modifier.fillMaxWidth()) {
+        items(languageItems.size) {
+            Button(onClick = {
+                onSelected(languageItems[it])
+            }, modifier = Modifier
+                .fillMaxSize()
+                .padding(4.dp), colors = ButtonDefaults.buttonColors(
+                containerColor = Color.Transparent,
+                contentColor = MaterialTheme.colorScheme.onSurface
+            )) {
+                Text(languageItems[it].name,  modifier = Modifier.padding(0.dp, 16.dp), color = MaterialTheme.colorScheme.onSurface)
+            }
+        }
+    }
+}
+
+
+@Preview
+@Composable
+private fun PreviewLoading() {
+    Surface(color = MaterialTheme.colorScheme.surface) {
+        RecognizeLoadingCircle("Loading...")
+    }
+}
+
+@Preview
+@Composable
+private fun PreviewPartialDecodeOffline() {
+    Surface(color = MaterialTheme.colorScheme.surface) {
+        RecognizeLoadingCircle("Decoding...", "My name is Manousos Oviedo. I am not one of them. I wish to save the world.")
+    }
+}
+
+@Preview
+@Composable
+private fun PreviewRecord() {
+    Surface(color = MaterialTheme.colorScheme.surface) {
+        InnerRecognize()
+    }
+}
+
+@Preview
+@Composable
+private fun PreviewRecordStreamingDecode() {
+    Surface(color = MaterialTheme.colorScheme.surface) {
+        InnerRecognize(partialText = "My name is Manousos Oviedo. I am not one of them. I wish to save the world.")
+    }
+}

@@ -22,6 +22,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
@@ -29,17 +30,22 @@ import org.futo.voiceinput.R
 import org.futo.voiceinput.openURI
 import org.futo.voiceinput.theme.Typography
 import org.futo.voiceinput.BuildConfig
-import org.futo.voiceinput.migration.ConditionalModelUpdate
 import org.futo.voiceinput.settings.ConditionalUpdate
 import org.futo.voiceinput.settings.ENABLE_MULTILINGUAL
 import org.futo.voiceinput.settings.IS_ALREADY_PAID
+import org.futo.voiceinput.settings.KeyboardVoiceInputConfigState
 import org.futo.voiceinput.settings.NavigationItem
 import org.futo.voiceinput.settings.NavigationItemStyle
 import org.futo.voiceinput.settings.ScreenTitle
-import org.futo.voiceinput.settings.ScrollableList
 import org.futo.voiceinput.settings.SettingItem
+import org.futo.voiceinput.settings.SettingsKey
+import org.futo.voiceinput.settings.SettingsRootList
 import org.futo.voiceinput.settings.SettingsViewModel
+import org.futo.voiceinput.settings.Tip
+import org.futo.voiceinput.settings.TipKind
 import org.futo.voiceinput.settings.useDataStore
+import org.futo.voiceinput.settings.useDefaultIME
+import org.futo.voiceinput.settings.useIsConfiguredInFUTOKeyboard
 
 
 @Composable
@@ -83,7 +89,29 @@ fun IssueTrackerOption(title: String = stringResource(R.string.issue_tracker)) {
 @Composable
 fun SettingsSeparator(text: String) {
     Spacer(modifier = Modifier.height(16.dp))
-    Text(text, style = Typography.labelMedium, modifier = Modifier.padding(16.dp, 0.dp))
+    Text(text, style = Typography.Small, modifier = Modifier.padding(16.dp, 0.dp))
+}
+
+
+val NewsEntries = listOf(
+    R.string.whats_new_body to (R.string.whats_new_read_more to "https://futo.tech/blog/asr4all")
+)
+
+val NewsViewed = SettingsKey(intPreferencesKey("news_viewed2"), 0)
+
+@Composable
+fun ConditionalWhatsNew(orElse: @Composable () -> Unit) {
+    val context = LocalContext.current
+    val newsViewed = useDataStore(NewsViewed)
+
+    if(newsViewed.value < NewsEntries.size) {
+        val entry = NewsEntries[newsViewed.value]
+        Tip(stringResource(entry.first), TipKind.WhatsNew, onAction = {
+            context.openURI(entry.second.second)
+        }, actionText = entry.second.first, onDismiss = {
+            newsViewed.setValue(newsViewed.value + 1)
+        })
+    } else orElse()
 }
 
 @Composable
@@ -100,12 +128,15 @@ fun HomeScreen(
         null
     }
 
-    ScrollableList {
+    val defaultIME = useDefaultIME(0)
+    val isSet = useIsConfiguredInFUTOKeyboard(defaultIME.value, 0, false)
+
+    SettingsRootList {
         Spacer(modifier = Modifier.height(24.dp))
         ScreenTitle(stringResource(R.string.futo_voice_input_settings))
         Text(
-            "v${BuildConfig.VERSION_NAME}",
-            style = Typography.labelSmall,
+            "${BuildConfig.VERSION_NAME}",
+            style = Typography.Small,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(24.dp, 4.dp),
@@ -113,9 +144,10 @@ fun HomeScreen(
         )
 
 
-        ConditionalUnpaidNoticeWithNav(navController)
+        ConditionalWhatsNew(orElse = {
+            ConditionalUnpaidNoticeWithNav(navController)
+        })
         ConditionalUpdate()
-        ConditionalModelUpdate()
 
         SettingsSeparator(stringResource(R.string.options))
         NavigationItem(
@@ -157,7 +189,7 @@ fun HomeScreen(
             icon = painterResource(R.drawable.edit)
         )
 
-        UnpaidNoticeCondition(showOnlyIfReminder = true) {
+        if(unpaidNoticeCondition(showOnlyIfReminder = true)) {
             NavigationItem(
                 title = stringResource(R.string.payment),
                 style = NavigationItemStyle.Misc,
@@ -176,6 +208,9 @@ fun HomeScreen(
         SettingsSeparator(stringResource(R.string.about))
         NavigationItem(
             title = stringResource(R.string.help),
+            subtitle = if(defaultIME.value.startsWith("org.futo.inputmethod.latin") && isSet.value != KeyboardVoiceInputConfigState.Set) {
+                stringResource(R.string.help_futo_keyboard_title)
+            } else null,
             style = NavigationItemStyle.Misc,
             navigate = { navController.navigate("help") },
             icon = painterResource(R.drawable.help_circle)
@@ -195,7 +230,7 @@ fun HomeScreen(
         if (isAlreadyPaid.value) {
             Text(
                 stringResource(R.string.thank_you_for_using_the_paid_version_of_futo_voice_input),
-                style = Typography.bodyMedium,
+                style = Typography.Small,
                 modifier = Modifier.fillMaxWidth(),
                 textAlign = TextAlign.Center
             )

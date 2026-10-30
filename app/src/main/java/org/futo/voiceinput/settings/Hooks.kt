@@ -1,13 +1,16 @@
 package org.futo.voiceinput.settings
 
 import android.Manifest
+import android.app.Activity
 import android.content.ComponentName
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.provider.Settings
 import android.speech.RecognizerIntent
 import android.view.inputmethod.InputMethodManager
-import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
@@ -21,10 +24,12 @@ import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import org.futo.voiceinput.Status
+import kotlin.time.Duration.Companion.milliseconds
 
 
 @Composable
@@ -35,7 +40,7 @@ fun useIsInputMethodEnabled(i: Int): MutableState<Status> {
     LaunchedEffect(i) {
         val packageName = context.packageName
         val imm =
-            context.getSystemService(ComponentActivity.INPUT_METHOD_SERVICE) as InputMethodManager
+            context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
 
         var found = false
         for (imi in imm.enabledInputMethodList) {
@@ -66,20 +71,79 @@ fun useIsMicrophonePermitted(i: Int): MutableState<Status> {
 
 
 @Composable
-fun useDefaultIME(i: Int): MutableState<String> {
+fun useDefaultIME(any: Any): MutableState<String> {
     val defaultIME = remember { mutableStateOf("?") }
 
     val context = LocalContext.current
-    LaunchedEffect(i) {
+    LaunchedEffect(any) {
         val value =
             Settings.Secure.getString(context.contentResolver, Settings.Secure.DEFAULT_INPUT_METHOD)
         defaultIME.value = value
-        println("The default IME is $value")
     }
 
     return defaultIME
 }
 
+
+enum class KeyboardVoiceInputConfigState {
+    Unknown,
+    KeyboardOutdated,
+    NotSet,
+    Set
+}
+
+@Composable
+fun useIsConfiguredInFUTOKeyboard(defaultIme: String, any: Any, doSwitch: Boolean): MutableState<KeyboardVoiceInputConfigState> {
+    val currentState = remember { mutableStateOf(KeyboardVoiceInputConfigState.Unknown) }
+
+    if(!defaultIme.startsWith("org.futo.inputmethod.latin")) return currentState
+
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) {
+        if (it.resultCode == 67 || it.resultCode == 66 || it.resultCode == 65) {
+            currentState.value = KeyboardVoiceInputConfigState.Set
+        } else if(it.resultCode == 68 || it.resultCode == Activity.RESULT_CANCELED) {
+            currentState.value = KeyboardVoiceInputConfigState.NotSet
+        } else {
+            currentState.value = KeyboardVoiceInputConfigState.KeyboardOutdated
+        }
+    }
+
+    val context = LocalContext.current
+    LaunchedEffect(defaultIme, any, doSwitch) {
+        val pkg = defaultIme.split('/')[0]
+        val intent = Intent("org.futo.inputmethod.latin.action.VoiceInputSwitch")
+        intent.setPackage(pkg)
+        intent.putExtra("targetPackage", context.packageName)
+
+        val mode = when {
+            doSwitch && context.packageName.startsWith("org.futo") -> "switch"
+            doSwitch -> "popup"
+            else -> "check"
+        }
+
+        intent.putExtra("mode", mode)
+
+        try {
+            launcher.launch(intent)
+        } catch(e: Exception) {
+            // gets reached if activity does not exist (means that the keyboard's outdated for sure)
+            currentState.value = KeyboardVoiceInputConfigState.KeyboardOutdated
+        }
+    }
+
+    // If for some reason we never get a result or something like that, since the visibility depends
+    // on this not being Unknown, just assume the keyboard is outdated after a period of two seconds
+    LaunchedEffect(any) {
+        delay(2000L.milliseconds)
+        if(currentState.value == KeyboardVoiceInputConfigState.Unknown) {
+            currentState.value = KeyboardVoiceInputConfigState.KeyboardOutdated
+        }
+    }
+
+    return currentState
+}
 
 @Composable
 fun useNumberOfDaysInstalled(): MutableState<Int> {
@@ -133,7 +197,14 @@ fun <T> useDataStore(setting: SettingsKey<T>): DataStoreItem<T> {
 }
 
 @Composable
-fun <T> useDataStoreValueNullable(key: Preferences.Key<T>, default: T): T? {
+fun useInvertedDataStore(setting: SettingsKey<Boolean>): DataStoreItem<Boolean> {
+    val (value, setValue) = useDataStore(key = setting.key, default = setting.default)
+
+    return DataStoreItem(!value, { setValue(!it) })
+}
+
+@Composable
+fun <T> useDataStoreValueNullable(key: Preferences.Key<T>, default: T): T {
     val context = LocalContext.current
 
     val valueFlow: Flow<T> = remember {
@@ -142,7 +213,11 @@ fun <T> useDataStoreValueNullable(key: Preferences.Key<T>, default: T): T? {
         }
     }
 
-    return valueFlow.collectAsState(initial = null).value
+    val initial = remember(key) {
+        context.getSetting(key, default)
+    }
+
+    return valueFlow.collectAsState(initial = initial).value
 }
 
 

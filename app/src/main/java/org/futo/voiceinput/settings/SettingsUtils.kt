@@ -7,6 +7,8 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -138,7 +140,11 @@ fun SettingsMain(
 
     NavHost(
         navController = navController,
-        startDestination = "home"
+        startDestination = "home",
+        enterTransition = { EnterTransition.None },
+        exitTransition = { ExitTransition.None },
+        popEnterTransition = { EnterTransition.None },
+        popExitTransition = { ExitTransition.None }
     ) {
         composable("home") { HomeScreen(settingsViewModel, navController) }
         composable("advanced") { AdvancedScreen(settingsViewModel, navController) }
@@ -189,6 +195,11 @@ fun SetupOrMain(settingsViewModel: SettingsViewModel = viewModel(), billing: Bil
                 details = stringResource(R.string.gboard_incompatible_details),
                 dismiss = stringResource(R.string.gboard_incompatible_accept)
             ),
+            BlacklistedInputMethod(
+                "com.touchtype.swiftkey/com.touchtype.swiftkey.SwiftKey",
+                details = stringResource(R.string.swiftkey_incompatible_details),
+                dismiss = stringResource(R.string.swiftkey_incompatible_accept)
+            ),
             BlacklistedInputMethod( // Issue: https://suggestions.typewise.app/suggestions/65517/voice-to-text-dictation
                 "ch.icoaching.typewise/ch.icoaching.wrio.Wrio",
                 details = stringResource(R.string.typewise_incompatible_details),
@@ -226,11 +237,17 @@ fun SetupOrMain(settingsViewModel: SettingsViewModel = viewModel(), billing: Bil
     val acknowledgedWrongDefaultWarning = rememberSaveable { mutableStateOf(false) }
     val defaultVoiceInputIntent = useDefaultVoiceInputIntent(settingsUiState.numberOfResumes)
 
-    if(defaultVoiceInputIntent.value.kind == DefaultVoiceInputIntentKind.OTHER && defaultVoiceInputIntent.value.name != null && !acknowledgedWrongDefaultWarning.value) {
+    val acknowledgedKeyboardSwitch = rememberSaveable { mutableStateOf(false) }
+
+    if(defaultIME.value.startsWith("org.futo.inputmethod.latin") && !acknowledgedKeyboardSwitch.value) {
+        SetupFUTOKeyboardConflict(defaultIME.value) {
+            acknowledgedKeyboardSwitch.value = true
+        }
+    } else if(defaultVoiceInputIntent.value.kind == DefaultVoiceInputIntentKind.OTHER && defaultVoiceInputIntent.value.name != null && !acknowledgedWrongDefaultWarning.value) {
         SetupWrongDefaultWarning(
             defaultVoiceInputIntent.value
         ) { acknowledgedWrongDefaultWarning.value = true }
-    }else if (blacklistedKeyboardInfo != null && !acknowledgedBlacklistedWarning.value) {
+    } else if (blacklistedKeyboardInfo != null && !acknowledgedBlacklistedWarning.value) {
         SetupBlacklistedKeyboardWarning(
             blacklistedKeyboardInfo
         ) { acknowledgedBlacklistedWarning.value = true }

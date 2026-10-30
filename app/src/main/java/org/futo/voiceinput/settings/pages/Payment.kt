@@ -1,7 +1,6 @@
 package org.futo.voiceinput.settings.pages
 
 import android.content.Context
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -55,27 +54,34 @@ import androidx.navigation.compose.rememberNavController
 import kotlinx.coroutines.launch
 import org.futo.voiceinput.BuildConfig
 import org.futo.voiceinput.R
+import org.futo.voiceinput.loadCurrentModelList
+import org.futo.voiceinput.openURI
 import org.futo.voiceinput.payments.BillingManager
 import org.futo.voiceinput.settings.FORCE_SHOW_NOTICE
 import org.futo.voiceinput.settings.HAS_SEEN_PAID_NOTICE
 import org.futo.voiceinput.settings.IS_ALREADY_PAID
 import org.futo.voiceinput.settings.IS_PAYMENT_PENDING
+import org.futo.voiceinput.settings.LAST_UPDATE_CHECK_RESULT
 import org.futo.voiceinput.settings.NOTICE_REMINDER_TIME
 import org.futo.voiceinput.settings.PaymentActivity
 import org.futo.voiceinput.settings.ScreenTitle
-import org.futo.voiceinput.settings.ScrollableList
+import org.futo.voiceinput.settings.SettingsRootList
 import org.futo.voiceinput.settings.SettingsViewModel
+import org.futo.voiceinput.settings.getSetting
 import org.futo.voiceinput.settings.setSetting
 import org.futo.voiceinput.settings.useDataStore
 import org.futo.voiceinput.settings.useNumberOfDaysInstalled
+import org.futo.voiceinput.shared.types.ModelPresence
 import org.futo.voiceinput.startAppActivity
+import org.futo.voiceinput.startModelDownloadActivity
 import org.futo.voiceinput.theme.Typography
+import org.futo.voiceinput.updates.UpdateResult
 import kotlin.math.absoluteValue
 
 
 @Composable
 fun ParagraphText(it: String, modifier: Modifier = Modifier) {
-    Text(it, modifier = modifier.padding(16.dp, 8.dp), style = Typography.bodyMedium,
+    Text(it, modifier = modifier.padding(8.dp, 8.dp), style = Typography.SmallMl,
         color = LocalContentColor.current)
 }
 
@@ -85,11 +91,11 @@ fun IconText(icon: Painter, title: String, body: String) {
         Icon(icon, contentDescription = null, modifier = Modifier
             .align(Alignment.Top)
             .padding(8.dp, 10.dp)
-            .size(with(LocalDensity.current) { Typography.titleMedium.fontSize.toDp() }))
+            .size(with(LocalDensity.current) { Typography.Heading.Medium.fontSize.toDp() }))
         Column(modifier = Modifier.padding(6.dp)) {
-            Text(title, style = Typography.titleMedium)
+            Text(title, style = Typography.Body.Regular)
             Spacer(modifier = Modifier.height(4.dp))
-            Text(body, style = Typography.bodySmall, color = LocalContentColor.current.copy(alpha = 0.8f))
+            Text(body, style = Typography.SmallMl, color = LocalContentColor.current.copy(alpha = 0.8f))
         }
     }
 }
@@ -142,11 +148,10 @@ suspend fun pushNoticeReminderTime(context: Context, days: Float) {
 const val TRIAL_PERIOD_DAYS = 30
 
 @Composable
-fun UnpaidNoticeCondition(
+fun unpaidNoticeCondition(
     force: Boolean = LocalInspectionMode.current,
-    showOnlyIfReminder: Boolean = false,
-    inner: @Composable () -> Unit
-) {
+    showOnlyIfReminder: Boolean = false
+): Boolean {
     val numDaysInstalled = useNumberOfDaysInstalled()
     val forceShowNotice = useDataStore(FORCE_SHOW_NOTICE)
     val isAlreadyPaid = useDataStore(IS_ALREADY_PAID)
@@ -167,21 +172,79 @@ fun UnpaidNoticeCondition(
                 && (!isAlreadyPaid.value)
     }
     if (force || displayCondition) {
-        inner()
+        return true
     }
+    return false
+}
+
+enum class WindowNoticeKind {
+    None,
+    PleasePay,
+    UpdateApp,
+    UpdateModel
+}
+
+@Composable
+fun windowNoticeCondition(): WindowNoticeKind {
+    val context = LocalContext.current
+
+    val (version, _) = useDataStore(LAST_UPDATE_CHECK_RESULT)
+    val hasVersionUpdate = remember(version) {
+        UpdateResult.fromString(version)?.isNewer() == true
+    }
+
+    if(hasVersionUpdate) {
+        return WindowNoticeKind.UpdateApp
+    }
+
+    val hasModelUpdate = remember {
+        context.loadCurrentModelList().any { it.getPresence(context) == ModelPresence.UpgradeAvailable }
+    }
+
+    if(hasModelUpdate) {
+        return WindowNoticeKind.UpdateModel
+    }
+
+    if(unpaidNoticeCondition()) {
+        return WindowNoticeKind.PleasePay
+    }
+
+    return WindowNoticeKind.None
 }
 
 @Composable
 @Preview
-fun ConditionalUnpaidNoticeInVoiceInputWindow(onClose: (() -> Unit)? = null) {
+fun OptionalWindowNotice(onClose: (() -> Unit)? = null) {
     val context = LocalContext.current
 
-    UnpaidNoticeCondition {
+    val (stringResource, action) = when(windowNoticeCondition()) {
+        WindowNoticeKind.None -> { null to null }
+        WindowNoticeKind.PleasePay -> {
+            R.string.unpaid_indicator to {
+                context.startAppActivity(PaymentActivity::class.java)
+            }
+        }
+        WindowNoticeKind.UpdateApp -> {
+            R.string.voice_input_window_indicator_app_update_available to {
+                val url = UpdateResult.fromString(context.getSetting(LAST_UPDATE_CHECK_RESULT))?.apkUrl
+                if(url != null) {
+                    context.openURI(url, true)
+                }
+            }
+        }
+        WindowNoticeKind.UpdateModel -> {
+            R.string.voice_input_window_indicator_model_update_available to {
+                context.startModelDownloadActivity(context.loadCurrentModelList())
+            }
+        }
+    }
+
+    if(stringResource != null && action != null) {
         TextButton(onClick = {
-            context.startAppActivity(PaymentActivity::class.java)
+            action()
             if (onClose != null) onClose()
         }) {
-            Text(stringResource(R.string.unpaid_indicator), color = MaterialTheme.colorScheme.onSurface)
+            Text(stringResource(stringResource), color = MaterialTheme.colorScheme.onSurface)
         }
     }
 }
@@ -192,7 +255,7 @@ fun MediumTitle(text: String) {
     Text(
         text,
         modifier = Modifier.padding(8.dp),
-        style = Typography.titleMedium,
+        style = Typography.Body.MediumMl,
         color = LocalContentColor.current
     )
 }
@@ -214,8 +277,7 @@ fun PaymentSurface(isPrimary: Boolean, title: String, onClick: (() -> Unit)? = n
     Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Center) {
         Surface(
             color = containerColor,
-            border = BorderStroke(2.dp, contentColor.copy(alpha = 0.33f)),
-            shape = RoundedCornerShape(24.dp),
+            shape = RoundedCornerShape(16.dp),
             modifier = Modifier
                 .padding(16.dp)
                 .widthIn(Dp.Unspecified, 400.dp)
@@ -277,7 +339,7 @@ fun UnpaidNotice(onPay: () -> Unit = { }, onAlreadyPaid: () -> Unit = { }) {
 fun ConditionalUnpaidNoticeWithNav(navController: NavController = rememberNavController()) {
     val isAlreadyPaid = useDataStore(IS_ALREADY_PAID)
 
-    UnpaidNoticeCondition {
+    if(unpaidNoticeCondition()) {
         UnpaidNotice(onPay = {
             navController.navigate("pleasePay")
         }, onAlreadyPaid = {
@@ -292,7 +354,7 @@ fun PaymentThankYouScreen(onExit: () -> Unit = { }) {
     val hasSeenPaidNotice = useDataStore(HAS_SEEN_PAID_NOTICE)
     val isPending = useDataStore(IS_PAYMENT_PENDING)
 
-    ScrollableList {
+    SettingsRootList {
         ScreenTitle(
             if (isPending.value) {
                 stringResource(R.string.payment_pending)
@@ -328,7 +390,7 @@ fun PaymentFailedScreen(onExit: () -> Unit = { }) {
 
     val context = LocalContext.current
 
-    ScrollableList {
+    SettingsRootList {
         ScreenTitle(stringResource(R.string.payment_error), showBack = false)
 
         @Suppress("KotlinConstantConditions")
@@ -384,7 +446,7 @@ fun PaymentScreen(
         billing.checkAlreadyOwnsProduct()
     }
 
-    ScrollableList {
+    SettingsRootList {
         ScreenTitle(stringResource(R.string.payment_title), showBack = true, navController = navController)
 
 
@@ -484,7 +546,7 @@ fun PaymentScreen(
                             .width(32.dp)
                             .border(Dp.Hairline, LocalContentColor.current)
                             .padding(4.dp),
-                        textStyle = Typography.bodyMedium.copy(color = LocalContentColor.current),
+                        textStyle = Typography.Body.Medium.copy(color = LocalContentColor.current),
                         cursorBrush = SolidColor(LocalContentColor.current),
                         keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number)
                     )

@@ -7,7 +7,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
-import org.futo.voiceinput.MULTILINGUAL_MODELS
 import org.futo.voiceinput.R
 import org.futo.voiceinput.settings.ALLOW_UNDERTRAINED_LANGUAGES
 import org.futo.voiceinput.settings.BEAM_SEARCH
@@ -17,13 +16,16 @@ import org.futo.voiceinput.settings.ENABLE_30S_LIMIT
 import org.futo.voiceinput.settings.MULTILINGUAL_MODEL_INDEX
 import org.futo.voiceinput.settings.NavigationItem
 import org.futo.voiceinput.settings.NavigationItemStyle
+import org.futo.voiceinput.settings.STREAMING_TIER
 import org.futo.voiceinput.settings.ScreenTitle
-import org.futo.voiceinput.settings.ScrollableList
+import org.futo.voiceinput.settings.SettingRadio
 import org.futo.voiceinput.settings.SettingToggleDataStore
+import org.futo.voiceinput.settings.SettingsRootList
 import org.futo.voiceinput.settings.SettingsViewModel
 import org.futo.voiceinput.settings.VERBOSE_PROGRESS
 import org.futo.voiceinput.settings.openImeOptions
 import org.futo.voiceinput.settings.useDataStore
+import org.futo.voiceinput.shared.MULTILINGUAL_MODELS
 
 @Composable
 @Preview
@@ -37,7 +39,7 @@ fun AdvancedScreen(
         default = MULTILINGUAL_MODEL_INDEX.default
     )
 
-    ScrollableList {
+    SettingsRootList {
         ScreenTitle(title = stringResource(id = R.string.advanced_settings), showBack = true, navController = navController)
 
         SettingToggleDataStore(
@@ -58,10 +60,6 @@ fun AdvancedScreen(
             ALLOW_UNDERTRAINED_LANGUAGES,
             subtitle = stringResource(R.string.allow_undertrained_languages_subtitle),
             onChanged = {
-                // Automatically change model to largest one
-                if(it) {
-                    setMultilingualIdx(MULTILINGUAL_MODELS.size - 1)
-                }
             }
         )
 
@@ -74,6 +72,18 @@ fun AdvancedScreen(
         SettingToggleDataStore(
             stringResource(R.string.re_enable_30s_limit),
             ENABLE_30S_LIMIT,
+        )
+
+        SettingRadio(
+            stringResource(R.string.model_settings_streaming_tier),
+            listOf(0, 1, 2, 3),
+            listOf(
+                stringResource(R.string.model_settings_streaming_tier_0),
+                stringResource(R.string.model_settings_streaming_tier_1),
+                stringResource(R.string.model_settings_streaming_tier_2),
+                stringResource(R.string.model_settings_streaming_tier_3),
+            ),
+            STREAMING_TIER,
         )
 
         DevOnlySettings()

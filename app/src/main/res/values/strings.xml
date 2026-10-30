@@ -18,23 +18,23 @@
     <string name="view_other_dependencies">View Other Dependencies</string>
     <string name="name_legal">The authors, contributors or copyright holders listed above are not affiliated with this product and do not endorse or promote this product. Reference to the authors, contributors or copyright holders is solely for attribution purposes. Mention of their names does not imply approval or endorsement.</string>
     <string name="just_a_demonstration">This is just a demonstration of how Voice Input looks</string>
-    <string name="help_paragraph_1">You have installed Voice Input and enabled the Voice input method. You should now be able to use Voice Input within supported apps and keyboards.</string>
-    <string name="help_paragraph_2">When you open Voice Input, it will look something like this:</string>
+    <string name="help_paragraph_1">You\'ve installed and enabled FUTO Voice Input. You should now be able to use it in supported apps and keyboards.</string>
+    <string name="help_paragraph_2">When you open voice input, it should look something like this:</string>
     <string name="voice_input_will_look_like_this">Voice Input will look like this</string>
     <string name="look_for_the_big_off_center_futo_logo_in_the_background">Look for the big off-center FUTO logo in the background!</string>
     <string name="stop_recording">Stop Recording</string>
     <string name="once_you_re_done_talking_you_can_hit_the_microphone_button_to_stop">Once you\'re done talking, you can hit the microphone button to stop</string>
-    <string name="help_paragraph_3">You can use one of the following open-source keyboards that are tested to work:</string>
-    <string name="aosp_keyboard_included_in_aosp_based_roms">• AOSP Keyboard, included in AOSP-based ROMs</string>
-    <string name="heliboard_info">• HeliBoard, a fork of OpenBoard</string>
+    <string name="help_paragraph_3">We recommend using one of these keyboards:</string>
+    <string name="futo_keyboard_bullet_point">• FUTO Keyboard, which also has Whisper built-in (but you can use this app for more models)</string>
+    <string name="florisboard_info">• FlorisBoard</string>
+    <string name="heliboard_info">• HeliBoard, a fork of AOSP Keyboard / OpenBoard</string>
     <string name="anysoftkeyboard_available_on_f_droid_and_google_play">• AnySoftKeyboard, available on F-Droid and Google Play</string>
+    <string name="aosp_keyboard_included_in_aosp_based_roms">• AOSP Keyboard, if it\'s included in your OS</string>
     <string name="help_paragraph_5">Everything you type is seen by your keyboard app, and proprietary commercial keyboards often have lengthy and complicated privacy policies. Choose carefully!</string>
-    <string name="help_paragraph_6">The following proprietary keyboards may also work, but they are not recommended as they may not respect your privacy:</string>
-    <string name="grammarly_keyboard" translatable="false">• Grammarly Keyboard</string>
-    <string name="microsoft_swiftkey" translatable="false">• Microsoft SwiftKey</string>
     <string name="help_paragraph_7">Note: Not all keyboards are compatible with Voice Input. You need to make sure you\'re using a compatible keyboard.</string>
-    <string name="help_paragraph_8">Some keyboards are simply incompatible, as they do not integrate with Android APIs for voice input. If your keyboard is listed here, you will need to use a different one as it is NOT compatible:</string>
-    <string name="gboard" translatable="false">• Gboard</string>
+    <string name="help_paragraph_8">Not all keyboards are compatible with FUTO Voice Input. You should avoid using:</string>
+    <string name="microsoft_swiftkey" translatable="false">• Microsoft SwiftKey - not recommended due to bugs that sometimes lead to disappearance of text</string>
+    <string name="gboard" translatable="false">• Gboard - incompatible due to lack of integration with Android API for voice input</string>
     <string name="samsung_keyboard_one_ui_5" translatable="false">• Samsung Keyboard (One UI 5)</string>
     <string name="typewise" translatable="false">• TypeWise</string>
     <string name="simple_keyboard" translatable="false">• Simple Keyboard</string>
@@ -74,7 +74,7 @@
     <string name="initializing">Initializing…</string>
     <string name="cancel">Cancel</string>
     <string name="futo_logo">FUTO Logo</string>
-    <string name="enable_ime_body">To integrate with existing keyboards, you need to enable the Voice Input Method.</string>
+    <string name="enable_ime_body">To integrate with existing keyboards, you need to enable the FUTO Voice Input Method. To avoid conflicts we recommend also disabling other voice input methods.</string>
     <string name="open_input_method_settings">Open Input Method Settings</string>
     <string name="step_1_of_2">Step 1 of 2</string>
     <string name="step_2_of_2">Step 2 of 2</string>
@@ -83,6 +83,8 @@
     <string name="incompatible_keyboard">Incompatible keyboard</string>
     <string name="gboard_incompatible_details">You appear to be using Gboard. This keyboard is incompatible with FUTO Voice Input.\n\nGboard relies on its own voice typing system and does not appear to integrate with standard Android APIs for voice input at this time. You will need to use a different keyboard if you want to use FUTO Voice Input with your keyboard.\n\nPlease visit the Help page in settings for more information.</string>
     <string name="gboard_incompatible_accept">I understand Gboard is incompatible</string>
+    <string name="swiftkey_incompatible_details">You appear to be using SwiftKey. Please be sure to disable \"Rich voice input\" in SwiftKey settings in order to make it use FUTO Voice Input.\n\nSome users have experienced bugs causing frequent text loss with SwiftKey. You may want to consider using a different keyboard.</string>
+    <string name="swiftkey_incompatible_accept">I\'ve disabled the toggle and understand</string>
     <string name="typewise_incompatible_details">You appear to be using Typewise. This keyboard does not have a voice input button at this time, so you will need to use a different keyboard if you want to use FUTO Voice Input with your keyboard.</string>
     <string name="typewise_incompatible_accept">I understand Typewise is incompatible</string>
     <string name="intent_result_is_null_or_empty">Intent result is null or empty</string>
@@ -93,6 +95,10 @@
     <string name="parameter_count_tip">Tip: The number is the model\'s parameter count in millions. More parameters = slower and more accurate</string>
     <string name="english_model">English Model</string>
     <string name="multilingual_model">Multilingual Model</string>
+    <string name="streaming_models_recommended">Streaming (recommended)</string>
+    <string name="streaming_models">Streaming</string>
+    <string name="nonstreaming_models">Batch</string>
+    <string name="other_models">Other</string>
     <string name="payment_text_1">You\'ve been using FUTO Voice Input for <xliff:g name="days" example="30">%d</xliff:g> days. If you find this app useful, please consider paying to support future development of FUTO software.</string>
     <string name="payment_text_1_alt">Thank you for trying out FUTO Voice Input! If you find this app useful, please consider paying to support future development of FUTO software.</string>
     <string name="payment_dev_notice">NOTE: Development has largely shifted to FUTO Keyboard and this app is not expected to receive any major updates at this time. Nevertheless, we would appreciate your support.</string>
@@ -123,9 +129,7 @@
     <string name="download_progress">Download Progress</string>
     <string name="advanced_settings">Advanced Settings</string>
     <string name="languages_title">Languages</string>
-    <string name="language_tip_1">By default, the language is detected automatically. You can enable manual language selection in Input Options.</string>
-    <string name="language_tip_2">Some languages may work better than others, depending on the amount of training data.</string>
-    <string name="language_tip_3">You can configure multilingual model switching behavior in the Input Options section</string>
+    <string name="language_tip_1">Some languages may work better than others. Try out Nemotron (newer model, sometimes tendency to output nothing) vs Whisper (more languages) in the Model options.</string>
     <string name="may_be_low_accuracy_x_hours">May be low accuracy (<xliff:g name="hourCount" example="1">%d</xliff:g>h)</string>
     <string name="trained_on_x_hours">Trained on <xliff:g name="hourCount" example="1">%d</xliff:g> hours</string>
     <string name="input_testing">Input testing</string>
@@ -167,12 +171,13 @@
     <string name="use_language_specific_models_info">Language-specific models may be more accurate, but take extra time to switch after detecting the language. Currently only has effect with English.</string>
     <string name="ending_soon_30s">Ending soon - 30s limit</string>
     <string name="ending_soon_vad">Silence detected</string>
-    <string name="allow_undertrained_languages">Allow undertrained languages</string>
-    <string name="allow_undertrained_languages_subtitle">May be less accurate, enabling will automatically select largest model</string>
+    <string name="allow_undertrained_languages">Allow undertrained languages for Whisper</string>
+    <string name="allow_undertrained_languages_subtitle">May be less accurate</string>
     <string name="language_unsupported_warning_1000">Languages below are likely to not work well. You have enabled the option to see them anyway. Use at your own risk.</string>
     <string name="language_unsupported_warning_100">Languages below are certain to not work well. You have enabled the option to see them anyway. Use at your own risk.</string>
     <string name="out_of_memory_error">Out of Memory error, will retry…</string>
-    <string name="manually_select_language">Enable manual language selection</string>
+    <string name="autodetect_language">Autodetect language</string>
+    <string name="autodetect_language_subtitle">Whisper models can automatically detect language, but there may be a switching delay for English</string>
 
     <string name="amoled_dark_theme_name">AMOLED Dark Purple</string>
     <string name="classic_material_dark_theme_name">AOSP Material Dark</string>
@@ -184,9 +189,6 @@
     <string name="dynamic_light_theme_name">Dynamic Light</string>
     <string name="dynamic_dark_theme_name">Dynamic Dark</string>
     <string name="theme">Theme</string>
-    <string name="migration_screen">Migration Screen</string>
-    <string name="model_update_notice">Updating your models is required to continue using FUTO Voice Input. The old inference engine has been deprecated in March 2024, and it has now been removed, while the new inference engine brings improvements.</string>
-    <string name="model_update_features_1">Better: Personal Dictionary feature\nFaster: up to ~6x faster depending on speaking length</string>
     <string name="support_thank_you_notice">Thank you for supporting FUTO Voice Input!</string>
     <string name="model_update_finish">Update has finished! To use the personal dictionary feature, visit the Model settings. If you have any feedback about the update, feel free to contact us.</string>
     <string name="model_update">Model Update</string>
@@ -202,7 +204,8 @@
     <string name="new_model_features_tip">Models have been updated for better accuracy and faster performance. You can now also add words/phrases in the personal dictionary. If you have any issues or feedback after this change please contact us.</string>
     <string name="personal_dictionary_placeholder">John Doe, Jane Smith, TensorFlow, bobble, type anything you want voice input to recognize more often here!</string>
     <string name="personal_dictionary">Personal Dictionary</string>
-    <string name="manual_language_selection_toggle_subtitle">Avoids model switching delay if you have multiple languages enabled</string>
+    <string name="personal_dictionary_no_comma_warning">Make sure to separate words by comma like: quick, brown, fox, FUTO</string>
+    <string name="manual_language_selection_toggle_subtitle">Recommended</string>
     <string name="unpaid_futo_voice_input">Unpaid FUTO Voice Input</string>
     <string name="pay_for_futo_voice_input">Pay for FUTO Voice Input</string>
     <string name="already_paid_title">Already paid?</string>
@@ -213,5 +216,62 @@
     <string name="sustainable_development_body">FUTO\'s mission is for open-source software and non-malicious software business practices to become a sustainable income source for projects and their developers. For this reason, we are in favor of users actually paying for software.</string>
     <string name="commitment_to_privacy_title">Commitment to Privacy</string>
     <string name="commitment_to_privacy_body">This app will never serve you ads or sell your data. We are not in the business of doing that.</string>
+
+    <string name="language_settings_model_doesnt_support_languages">The current model (%1$s) does not support these languages: %2$s</string>
+    <string name="language_settings_language_unsupported_by_model">Unsupported by %1$s</string>
+    <string name="model_settings_model_doesnt_support_personal_dict">A selected model (%1$s) does not support personal dictionary</string>
+    <string name="model_settings_model_doesnt_support_detection">The current model does not support language detection. Manual selection will be forced on.</string>
+    <string name="model_settings_streaming_tier">Streaming tier</string>
+    <string name="model_settings_streaming_tier_0">low (less accurate, less delayed)</string>
+    <string name="model_settings_streaming_tier_1">mid</string>
+    <string name="model_settings_streaming_tier_2">high (more accurate, more delayed)</string>
+    <string name="model_settings_streaming_tier_3">no streaming</string>
+
+    <string name="no_personal_dict_subtitle">This model doesn\'t support personal dictionary</string>
+    <string name="hidden_models_notice">%1$s models hidden because they don\'t support these languages: %1$s</string>
+    <string name="whisper_recommended_subtitle">If you keep getting blank text, try switching to Whisper in Model options</string>
+
+    <string name="setup_which_voice_input_to_use">Which voice input do you want to use?</string>
+    <string name="setup_which_voice_input_to_use_info">You\'re using FUTO Keyboard, which already has voice input included. This app has a more experimental engine with wider model support. You can change this later in FUTO Keyboard settings.</string>
+    <string name="setup_which_voice_input_to_use_keyboard">FUTO Keyboard</string>
+    <string name="setup_which_voice_input_to_use_keyboard_details_1">Already has voice input included (Whisper, 2022)</string>
+    <string name="setup_which_voice_input_to_use_keyboard_details_2">Completely offline app</string>
+    <string name="setup_which_voice_input_to_use_keyboard_details_3">Same privacy: your data stays on your device</string>
+    <string name="setup_which_voice_input_to_use_keyboard_use">Keep using included voice input</string>
+    <string name="setup_which_voice_input_to_use_voice">FUTO Voice Input</string>
+    <string name="setup_which_voice_input_to_use_voice_details_1">Has newer, more experimental models (Parakeet, 2025; Asr4All, 2026; and more)</string>
+    <string name="setup_which_voice_input_to_use_voice_details_2">Internet access for downloads and updates</string>
+    <string name="setup_which_voice_input_to_use_voice_details_3">Same privacy: your data stays on your device</string>
+    <string name="setup_which_voice_input_to_use_voice_use">Switch voice input</string>
+
+    <string name="setup_scroll_down_indicator">More options below</string>
+
+    <string name="setup_which_voice_input_to_use_keep_using">To keep using FUTO Keyboard\'s included voice input, you don\'t need this app. You can safely quit and uninstall it. Otherwise, if you do want to use this app, go back and select the option to switch.</string>
+    <string name="setup_which_voice_input_to_use_keep_using_back">Back</string>
+    <string name="setup_which_voice_input_to_use_keep_using_quit">Quit</string>
+
+    <string name="setup_which_voice_input_to_use_switch">After switching, FUTO Keyboard will remain your keyboard, but its voice input button will open this app.</string>
+    <string name="setup_which_voice_input_to_use_switch_back">Back</string>
+    <string name="setup_which_voice_input_to_use_switch_continue">Proceed</string>
+
+    <string name="setup_which_voice_input_to_use_switch_manual">To switch, please open FUTO Keyboard Settings -> Voice Input -> toggle on \"Disable built-in voice input\", then tap done.</string>
+    <string name="setup_which_voice_input_to_use_switch_settings">Settings</string>
+    <string name="setup_which_voice_input_to_use_switch_finished">Done</string>
+
+    <string name="voice_input_window_indicator_app_update_available">Update app</string>
+    <string name="voice_input_window_indicator_model_update_available">Update model</string>
+    <string name="voice_input_window_indicator_model_requires_download">Model download required</string>
+
+    <string name="tip_kind_tip">Tip</string>
+    <string name="tip_kind_warning">Warning</string>
+    <string name="tip_kind_notice">Notice</string>
+    <string name="tip_kind_error">Error</string>
+
+    <string name="whats_new_title">What\'s new?</string>
+    <string name="whats_new_body">We have upgraded the speech recognition engine in this app, introducing new model options that you can choose from. Try them out in Model options! Many of these support streaming speech recognition.\n\nWe have also developed our own models under the asr4all family, which you can read more about in our blog.</string>
+    <string name="whats_new_read_more">Read our blog</string>
+
+    <string name="help_futo_keyboard_title">FUTO Keyboard setup</string>
+    <string name="help_futo_keyboard_body">Make sure you toggle on \"Disable built-in voice input\" in FUTO Keyboard\'s settings, otherwise the keyboard won\'t trigger this app and none of the options here will change anything.\n\n\You can check for the big O in the background of voice input to tell whether this app is being used or not.</string>
 
 </resources>
