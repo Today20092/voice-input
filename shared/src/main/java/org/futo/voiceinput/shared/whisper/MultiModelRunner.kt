@@ -45,6 +45,10 @@ object GlossaryProcessor {
             transformationRules.fold(result) { v, rule -> rule.first.replace(v, rule.second) }
     }
 
+
+    private fun wordToRegex(word: String) = "\\b${word.replace(" ", "[\\.,\\?!\\s]+")}\\b"
+        .toRegex(RegexOption.IGNORE_CASE)
+
     fun compileGlossary(model: ModelLoader, languages: Set<Language>, words: List<String>): Glossary {
         val cacheKey = words.joinToString("\n") + model.caps.requiresPersonalDictSpecialCharacterProcessing + languages
         return cache[cacheKey] ?: run {
@@ -106,11 +110,17 @@ object GlossaryProcessor {
                         // PCEC may insert punctuation in long stuff like "Adamson one, two, three at Gmail dot com"
                         // so this evil regex is needed to fix it
                         if (it != word || it.any(Char::isUpperCase) || it.contains(' '))
-                            transformationRules.add(
-                                it.replace(" ", "[\\.,\\?!\\s]+")
-                                    .toRegex(RegexOption.IGNORE_CASE) to word
-                            )
+                            transformationRules.add(wordToRegex(it) to word)
                     }
+                }
+
+                if (Language.English in languages && model.caps.requiresPersonalDictSpecialCharacterProcessing) {
+                    for(word in listOf("FUTO Voice Input", "FUTO Keyboard", "FUTO")) {
+                        append(word)
+                        append('\n')
+                        transformationRules.add(wordToRegex(word) to word)
+                    }
+
                 }
             }
 
