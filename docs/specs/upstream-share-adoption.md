@@ -12,9 +12,16 @@ This specification supports the [commit-by-commit review](../research/upstream-s
 
 Compare fork c7a28c4facf50f67942221d8185ca2ae4dfb4401 with upstream 95e82ada5e2513484dccf68295a5ddde6d223730. Keep RecordingSession, RecognitionModelLifecycle, and the SpeechBackend/StreamingSpeechBackend interfaces as the starting points. Preserve Orukeet as the new-install default and all saved selections.
 
-Do not import the upstream shared Android module wholesale. A reusable library becomes justified when a second maintained application actually consumes our implementation. FUTO Keyboard can select the standalone app using its activity protocol without that extraction.
+Assess adopting upstream's shared Android recognizer for code reuse and simpler
+future upstream updates. The owner reopened this decision on October 30, 2026;
+maintaining a second application is not a prerequisite. Wholesale replacement
+remains subject to a feature-parity assessment and a runnable proof. FUTO Keyboard's
+external-provider protocol is a separate compatibility path.
 
-Preserve audio history and retranscription, cleanup ordering, personal vocabulary, diagnostics content exclusions, permission recovery, and truthful recognition-activity results. Shared module adoption or replacement of Sherpa requires a separate decision that supersedes ADR 0001.
+Preserve audio history and retranscription, cleanup ordering, personal vocabulary,
+diagnostics content exclusions, permission recovery, and truthful recognition-activity
+results. Module adoption must have an explicit decision under ADR 0004; any proposed
+replacement of Sherpa also requires a separate runtime decision under ADR 0001.
 
 ## Implementation order
 
