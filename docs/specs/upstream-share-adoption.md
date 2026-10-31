@@ -1,5 +1,11 @@
 # Selective adoption from upstream share
 
+Superseded migration direction: the owner has now selected
+[full FUTO recognizer adoption](full-futo-recognizer-adoption.md), including the
+shared recording/model-loading/runtime path, with fork features ported onto it.
+Use that plan and its source/parity gates for #48. The partial-adoption proposals
+below remain historical context, not the current implementation target.
+
 October 30 update: the owner approved replacing bundled English Whisper with
 bundled ASR4ALL Medium and making it the default where no model selection is
 saved. This supersedes the original Orukeet-default requirement below. Keep
@@ -17,6 +23,17 @@ future upstream updates. The owner reopened this decision on October 30, 2026;
 maintaining a second application is not a prerequisite. Wholesale replacement
 remains subject to a feature-parity assessment and a runnable proof. FUTO Keyboard's
 external-provider protocol is a separate compatibility path.
+
+The [bounded proof follow-up](../research/shared-recognizer-reproducibility-2026-10-30.md)
+establishes an intermediate view-only proof, not the final adoption decision.
+The owner reaffirmed upstream maintenance reuse with fork feature preservation.
+The experimental factory path supports current ASR4ALL and Orukeet engines, but
+mostly reuses the shared view. Continue with model-runner injection inside the
+shared recording flow and explicit fork policy hooks; preserve the existing
+catalog, runtimes and comparison tools. Keep it isolated behind
+`sharedRecognizerProof`; successful native
+and delivery tests do not authorize replacing the production entry points.
+No runtime replacement or performance benefit is established by this proof.
 
 Preserve audio history and retranscription, cleanup ordering, personal vocabulary,
 diagnostics content exclusions, permission recovery, and truthful recognition-activity

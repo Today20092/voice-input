@@ -1,0 +1,6 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <activity android:name="org.futo.voiceinput.proof.SharedResultProofActivity" android:exported="false" />
+        <activity android:name="org.futo.voiceinput.proof.SharedResultCallerActivity" android:exported="false" />
+    </application>
+</manifest>

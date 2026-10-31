@@ -1,0 +1,196 @@
+import java.security.MessageDigest
+
+plugins {
+    id 'com.android.library' version '9.2.1'
+    id 'org.jetbrains.kotlin.android' version '2.2.10'
+    id 'org.jetbrains.kotlin.plugin.compose' version '2.2.10'
+}
+
+final def translationsWithoutEngValues = { final String path ->
+    final def sourceDir = file(path)
+    final def taskNameSuffix = sourceDir.name.capitalize()
+
+    final def destDir = file("$buildDir/generated/res-translations-filtered/${taskNameSuffix}")
+
+    tasks.register("prepareResFilter${taskNameSuffix}", Copy) {
+        from(sourceDir) {
+            include 'values-*/**'
+
+            filter { String line ->
+                def matcher = line =~ /<string name="([^"]+)"[^>]*>(.+)<\/string>/
+
+                if (matcher.find()) {
+                    var stringName = matcher.group(1)
+                    var content = matcher.group(2)
+
+                    content = content
+                    // Fix duplicate string tags
+                            .replaceAll(/<!\[CDATA\[<string [^>]+>(.+)<\\/string>\]\]>/, '$1')
+                            .replaceAll(/<string [^>]+>(.+)<\\/string>/, '$1')
+                            .replaceAll(/&lt;string [^&]+&gt;(.+)&lt;\\/string&gt;/, '$1')
+                    // Remove xliff:g tags entirely, keep only the content
+                            .replaceAll(/<xliff:g [^>]+>(.+?)<\/xliff:g>/, '$1')
+                            .replaceAll(/&lt;xliff:g [^&]+&gt;(.+?)&lt;\/xliff:g&gt;/, '$1')
+                    // Fix escaped quotes
+                            .replaceAll(/&amp;quot;/, '"')
+                            .replaceAll(/&quot;/, '"')
+                            .replaceAll(/\\+/, "\\\\")
+                            .replaceAll(/\\"/, '"')
+                            .replaceAll(/\\'/, "'")
+
+                    if (content.startsWith("&quot;")) {
+                        content = content.substring(6)
+                    } else if (content.startsWith('\\"')) {
+                        content = content.substring(2)
+                    } else if (content.startsWith('"')) {
+                        content = content.substring(1)
+                    }
+                    if (content.endsWith("&quot;")) {
+                        content = content.substring(0, content.length() - 6)
+                    } else if (content.endsWith('\\"')) {
+                        content = content.substring(0, content.length() - 2)
+                    } else if (content.endsWith('"')) {
+                        content = content.substring(0, content.length() - 1)
+                    }
+
+                    content = content.replaceAll('"', '\\\\"')
+
+                    "    <string name=\"" + stringName + "\">\"" + content + "\"</string>\n"
+                } else {
+                    line
+                }
+            }
+        }
+        into(destDir)
+        includeEmptyDirs = false
+    }
+
+    // Ensure it runs before build
+    preBuild.dependsOn("prepareResFilter${taskNameSuffix}")
+
+    destDir
+}
+
+def modelFileName = "asr4all-m-gptq-Q8_0.gguf"
+def expectedModelChecksum = "5791f76d0f010885f36aa4b93e1d560fef0c8416004c97a843e9c5d640a036d0"
+
+def assetsDir = "$projectDir/src/main/assets"
+def modelFile = new File("$assetsDir/$modelFileName")
+
+def calculateSha256(File file) {
+    def digest = MessageDigest.getInstance("SHA-256")
+    file.withInputStream { input ->
+        def buffer = new byte[8192]
+        int bytesRead
+        while ((bytesRead = input.read(buffer)) != -1) {
+            digest.update(buffer, 0, bytesRead)
+        }
+    }
+    return digest.digest().collect { String.format("%02x", it) }.join()
+}
+
+tasks.register("downloadModel") {
+    def sourceUrl = "https://dl.voiceinput.futo.org/VoiceInput/$modelFileName"
+
+    outputs.file(modelFile)
+
+    doLast {
+        if (!modelFile.exists()) {
+            modelFile.parentFile.mkdirs()
+            println "Downloading model..."
+            new URL(sourceUrl).withInputStream { i ->
+                modelFile.withOutputStream { it << i }
+            }
+            println "Download complete: ${modelFile.length()} bytes"
+
+            def actualChecksum = calculateSha256(modelFile)
+            if(actualChecksum.equalsIgnoreCase(expectedModelChecksum)) {
+                println "Checksum verified: $actualChecksum"
+            } else {
+                modelFile.delete()
+                throw new GradleException("Model file checksum mismatch: expected $expectedModelChecksum, got $actualChecksum")
+            }
+        } else {
+            println "Model already exists, skipping download"
+        }
+    }
+}
+
+if (providers.gradleProperty('sharedRecognizerProof').orNull != 'true') {
+    preBuild.dependsOn("downloadModel")
+}
+
+android {
+    namespace 'org.futo.voiceinput.shared'
+    compileSdk 36
+
+    defaultConfig {
+        minSdk 24
+
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        consumerProguardFiles "consumer-rules.pro"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    sourceSets {
+        main {
+            res.srcDirs = ['src/main/res']
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    kotlinOptions {
+        jvmTarget = '1.8'
+    }
+    buildFeatures {
+        compose true
+        viewBinding true
+        mlModelBinding true
+    }
+    lint {
+        targetSdk 36
+    }
+    testOptions {
+        targetSdk 36
+    }
+}
+
+dependencies {
+    androidTestImplementation 'androidx.test.ext:junit:1.3.0'
+    androidTestImplementation 'androidx.test:runner:1.7.0'
+    implementation 'androidx.core:core-ktx:1.13.1'
+    implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.8.4'
+    implementation 'androidx.lifecycle:lifecycle-runtime:2.8.4'
+    implementation 'androidx.lifecycle:lifecycle-runtime-compose:2.8.4'
+    implementation 'androidx.lifecycle:lifecycle-viewmodel-compose:2.8.4'
+    implementation 'androidx.activity:activity-compose:1.9.1'
+    implementation platform('androidx.compose:compose-bom:2024.06.00')
+    implementation 'androidx.compose.ui:ui'
+    implementation 'androidx.compose.ui:ui-graphics'
+    implementation 'androidx.compose.ui:ui-tooling-preview'
+    implementation 'androidx.compose.material3:material3'
+    implementation 'com.google.android.material:material:1.12.0'
+    implementation 'androidx.appcompat:appcompat:1.7.0'
+    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+    implementation 'androidx.navigation:navigation-compose:2.7.7'
+    implementation 'androidx.datastore:datastore-preferences:1.1.1'
+
+    if (providers.gradleProperty('sharedRecognizerProof').orNull == 'true') {
+        // The injected fork session supplies its own VAD; never package upstream's colliding JNI.
+        compileOnly files(zipTree(rootProject.file('libs/vad-release.aar')).matching { include 'classes.jar' })
+    } else {
+        implementation(name:'vad-release', ext:'aar')
+    }
+
+    implementation 'org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.1'
+}

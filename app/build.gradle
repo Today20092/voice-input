@@ -343,6 +343,12 @@ android.applicationVariants.all { variant ->
 }
 
 dependencies {
+    if (providers.gradleProperty('sharedRecognizerProof').orNull == 'true') {
+        debugImplementation project(':shared')
+        android.sourceSets.debug.java.srcDir 'src/sharedProof/java'
+        android.sourceSets.debug.manifest.srcFile 'src/sharedProof/AndroidManifest.xml'
+        android.sourceSets.androidTest.java.srcDir 'src/sharedProofTest/java'
+    }
     implementation 'androidx.core:core-ktx:1.10.1'
     implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.6.1'
     implementation 'androidx.lifecycle:lifecycle-runtime:2.6.1'

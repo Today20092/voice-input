@@ -2,6 +2,10 @@
 
 Tracked in [GitHub #48](https://github.com/Today20092/voice-input/issues/48).
 
+Follow-up: the [runnable prototype evidence and recommendation](shared-recognizer-reproducibility-2026-10-30.md)
+supersede the prototype-not-yet-run status below. This document retains the
+initial static assessment.
+
 ## Finding
 
 Adopting the shared module may help this standalone fork follow upstream changes.

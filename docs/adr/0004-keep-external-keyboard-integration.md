@@ -1,5 +1,11 @@
 # Keep standalone recognition separate from FUTO Keyboard
 
+Latest owner decision: [adopt FUTO's full shared recognizer implementation](../specs/full-futo-recognizer-adoption.md)
+and port the fork's added models and app features onto it. The destination is
+`Today20092/bring-fork-up-to-upstream`. This supersedes the partial-adoption
+recommendations below. The exact native-source access gate is unresolved;
+production remains unchanged. External-keyboard integration stays separate.
+
 Status: external-provider integration is retained. On October 30, 2026, the owner
 reopened the shared-recognizer adoption decision for an upstream-alignment
 assessment. A second embedding application is not a prerequisite for that
@@ -7,6 +13,34 @@ assessment. No recognition implementation is replaced by this decision update.
 The assessment and bounded proof are tracked in
 [#48](https://github.com/Today20092/voice-input/issues/48); initial findings are in
 [the source assessment](../research/shared-recognizer-migration-assessment-2026-10-30.md).
+
+## Bounded proof recommendation
+
+The [opt-in proof](../research/shared-recognizer-reproducibility-2026-10-30.md)
+now builds and runs with included ASR4ALL Medium live transcription and Orukeet
+final-only recognition. Activity-result and native-editor delivery checks pass.
+Retain the fork's production recognition flow while continuing a deeper
+shared-recognizer proof. The owner clarified that upstream maintenance reuse
+while preserving added models and app features is the goal. The view-only
+adapter is an intermediate proof, not the target architecture or evidence for
+rejecting adoption. No full migration parity is asserted.
+
+The injected path reuses the shared view while retaining the fork's entire
+recording/session core. Consequently it does not inherit upstream recording
+fixes automatically. The module also introduces a conflicting VAD JNI payload;
+the proof excludes that runtime instead of arbitrarily choosing a duplicate.
+Restoring routing, waveform/status detail, permission/download recovery and
+accessible partial presentation requires additional maintained patches. No
+speed, accuracy or maintenance-cost improvement has been demonstrated.
+
+Keep the experiment isolated and disabled in normal builds. Next test a runtime
+runner injection point inside the shared recorder, plus explicit retained-audio,
+session-policy and finalization hooks. Reuse upstream recording/orchestration
+where parity permits; preserve the fork's engines, catalog and comparison tools.
+Measure the resulting maintained patch and actual upstream code exercised before
+deciding whether adoption reduces maintenance work.
+Performance comparisons and the remaining parity gates stay open; do not close
+#48 as a completed production migration. ADR 0001 is unchanged.
 
 Use FUTO Keyboard's external-provider protocol to launch this app. Keep recording,
 recognition, model ownership, history, cleanup, and diagnostics in the standalone

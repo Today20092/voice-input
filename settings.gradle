@@ -23,3 +23,6 @@ dependencyResolutionManagement {
 
 rootProject.name = "VoiceInput"
 include ':app'
+if (providers.gradleProperty('sharedRecognizerProof').orNull == 'true') {
+    include ':shared'
+}
