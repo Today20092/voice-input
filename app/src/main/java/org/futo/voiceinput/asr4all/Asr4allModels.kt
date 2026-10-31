@@ -18,7 +18,9 @@ object Asr4allModels {
             "05c6fd156f1fa99ea44457ab0d0a8d23b954c272fb614a034476123874e6d125")
     )
 
-    fun selected(variant: String) = models.firstOrNull { it.variantId == variant } ?: models[1]
+    val bundled = models[1]
+
+    fun selected(variant: String) = models.firstOrNull { it.variantId == variant } ?: bundled
 
     private fun model(
         variant: String, label: String, revision: String, pteBytes: Long, metadataBytes: Long,

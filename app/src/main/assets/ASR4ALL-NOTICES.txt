@@ -1,6 +1,6 @@
 ASR4ALL / ExecuTorch notices
 
-Weights are downloaded separately, not bundled. Base ASR4ALL weights use the following FUTO license.
+ASR4ALL Medium weights are bundled. Small and Large weights are downloaded separately. Base ASR4ALL weights use the following FUTO license.
 Only Small, Medium, and Large base models are offered. Plus models are not distributed by this app.
 Decoder algorithm follows FUTO's asr4all_executorch.py reference; no personal vocabulary biasing is enabled (keep=0).
 Apache-2.0 runtime dependency terms are bundled separately in ASR4ALL-APACHE-NOTICES.txt.

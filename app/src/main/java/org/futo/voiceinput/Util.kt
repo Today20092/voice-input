@@ -258,12 +258,12 @@ val LANGUAGE_LIST = listOf(
 
 val ENGLISH_MODELS = listOf(
     ModelData(
-        name = "English-39 (default)",
+        name = "English-39 (smallest)",
         sizeBytes = 43_550_795,
 
         ggml = ModelDataGGML(
-            is_builtin_asset = true,
-            ggml_file = "tiny_en_acft_q8_0.bin.not.tflite",
+            is_builtin_asset = false,
+            ggml_file = "tiny_en_acft_q8_0.bin",
             digest = "4b5480aa1b14a7efc5b578ef176510970a898049671c3cd237285b3e3f6bfbfc"
         ),
 

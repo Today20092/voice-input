@@ -108,7 +108,8 @@ class ManagedRecognitionModelCatalogTest {
         }
         assertEquals("orukeet", runBlocking { appContext.dataStore.data.first()[SPEECH_BACKEND.key] })
         openDetails("ASR4ALL Medium")
-        compose.onNodeWithText("Shows English text as you speak. Adds punctuation, capital letters, and small corrections.")
+        compose.onNodeWithText("Shows English text as you speak. Adds punctuation, capital letters, and small corrections.",
+            substring = true)
             .assertIsDisplayed()
         android.os.SystemClock.sleep(500) // Let the platform dialog animation finish before capture.
         File(appContext.filesDir, "asr4all-details.png").outputStream().use {
@@ -244,7 +245,7 @@ class ManagedRecognitionModelCatalogTest {
         showCatalog(fontScale = 2f)
         toggleFamily("Cohere Transcribe")
         toggleFamily("Whisper (legacy)")
-        listOf("Cohere Transcribe", "English-39 (default)").forEach { title ->
+        listOf("Cohere Transcribe", "English-39 (smallest)").forEach { title ->
             openDetails(title)
             val details = compose.onNode(hasScrollAction() and hasAnyDescendant(hasText("Source")))
             val range = details.fetchSemanticsNode().config[SemanticsProperties.VerticalScrollAxisRange]

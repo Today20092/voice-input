@@ -43,6 +43,8 @@ REQUIRED = {
 }
 WHISTLE_SHA256 = "02a044e15489e19fa9f4f1cd1d5943d39dc0eefc08e0ba99d36279daf2351d46"
 PINNED_PAYLOADS = {
+    "assets/asr4all-medium/asr_encoder.pte": "f50318acb5de7bfc75229f73edcc9276b3553efc9c3e34a7f3f1cf66f76067b4",
+    "assets/asr4all-medium/metadata.json": "321501d89e6249a76b8c0f896f9c3e90089f0f9d6135ab82802e5752990cab41",
     "libwhistle_runner.so": WHISTLE_SHA256,
     "libonnxruntime.so": "cbe4d71990f1032bcc7b4b7baf3e0b18327af6c25ba4bf106b5ecd42ddf22d30",
     "assets/MOONSHINE-LICENSE.txt": "6148d7574a6554b7379b633cfd4c4fe5840c3f548d13bc83e00b52dc6fa00abd",
@@ -118,6 +120,10 @@ def verify(apk_path, symbols_path, readelf, baseline_path=None):
         tempfile.TemporaryDirectory() as temporary,
     ):
         directory = Path(temporary)
+        require(
+            "assets/tiny_en_acft_q8_0.bin.not.tflite" not in apk.namelist(),
+            "Legacy English Whisper weights must not be bundled",
+        )
         for name in PINNED_PAYLOADS:
             if name.startswith("assets/"):
                 verify_pinned_payload(name, apk.read(name))

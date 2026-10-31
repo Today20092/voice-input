@@ -19,14 +19,28 @@ class RecognitionModelLifecycleTest {
     val temporaryFolder = TemporaryFolder()
 
     @Test
-    fun defaultSelectionRequiresOrukeetAndPreservesExplicitModels() {
-        assertEquals("orukeet", SPEECH_BACKEND.default)
-        assertEquals(SpeechBackendType.Orukeet, "unknown".toSpeechBackendType())
+    fun defaultSelectionIncludesAsr4allAndPreservesExplicitModels() {
+        assertEquals("asr4all", SPEECH_BACKEND.default)
+        assertEquals(SpeechBackendType.Asr4all, "unknown".toSpeechBackendType())
         assertEquals(SpeechBackendType.Moonshine, "moonshine".toSpeechBackendType())
         val lifecycle = RecognitionModelLifecycle.create(temporaryFolder.root, parakeetBundled = false)
         val readiness = requireNotNull(lifecycle.readiness(RecognitionModelSelection(SPEECH_BACKEND.default)))
-        assertEquals("orukeet-v0.1.0", readiness.model.id)
-        assertFalse(readiness.isReady)
+        assertEquals("asr4all-m", readiness.model.id)
+        assertTrue(readiness.isReady)
+        assertTrue(lifecycle.isIncluded(readiness.model))
+        assertEquals("orukeet-v0.1.0", lifecycle.readiness(RecognitionModelSelection("orukeet"))?.model?.id)
+        assertFalse(requireNotNull(lifecycle.readiness(RecognitionModelSelection("orukeet"))).isReady)
+    }
+
+    @Test
+    fun includedDefaultCannotBeDeletedEvenWhenAnotherModelIsSelected() = runBlocking {
+        val lifecycle = RecognitionModelLifecycle.create(temporaryFolder.root, false)
+        val bundled = org.futo.voiceinput.asr4all.Asr4allModels.bundled
+        val failure = runCatching { lifecycle.delete(bundled, "orukeet-v0.1.0") }.exceptionOrNull()
+        assertTrue(failure is IllegalStateException)
+        assertTrue(lifecycle.isReady(bundled))
+        assertTrue(requireNotNull(org.futo.voiceinput.settings.pages.presentRecognitionModel(bundled, true, false)
+            .fields.toMap()["Download size"]).contains("Included"))
     }
 
     @Test

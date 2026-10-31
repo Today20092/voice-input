@@ -3,8 +3,8 @@ import java.security.MessageDigest
 plugins {
     id 'com.android.application'
     id 'io.github.jmatsu.license-list' version '0.8.1'
-    id 'org.jetbrains.kotlin.android' version '2.1.0'
-    id 'org.jetbrains.kotlin.plugin.serialization' version '2.1.0'
+    id 'org.jetbrains.kotlin.android'
+    id 'org.jetbrains.kotlin.plugin.serialization'
     id 'org.jetbrains.kotlin.plugin.compose'
 }
 
@@ -65,9 +65,9 @@ def downloadMoonshineRuntime = tasks.register('downloadMoonshineRuntime') {
             def temporary = new File(target.parentFile, target.name + '.download')
             try {
                 def curl = org.gradle.internal.os.OperatingSystem.current().isWindows() ? 'curl.exe' : 'curl'
-                exec {
+                providers.exec {
                     commandLine curl, '--fail', '--location', '--retry', '3', '--output', temporary.absolutePath, artifact.url
-                }
+                }.result.get().assertNormalExitValue()
                 if (sha256(temporary) != artifact.sha) throw new GradleException("Moonshine checksum mismatch: ${target.name}")
                 java.nio.file.Files.move(temporary.toPath(), target.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
             } finally { temporary.delete() }
@@ -76,14 +76,40 @@ def downloadMoonshineRuntime = tasks.register('downloadMoonshineRuntime') {
 }
 def moonshineRuntimeFiles = files(moonshineRuntimeAar).builtBy(downloadMoonshineRuntime)
 
+def asr4allAssets = layout.buildDirectory.dir('generated/asr4allAssets')
+def bundleAsr4all = tasks.register('bundleAsr4all') {
+    outputs.dir asr4allAssets
+    outputs.upToDateWhen { false }
+    doLast {
+        def revision = '86f67fdc60fecb4f9662ccd1d99948291db4d905'
+        def artifacts = [
+            [name: 'asr_encoder.pte', size: 72395968L, sha: 'f50318acb5de7bfc75229f73edcc9276b3553efc9c3e34a7f3f1cf66f76067b4'],
+            [name: 'metadata.json', size: 90363L, sha: '321501d89e6249a76b8c0f896f9c3e90089f0f9d6135ab82802e5752990cab41']
+        ]
+        artifacts.each { artifact ->
+            def target = new File(asr4allAssets.get().asFile, "asr4all-medium/${artifact.name}")
+            if (target.isFile() && target.length() == artifact.size && sha256(target) == artifact.sha) return
+            target.parentFile.mkdirs()
+            def temporary = new File(target.parentFile, target.name + '.download')
+            try {
+                def curl = org.gradle.internal.os.OperatingSystem.current().isWindows() ? 'curl.exe' : 'curl'
+                providers.exec {
+                    commandLine curl, '--fail', '--location', '--retry', '3', '--output', temporary.absolutePath,
+                        "https://huggingface.co/futo-org/asr4all-m/resolve/${revision}/executorch/xnnpack_int8/${artifact.name}"
+                }.result.get().assertNormalExitValue()
+                if (temporary.length() != artifact.size || sha256(temporary) != artifact.sha)
+                    throw new GradleException("Included ASR4ALL validation failed: ${artifact.name}")
+                java.nio.file.Files.move(temporary.toPath(), target.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+            } finally { temporary.delete() }
+        }
+    }
+}
+
 def gitShortHash = {
     try {
-        def output = new ByteArrayOutputStream()
-        exec {
+        return providers.exec {
             commandLine 'git', 'rev-parse', '--short', 'HEAD'
-            standardOutput = output
-        }
-        return output.toString().trim()
+        }.standardOutput.asText.get().trim()
     } catch (Exception ignored) {
         return 'nogit'
     }
@@ -91,7 +117,7 @@ def gitShortHash = {
 
 android {
     namespace 'org.futo.voiceinput'
-    compileSdk 35
+    compileSdk 36
 
         defaultConfig {
         applicationId "org.futo.voiceinput"
@@ -229,9 +255,10 @@ android {
 
     sourceSets {
         main {
-            assets.srcDir moonshineAssets
+            assets.srcDir moonshineAssets.get().asFile
+            assets.srcDir asr4allAssets.get().asFile
             jniLibs.srcDirs 'src/main/jniLibs'
-            jniLibs.srcDir layout.buildDirectory.dir('generated/whistleJni')
+            jniLibs.srcDir layout.buildDirectory.dir('generated/whistleJni').get().asFile
         }
 
         dev {
@@ -432,9 +459,9 @@ tasks.register('downloadParakeetModels') {
                 println "  Downloading ${model.name}"
                 def downloadUrl = "${huggingFaceRepo}/${model.name}?download=true"
                 def curlCommand = org.gradle.internal.os.OperatingSystem.current().isWindows() ? 'curl.exe' : 'curl'
-                exec {
+                providers.exec {
                     commandLine curlCommand, '-L', '-f', '-o', destFile.absolutePath, downloadUrl
-                }
+                }.result.get().assertNormalExitValue()
             }
 
             if (model.sha256) {
@@ -449,6 +476,7 @@ tasks.register('downloadParakeetModels') {
 }
 
 tasks.named('preBuild') {
+    dependsOn bundleAsr4all
     dependsOn downloadMoonshineRuntime
     dependsOn 'downloadWhistleRuntime'
     if (bundleParakeetModel) {
@@ -469,10 +497,10 @@ tasks.register('downloadWhistleRuntime') {
         def temporary = new File(target.parentFile, 'needle.download')
         try {
             def curl = org.gradle.internal.os.OperatingSystem.current().isWindows() ? 'curl.exe' : 'curl'
-            exec {
+            providers.exec {
                 commandLine curl, '--fail', '--location', '--retry', '3', '--output', temporary.absolutePath,
                     'https://huggingface.co/Cactus-Compute/needle3/resolve/d6c7d6a2e9655505e0f8e23339356dd1705900eb/android-arm64/needle'
-            }
+            }.result.get().assertNormalExitValue()
             if (sha256(temporary) != expected) throw new GradleException('Whistle runtime checksum mismatch')
             java.nio.file.Files.move(temporary.toPath(), target.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
         } finally { temporary.delete() }

@@ -71,7 +71,8 @@ class ModelPresentationTest {
         )
         assertEquals(cards.map { it.transcription.ordinal }.sorted(), cards.map { it.transcription.ordinal })
         cards.groupBy { it.transcription }.values.forEach { group ->
-            val sizes = group.map { card -> card.models.minOfOrNull { it.transferBytes } ?: 0L }
+            val sizes = group.map { card -> card.models.minOfOrNull { it.transferBytes }
+                ?: (ENGLISH_MODELS + MULTILINGUAL_MODELS).minOf { it.sizeBytes } }
             assertEquals(sizes.sorted(), sizes)
         }
         assertEquals("asr4all", cards.first().id)
@@ -168,7 +169,7 @@ class ModelPresentationTest {
     @Test
     fun selectedVariantSummaryNamesEverySelectedWhisperVariant() {
         assertEquals(
-            "Whisper • English-39 (default) + Multilingual-74 (default)",
+            "Whisper • English-39 (smallest) + Multilingual-74 (default)",
             selectedRecognitionModelSummary(
                 runtimeId = "whisper_ggml",
                 managedModel = null,

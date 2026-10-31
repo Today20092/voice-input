@@ -384,7 +384,8 @@ class ModelComparisonActivity : ComponentActivity() {
             dismissButton = { TextButton(onClick = { showCleanup = false }) { Text("Keep models") } })
     }
 
-    private fun BuildConfigBundled(model: BenchmarkModel) = org.futo.voiceinput.BuildConfig.BUNDLE_PARAKEET_MODEL && model.managed?.runtimeId == "parakeet"
+    private fun BuildConfigBundled(model: BenchmarkModel) = model.managed == org.futo.voiceinput.asr4all.Asr4allModels.bundled ||
+        (org.futo.voiceinput.BuildConfig.BUNDLE_PARAKEET_MODEL && model.managed?.runtimeId == "parakeet")
     private fun mib(bytes: Long) = "%.1f".format(bytes / 1048576.0)
     private fun ms(ns: Long?) = ns?.let { "%.1f".format(it / 1e6) } ?: "unavailable"
 }

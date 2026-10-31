@@ -136,10 +136,10 @@ enum class SpeechBackendType(val id: String) {
 }
 
 fun String.toSpeechBackendType(): SpeechBackendType {
-    return SpeechBackendType.values().firstOrNull { it.id == this } ?: SpeechBackendType.Orukeet
+    return SpeechBackendType.values().firstOrNull { it.id == this } ?: SpeechBackendType.Asr4all
 }
 
-val SPEECH_BACKEND = SettingsKey(stringPreferencesKey("speech_backend"), SpeechBackendType.Orukeet.id)
+val SPEECH_BACKEND = SettingsKey(stringPreferencesKey("speech_backend"), SpeechBackendType.Asr4all.id)
 val ASR4ALL_VARIANT = SettingsKey(stringPreferencesKey("asr4all_variant"), "m")
 val MOONSHINE_MODEL_VARIANT =
     SettingsKey(stringPreferencesKey("moonshine_model_variant"), MoonshineModelVariant.Small.id)

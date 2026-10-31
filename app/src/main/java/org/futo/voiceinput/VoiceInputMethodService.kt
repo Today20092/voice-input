@@ -297,6 +297,8 @@ class VoiceInputMethodService : InputMethodService(), LifecycleOwner, ViewModelS
             currentInputConnection, restarting)
     }
 
+    override fun onEvaluateFullscreenMode(): Boolean = false
+
     override fun onStartInputView(info: EditorInfo, restarting: Boolean) {
         super.onStartInputView(info, restarting)
 

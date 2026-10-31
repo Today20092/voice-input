@@ -1,12 +1,18 @@
 # Selective adoption from upstream share
 
+October 30 update: the owner approved replacing bundled English Whisper with
+bundled ASR4ALL Medium and making it the default where no model selection is
+saved. This supersedes the original Orukeet-default requirement below. Keep
+Orukeet and downloadable Whisper choices. Shared-module scope is now recorded in
+[ADR 0004](../adr/0004-keep-external-keyboard-integration.md).
+
 This specification supports the [commit-by-commit review](../research/upstream-share-adoption-review-2026-09-26.md) and the SHARE tickets in [tickets.md](../../tickets.md). It is a proposal for implementation, not a claim that the features below have shipped.
 
 ## Baseline and architecture
 
 Compare fork c7a28c4facf50f67942221d8185ca2ae4dfb4401 with upstream 95e82ada5e2513484dccf68295a5ddde6d223730. Keep RecordingSession, RecognitionModelLifecycle, and the SpeechBackend/StreamingSpeechBackend interfaces as the starting points. Preserve Orukeet as the new-install default and all saved selections.
 
-Do not import the upstream shared Android module wholesale. A reusable library becomes justified when a second maintained application actually consumes our implementation. FUTO Keyboard can select the standalone app using its activity protocol without that extraction.
+The owner selected full upstream shared-recognizer adoption under [#48](https://github.com/Today20092/voice-input/issues/48), deferred until its native source/build gate clears. The proof is parked separately on `codex/issue-48-full-futo-adoption`; this upstream-sync branch does not activate it. A second maintained app is not required. Future implementation starts from current `development`, preserves fork features and targets `development` before reviewed promotion to `master`.
 
 Preserve audio history and retranscription, cleanup ordering, personal vocabulary, diagnostics content exclusions, permission recovery, and truthful recognition-activity results. Shared module adoption or replacement of Sherpa requires a separate decision that supersedes ADR 0001.
 

@@ -93,10 +93,33 @@ static void benchmark(llama_model * model, std::vector<std::string> fixtures) {
         "time and keep the short examples separate from the longer notes if the new method changes "
         "any punctuation record that as a mismatch rather than quietly ignoring it then send the "
         "summary after everyone has reviewed the results tomorrow morning");
+    fixtures.push_back(
+        "okay here are my notes from the planning meeting for the community library open day next "
+        "month we agreed that the morning should focus on families while the afternoon gives adults "
+        "time to explore the local history collection without having to compete with the storytelling "
+        "sessions at the entrance we need a clear welcome desk where volunteers can explain the "
+        "schedule point out the quiet room and help visitors find the accessible route to the upstairs "
+        "gallery please check that the lift is working before we print the final signs "
+        "the craft workshop will use recycled paper and washable paint but we should keep the glue "
+        "and scissors on a separate table so younger children can ask for help rather than reaching "
+        "across the materials someone suggested making bookmarks with pictures of favorite places in "
+        "the neighborhood which sounds more practical than the original plan for large cardboard models "
+        "for refreshments we can offer water tea coffee and a small selection of packaged snacks "
+        "we still need to confirm the ingredient labels and arrange separate bins for recycling "
+        "during the lunch break one volunteer should stay near the entrance while the others take "
+        "turns eating nobody should be expected to work the entire day without a proper rest "
+        "after the afternoon talk we want a short question session followed by a chance to look "
+        "at the photographs on the display boards please ask the speaker whether we can provide "
+        "printed captions for people who have difficulty hearing and whether the slides can be shared "
+        "on the library website afterward finally we need a simple closing checklist for returning "
+        "chairs checking borrowed equipment collecting feedback cards and making sure that visitors "
+        "have taken their coats and bags before the building closes");
+    constexpr int max_new_tokens = 768;
     std::atomic_bool cancelled{false};
     int drafted = 0, accepted = 0;
     for (size_t i = 0; i < fixtures.size(); ++i) {
         auto input = tokenize(llama_model_get_vocab(model), prompt(fixtures[i]));
+        require(input.size() + max_new_tokens < 2048, "benchmark_context_budget_exceeded");
         // Each call creates a fresh context/table; warm-up cannot seed a later request's pool.
         for (int pair = -1; pair < 4; ++pair) {
             Timing timing[2];
@@ -104,7 +127,7 @@ static void benchmark(llama_model * model, std::vector<std::string> fixtures) {
             const int first = pair >= 0 ? pair % 2 : 0;
             for (int turn = 0; turn < 2; ++turn) {
                 const int mode = (first + turn) % 2;
-                results[mode] = generate(model, input, 256, mode == 1, cancelled, threads, &timing[mode]);
+                results[mode] = generate(model, input, max_new_tokens, mode == 1, cancelled, threads, &timing[mode]);
             }
             const bool parity = results[0].tokens == results[1].tokens && results[0].ended == results[1].ended;
             std::cout << "case=" << i << " pair=" << pair << " warmup=" << (pair == -1)
