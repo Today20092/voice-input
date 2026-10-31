@@ -4,9 +4,17 @@ Owner decision: adopt FUTO's complete shared recognizer implementation for
 long-term upstream maintenance reuse. This supersedes the view-only and
 model-runner-injection proposals as the intended final architecture for #48.
 
-Destination: `refs/heads/Today20092/bring-fork-up-to-upstream`. Continue isolated
-implementation and integrate verified checkpoints there. No master merge,
-publication or keyboard fork is authorized by this decision.
+Status: deferred at the owner's request. The migration is fully specified for
+future agent work, conditional on obtaining reproducible native source. Do not
+continue authentication attempts or production migration now.
+
+Parked branch: `codex/issue-48-full-futo-adoption`. Keep its proof and decision
+records separate from `Today20092/bring-fork-up-to-upstream`, which is reserved
+for the completed upstream synchronization and bundled-ASR4ALL work. When the
+source gate clears, fetch current `development` and start a fresh implementation
+branch from it; reuse this proof deliberately rather than merging its older
+snapshot wholesale. Finished work targets `development`, then a reviewed
+`development` → `master` promotion. No release or keyboard fork is authorized.
 
 ## Baselines and immediate source gate
 

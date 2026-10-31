@@ -1,8 +1,9 @@
 # Keep standalone recognition separate from FUTO Keyboard
 
 Latest owner decision: [adopt FUTO's full shared recognizer implementation](../specs/full-futo-recognizer-adoption.md)
-and port the fork's added models and app features onto it. The destination is
-`Today20092/bring-fork-up-to-upstream`. This supersedes the partial-adoption
+and port the fork's added models and app features onto it. Implementation is now
+deferred on `codex/issue-48-full-futo-adoption`, separate from the upstream-sync
+branch. Future implementation targets `development`. This supersedes the partial-adoption
 recommendations below. The exact native-source access gate is unresolved;
 production remains unchanged. External-keyboard integration stays separate.
 

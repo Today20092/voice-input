@@ -1,7 +1,7 @@
 # Shared recognizer: reproducibility gate for #48
 
-Latest owner decision: [full FUTO recognizer adoption](../specs/full-futo-recognizer-adoption.md)
-on `Today20092/bring-fork-up-to-upstream`. This supersedes the recommendations
+Latest owner decision: defer [full FUTO recognizer adoption](../specs/full-futo-recognizer-adoption.md)
+on separate branch `codex/issue-48-full-futo-adoption`. This supersedes the recommendations
 below. Existing proof results remain valid, but only exercise the view/fork-session
 path. Full upstream native-source retrieval is currently blocked.
 
