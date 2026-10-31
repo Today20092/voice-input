@@ -59,7 +59,7 @@ jobs:
         env:
           CMAKE_BUILD_PARALLEL_LEVEL: '2'
         run: |
-          sdkmanager 'platforms;android-35' 'build-tools;35.0.0' 'ndk;28.2.13676358' 'cmake;3.22.1'
+          sdkmanager 'platforms;android-36' 'build-tools;36.0.0' 'ndk;28.2.13676358' 'cmake;3.22.1'
           cmake -S tools/s1_speculation -B "$RUNNER_TEMP/s1-proof/android" \
             -DCMAKE_BUILD_TYPE=Release \
             "-DCMAKE_TOOLCHAIN_FILE=$ANDROID_HOME/ndk/28.2.13676358/build/cmake/android.toolchain.cmake" \

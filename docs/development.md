@@ -36,8 +36,9 @@ After the applicable CI checks pass, publish the signed APK as a GitHub prerelea
 ## Build locally
 
 
-Install JDK 17 or newer (prefer JDK 21 to match release CI), Android SDK platform 35, NDK `28.2.13676358`, and CMake `3.22.1`. Initialize the repository's submodules. Point `local.properties` at your Android SDK, or set `ANDROID_HOME`.
+Install JDK 21, Android SDK platform 36, build tools `36.0.0`, NDK `28.2.13676358`, and CMake `3.22.1`. Initialize the repository's submodules. Point `local.properties` at your Android SDK, or set `ANDROID_HOME`. On Windows, use `git -c core.longpaths=true submodule update --init --recursive` to check out the nested native dependencies.
 
+The Gradle wrapper and Android Gradle Plugin follow the upstream integration documented in [the merge record](testing/upstream-master-integration-2026-10-30.md). The app keeps its existing target SDK, package IDs, version sequence, model defaults, and native-runtime pins.
 Native Harper builds also require Rust `1.98.1` with the `aarch64-linux-android` target. Install them with `rustup toolchain install 1.98.1 --profile minimal` and `rustup target add --toolchain 1.98.1 aarch64-linux-android`. Install Python 3 and run `python3 tools/harper_notices.py` before packaging outside CI (use `python` on Windows if that is your Python 3 command). See [Harper's notice](third-party/Harper-NOTICE.md) for the native integration.
 
 On macOS or Linux:

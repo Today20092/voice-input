@@ -100,15 +100,17 @@ fun presentRecognitionModel(
     selected: Boolean
 ): ModelPresentation {
     val installedBytes = model.artifacts.sumOf { it.sizeBytes }
+    val downloadSize = if (model == org.futo.voiceinput.asr4all.Asr4allModels.bundled)
+        "Included in app" else model.transferBytes.megabytes()
     val status = modelStatus(installed, selected)
     return ModelPresentation(
         title = model.displayName,
         summary = "${model.transcription.label} • ${model.recognitionLanguages}\n" +
-            "Download ${model.transferBytes.megabytes()} • Installed ${installedBytes.megabytes()} • $status",
+            "Download $downloadSize • Installed ${installedBytes.megabytes()} • $status",
         description = model.description,
         fields = modelDetailFields(
             model.transcription.label, model.recognitionLanguages,
-            model.transferBytes.megabytes(), installedBytes.megabytes(), status,
+            downloadSize, installedBytes.megabytes(), status,
             model.performanceClass.label, model.source, model.licenseAttribution,
             model.version, "${model.artifacts.size} model " +
                 if (model.artifacts.size == 1) "artifact" else "artifacts",
@@ -141,9 +143,9 @@ fun presentWhisperModel(
             "Download ${if (model.ggml.is_builtin_asset) "Included (${sizeBytes.megabytes()})" else sizeBytes.megabytes()} • " +
             "Installed ${sizeBytes.megabytes()} • ${modelStatus(installed, selected)}",
         description = when (model.ggml.ggml_file) {
-            "tiny_en_acft_q8_0.bin.not.tflite" ->
+            "tiny_en_acft_q8_0.bin" ->
                 "Turns English speech into text after you stop recording. The smallest legacy English option " +
-                    "is included in the app and needs less memory and processing than the larger English options."
+                    "is an optional download and needs less memory and processing than the larger English options."
             "base_en_acft_q8_0.bin" ->
                 "Turns English speech into text after you stop recording. It is slower and more accurate than " +
                     "English-39, with a larger download and more memory use."

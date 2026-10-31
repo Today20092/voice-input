@@ -3,9 +3,8 @@ package org.futo.voiceinput.settings
 import androidx.activity.BackEventCompat
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.hasClickAction
-import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasText
-import androidx.compose.ui.test.isSelected
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onAllNodesWithText
@@ -87,11 +86,9 @@ class SettingsNavigationTest {
         compose.onNodeWithText("Transcript Cleanup").assertDoesNotExist()
         compose.onNodeWithText("S1-mini", substring = true).assertDoesNotExist()
         compose.onNodeWithText("English-74 (slower, more accurate)").performScrollTo().assertIsDisplayed()
-        compose.onNode(isSelected() and hasAnyAncestor(hasText("English-74 (slower, more accurate)")))
-            .assertExists()
+        compose.onNodeWithText("English-74 (slower, more accurate)").assertIsSelected()
         compose.onNodeWithText("Multilingual-74 (default)").performScrollTo().assertIsDisplayed()
-        compose.onNode(isSelected() and hasAnyAncestor(hasText("Multilingual-74 (default)")))
-            .assertExists()
+        compose.onNodeWithText("Multilingual-74 (default)").assertIsSelected()
         compose.runOnUiThread { compose.activity.onBackPressedDispatcher.onBackPressed() }
         compose.waitUntil(5_000) { navController.currentDestination?.route == SettingsDestination.Home.route }
         compose.onNodeWithText("Transcript Cleanup").performScrollTo().performClick()

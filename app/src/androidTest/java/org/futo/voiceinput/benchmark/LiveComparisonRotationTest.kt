@@ -28,7 +28,7 @@ class LiveComparisonRotationTest {
 
     @Test fun activeReadingAndControlledEditorSurviveRecreation(): Unit = runBlocking {
         val context = ApplicationProvider.getApplicationContext<Context>()
-        val model = BenchmarkModel.all().first { it.whisper?.ggml?.is_builtin_asset == true }
+        val model = BenchmarkModel.all().first { it.managed == org.futo.voiceinput.asr4all.Asr4allModels.bundled }
         val report = BenchmarkReport(clips = emptyList(), selectedModelIds = listOf(model.id), installedBefore = listOf(model.id))
         val store = BenchmarkStore(File(context.filesDir, "model-benchmarks"))
         store.save(report)

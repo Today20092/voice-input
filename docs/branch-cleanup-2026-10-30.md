@@ -15,7 +15,28 @@ Original tips are retained under `archive/<branch>` tags before deleting the rem
 
 Local master/cleanup commit `4d84a5c` is reconciled by an ancestry-preserving merge. The current downloader uses adjacent staging and creates nested parent directories in `ModelFileDownload.kt`; it no longer uses the broken temporary-file prefix. Keep the current `NestedDownloadTest`, which uses explicit historical nested filenames because current Nemotron no longer downloads test audio.
 
-## Verification scope
+## Deferred recognizer migration and upstream synchronization
+
+The owner subsequently deferred full shared-recognizer adoption in #48. Preserve
+its disabled proof and implementation plan on
+`origin/codex/issue-48-full-futo-adoption` at `27dc002`. It supersedes the local
+`Today20092/assess-shared-recognizer-migration-with-fork-fea` branch name; the
+worktree remains available and is marked todo in Orca.
+
+`Today20092/bring-fork-up-to-upstream` retains upstream merge `4c5bfad` and bundled
+ASR4ALL change `cf83820`. The local experimental checkpoint `652db38` was removed
+from that branch only after preservation on the separate remote branch. Current
+`origin/development` was merged into the upstream-sync branch, preserving its
+workflow, recovered evidence and S1 benchmark changes. Prepare a draft PR into
+`development`; do not promote this branch directly to `master` or include #48's
+experimental source sets. Unrelated local branches and worktrees are retained.
+
+Future #48 work starts from then-current `development`, reuses the parked
+evidence deliberately and first checks exact native-source availability. It must
+not repeat unsuccessful account setup: the owner has no FUTO-hosted account and
+FUTO's internal GitLab does not offer public registration.
+
+## Original cleanup verification scope
 
 - Check recovery against the exact remote branch tips and current master, including duplicated Whistle files and missing release evidence.
 - Check JSON/JSONL evidence, local documentation links, conflict markers and whitespace.

@@ -169,7 +169,7 @@ class LanguagesScreenTest {
         write(SPEECH_BACKEND, "removed-runtime")
         showNavigation()
         compose.onNodeWithText("Open languages").performClick()
-        compose.onNodeWithText("Orukeet").assertIsDisplayed()
+        compose.onNodeWithText("ASR4ALL Medium").assertIsDisplayed()
         write(NEMOTRON_PROFILE, "removed-variant")
         write(SPEECH_BACKEND, "nemotron")
         compose.onNodeWithText("Balanced").assertIsDisplayed()
