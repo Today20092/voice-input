@@ -187,7 +187,7 @@ jobs:
             echo 'Unexpected non-arm64 native library found'
             exit 1
           fi
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$APK_PATH"
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs "$APK_PATH"
           mkdir -p "$RUNNER_TEMP/moonshine-apk-validation/jni/arm64-v8a"
           unzip -p "$APK_PATH" lib/arm64-v8a/libonnxruntime.so > "$RUNNER_TEMP/moonshine-apk-validation/jni/arm64-v8a/libonnxruntime.so"
           unzip -p "$APK_PATH" lib/arm64-v8a/libmoonshine.so > "$RUNNER_TEMP/moonshine-apk-validation/jni/arm64-v8a/libmoonshine.so"

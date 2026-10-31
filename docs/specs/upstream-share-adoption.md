@@ -12,7 +12,7 @@ This specification supports the [commit-by-commit review](../research/upstream-s
 
 Compare fork c7a28c4facf50f67942221d8185ca2ae4dfb4401 with upstream 95e82ada5e2513484dccf68295a5ddde6d223730. Keep RecordingSession, RecognitionModelLifecycle, and the SpeechBackend/StreamingSpeechBackend interfaces as the starting points. Preserve Orukeet as the new-install default and all saved selections.
 
-Do not import the upstream shared Android module wholesale. A reusable library becomes justified when a second maintained application actually consumes our implementation. FUTO Keyboard can select the standalone app using its activity protocol without that extraction.
+The owner selected full upstream shared-recognizer adoption under [#48](https://github.com/Today20092/voice-input/issues/48), deferred until its native source/build gate clears. The proof is parked separately on `codex/issue-48-full-futo-adoption`; this upstream-sync branch does not activate it. A second maintained app is not required. Future implementation starts from current `development`, preserves fork features and targets `development` before reviewed promotion to `master`.
 
 Preserve audio history and retranscription, cleanup ordering, personal vocabulary, diagnostics content exclusions, permission recovery, and truthful recognition-activity results. Shared module adoption or replacement of Sherpa requires a separate decision that supersedes ADR 0001.
 
