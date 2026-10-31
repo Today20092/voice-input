@@ -3,10 +3,15 @@
 [Back to the README](../README.md)
 
 
-Start with **Orukeet**, the default, then try **Advanced settings → Model comparison**.
+This branch starts with included **ASR4ALL Medium** for English dictation.
+Orukeet remains selectable as a separate download. Existing saved choices remain
+selected. Try **Advanced settings → Model comparison**.
 We recommend comparing two or three typical passages on your own phone before
 choosing a daily model. Speed, recognition quality and memory use depend on the
 device, language and speech. See the [comparison instructions](model-comparison.md).
+
+See the [bundled-model change and current S25 checks](testing/asr4all-bundled-default-2026-10-30.md)
+for this branch's offline default, migration behavior and measured comparison.
 
 ## Model Options screenshots
 
@@ -56,9 +61,9 @@ These are the options exposed by this app, not every capability of the upstream 
 
 | Model | Languages in the app | Text appears | Purpose and trade-off | Model source |
 | --- | --- | --- | --- | --- |
-| **Orukeet · default** | 25 European languages | After Stop | Starting point for everyday dictation. A Parakeet-derived model with multilingual and accent-focused adaptation; no live partials. | [Oruk AI](https://huggingface.co/oruk/orukeet) |
+| **Orukeet** | 25 European languages | After Stop | A Parakeet-derived model with multilingual and accent-focused adaptation; no live partials. Download separately to compare with the included English model. | [Oruk AI](https://huggingface.co/oruk/orukeet) |
 | **ASR4ALL Small** | English | Live | Smallest ASR4ALL option, with built-in PCEC punctuation, capitalization and small corrections. S1-mini is skipped. | [FUTO Small](https://huggingface.co/futo-org/asr4all-s) |
-| **ASR4ALL Medium** | English | Live | Middle ASR4ALL size with the same PCEC stage; uses more storage and processing than Small. | [FUTO Medium](https://huggingface.co/futo-org/asr4all-m) |
+| **ASR4ALL Medium · included default** | English | Live | Included in this branch for immediate English dictation, with built-in punctuation and capitalization. Uses more storage and processing than Small. | [FUTO Medium](https://huggingface.co/futo-org/asr4all-m) |
 | **ASR4ALL Large** | English | Live | Largest ASR4ALL option with PCEC; compare accuracy gains against the extra resource use. | [FUTO Large](https://huggingface.co/futo-org/asr4all-l) |
 | **Whistle, experimental** | English, German, French, Spanish, Italian, Dutch, Polish; auto-detect | After Stop | Very small download; separate CPU worker loads for every recording. Live text and manual language selection are not exposed by this app. | [Cactus Compute](https://huggingface.co/Cactus-Compute/whistle) |
 | **Phonon 2, experimental** | English | After Stop | Punctuation and capitalization; separate CPU runtime. Android performance varies and has no controlled ranking here. | [Fermion Research](https://www.fermionresearch.com/models/phonon-2/) · [app package/runtime](https://huggingface.co/eschmidbauer/phonon-2-c) |
@@ -88,7 +93,7 @@ unknown means no comparable measurement is available, not zero usage.
 | Model or variant | Download MB | Installed model files MB | Available RAM evidence |
 | --- | ---: | ---: | --- |
 | ASR4ALL Small | 38.6 | 38.6 | 273 MiB sampled app/test PSS on one S25 Ultra fixture |
-| ASR4ALL Medium | 72.5 | 72.5 | 324 MiB on the same fixture |
+| ASR4ALL Medium | Included in this branch | 72.5 in the APK plus a recoverable private cache | 324 MiB on the same fixture |
 | ASR4ALL Large | 123.1 | 123.1 | 422 MiB on the same fixture |
 | Whistle | 16.9 | 16.9 | Unknown; comparison excludes its separate worker |
 | Phonon 2 | 186.6 | 255.4 | Unknown; measure sampled app RAM on your device |
@@ -152,7 +157,7 @@ cadence, keyboard behavior, sustained heat and battery use require that check.
 
 Whistle adds a 16.9 MB final-only model for English, German, French, Spanish,
 Italian, Dutch and Polish, with automatic language detection. Download it from
-Model Options, then select it. Orukeet remains the default.
+Model Options, then select it. ASR4ALL Medium is included by default in this branch.
 
 The app uses revision-pinned, SHA-256-checked [Cactus Whistle weights](https://huggingface.co/Cactus-Compute/whistle)
 and an unmodified [Needle ARM64 runtime](https://huggingface.co/Cactus-Compute/needle3),
@@ -175,7 +180,7 @@ Phonon 2 produces English text after Stop, including punctuation and capitalizat
 It uses a separate pinned [phonon-2-c runtime](https://github.com/eschmidbauer/phonon-2-c)
 and [repackaged five-value weights](https://huggingface.co/eschmidbauer/phonon-2-c).
 The model card uses the same download, selection, deletion and Details controls as
-the other models. Orukeet remains the default.
+the other models. ASR4ALL Medium is included by default in this branch.
 
 The download is 186.6 MB and the installed files total 255.4 MB. Allow at least
 442.1 MB free for installation; runtime RAM is additional. The publisher's 164 MB

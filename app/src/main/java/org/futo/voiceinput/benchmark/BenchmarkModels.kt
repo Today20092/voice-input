@@ -18,7 +18,8 @@ import java.io.File
 data class BenchmarkModel(val id: String, val name: String, val managed: RecognitionModel? = null, val whisper: ModelData? = null) {
     val languages: String get() = managed?.recognitionLanguages ?: if (whisper in ENGLISH_MODELS) "English" else "Multilingual"
     val storageBytes: Long get() = managed?.artifacts?.sumOf { it.sizeBytes } ?: requireNotNull(whisper).sizeBytes
-    val transferBytes: Long get() = managed?.transferBytes ?: storageBytes
+    val transferBytes: Long get() = if (managed == org.futo.voiceinput.asr4all.Asr4allModels.bundled) 0L
+        else managed?.transferBytes ?: storageBytes
 
     fun installed(context: Context): Boolean = managed?.let {
         RecognitionModelLifecycle.create(context.filesDir, BuildConfig.BUNDLE_PARAKEET_MODEL).isReady(it)

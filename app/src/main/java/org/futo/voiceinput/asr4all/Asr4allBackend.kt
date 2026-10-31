@@ -14,8 +14,10 @@ fun asr4allBackend(context: Context, variant: String): SherpaStreamingBackend {
     check(geometry.getString("sha256") == model.artifacts.first().sha256) { "ASR4ALL geometry revision mismatch" }
     return SherpaStreamingBackend(
         modelDirectory = {
-            check(store.isInstalled(model, verifyHashes = true)) { "ASR4ALL model is missing or invalid" }
-            store.modelDirectory(model)
+            if (model == Asr4allModels.bundled) BundledAsr4all.directory(it) else {
+                check(store.isInstalled(model, verifyHashes = true)) { "ASR4ALL model is missing or invalid" }
+                store.modelDirectory(model)
+            }
         },
         backendName = model.displayName,
         decoderFactory = { Asr4allDecoder(it, geometry) }

@@ -246,8 +246,7 @@ private fun ManagedRecognitionModelItem(
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
-    val bundled = model.runtimeId == SpeechBackendType.Parakeet.id &&
-        BuildConfig.BUNDLE_PARAKEET_MODEL
+    val bundled = modelLifecycle.isIncluded(model)
     val revision by RecognitionModelLifecycle.invalidations.collectAsState()
     revision
     val installed = modelLifecycle.isReady(model)

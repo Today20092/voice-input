@@ -245,7 +245,7 @@ class ManagedRecognitionModelCatalogTest {
         showCatalog(fontScale = 2f)
         toggleFamily("Cohere Transcribe")
         toggleFamily("Whisper (legacy)")
-        listOf("Cohere Transcribe", "English-39 (default)").forEach { title ->
+        listOf("Cohere Transcribe", "English-39 (smallest)").forEach { title ->
             openDetails(title)
             val details = compose.onNode(hasScrollAction() and hasAnyDescendant(hasText("Source")))
             val range = details.fetchSemanticsNode().config[SemanticsProperties.VerticalScrollAxisRange]

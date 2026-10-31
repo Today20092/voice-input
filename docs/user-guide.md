@@ -6,7 +6,7 @@
 
 1. Install the signed APK from [GitHub Releases](https://github.com/Today20092/voice-input/releases/latest). Android 8.0 or newer and an ARM64 device are required.
 2. Open the app's settings, grant microphone permission, and follow the voice-input setup.
-3. Open **Model Options**, keep Orukeet or select another recognizer, and confirm its download.
+3. This branch includes **ASR4ALL Medium** for English dictation without a model download. Open **Model Options** to download another recognizer, including Orukeet or legacy Whisper. Saved choices are preserved; an existing selection of the formerly bundled English-39 model now needs its optional download.
 4. Start dictating. Live text depends on the model; the final result is delivered after recording stops.
 
 The stable app uses `org.futo.voiceinput.moonshine`, a separate package from upstream FUTO Voice Input. Stable 1.4.7 updates this fork's earlier releases and tested betas while retaining settings, recordings and downloaded models. Existing model selections are preserved.

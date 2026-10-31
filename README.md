@@ -13,8 +13,9 @@ recordings, personal dictionary corrections and optional local transcript cleanu
 </p>
 
 This personal fork keeps [FUTO Voice Input](https://github.com/futo-org/voice-input)'s
-voice keyboard and speech-recognition activity. Orukeet is the default recognizer.
-Models download separately; recognition and cleanup then run on your phone.
+voice keyboard and speech-recognition activity. This branch includes ASR4ALL Medium
+for English dictation without a model download. Other models download separately;
+recognition and cleanup run on your phone. Saved model choices are preserved.
 
 [Download the APK](https://github.com/Today20092/voice-input/releases/latest) · [Compare models on your phone](docs/model-comparison.md) · [Model guide](docs/model-guide.md) · [Release notes](docs/releases/v1.4.10.md) · [Report a problem](https://github.com/Today20092/voice-input/issues)
 
@@ -35,7 +36,7 @@ depends on your device, language and speech. [How to compare](docs/model-compari
 1. Install the signed APK from [GitHub Releases](https://github.com/Today20092/voice-input/releases/latest).
    You need Android 8.0 or newer and an ARM64 device.
 2. Open settings, grant microphone permission and follow the voice-input setup.
-3. Open **Model Options**, keep Orukeet or choose a model, and download its files.
+3. Start with included ASR4ALL Medium, or open **Model Options** to download another model.
 4. Select Voice Input Moonshine through your keyboard's voice-input control or
    Android's input-method picker, then try a short dictation.
 
@@ -57,7 +58,7 @@ listed in F-Droid's main repository.
 
 This fork keeps FUTO's Android voice-input flow and adds:
 
-- More recognition choices, with Orukeet as the default and streaming options
+- More recognition choices, with included ASR4ALL Medium and streaming options
   for text while you speak.
 - Recording history to copy transcripts and retry saved audio.
 - Personal dictionary corrections, bulk paste and text-file imports.

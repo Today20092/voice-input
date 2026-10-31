@@ -1,5 +1,11 @@
 # Selective adoption from upstream share
 
+October 30 update: the owner approved replacing bundled English Whisper with
+bundled ASR4ALL Medium and making it the default where no model selection is
+saved. This supersedes the original Orukeet-default requirement below. Keep
+Orukeet and downloadable Whisper choices. Shared-module scope is now recorded in
+[ADR 0004](../adr/0004-keep-external-keyboard-integration.md).
+
 This specification supports the [commit-by-commit review](../research/upstream-share-adoption-review-2026-09-26.md) and the SHARE tickets in [tickets.md](../../tickets.md). It is a proposal for implementation, not a claim that the features below have shipped.
 
 ## Baseline and architecture

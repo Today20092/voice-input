@@ -25,8 +25,10 @@ class Asr4allNativeTest {
         val samples = FloatArray(pcm.remaining()) { pcm.get() / 32768f }
         val store = RecognitionModelStore(context.filesDir)
         Asr4allModels.models.forEach { model ->
-            if (!store.isInstalled(model)) assertTrue("${model.id} artifact hashes", store.completeInstall(model))
-            assertTrue("Install ${model.id} before running this test", store.isInstalled(model, true))
+            if (model != Asr4allModels.bundled) {
+                if (!store.isInstalled(model)) assertTrue("${model.id} artifact hashes", store.completeInstall(model))
+                assertTrue("Install ${model.id} before running this test", store.isInstalled(model, true))
+            }
             val start = SystemClock.elapsedRealtime()
             val backend = asr4allBackend(context, requireNotNull(model.variantId))
             try {

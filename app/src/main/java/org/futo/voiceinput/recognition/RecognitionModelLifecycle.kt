@@ -87,6 +87,8 @@ class RecognitionModelLifecycle(
     fun isReady(model: RecognitionModel, verifyHashes: Boolean = false): Boolean =
         isBundled(model) || store.installedVersion(model, verifyHashes) != null
 
+    fun isIncluded(model: RecognitionModel): Boolean = isBundled(model)
+
     fun downloadDirectory(model: RecognitionModel): File = store.stagingDirectory(model)
 
     suspend fun acquireSession(model: RecognitionModel?): AutoCloseable = runtimeMutex.withLock {
@@ -149,6 +151,7 @@ class RecognitionModelLifecycle(
     }
 
     suspend fun delete(model: RecognitionModel, selectedModelId: String?) {
+        check(!isBundled(model)) { "Included models cannot be deleted" }
         try {
             runtimeMutex.withLock {
                 check(!benchmarkOwned) { "Model comparison is running" }
@@ -257,7 +260,8 @@ class RecognitionModelLifecycle(
 
         fun create(rootDirectory: File, parakeetBundled: Boolean) = RecognitionModelLifecycle(
             store = RecognitionModelStore(rootDirectory),
-            isBundled = { parakeetBundled && it.runtimeId == "parakeet" }
+            isBundled = { it == org.futo.voiceinput.asr4all.Asr4allModels.bundled ||
+                (parakeetBundled && it.runtimeId == "parakeet") }
         )
     }
 }
