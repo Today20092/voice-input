@@ -124,6 +124,7 @@ val ENABLE_30S_LIMIT = SettingsKey(booleanPreferencesKey("enable_30s_limit"), fa
 enum class SpeechBackendType(val id: String) {
     Parakeet("parakeet"),
     Orukeet("orukeet"),
+    Parakeet110m("parakeet_110m"),
     ParakeetUnified("parakeet_unified"),
     ParakeetRedux("parakeet_redux"),
     Phonon("phonon"),

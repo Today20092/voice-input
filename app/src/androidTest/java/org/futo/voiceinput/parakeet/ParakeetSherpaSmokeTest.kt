@@ -5,6 +5,8 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import kotlinx.coroutines.runBlocking
 import org.futo.voiceinput.backend.SpeechBackend
 import org.futo.voiceinput.recognition.RecognitionModelStore
+import org.futo.voiceinput.recognition.managedRecognitionBackend
+import org.futo.voiceinput.recognition.selection
 import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
 import org.junit.Test
@@ -30,6 +32,14 @@ class ParakeetSherpaSmokeTest {
             OrukeetModel.recognitionModel, verifyHashes = true
         ))
         transcribeKnownAudio(context, orukeetBackend())
+    }
+
+    @Test
+    fun downloadedParakeet110mTranscribesKnownAudioSample() = runBlocking {
+        val context = ApplicationProvider.getApplicationContext<android.content.Context>()
+        val model = Parakeet110mModel.recognitionModel
+        assumeTrue(RecognitionModelStore(context.filesDir).isInstalled(model, verifyHashes = true))
+        transcribeKnownAudio(context, managedRecognitionBackend(context, model.selection()))
     }
 
     private suspend fun transcribeKnownAudio(context: android.content.Context, backend: SpeechBackend) {
