@@ -83,16 +83,17 @@ Whistle packages.
 
 ## Follow-up validation
 
-Run on the same Windows host and with the same Gradle flags and tasks (without
-the separate packaging, signature, Cargo and Python checks), on the source of
-`205b8b9`.
+Run on the same Windows host and with the same Gradle flags and tasks, on source
+`e90e33c`, which includes the settings, the Spanish model and the review fixes.
 
 | Check | Result |
 | --- | --- |
-| `:app:testDevDebugUnitTest`, `:app:testStandaloneReleaseUnitTest` | Each 285 passed, 4 skipped, no failures or errors |
+| `:app:testDevDebugUnitTest`, `:app:testStandaloneReleaseUnitTest` | Each 286 passed, 4 skipped, no failures or errors |
 | `:app:lintDevDebug`, `:app:lintStandaloneRelease` | No errors; 87 and 86 warnings |
 | `:app:compileDevDebugAndroidTestKotlin`, `:app:assembleDevDebugAndroidTest` | Passed (compiled, not executed) |
 | `:app:assembleDevDebug`, `:app:verifyDevDebugApk`, `:app:assembleStandaloneRelease` | Passed |
+| `tools/verify_native_packaging.py`, `apksigner verify` on the release APK | Passed; local debug-key signing |
+| `python -m unittest discover -s tools -p test_native_packaging.py` | 4 passed |
 
 No emulator or phone was used. These checks remain, on a phone:
 
@@ -116,7 +117,7 @@ No emulator or phone was used. These checks remain, on a phone:
    popup, retranscribe a saved recording, run a model comparison and a live
    comparison in Spanish, and confirm S1 and Basic text cleanup are skipped.
 
-The Spanish model was added after `205b8b9`. Its publisher export ran on the
+The Spanish model's publisher export ran on the
 ExecuTorch 1.2.0 desktop runtime and produced Spanish text; accuracy was not
 measured, and the app's Android decoder has not run it.
 
