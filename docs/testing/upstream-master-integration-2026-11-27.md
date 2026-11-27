@@ -54,14 +54,15 @@ Source paths are under `app/src/main/java/org/futo/voiceinput/` unless shown in 
 ## Validation
 
 Run on Windows with JDK 21, SDK platform and build tools 36, NDK
-`28.2.13676358`, CMake `3.22.1` and Rust `1.98.1`, on source `420b8cf` (this
+`28.2.13676358`, CMake `3.22.1` and Rust `1.98.1`, on source `2ee0571`, which
+includes `development` through `ba593d8` (this
 record was added afterwards). Gradle ran with `--max-workers=2`, a 4 GB heap and
 `-Ps1NgramSpeculation=false`.
 
 | Check | Result |
 | --- | --- |
-| `:app:testDevDebugUnitTest` | 278 passed, 3 skipped, no failures or errors |
-| `:app:testStandaloneReleaseUnitTest` | 278 passed, 3 skipped, no failures or errors |
+| `:app:testDevDebugUnitTest` | 278 passed, 4 skipped, no failures or errors |
+| `:app:testStandaloneReleaseUnitTest` | 278 passed, 4 skipped, no failures or errors |
 | `:app:lintDevDebug` | No errors; 87 warnings |
 | `:app:lintStandaloneRelease` | No errors; 86 warnings |
 | `:app:compileDevDebugAndroidTestKotlin`, `:app:assembleDevDebugAndroidTest` | Passed (compiled, not executed) |
@@ -72,7 +73,8 @@ record was added afterwards). Gradle ran with `--max-workers=2`, a 4 GB heap and
 | `cargo +1.98.1 test --locked` for Harper | 9 passed (on `faa2b27`; no Rust change since) |
 | `python -m unittest discover -s tools -p test_native_packaging.py` | 4 passed |
 
-The three skipped tests need the published Orukeet, Phonon and Whistle packages.
+The four skipped tests need the published Orukeet, Phonon, Parakeet 110M and
+Whistle packages.
 `tools/harper_notices.py` needs `PYTHONUTF8=1` on this Windows host.
 
 ## Not verified
@@ -80,5 +82,6 @@ The three skipped tests need the published Orukeet, Phonon and Whistle packages.
 No emulator or phone was used, so instrumentation tests did not run. The new
 Credits entry has not been viewed on a screen. The empty-recording guard is
 covered by a unit test; the recorder failure that produces empty audio was not
-reproduced on a device. The Linux-only CI steps (Phonon and Whistle reference
+reproduced on a device. The short-audio Whisper guard and the blank-transcript
+S1 bypass have no dedicated test. The Linux-only CI steps (Phonon and Whistle reference
 transcriptions, the Moonshine ONNX Runtime validator) did not run.
