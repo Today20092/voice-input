@@ -18,13 +18,14 @@ import java.nio.ByteOrder
 
 @RunWith(AndroidJUnit4::class)
 class Asr4allNativeTest {
-    @Test fun allThreeVariantsStreamAndFinalizeKnownSpeech() = runBlocking {
+    @Test fun englishVariantsStreamAndFinalizeKnownSpeech() = runBlocking {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val bytes = InstrumentationRegistry.getInstrumentation().context.assets.open("jfk.wav").use { it.readBytes() }
         val pcm = ByteBuffer.wrap(bytes, 44, bytes.size - 44).order(ByteOrder.LITTLE_ENDIAN).asShortBuffer()
         val samples = FloatArray(pcm.remaining()) { pcm.get() / 32768f }
         val store = RecognitionModelStore(context.filesDir)
-        Asr4allModels.models.forEach { model ->
+        // The fixture is English speech.
+        Asr4allModels.models.filter { it.recognitionLanguages == "English" }.forEach { model ->
             if (model != Asr4allModels.bundled) {
                 if (!store.isInstalled(model)) assertTrue("${model.id} artifact hashes", store.completeInstall(model))
                 assertTrue("Install ${model.id} before running this test", store.isInstalled(model, true))

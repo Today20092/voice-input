@@ -5,7 +5,10 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import org.futo.voiceinput.backend.StreamingSpeechBackend
+import org.futo.voiceinput.harper.HarperEnglishGate
+import org.futo.voiceinput.settings.SpeechBackendType
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.concurrent.CountDownLatch
@@ -29,6 +32,19 @@ class NemotronBackendTest {
             repeat(7) { assertEquals("3 samples", backend.transcribe(floatArrayOf(0.1f, 0.2f, 0.3f))) }
             assertEquals(7, resets)
         } finally { backend.close() }
+    }
+
+    @Test
+    fun fixedLanguageIsReportedAndKeepsEnglishCleanupOff() = runBlocking {
+        val backend = SherpaStreamingBackend(
+            decoderFactory = { TaggedNemotronDecoder() }, fixedLanguage = "es")
+        backend.load(File("unused"), "es")
+        backend.transcribe(floatArrayOf(0f))
+
+        assertEquals("es", backend.detectedLanguage)
+        assertFalse(HarperEnglishGate.isEstablishedEnglish(SpeechBackendType.Asr4all,
+            backend.detectedLanguage, null, "", "", emptySet(), explicitlyEnglish = true))
+        backend.close()
     }
 
     @Test

@@ -39,10 +39,12 @@ Balanced acceptance on the recent phone is a useful partial within one second, t
 - Moonshine, Whisper, IME, recognition activity, VAD, cancellation, personal vocabulary, and error handling.
 - Model-card wording matches observed behavior: live versus final-only, buffered versus cache-aware, English versus multilingual.
 - Source and license notices are present for every downloadable model.
+- ASR4ALL Medium Spanish: download, select, dictate in the keyboard and popup, retranscribe from history, delete after selecting another model. Confirm S1-mini and Basic text cleanup are skipped and the APK contains no Spanish model files.
 - Review Light, Balanced, and Demanding only after both devices have measured memory and real-time-factor results; the labels remain advisory and never gate installation.
 
 ## Source and license notices
 
+- ASR4ALL: [FUTO model weights license](https://huggingface.co/futo-org/asr4all-m-es/resolve/0290ab55b803e8a37423a775888da10045ce933e/LICENSE), plus runtime notices in `app/src/main/assets/ASR4ALL-NOTICES.txt`. Medium Spanish also carries the "Developed using Basis Conversations 1500" attribution from its [model card](https://huggingface.co/futo-org/asr4all-m-es/blob/0290ab55b803e8a37423a775888da10045ce933e/README.md).
 - Moonshine English models: [Moonshine AI source and MIT license](https://github.com/moonshine-ai/moonshine/blob/main/LICENSE).
 - Nemotron English: [NVIDIA model source](https://huggingface.co/nvidia/nemotron-speech-streaming-en-0.6b) and [NVIDIA Open Model License](https://www.nvidia.com/en-us/agreements/enterprise-software/nvidia-open-model-license/).
 - Nemotron 3.5 multilingual: [NVIDIA model source](https://huggingface.co/nvidia/nemotron-3.5-asr-streaming-0.6b) and [OpenMDW 1.1](https://www.nvidia.com/en-us/agreements/enterprise-software/open-model-data-weight-license/).

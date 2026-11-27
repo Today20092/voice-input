@@ -1,12 +1,20 @@
 ASR4ALL / ExecuTorch notices
 
-ASR4ALL Medium weights are bundled. Small and Large weights are downloaded separately. Base ASR4ALL weights use the following FUTO license.
-Only Small, Medium, and Large base models are offered. Plus models are not distributed by this app.
+ASR4ALL Medium (English) weights are bundled. Small, Large and Medium Spanish weights are downloaded separately. Base ASR4ALL weights use the following FUTO license.
+Only the Small, Medium, and Large English base models and the Medium Spanish base model are offered. Plus models are not distributed by this app.
 Decoder algorithm follows FUTO's asr4all_executorch.py reference; no personal vocabulary biasing is enabled (keep=0).
 Apache-2.0 runtime dependency terms are bundled separately in ASR4ALL-APACHE-NOTICES.txt.
 
+ASR4ALL Medium Spanish attribution
+Developed using Basis Conversations 1500, published by Basis (basis-ai/basis-conversations-1500,
+revision 05a19e06b5eed44d701a8860b7e2336a44f762dd). Common Voice is from the Mozilla Data Collective;
+the Bangor Miami corpus is by Margaret Deuchar (Bangor University), distributed via TalkBank.
+Model card and full training data list: https://huggingface.co/futo-org/asr4all-m-es/blob/0290ab55b803e8a37423a775888da10045ce933e/README.md
+
 FUTO base weights license
 https://huggingface.co/futo-org/asr4all-m/resolve/86f67fdc60fecb4f9662ccd1d99948291db4d905/LICENSE
+The Medium Spanish model ships the same license text:
+https://huggingface.co/futo-org/asr4all-m-es/resolve/0290ab55b803e8a37423a775888da10045ce933e/LICENSE
 
 ## FUTO Model Weights License (Restricted Use) 1.0
 

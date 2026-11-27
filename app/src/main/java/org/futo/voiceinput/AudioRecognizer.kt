@@ -808,7 +808,9 @@ abstract class RecordingSession {
                         "vadEnabled" to shouldUseVad.toString(), "endOfSpeechProfile" to endOfSpeechProfile.toString(),
                         "durationLimit" to if (canExpandSpace) "180 seconds for benchmark" else "30 seconds",
                         "cleanup" to "disabled; ASR4ALL inseparable built-in processing disclosed",
-                        "language" to "en", "personalVocabulary" to "disabled"))
+                        "language" to (org.futo.voiceinput.asr4all.Asr4allModels
+                            .fixedLanguage(liveBenchmarkSession?.model?.managed?.variantId) ?: "en"),
+                        "personalVocabulary" to "disabled"))
 
                     var hasTalked = false
                     var anyNoiseAtAll = false

@@ -63,6 +63,7 @@ data class BenchmarkModel(val id: String, val name: String, val managed: Recogni
     fun supportsLanguage(language: String): Boolean = when {
         whisper in ENGLISH_MODELS -> language == "en"
         managed?.recognitionLanguages == "English" -> language == "en"
+        managed?.recognitionLanguages == "Spanish" -> language == "es"
         managed?.runtimeId == "cohere" -> org.futo.voiceinput.cohere.CohereLanguage.entries.any { it.id == language }
         managed?.runtimeId == "whistle" -> language in org.futo.voiceinput.whistle.WhistleModel.languageCodes
         managed?.runtimeId == "nemotron" -> org.futo.voiceinput.nemotron.NEMOTRON_MULTILINGUAL_LANGUAGES.any { it.id == language }

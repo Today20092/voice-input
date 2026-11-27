@@ -83,6 +83,7 @@ ordinary dictation; fixed-audio timings do not measure live update latency.
 | Everyday dictation in a supported European language | Orukeet |
 | Live English text | Moonshine Small |
 | Live English text with built-in cleanup | ASR4ALL Small, Medium or Large |
+| Live Spanish text with built-in cleanup | ASR4ALL Medium Spanish (60.1 MB download) |
 | Live multilingual text | Nemotron 3.5 Multilingual |
 | Experimental final-only English recognition | Phonon 2 (186.6 MB download; separate CPU runtime) |
 | Very small multilingual download to test | Whistle (16.9 MB; final-only, seven languages) |

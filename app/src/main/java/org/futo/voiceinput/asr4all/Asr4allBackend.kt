@@ -20,6 +20,7 @@ fun asr4allBackend(context: Context, variant: String): SherpaStreamingBackend {
             }
         },
         backendName = model.displayName,
-        decoderFactory = { Asr4allDecoder(it, geometry) }
+        decoderFactory = { Asr4allDecoder(it, geometry) },
+        fixedLanguage = Asr4allModels.fixedLanguage(model.variantId)
     )
 }

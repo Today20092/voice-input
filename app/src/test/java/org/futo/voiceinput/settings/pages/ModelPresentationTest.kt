@@ -41,7 +41,7 @@ class ModelPresentationTest {
             "Transcription", "Languages", "Language selection", "Download size", "Model size",
             "Status", "Performance class", "Source", "License/attribution", "Version", "Model files"
         )
-        assertEquals(23, presentations.size)
+        assertEquals(24, presentations.size)
         assertEquals(presentations.size, presentations.map { it.description }.distinct().size)
         presentations.forEach { presentation ->
             assertEquals(presentation.title, labels, presentation.fields.map { it.first }.take(labels.size))
@@ -49,7 +49,7 @@ class ModelPresentationTest {
             val timing = if (presentation.fields.toMap().getValue("Transcription") ==
                 TranscriptionBehavior.FINAL_ONLY.label) "after you stop recording" else "as you speak"
             assertTrue(presentation.title, description.contains(timing))
-            assertTrue(presentation.title, description.contains("English") || description.contains("languages"))
+            assertTrue(presentation.title, listOf("English", "Spanish", "languages").any { description.contains(it) })
             assertTrue(presentation.title, listOf("memory", "processing", "storage").any {
                 description.contains(it)
             })

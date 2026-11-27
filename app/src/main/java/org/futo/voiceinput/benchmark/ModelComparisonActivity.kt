@@ -176,7 +176,7 @@ class ModelComparisonActivity : ComponentActivity() {
                         else ComparisonText("${model.clips.size} of 8 recordings added. ${if (model.clips.size < 8) "Add another passage above, or compare all recordings below." else "Ready to compare all recordings below."} Listen back and check each recording’s words.")
                         ComparisonDetails("Recording tips and file limits") {
                             ComparisonText("The reference must match the words actually spoken, including fillers. Edit it after listening, or leave it blank to compare transcripts without an accuracy score.")
-                            ComparisonText("Use one language per comparison. English-only models are skipped for other languages; automatic-detection models report that configuration.")
+                            ComparisonText("Use one language per comparison. Single-language models are skipped for other languages; automatic-detection models report that configuration.")
                             ComparisonText("Up to 8 recordings, 180 seconds and 64 MiB per file. Import AAC M4A or 16-bit PCM WAV, mono/stereo, 8–48 kHz. Audio stays in private comparison storage.")
                         }
                     }

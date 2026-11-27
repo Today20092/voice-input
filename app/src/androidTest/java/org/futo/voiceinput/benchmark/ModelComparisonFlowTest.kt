@@ -28,7 +28,8 @@ class ModelComparisonFlowTest {
     @Test fun everyCatalogEntryHasABenchmarkBackendIncludingPhonon() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val models = BenchmarkModel.all()
-        models.forEach { assertNotNull("Missing backend for ${it.id}", it.backend(context, "en")) }
+        models.forEach { assertNotNull("Missing backend for ${it.id}",
+            it.backend(context, if (it.supportsLanguage("en")) "en" else "es")) }
         assertTrue(models.first { it.managed?.runtimeId == "phonon" }.backend(context) is PhononBackend)
         val whistle = models.single { it.id == "whistle" }
         assertTrue(whistle.backend(context) is org.futo.voiceinput.whistle.WhistleBackend)
