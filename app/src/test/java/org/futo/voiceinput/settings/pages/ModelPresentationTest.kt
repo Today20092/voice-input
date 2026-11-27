@@ -18,7 +18,7 @@ class ModelPresentationTest {
             families.values.flatten().map { it.id }.sorted()
         )
         assertEquals(
-            setOf("parakeet", "parakeet_unified", "parakeet_redux"),
+            setOf("parakeet", "parakeet_110m", "parakeet_unified", "parakeet_redux"),
             families.getValue("Parakeet").map { it.runtimeId }.toSet()
         )
         assertEquals(
@@ -41,7 +41,7 @@ class ModelPresentationTest {
             "Transcription", "Languages", "Language selection", "Download size", "Model size",
             "Status", "Performance class", "Source", "License/attribution", "Version", "Model files"
         )
-        assertEquals(22, presentations.size)
+        assertEquals(23, presentations.size)
         assertEquals(presentations.size, presentations.map { it.description }.distinct().size)
         presentations.forEach { presentation ->
             assertEquals(presentation.title, labels, presentation.fields.map { it.first }.take(labels.size))

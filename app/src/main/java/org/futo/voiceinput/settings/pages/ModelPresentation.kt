@@ -31,7 +31,7 @@ data class ModelInformationLink(val label: String, val url: String)
 fun modelFamiliesForDisplay(): Map<String, List<RecognitionModelCard>> =
     modelCardsForDisplay().groupBy { card ->
         when (card.runtimeId) {
-            "parakeet", "parakeet_unified", "parakeet_redux" -> "Parakeet"
+            "parakeet", "parakeet_110m", "parakeet_unified", "parakeet_redux" -> "Parakeet"
             "nemotron" -> "Nemotron"
             else -> card.displayName
         }
@@ -58,6 +58,7 @@ private fun modelInformationLinks(model: RecognitionModel): List<ModelInformatio
             "https://huggingface.co/csukuangfj2/sherpa-onnx-nemotron-3.5-asr-streaming-0.6b-560ms-int8-2026-06-11"
         else "https://huggingface.co/nvidia/nemotron-speech-streaming-en-0.6b"
         "parakeet" -> "https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3"
+        "parakeet_110m" -> "https://huggingface.co/nvidia/parakeet-tdt_ctc-110m"
         "orukeet" -> "https://huggingface.co/oruk/orukeet"
         "parakeet_redux" -> "https://huggingface.co/moondream/parakeet-redux"
         "phonon" -> "https://www.fermionresearch.com/models/phonon-2/"

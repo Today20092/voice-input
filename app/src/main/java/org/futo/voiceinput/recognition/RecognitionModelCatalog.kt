@@ -2,6 +2,7 @@ package org.futo.voiceinput.recognition
 
 import org.futo.voiceinput.parakeet.ParakeetModel
 import org.futo.voiceinput.parakeet.OrukeetModel
+import org.futo.voiceinput.parakeet.Parakeet110mModel
 import org.futo.voiceinput.sha256
 import java.io.File
 
@@ -14,7 +15,8 @@ enum class TranscriptionBehavior(val label: String) {
 enum class PerformanceClass(val label: String) {
     LIGHT("Light"),
     BALANCED("Balanced"),
-    DEMANDING("Demanding")
+    DEMANDING("Demanding"),
+    UNMEASURED("Unmeasured")
 }
 
 data class RecognitionModelArtifact(
@@ -83,6 +85,7 @@ object RecognitionModelCatalog {
     val whistle = org.futo.voiceinput.whistle.WhistleModel.model
     val phonon = org.futo.voiceinput.phonon.PhononModel.model
     val parakeetRedux = org.futo.voiceinput.redux.ReduxModel.model
+    val parakeet110m = Parakeet110mModel.recognitionModel
     private const val MOONSHINE_REVISION = "2026-03-16-sha256"
     private const val MOONSHINE_SOURCE = "Moonshine AI"
 
@@ -312,6 +315,16 @@ object RecognitionModelCatalog {
             recognitionLanguages = ParakeetModel.recognitionModel.recognitionLanguages,
             performanceClasses = setOf(PerformanceClass.DEMANDING),
             models = listOf(ParakeetModel.recognitionModel)
+        ),
+        RecognitionModelCard(
+            id = parakeet110m.id,
+            runtimeId = parakeet110m.runtimeId,
+            displayName = parakeet110m.displayName,
+            description = parakeet110m.description,
+            transcription = parakeet110m.transcription,
+            recognitionLanguages = parakeet110m.recognitionLanguages,
+            performanceClasses = setOf(parakeet110m.performanceClass),
+            models = listOf(parakeet110m)
         ),
         RecognitionModelCard(
             id = "orukeet",

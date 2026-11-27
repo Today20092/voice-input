@@ -507,7 +507,7 @@ abstract class RecordingSession {
                 report?.event(DiagnosticEvent.MODEL_LOAD_STARTED, configuration = DiagnosticConfiguration(
                     runtime = selection.runtimeId,
                     modelVersion = modelLifecycle.readiness(selection)?.installedModel?.version,
-                    runtimeVersion = if (selection.runtimeId in setOf("parakeet", "orukeet", "parakeet_unified", "nemotron", "cohere"))
+                    runtimeVersion = if (selection.runtimeId in setOf("parakeet", "parakeet_110m", "orukeet", "parakeet_unified", "nemotron", "cohere"))
                         BuildConfig.SHERPA_ONNX_VERSION else null,
                     language = forcedLanguage.takeIf { selection.runtimeId == "whisper_ggml" }
                 ))

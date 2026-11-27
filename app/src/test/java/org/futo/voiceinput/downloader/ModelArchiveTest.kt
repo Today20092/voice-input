@@ -10,6 +10,8 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.Assume.assumeTrue
 import org.futo.voiceinput.parakeet.OrukeetModel
+import org.futo.voiceinput.parakeet.Parakeet110mModel
+import org.futo.voiceinput.recognition.RecognitionModel
 import org.futo.voiceinput.recognition.RecognitionModelStore
 import java.io.File
 import org.junit.rules.TemporaryFolder
@@ -34,7 +36,7 @@ class ModelArchiveTest {
     @Test
     fun resumesInterruptedArchiveWithoutDownloadingSavedBytesAgain() {
         val contents = ByteArray(65536).also { java.util.Random(42).nextBytes(it) }
-        val bytes = archive("model/model.bin", contents)
+        val bytes = archive("./model/model.bin", contents)
         val halfway = bytes.size / 2
         val requests = mutableListOf<String?>()
         val client = OkHttpClient.Builder().addInterceptor { chain ->
@@ -143,10 +145,16 @@ class ModelArchiveTest {
     }
 
     @Test
-    fun installsPublishedOrukeetArchive() {
-        val path = System.getenv("ORUKEET_TEST_ARCHIVE")
-        assumeTrue("Set ORUKEET_TEST_ARCHIVE to the pinned download", path != null)
-        val model = OrukeetModel.recognitionModel
+    fun installsPublishedOrukeetArchive() =
+        installPublishedArchive("ORUKEET_TEST_ARCHIVE", OrukeetModel.recognitionModel)
+
+    @Test
+    fun installsPublishedParakeet110mArchive() =
+        installPublishedArchive("PARAKEET_110M_TEST_ARCHIVE", Parakeet110mModel.recognitionModel)
+
+    private fun installPublishedArchive(environmentVariable: String, model: RecognitionModel) {
+        val path = System.getenv(environmentVariable)
+        assumeTrue("Set $environmentVariable to the pinned download", path != null)
         val archive = File(requireNotNull(path))
         val store = RecognitionModelStore(temporaryFolder.root)
         archive.inputStream().buffered().use { input ->
