@@ -215,7 +215,7 @@
     <string name="download_progress">Download Progress</string>
     <string name="advanced_settings">Advanced Settings</string>
     <string name="languages_title">Languages</string>
-    <string name="language_tip_1">By default, the language is detected automatically. You can enable manual language selection in Input Options.</string>
+    <string name="language_tip_1">With more than one language enabled, you choose a language before each recording. Turn off manual language selection to detect it automatically.</string>
     <string name="language_tip_2">Some languages may work better than others, depending on the amount of training data.</string>
     <string name="language_tip_3">You can configure multilingual model switching behavior in the Input Options section</string>
     <string name="may_be_low_accuracy_x_hours">May be low accuracy (<xliff:g name="hourCount" example="1">%d</xliff:g>h)</string>

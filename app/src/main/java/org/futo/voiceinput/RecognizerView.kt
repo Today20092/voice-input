@@ -75,9 +75,12 @@ import org.futo.voiceinput.settings.ENABLE_SOUND
 import org.futo.voiceinput.settings.LANGUAGE_TOGGLES
 import org.futo.voiceinput.settings.MANUALLY_SELECT_LANGUAGE
 import org.futo.voiceinput.settings.SETTINGS_DESTINATION_EXTRA
+import org.futo.voiceinput.settings.SPEECH_BACKEND
 import org.futo.voiceinput.settings.SettingsActivity
+import org.futo.voiceinput.settings.SpeechBackendType
 import org.futo.voiceinput.settings.VERBOSE_PROGRESS
 import org.futo.voiceinput.settings.getSetting
+import org.futo.voiceinput.settings.toSpeechBackendType
 import org.futo.voiceinput.theme.Typography
 
 fun Modifier.recognizerSurfaceClickable(disabled: Boolean, onPauseVAD: (Boolean) -> Unit, onFinish: () -> Unit): Modifier = composed {
@@ -337,19 +340,26 @@ fun ColumnScope.RecognizeModelDownloadRequired(body: String, onDownload: () -> U
     }
 }
 
+/** Only Whisper/GGML uses the chosen language, so other recognizers never ask for one. */
+internal fun needsLanguagePicker(
+    backend: SpeechBackendType, manualSelection: Boolean, languages: Set<String>
+): Boolean = backend == SpeechBackendType.WhisperGGML && manualSelection && languages.size > 1
+
 abstract class RecognizerView {
     protected open val liveBenchmarkSession: org.futo.voiceinput.benchmark.LiveBenchmarkSession? get() = null
     protected open val compact: Boolean = false
     private var shouldPlaySounds = ENABLE_SOUND.default
     private var shouldBeVerbose = VERBOSE_PROGRESS.default
-    private var shouldRequestLanguage = MANUALLY_SELECT_LANGUAGE.default
+    private var shouldRequestLanguage = false
     private var languages = LANGUAGE_TOGGLES.default
 
     suspend fun loadSettings() {
         shouldPlaySounds = context.getSetting(ENABLE_SOUND)
         shouldBeVerbose = context.getSetting(VERBOSE_PROGRESS)
-        shouldRequestLanguage = context.getSetting(MANUALLY_SELECT_LANGUAGE)
         languages = context.getSetting(LANGUAGE_TOGGLES)
+        shouldRequestLanguage = needsLanguagePicker(
+            context.getSetting(SPEECH_BACKEND).toSpeechBackendType(),
+            context.getSetting(MANUALLY_SELECT_LANGUAGE), languages)
     }
 
     private val soundPool = SoundPool.Builder().setMaxStreams(2).setAudioAttributes(
@@ -698,7 +708,7 @@ abstract class RecognizerView {
             loadSettings()
             if (liveBenchmarkSession != null) { shouldRequestLanguage = false; languages = setOf("en") }
 
-            if(shouldRequestLanguage && (languages.size > 1)) {
+            if(shouldRequestLanguage) {
                 setContent {
                     this@RecognizerView.RoutingWindow(
                         onClose = { recognizer.cancelRecognizer() },
