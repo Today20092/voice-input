@@ -26,6 +26,15 @@ class RecordingFinalizationTest {
         assertEquals(3, samples.position())
     }
 
+    @Test fun emptyFinalOnlyRecordingReturnsEmptyTextWithoutDecoding() = runBlocking {
+        val backend = object : SpeechBackend {
+            override suspend fun load(context: Context) = Unit
+            override suspend fun close() = Unit
+            override suspend fun transcribe(samples: FloatArray): String = error("Nothing to decode")
+        }
+        assertEquals("", backend.prepareRecordingFinalization(FloatBuffer.allocate(8))())
+    }
+
     @Test fun finalOnlyReceivesExactlyTheCompleteNormalizedRecordingWithoutMutatingRecoveryAudio() = runBlocking {
         val samples = FloatBuffer.allocate(8).apply { put(floatArrayOf(-1f, 0f, 32767f / 32768f)) }
         val backend = object : SpeechBackend {
