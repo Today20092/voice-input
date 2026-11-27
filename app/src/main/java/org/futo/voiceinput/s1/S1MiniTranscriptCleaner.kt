@@ -50,7 +50,8 @@ object S1MiniTranscriptCleaner {
         if (backend == SpeechBackendType.Asr4all) {
             return S1MiniCleanupResult(rawTranscript, false, fallbackCategory = "built_in_cleanup_bypass")
         }
-        if (!context.getSetting(S1_MINI_ENABLED)) return S1MiniCleanupResult(rawTranscript, false)
+        // Never prompt the model with nothing: any text it returned would be inserted as dictation.
+        if (rawTranscript.isBlank() || !context.getSetting(S1_MINI_ENABLED)) return S1MiniCleanupResult(rawTranscript, false)
 
         val english = S1MiniEnglishGate.isEstablishedEnglish(
             backend = backend,

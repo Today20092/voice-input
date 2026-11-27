@@ -7,7 +7,8 @@ import java.nio.FloatBuffer
 internal fun SpeechBackend.prepareRecordingFinalization(samples: FloatBuffer): suspend () -> String {
     if (this is StreamingSpeechBackend) return { finishStreaming() }
     val snapshot = samples.array().copyOf(samples.position())
-    return { transcribe(snapshot) }
+    // A capture that fails before its first read has no audio; do not hand an empty buffer to native decoders.
+    return { if (snapshot.isEmpty()) "" else transcribe(snapshot) }
 }
 
 interface SpeechBackend {

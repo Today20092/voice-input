@@ -100,6 +100,14 @@ fun CreditsScreen(openDependencies: () -> Unit = {}, navController: NavHostContr
         )
 
         CreditItem(
+            name = "NVIDIA Nemotron/Parakeet",
+            thanksFor = stringResource(R.string.thanks_for_the_voice_recognition_model),
+            link = "https://huggingface.co/nvidia/nemotron-3.5-asr-streaming-0.6b",
+            license = "OpenMDW-1.1 (Nemotron 3.5); NVIDIA Open Model License (Nemotron English, Parakeet Unified); CC BY 4.0 (Parakeet TDT)",
+            copyright = "Copyright (c) 2026 NVIDIA"
+        )
+
+        CreditItem(
             name = "whisper.cpp & ggml",
             thanksFor = stringResource(R.string.thanks_for_the_machine_learning_inference_library),
             link = "https://github.com/ggerganov/whisper.cpp",

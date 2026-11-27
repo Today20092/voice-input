@@ -48,6 +48,8 @@ class WhisperGGML(
         if(handle == 0L) {
             throw IllegalStateException("WhisperGGML has already been closed, cannot infer")
         }
+        // Native reflect padding reads samples[1..200], so shorter audio would be read past its end.
+        if(samples.size <= 200) return@withContext ""
         val result = inferNative(handle, samples, prompt, languages, bailLanguages, decodingMode.value, suppressNonSpeechTokens).trim()
 
         if(result.contains("<>CANCELLED<>")) {
