@@ -62,7 +62,7 @@ internal fun extractModelArchive(
             TarArchiveInputStream(CompressorStreamFactory().createCompressorInputStream(verifiedInput)).use { archive ->
                 while (true) {
                     val entry = archive.nextEntry ?: break
-                    val relativeName = entry.name.removePrefix("$archiveRoot/")
+                    val relativeName = entry.name.removePrefix("./").removePrefix("$archiveRoot/")
                     val artifact = artifacts.firstOrNull { it.name == relativeName } ?: continue
                     require(!entry.isDirectory) { "Expected ${artifact.name} to be a file" }
                     require(entry.size == artifact.sizeBytes) { "Unexpected size for ${artifact.name}" }

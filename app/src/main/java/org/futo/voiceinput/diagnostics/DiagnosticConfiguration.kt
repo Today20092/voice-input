@@ -26,7 +26,7 @@ data class DiagnosticConfiguration(
     )
 
     companion object {
-        private val runtimes = setOf("parakeet", "orukeet", "parakeet_unified", "parakeet_redux",
+        private val runtimes = setOf("parakeet", "parakeet_110m", "orukeet", "parakeet_unified", "parakeet_redux",
             "phonon", "whistle", "nemotron", "cohere", "moonshine", "asr4all", "whisper_ggml")
         private val revision = Regex("(?:[0-9a-f]{7,64}|[0-9]{4}-[0-9]{2}-[0-9]{2}(?:-sha256)?|[0-9]+(?:\\.[0-9]+){1,3})")
         private val languages = Locale.getISOLanguages().toSet()

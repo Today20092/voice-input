@@ -18,6 +18,7 @@ object S1MiniEnglishGate {
         return when (backend) {
             SpeechBackendType.Moonshine,
             SpeechBackendType.Phonon,
+            SpeechBackendType.Parakeet110m,
             SpeechBackendType.Asr4all,
             SpeechBackendType.Orukeet,
             SpeechBackendType.Parakeet,

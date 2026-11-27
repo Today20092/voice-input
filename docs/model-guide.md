@@ -71,6 +71,7 @@ These are the options exposed by this app, not every capability of the upstream 
 | **Moonshine Small** | English | Live | Lighter English streaming option when resource use matters. | [Moonshine AI](https://github.com/moonshine-ai/moonshine) |
 | **Moonshine Medium** | English | Live | Larger English streaming option intended to favor accuracy, with greater resource use than Small. | [Moonshine AI](https://github.com/moonshine-ai/moonshine) |
 | **Parakeet TDT 0.6B V3** | 25 European languages | After Stop | NVIDIA's multilingual alternative to Orukeet, useful for comparing results on your own speech. | [NVIDIA](https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3) · [INT8 export](https://huggingface.co/twmht/sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8) |
+| **Parakeet TDT 110M** | English | After Stop | Experimental compact Parakeet option. Android speed, memory use and accuracy are still being evaluated. | [NVIDIA and Suno](https://huggingface.co/nvidia/parakeet-tdt_ctc-110m) · [Sherpa-ONNX INT8 TDT export](https://github.com/k2-fsa/sherpa-onnx/releases/tag/asr-models) |
 | **Parakeet Unified EN 0.6B** | English | Buffered live | Recomputes recent context for live updates. More work per update than a recognizer that reuses cached streaming state. | [Sherpa-ONNX export](https://huggingface.co/csukuangfj2/sherpa-onnx-nemo-parakeet-unified-en-0.6b-int8-streaming-560ms) |
 | **Nemotron English** | English | Live | Choose Low latency, Balanced, or Accuracy profiles to trade update frequency against recognition context. | [NVIDIA](https://huggingface.co/nvidia/nemotron-speech-streaming-en-0.6b) · [Sherpa-ONNX packages](https://github.com/k2-fsa/sherpa-onnx/releases/tag/asr-models) |
 | **Nemotron 3.5 Multilingual** | 28 languages, with Auto-detect | Live | Multilingual streaming with explicit language selection or automatic detection. | [Sherpa-ONNX export](https://huggingface.co/csukuangfj2/sherpa-onnx-nemotron-3.5-asr-streaming-0.6b-560ms-int8-2026-06-11) |
@@ -102,6 +103,7 @@ unknown means no comparable measurement is available, not zero usage.
 | Moonshine Small | 246.1 | 246.1 | Unknown across devices |
 | Moonshine Medium | 449.5 | 449.5 | Unknown across devices |
 | Parakeet TDT V3 | 670.5 | 670.5 | Unknown across devices |
+| Parakeet TDT 110M | 108.0 | 136.5 | Unmeasured on Android |
 | Parakeet Unified EN | 663.0 | 663.0 | Unknown across devices |
 | Nemotron English, each 80/160/560 ms profile | 463.9 | 661.9 | Unknown across devices; profiles have separate packages |
 | Nemotron 3.5 Multilingual | 682.2 | 682.2 | Unknown across devices |
