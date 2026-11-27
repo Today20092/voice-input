@@ -45,7 +45,7 @@ Source paths are under `app/src/main/java/org/futo/voiceinput/` unless shown in 
 | `65eed42` | Do not log the full prompt | Not applicable | `voiceinput.cpp` has no log call that includes the prompt. |
 | `dba0374` | Move `lang_token` out of loop | Not applicable | Only updates the excluded `transcribe.cpp` submodule. |
 | `c235ee8` | Throw on `InvalidModelException` | Not applicable | The fork has no such exception or swallowing catch. `RecordingSession.loadModelInner` sends every load failure to `failRecognition`, which shows the error. Upstream's rethrow would bypass that. |
-| `fb66c08` | Manual language selection by default | Ported in a follow-up | `MANUALLY_SELECT_LANGUAGE` now defaults to on. A saved value, including off, is kept, so only users who never changed the toggle see the new default. The fork passes the chosen language to Whisper/GGML only, so `needsLanguagePicker` in `RecognizerView.kt` also requires that recognizer and more than one enabled language. Without that guard, leftover Whisper languages would show a picker with no effect on recognition for ASR4ALL and other recognizers. This also removes the picker for those recognizers where the toggle had been saved as on. `language_tip_1` describes the new default. |
+| `fb66c08` | Manual language selection by default | Ported in a follow-up | `MANUALLY_SELECT_LANGUAGE` now defaults to on. A saved value, including off, is kept. The fork passes the chosen language to Whisper/GGML only for decoding, so when the toggle was never saved only that recognizer asks (`manualLanguageSelectionDefault` in `RecognizerView.kt`). Other recognizers still ask when the toggle was saved on, because the S1 and Basic text cleanup language gates use the pick. `language_tip_1` describes the new default. |
 | `afd4b50` | News entry | Not applicable (reviewed in a follow-up) | The fork has no dismissible "What's new" card: `settings/pages/Home.kt` has no news list or viewed counter. Upstream's text also announces a Spanish model. |
 | `2424b6b` | Bluetooth and audio focus options | Ported in a follow-up | Added **Prefer Bluetooth** (default off) and **Pause videos/music** (default on) with upstream's keys. The preference is applied and saved in the shared recording flow (`AudioRecognizer.kt`, `MicrophoneRouting.kt`), covering the activity and the keyboard. Only a switch the user makes and the recorder confirms is saved; fallbacks and automatic selection are not. It remembers Bluetooth or phone, not a particular headset. The second setting gates `focusAudio()`, the app's only audio-focus request. |
 | `89d30dc` | Remove `ModelManager` debug trace | Not applicable | The fork has no `ModelManager`. The traced calls were not ported. |
@@ -98,7 +98,9 @@ No emulator or phone was used. These checks remain, on a phone:
 
 1. With **Prefer Bluetooth** off, recording starts on the same microphone as before.
 2. With it on and a headset connected, both the keyboard and the speech popup
-   switch to the headset. Check how much opening speech is lost while it connects.
+   switch to the headset. Check how much opening speech is lost while it connects,
+   and that silence during the switch does not auto-stop the recording or report
+   a blocked microphone.
 3. Switch to the phone, then to Bluetooth, in the recording window; confirm each
    choice appears in settings and applies to the next recording. Stop before a
    switch completes and confirm the setting is unchanged.
@@ -108,8 +110,15 @@ No emulator or phone was used. These checks remain, on a phone:
 5. Play music and video with **Pause videos/music** on and off, using the phone
    microphone and a Bluetooth microphone.
 6. With Whisper/GGML and two languages, the picker appears before recording;
-   with ASR4ALL and the same languages it does not.
+   with ASR4ALL and the same languages it does not unless the toggle was saved on.
 7. Read both new switches with TalkBack.
+8. Download and select **ASR4ALL Medium Spanish**, dictate in the keyboard and
+   popup, retranscribe a saved recording, run a model comparison and a live
+   comparison in Spanish, and confirm S1 and Basic text cleanup are skipped.
+
+The Spanish model was added after `205b8b9`. Its publisher export ran on the
+ExecuTorch 1.2.0 desktop runtime and produced Spanish text; accuracy was not
+measured, and the app's Android decoder has not run it.
 
 ## Not verified
 

@@ -72,7 +72,8 @@ Under **Recording options**:
 With the Whisper/GGML recognizer and more than one language enabled, the app asks
 which language you will speak before each recording. Turn off **Enable manual
 language selection** on the **Languages** screen to detect it automatically. A
-choice you saved earlier is kept. Other recognizers do not show this question.
+choice you saved earlier is kept. Other recognizers show this question only if
+you saved that option as on.
 
 ## Personal dictionary and cleanup
 

@@ -340,10 +340,12 @@ fun ColumnScope.RecognizeModelDownloadRequired(body: String, onDownload: () -> U
     }
 }
 
-/** Only Whisper/GGML uses the chosen language, so other recognizers never ask for one. */
-internal fun needsLanguagePicker(
-    backend: SpeechBackendType, manualSelection: Boolean, languages: Set<String>
-): Boolean = backend == SpeechBackendType.WhisperGGML && manualSelection && languages.size > 1
+/**
+ * Only Whisper/GGML decodes in the picked language, so only it asks by default. Other recognizers
+ * still ask when the user saved the toggle on, because transcript cleanup relies on the pick.
+ */
+internal fun manualLanguageSelectionDefault(backend: SpeechBackendType): Boolean =
+    backend == SpeechBackendType.WhisperGGML
 
 abstract class RecognizerView {
     protected open val liveBenchmarkSession: org.futo.voiceinput.benchmark.LiveBenchmarkSession? get() = null
@@ -357,9 +359,9 @@ abstract class RecognizerView {
         shouldPlaySounds = context.getSetting(ENABLE_SOUND)
         shouldBeVerbose = context.getSetting(VERBOSE_PROGRESS)
         languages = context.getSetting(LANGUAGE_TOGGLES)
-        shouldRequestLanguage = needsLanguagePicker(
-            context.getSetting(SPEECH_BACKEND).toSpeechBackendType(),
-            context.getSetting(MANUALLY_SELECT_LANGUAGE), languages)
+        val backend = context.getSetting(SPEECH_BACKEND).toSpeechBackendType()
+        shouldRequestLanguage = languages.size > 1 && context.getSetting(
+            MANUALLY_SELECT_LANGUAGE.key, manualLanguageSelectionDefault(backend))
     }
 
     private val soundPool = SoundPool.Builder().setMaxStreams(2).setAudioAttributes(
