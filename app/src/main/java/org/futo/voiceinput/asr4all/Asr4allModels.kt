@@ -15,12 +15,18 @@ object Asr4allModels {
             "321501d89e6249a76b8c0f896f9c3e90089f0f9d6135ab82802e5752990cab41"),
         model("l", "Large", "2da6534551f007201368514ec08b0b9a60ba39dc", 123044416, 90362,
             "50113d5aa74c916cce33828a3ec69c86aa64b58513a437ecf84fecfae098d351",
-            "05c6fd156f1fa99ea44457ab0d0a8d23b954c272fb614a034476123874e6d125")
+            "05c6fd156f1fa99ea44457ab0d0a8d23b954c272fb614a034476123874e6d125"),
+        model("m-es", "Medium Spanish", "0290ab55b803e8a37423a775888da10045ce933e", 59995968, 89627,
+            "e68c53a2a31d951ad47f43d16651e01d5da6ec3040f1c79e121e73abbe078f66",
+            "f90a51aabbf12001d0b9f05177b885436a2ff01d97907e0263a64d22a8883b8b")
     )
 
     val bundled = models[1]
 
     fun selected(variant: String) = models.firstOrNull { it.variantId == variant } ?: bundled
+
+    /** ASR4ALL never detects a language. Null leaves the English variants' behavior unchanged. */
+    fun fixedLanguage(variant: String?): String? = "es".takeIf { variant == "m-es" }
 
     private fun model(
         variant: String, label: String, revision: String, pteBytes: Long, metadataBytes: Long,
@@ -30,22 +36,29 @@ object Asr4allModels {
         fun artifact(name: String, size: Long, hash: String) = RecognitionModelArtifact(
             name, "$repository/resolve/$revision/executorch/xnnpack_int8/$name", size, hash
         )
+        val spanish = fixedLanguage(variant) != null
         return RecognitionModel(
             id = "asr4all-$variant", version = revision, runtimeId = "asr4all", variantId = variant,
             directoryName = "asr4all-$variant-xnnpack-int8", source = "FUTO ASR4ALL",
-            licenseAttribution = "FUTO Model Weights Ethical Use License 1.0",
+            licenseAttribution = "FUTO Model Weights Ethical Use License 1.0" +
+                if (spanish) ". Developed using Basis Conversations 1500." else "",
             displayName = "ASR4ALL $label",
-            description = "Shows English text as you speak. Adds punctuation, capital letters, and small corrections. " +
+            description = "Shows ${if (spanish) "Spanish" else "English"} text as you speak. " +
+                "Adds punctuation, capital letters, and small corrections. " +
                 when (variant) {
-                    "s" -> "Small needs the least memory and processing of the ASR4ALL options."
+                    "s" -> "Small needs the least memory and processing of the English ASR4ALL options."
                     "m" -> "Medium needs more memory and processing than Small, and less than Large."
-                    else -> "Large needs the most memory and processing of the ASR4ALL options."
+                    "l" -> "Large needs the most memory and processing of the English ASR4ALL options."
+                    "m-es" -> "Needs less storage than English Medium. Does not add ¿ or ¡, and writes numbers as words."
+                    else -> error("Unknown ASR4ALL variant")
                 },
-            transcription = TranscriptionBehavior.LIVE, recognitionLanguages = "English",
+            transcription = TranscriptionBehavior.LIVE,
+            recognitionLanguages = if (spanish) "Spanish" else "English",
             performanceClass = when (variant) {
                 "s" -> PerformanceClass.LIGHT
-                "m" -> PerformanceClass.BALANCED
-                else -> PerformanceClass.DEMANDING
+                "m", "m-es" -> PerformanceClass.BALANCED
+                "l" -> PerformanceClass.DEMANDING
+                else -> error("Unknown ASR4ALL variant")
             },
             artifacts = listOf(
                 artifact("asr_encoder.pte", pteBytes, pteHash),

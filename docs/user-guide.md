@@ -56,6 +56,25 @@ Upstream's [help change](https://github.com/futo-org/voice-input/commit/a15c965)
 reports text loss with Microsoft SwiftKey. That report has not been reproduced
 in this fork.
 
+## Recording options
+
+Under **Recording options**:
+
+- **Prefer Bluetooth** (off by default) switches to a connected Bluetooth
+  microphone when recording starts. Switching microphones in the recording
+  window also updates this setting, once the new microphone is active. If
+  Bluetooth is missing, refused, slow to connect or disconnects, recording
+  continues on Android's default microphone and the setting is unchanged.
+- **Pause videos/music** (on by default) asks other apps to pause playback while
+  you record. Each app decides how to respond. Using a Bluetooth microphone can
+  interrupt or degrade playback even when this is off.
+
+With the Whisper/GGML recognizer and more than one language enabled, the app asks
+which language you will speak before each recording. Turn off **Enable manual
+language selection** on the **Languages** screen to detect it automatically. A
+choice you saved earlier is kept. Other recognizers show this question only if
+you saved that option as on.
+
 ## Personal dictionary and cleanup
 
 Use **Personal Dictionary** for predictable corrections, such as `heard phrase => preferred phrase`. Bulk paste and UTF-8 imports up to 1 MiB let you preview additions, skip duplicates, and fix invalid mappings. These are text corrections; they do not train Orukeet or supply it with recognition hints. The optional [Arabic transliteration example](examples/arabic-transliteration.txt) is an editable starting point, not enabled automatically.

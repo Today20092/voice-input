@@ -215,7 +215,7 @@
     <string name="download_progress">Download Progress</string>
     <string name="advanced_settings">Advanced Settings</string>
     <string name="languages_title">Languages</string>
-    <string name="language_tip_1">By default, the language is detected automatically. You can enable manual language selection in Input Options.</string>
+    <string name="language_tip_1">With more than one language enabled, you choose a language before each recording. Turn off manual language selection to detect it automatically.</string>
     <string name="language_tip_2">Some languages may work better than others, depending on the amount of training data.</string>
     <string name="language_tip_3">You can configure multilingual model switching behavior in the Input Options section</string>
     <string name="may_be_low_accuracy_x_hours">May be low accuracy (<xliff:g name="hourCount" example="1">%d</xliff:g>h)</string>
@@ -261,6 +261,12 @@
     <string name="end_of_speech_patient">Patient — stops after about 3 seconds</string>
     <string name="parakeet_stop_on_silence">Parakeet auto-stop on silence</string>
     <string name="parakeet_stop_on_silence_info">Turn this off to match AndroidTranscribeApp-style recording, where transcription starts only after tapping stop.</string>
+    <string name="prefer_bt_device">Prefer Bluetooth</string>
+    <string name="prefer_bt_device_subtitle">Recording starts on a connected Bluetooth microphone</string>
+    <string name="prefer_bt_device_disabled_subtitle">Recording starts on the default microphone</string>
+    <string name="request_audio_focus">Pause videos/music</string>
+    <string name="request_audio_focus_subtitle">Asks other apps to pause playback while you record</string>
+    <string name="request_audio_focus_disabled_subtitle">Does not ask other apps to pause playback</string>
     <string name="manual_stop_drain">Stop button extra recording</string>
     <string name="manual_stop_drain_value">%1$d ms</string>
     <string name="manual_stop_drain_info">If the last word is sometimes cut off after tapping stop, increase this. Higher values add a small delay before transcription starts.</string>

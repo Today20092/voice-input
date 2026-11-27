@@ -39,7 +39,9 @@ class SherpaStreamingBackend internal constructor(
     private val decoderFactory: (File) -> SherpaStreamingDecoder = { SherpaOnlineDecoder(it) },
     private val catchingUpSamples: Int = SAMPLE_RATE,
     private var decoder: SherpaStreamingDecoder? = null,
-    private val languageOverride: String? = null
+    private val languageOverride: String? = null,
+    // A single-language model reports this instead of reading Nemotron's language setting.
+    private val fixedLanguage: String? = null
 ) : StreamingSpeechBackend {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val queuedSamples = AtomicLong()
@@ -54,12 +56,13 @@ class SherpaStreamingBackend internal constructor(
         private set
 
     override suspend fun load(context: Context) = withContext(Dispatchers.IO) {
-        load(modelDirectory(context), languageOverride ?: context.selectedNemotronLanguageCode())
+        load(modelDirectory(context),
+            fixedLanguage ?: languageOverride ?: context.selectedNemotronLanguageCode())
     }
 
     internal fun load(modelDirectory: File, languageCode: String?) {
         autoDetectLanguage = languageCode == "auto"
-        detectedLanguage = null
+        detectedLanguage = fixedLanguage
         if (decoder == null) {
             decoder = decoderFactory(modelDirectory).also { decoder ->
                 languageCode?.let(decoder::setLanguage)

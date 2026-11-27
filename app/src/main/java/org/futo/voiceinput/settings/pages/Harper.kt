@@ -33,9 +33,14 @@ fun HarperOptions() {
     val nemotronLanguage = useDataStore(NEMOTRON_MULTILINGUAL_LANGUAGE).value
     val whisperLanguages = useDataStore(LANGUAGE_TOGGLES).value
     val cohereLanguage = useDataStore(COHERE_LANGUAGE).value
+    val asr4allVariant = useDataStore(org.futo.voiceinput.settings.ASR4ALL_VARIANT).value
     fun establishesEnglish(declared: Boolean) = HarperEnglishGate.isEstablishedEnglish(
         backend, detectedLanguage = null,
-        forcedLanguage = cohereLanguage.takeIf { backend == SpeechBackendType.Cohere },
+        forcedLanguage = when (backend) {
+            SpeechBackendType.Cohere -> cohereLanguage
+            SpeechBackendType.Asr4all -> org.futo.voiceinput.asr4all.Asr4allModels.fixedLanguage(asr4allVariant)
+            else -> null
+        },
         nemotronProfile = profile, nemotronLanguage = nemotronLanguage,
         enabledWhisperLanguages = whisperLanguages, explicitlyEnglish = declared
     )

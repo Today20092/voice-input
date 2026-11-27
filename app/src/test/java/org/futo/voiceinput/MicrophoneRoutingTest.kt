@@ -115,6 +115,77 @@ class MicrophoneRoutingTest {
         assertFalse(routing.state.visible)
     }
 
+    @Test fun savedPreferenceSelectsHeadsetAtStartAndSurvivesDisconnect() {
+        val platform = Platform()
+        val saved = mutableListOf<Boolean>()
+        val routing = MicrophoneRouting(platform, saved::add) {}
+        routing.start(preferBluetooth = true)
+        assertEquals(headset, platform.requested)
+        platform.active = headset
+        platform.listener()
+        assertEquals(headset, routing.state.active)
+        platform.devices = listOf(phone)
+        platform.active = phone
+        platform.listener()
+        assertEquals(MicrophoneRouteFailure.Disconnected, routing.state.failure)
+        assertNull(platform.requested)
+        assertEquals(emptyList<Boolean>(), saved)
+    }
+
+    @Test fun savedPreferenceWithoutHeadsetKeepsDefaultRouteQuietly() {
+        val platform = Platform()
+        platform.devices = listOf(phone)
+        val routing = MicrophoneRouting(platform) {}
+        routing.start(preferBluetooth = true)
+        assertNull(platform.requested)
+        assertNull(routing.state.failure)
+        assertFalse(routing.state.visible)
+    }
+
+    @Test fun rejectedAndTimedOutRequestsDoNotChangeThePreference() {
+        val platform = Platform()
+        val saved = mutableListOf<Boolean>()
+        platform.accepted = false
+        val routing = MicrophoneRouting(platform, saved::add) {}
+        routing.start(preferBluetooth = true)
+        assertEquals(MicrophoneRouteFailure.Rejected, routing.state.failure)
+        routing.select(headset)
+        platform.accepted = true
+        routing.select(headset)
+        platform.timeout()
+        assertEquals(MicrophoneRouteFailure.TimedOut, routing.state.failure)
+        // A late route report after giving up is not a choice either.
+        platform.active = headset
+        platform.listener()
+        assertEquals(emptyList<Boolean>(), saved)
+    }
+
+    @Test fun confirmedUserSwitchesAreSavedOnce() {
+        val platform = Platform()
+        val saved = mutableListOf<Boolean>()
+        val routing = MicrophoneRouting(platform, saved::add) {}
+        routing.start()
+        routing.select(headset)
+        assertEquals(emptyList<Boolean>(), saved)
+        platform.active = headset
+        platform.listener()
+        platform.listener()
+        assertEquals(listOf(true), saved)
+        routing.select(phone)
+        platform.active = phone
+        platform.listener()
+        assertEquals(listOf(true, false), saved)
+    }
+
+    @Test fun userChoiceDuringAnAutomaticRequestReplacesIt() {
+        val platform = Platform()
+        val saved = mutableListOf<Boolean>()
+        val routing = MicrophoneRouting(platform, saved::add) {}
+        routing.start(preferBluetooth = true)
+        routing.select(phone)
+        assertEquals(listOf(false), saved)
+    }
+
     @Test fun phoneOnlyDefaultHasNoControlAndNoRouteRequest() {
         val platform = Platform()
         platform.devices = listOf(phone)

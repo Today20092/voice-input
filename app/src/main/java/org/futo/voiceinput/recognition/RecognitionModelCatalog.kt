@@ -261,8 +261,9 @@ object RecognitionModelCatalog {
         ),
         RecognitionModelCard(
             id = "asr4all", runtimeId = "asr4all", displayName = "ASR4ALL",
-            description = "English text as you speak, with built-in text cleanup.",
-            transcription = TranscriptionBehavior.LIVE, recognitionLanguages = "English",
+            description = "English or Spanish text as you speak, with built-in text cleanup. " +
+                "Each model recognizes one language.",
+            transcription = TranscriptionBehavior.LIVE, recognitionLanguages = "English or Spanish",
             performanceClasses = PerformanceClass.entries.toSet(),
             models = org.futo.voiceinput.asr4all.Asr4allModels.models
         ),

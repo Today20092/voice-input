@@ -25,8 +25,9 @@ adopted changes are separate commits after it.
 
 [ADR 0001](../adr/0001-use-sherpa-onnx-for-nvidia-streaming.md) and
 [ADR 0004](../adr/0004-keep-external-keyboard-integration.md) still apply.
-Defaults, saved setting keys, the model catalog, package IDs, version numbers and
-release notes are unchanged.
+The integration commits left defaults, saved setting keys, the model catalog,
+package IDs, version numbers and release notes unchanged. The follow-up for
+`fb66c08` and `2424b6b` changes one default and adds two setting keys.
 
 ## Upstream commits
 
@@ -35,7 +36,7 @@ Source paths are under `app/src/main/java/org/futo/voiceinput/` unless shown in 
 | Commit | Upstream change | Outcome | Reason |
 | --- | --- | --- | --- |
 | `5170ff4` | Update credits | Ported in part | Added the NVIDIA entry with the per-model licenses in [fork background](../fork-background.md). The `transcribe.cpp` entry is omitted because the fork does not ship it, and the fork's other entries are unchanged. Upstream replaced its TensorFlow Lite entry; the fork keeps that entry pending a separate attribution check, although no TensorFlow dependency is declared in `app/build.gradle`. |
-| `c0bbb05` | Model option refactor, ASR4ALL Spanish | Deferred | Feature not selected. It replaces saved model settings and the catalog. |
+| `c0bbb05` | Model option refactor, ASR4ALL Spanish | Partly adopted in a follow-up | The Spanish model was added as an optional download through the publisher's ExecuTorch XNNPACK INT8 export (`futo-org/asr4all-m-es` at `0290ab5`), not upstream's format. The model-options refactor was not ported: it replaces saved model settings and the catalog. Android device behavior is unverified. |
 | `74fe3eb` | Empty samples return empty text | Ported | The fork did not throw, but `ggml/WhisperGGML.kt` passed an empty array to native code, and `app/src/main/cpp/ggml/whisper.cpp` (`log_mel_spectrogram`) then reads past it while reflect-padding. A recorder failure before the first read skips the final silence pad, so empty audio can reach finalization. The guard is in `backend/SpeechBackend.kt` (`prepareRecordingFinalization`) and covers all final-only backends. Streaming backends only flush. Saved-recording retranscription already rejects empty audio (`history/AudioHistoryStore.kt`, `readSamples`) but accepts very short audio, so `WhisperGGML.infer` also returns empty text for 200 samples or fewer. Blank transcripts now skip S1 cleanup (`s1/S1MiniTranscriptCleaner.kt`). |
 | `6dbd5bf` | Batch inference cancellation | Not applicable | The fork has no native cancel request and no `InferenceCancelledException`. `app/src/main/cpp/voiceinput.cpp` aborts only for a bail language and returns only the `lang=` sentinel, which `ggml/WhisperGGML.kt` handles. `RecordingSession.runModel` discards failures from a superseded session. The `contains` to `startsWith` change only differs if dictated text contains the sentinel. |
 | `f21f80e` | `MicPermissionActivity`, mic-error UI | Not applicable | `RecognizeMicError` in `RecognizerView.kt` already uses `fillMaxWidth` with scrolling. Its settings icon is a separate `IconButton` that needs its own description, unlike upstream's icon inside a clickable box. The activity and its string belong to the excluded keyboard flow (ADR 0004). |
@@ -44,14 +45,17 @@ Source paths are under `app/src/main/java/org/futo/voiceinput/` unless shown in 
 | `65eed42` | Do not log the full prompt | Not applicable | `voiceinput.cpp` has no log call that includes the prompt. |
 | `dba0374` | Move `lang_token` out of loop | Not applicable | Only updates the excluded `transcribe.cpp` submodule. |
 | `c235ee8` | Throw on `InvalidModelException` | Not applicable | The fork has no such exception or swallowing catch. `RecordingSession.loadModelInner` sends every load failure to `failRecognition`, which shows the error. Upstream's rethrow would bypass that. |
-| `fb66c08` | Manual language selection by default | Deferred | Feature not selected. It changes a default. |
-| `afd4b50` | News entry | Deferred | Describes upstream features the fork did not adopt. |
-| `2424b6b` | Bluetooth and audio focus options | Deferred | Feature not selected. |
+| `fb66c08` | Manual language selection by default | Ported in a follow-up | `MANUALLY_SELECT_LANGUAGE` now defaults to on. A saved value, including off, is kept. The fork passes the chosen language to Whisper/GGML only for decoding, so when the toggle was never saved only that recognizer asks (`manualLanguageSelectionDefault` in `RecognizerView.kt`). Other recognizers still ask when the toggle was saved on, because the S1 and Basic text cleanup language gates use the pick. `language_tip_1` describes the new default. |
+| `afd4b50` | News entry | Not applicable (reviewed in a follow-up) | The fork has no dismissible "What's new" card: `settings/pages/Home.kt` has no news list or viewed counter. Upstream's text also announces a Spanish model. |
+| `2424b6b` | Bluetooth and audio focus options | Ported in a follow-up | Added **Prefer Bluetooth** (default off) and **Pause videos/music** (default on) with upstream's keys. The preference is applied and saved in the shared recording flow (`AudioRecognizer.kt`, `MicrophoneRouting.kt`), covering the activity and the keyboard. Only a switch the user makes and the recorder confirms is saved; fallbacks and automatic selection are not. It remembers Bluetooth or phone, not a particular headset. The second setting gates `focusAudio()`, the app's only audio-focus request. |
 | `89d30dc` | Remove `ModelManager` debug trace | Not applicable | The fork has no `ModelManager`. The traced calls were not ported. |
 | `25f1450` | Remove unused activity | Not applicable | Already removed by `5dfb4b1`; no fork manifest declares `BillingActivity`. |
 | `cfdd409` | Guard saved model options | Not applicable | The crash path needs upstream's string-set `MODEL_OPTIONS`, which the fork does not have. The fork reads integer indices written from fixed model lists, and `Util.kt` and `WhisperGGMLBackend.kt` fall back to an English model when no language maps to one. Out-of-range indices from damaged preferences remain unguarded on the recognition path, as before. |
 
 ## Validation
+
+The table and notes below cover the integration only. The follow-up is covered
+under [Follow-up validation](#follow-up-validation).
 
 Run on Windows with JDK 21, SDK platform and build tools 36, NDK
 `28.2.13676358`, CMake `3.22.1` and Rust `1.98.1`, on source `2ee0571`, which
@@ -76,6 +80,46 @@ record was added afterwards). Gradle ran with `--max-workers=2`, a 4 GB heap and
 The four skipped tests need the published Orukeet, Phonon, Parakeet 110M and
 Whistle packages.
 `tools/harper_notices.py` needs `PYTHONUTF8=1` on this Windows host.
+
+## Follow-up validation
+
+Run on the same Windows host and with the same Gradle flags and tasks, on source
+`e90e33c`, which includes the settings, the Spanish model and the review fixes.
+
+| Check | Result |
+| --- | --- |
+| `:app:testDevDebugUnitTest`, `:app:testStandaloneReleaseUnitTest` | Each 286 passed, 4 skipped, no failures or errors |
+| `:app:lintDevDebug`, `:app:lintStandaloneRelease` | No errors; 87 and 86 warnings |
+| `:app:compileDevDebugAndroidTestKotlin`, `:app:assembleDevDebugAndroidTest` | Passed (compiled, not executed) |
+| `:app:assembleDevDebug`, `:app:verifyDevDebugApk`, `:app:assembleStandaloneRelease` | Passed |
+| `tools/verify_native_packaging.py`, `apksigner verify` on the release APK | Passed; local debug-key signing |
+| `python -m unittest discover -s tools -p test_native_packaging.py` | 4 passed |
+
+No emulator or phone was used. These checks remain, on a phone:
+
+1. With **Prefer Bluetooth** off, recording starts on the same microphone as before.
+2. With it on and a headset connected, both the keyboard and the speech popup
+   switch to the headset. Check how much opening speech is lost while it connects,
+   and that silence during the switch does not auto-stop the recording or report
+   a blocked microphone.
+3. Switch to the phone, then to Bluetooth, in the recording window; confirm each
+   choice appears in settings and applies to the next recording. Stop before a
+   switch completes and confirm the setting is unchanged.
+4. With it on, test no headset, a headset disconnected mid-recording, Bluetooth
+   turned off, and a connection that times out. Audio is still captured and the
+   setting stays on.
+5. Play music and video with **Pause videos/music** on and off, using the phone
+   microphone and a Bluetooth microphone.
+6. With Whisper/GGML and two languages, the picker appears before recording;
+   with ASR4ALL and the same languages it does not unless the toggle was saved on.
+7. Read both new switches with TalkBack.
+8. Download and select **ASR4ALL Medium Spanish**, dictate in the keyboard and
+   popup, retranscribe a saved recording, run a model comparison and a live
+   comparison in Spanish, and confirm S1 and Basic text cleanup are skipped.
+
+The Spanish model's publisher export ran on the
+ExecuTorch 1.2.0 desktop runtime and produced Spanish text; accuracy was not
+measured, and the app's Android decoder has not run it.
 
 ## Not verified
 

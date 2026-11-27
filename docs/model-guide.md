@@ -43,11 +43,19 @@ Plus models are omitted because their extra speaker features do not help this
 dictation flow. See the [implementation and S25 Ultra test report](research/ticket-26-asr4all-feasibility-2026-10-09.md)
 for pinned sources, timings and test limits.
 
+**ASR4ALL Medium Spanish** is an optional 60.1 MB download for live Spanish
+dictation. It recognizes Spanish only. It adds the closing `?` but not the opening
+`¿` or `¡`, and writes numbers as words. S1-mini and the English-only Basic text
+cleanup are skipped. It has not been tested on an Android device, and the S25
+Ultra results below cover the English models only. Developed using Basis
+Conversations 1500; see the [model card](https://huggingface.co/futo-org/asr4all-m-es/blob/0290ab55b803e8a37423a775888da10045ce933e/README.md) for the full training data list.
+
 | What you want | Try first | Next option |
 | --- | --- | --- |
 | Everyday dictation in a supported European language | Orukeet | Parakeet TDT V3 |
 | Live English text with a lighter model | Moonshine Small | Moonshine Medium, then Nemotron English |
 | Live English text with built-in formatting | ASR4ALL Small | ASR4ALL Medium or Large if your phone handles them well |
+| Live Spanish text with built-in formatting | ASR4ALL Medium Spanish, untested on Android | Nemotron 3.5 Multilingual |
 | A very small multilingual download | Whistle, experimental | Check first-run speed on your phone; it reloads each recording |
 | Live multilingual text | Nemotron 3.5 Multilingual | Orukeet if final-only text is acceptable |
 | Arabic dictation | Cohere Transcribe with Arabic selected | Whisper multilingual |
@@ -65,6 +73,7 @@ These are the options exposed by this app, not every capability of the upstream 
 | **ASR4ALL Small** | English | Live | Smallest ASR4ALL option, with built-in PCEC punctuation, capitalization and small corrections. S1-mini is skipped. | [FUTO Small](https://huggingface.co/futo-org/asr4all-s) |
 | **ASR4ALL Medium · included default** | English | Live | Included in this branch for immediate English dictation, with built-in punctuation and capitalization. Uses more storage and processing than Small. | [FUTO Medium](https://huggingface.co/futo-org/asr4all-m) |
 | **ASR4ALL Large** | English | Live | Largest ASR4ALL option with PCEC; compare accuracy gains against the extra resource use. | [FUTO Large](https://huggingface.co/futo-org/asr4all-l) |
+| **ASR4ALL Medium Spanish** | Spanish | Live | Separate download with built-in PCEC. No opening `¿` or `¡`; numbers appear as words. S1-mini is skipped. | [FUTO Medium Spanish](https://huggingface.co/futo-org/asr4all-m-es) |
 | **Whistle, experimental** | English, German, French, Spanish, Italian, Dutch, Polish; auto-detect | After Stop | Very small download; separate CPU worker loads for every recording. Live text and manual language selection are not exposed by this app. | [Cactus Compute](https://huggingface.co/Cactus-Compute/whistle) |
 | **Phonon 2, experimental** | English | After Stop | Punctuation and capitalization; separate CPU runtime. Android performance varies and has no controlled ranking here. | [Fermion Research](https://www.fermionresearch.com/models/phonon-2/) · [app package/runtime](https://huggingface.co/eschmidbauer/phonon-2-c) |
 | **Parakeet Redux** | 25 European languages | After Stop | Compact packed ternary CPU model, about 213 MB. Android speed is unmeasured; publisher results show a noise-accuracy trade-off. | [Moondream](https://huggingface.co/moondream/parakeet-redux) · [packed GGUF](https://huggingface.co/mudler/parakeet-cpp-gguf) |
@@ -96,6 +105,7 @@ unknown means no comparable measurement is available, not zero usage.
 | ASR4ALL Small | 38.6 | 38.6 | 273 MiB sampled app/test PSS on one S25 Ultra fixture |
 | ASR4ALL Medium | Included in this branch | 72.5 in the APK plus a recoverable private cache | 324 MiB on the same fixture |
 | ASR4ALL Large | 123.1 | 123.1 | 422 MiB on the same fixture |
+| ASR4ALL Medium Spanish | 60.1 | 60.1 | Unmeasured on Android |
 | Whistle | 16.9 | 16.9 | Unknown; comparison excludes its separate worker |
 | Phonon 2 | 186.6 | 255.4 | Unknown; measure sampled app RAM on your device |
 | Orukeet | 486.8 | 671.6 | Unknown across devices; use Model comparison |

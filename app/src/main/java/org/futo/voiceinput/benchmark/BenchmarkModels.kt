@@ -21,6 +21,9 @@ data class BenchmarkModel(val id: String, val name: String, val managed: Recogni
     val transferBytes: Long get() = if (managed == org.futo.voiceinput.asr4all.Asr4allModels.bundled) 0L
         else managed?.transferBytes ?: storageBytes
 
+    /** The recording language assumed when a caller does not choose one. */
+    val defaultLanguage: String get() = org.futo.voiceinput.asr4all.Asr4allModels.fixedLanguage(managed?.variantId) ?: "en"
+
     fun installed(context: Context): Boolean = managed?.let {
         RecognitionModelLifecycle.create(context.filesDir, BuildConfig.BUNDLE_PARAKEET_MODEL).isReady(it)
     } ?: requireNotNull(whisper).let {
@@ -31,7 +34,7 @@ data class BenchmarkModel(val id: String, val name: String, val managed: Recogni
         ?: context.modelDownloadIntent(listOf(requireNotNull(whisper))))
         .putExtra(EXTRA_PRESERVE_MODEL_SELECTION, true)
 
-    fun identity(context: Context, language: String = "en"): Map<String, String> {
+    fun identity(context: Context, language: String = defaultLanguage): Map<String, String> {
         val model = managed?.let { RecognitionModelStore(context.filesDir).installedVersion(it) ?: it }
         return mapOf(
             "name" to name, "runtime" to (model?.runtimeId ?: "whisper_ggml"),
@@ -63,13 +66,14 @@ data class BenchmarkModel(val id: String, val name: String, val managed: Recogni
     fun supportsLanguage(language: String): Boolean = when {
         whisper in ENGLISH_MODELS -> language == "en"
         managed?.recognitionLanguages == "English" -> language == "en"
+        managed?.recognitionLanguages == "Spanish" -> language == "es"
         managed?.runtimeId == "cohere" -> org.futo.voiceinput.cohere.CohereLanguage.entries.any { it.id == language }
         managed?.runtimeId == "whistle" -> language in org.futo.voiceinput.whistle.WhistleModel.languageCodes
         managed?.runtimeId == "nemotron" -> org.futo.voiceinput.nemotron.NEMOTRON_MULTILINGUAL_LANGUAGES.any { it.id == language }
         else -> true
     }
 
-    fun backend(context: Context, language: String = "en", onPartial: (String) -> Unit = {}): SpeechBackend {
+    fun backend(context: Context, language: String = defaultLanguage, onPartial: (String) -> Unit = {}): SpeechBackend {
         require(supportsLanguage(language)) { "Model does not support the selected recording language" }
         if (whisper != null) return object : SpeechBackend {
             private var engine: WhisperGGML? = null

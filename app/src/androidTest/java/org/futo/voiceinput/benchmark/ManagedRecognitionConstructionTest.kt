@@ -26,7 +26,7 @@ class ManagedRecognitionConstructionTest {
             val selection = lifecycle.selectionFor(model)
             val production = managedRecognitionBackend(context, selection)
             val comparison = BenchmarkModel(model.id, model.displayName, managed = model)
-            val independent = comparison.backend(context, "en")
+            val independent = comparison.backend(context, if (comparison.supportsLanguage("en")) "en" else "es")
             try {
                 assertNotSame(model.id, production, independent)
                 assertEquals(model.id, production.javaClass, independent.javaClass)

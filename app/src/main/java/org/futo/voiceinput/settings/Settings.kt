@@ -264,10 +264,12 @@ fun String.toEndOfSpeechProfile(): EndOfSpeechProfile {
 val END_OF_SPEECH_PROFILE =
     SettingsKey(stringPreferencesKey("end_of_speech_profile"), EndOfSpeechProfile.Balanced.id)
 val MANUAL_STOP_DRAIN_MS = SettingsKey(longPreferencesKey("manual_stop_drain_ms"), 300L)
+val PREFER_BT_MIC = SettingsKey(booleanPreferencesKey("prefer_bt_mic"), false)
+val REQUEST_AUDIO_FOCUS = SettingsKey(booleanPreferencesKey("request_audio_focus"), true)
 val USE_LANGUAGE_SPECIFIC_MODELS = SettingsKey(booleanPreferencesKey("USE_LANGUAGE_SPECIFIC_MODELS"), true)
 
 val ALLOW_UNDERTRAINED_LANGUAGES = SettingsKey(booleanPreferencesKey("allow_undertrained_languages"), false)
-val MANUALLY_SELECT_LANGUAGE = SettingsKey(booleanPreferencesKey("manually_select_language"), false)
+val MANUALLY_SELECT_LANGUAGE = SettingsKey(booleanPreferencesKey("manually_select_language"), true)
 
 val PERSONAL_DICTIONARY = SettingsKey(stringPreferencesKey("personal_dict"), "")
 
