@@ -54,7 +54,7 @@ Source paths are under `app/src/main/java/org/futo/voiceinput/` unless shown in 
 ## Validation
 
 Run on Windows with JDK 21, SDK platform and build tools 36, NDK
-`28.2.13676358`, CMake `3.22.1` and Rust `1.98.1`, on source `faa2b27` (this
+`28.2.13676358`, CMake `3.22.1` and Rust `1.98.1`, on source `420b8cf` (this
 record was added afterwards). Gradle ran with `--max-workers=2`, a 4 GB heap and
 `-Ps1NgramSpeculation=false`.
 
@@ -69,7 +69,7 @@ record was added afterwards). Gradle ran with `--max-workers=2`, a 4 GB heap and
 | `:app:assembleStandaloneRelease` | Passed; local debug-key signing, not production release signing |
 | `tools/verify_native_packaging.py` on the release APK and symbols | Passed: 29 ARM64 libraries, pinned runtimes and notices, S1 speculation off, stripping and matching symbols |
 | `apksigner verify` on the release APK | Passed (v2 scheme, Android debug certificate) |
-| `cargo +1.98.1 test --locked` for Harper | 9 passed |
+| `cargo +1.98.1 test --locked` for Harper | 9 passed (on `faa2b27`; no Rust change since) |
 | `python -m unittest discover -s tools -p test_native_packaging.py` | 4 passed |
 
 The three skipped tests need the published Orukeet, Phonon and Whistle packages.
