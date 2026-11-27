@@ -27,24 +27,33 @@ interface MicrophonePlatform {
 
 class MicrophoneRouting(
     private val platform: MicrophonePlatform,
+    private val remember: (preferBluetooth: Boolean) -> Unit = {},
     private val changed: (MicrophoneRouteState) -> Unit
 ) {
     var state = MicrophoneRouteState()
         private set
     private var closed = false
     private var requested: MicrophoneDevice? = null
+    private var chosenByUser = false
     private var requestVersion = 0L
     private var cancelTimeout: () -> Unit = {}
 
-    fun start() {
+    fun start(preferBluetooth: Boolean = false) {
         if (closed) return
         state = state.copy(recording = true)
         platform.watch(::refresh)
         refresh()
+        if (!preferBluetooth) return
+        // shortcut: remembers the kind, not a particular headset; add device identity if users need it.
+        state.devices.firstOrNull { it.kind == MicrophoneKind.Bluetooth }
+            ?.let { request(it, byUser = false) }
     }
 
-    fun select(device: MicrophoneDevice) {
+    fun select(device: MicrophoneDevice) = request(device, byUser = true)
+
+    private fun request(device: MicrophoneDevice, byUser: Boolean) {
         if (closed || !state.recording) return
+        chosenByUser = byUser
         cancelTimeout()
         val version = ++requestVersion
         if (device !in platform.devices()) {
@@ -78,6 +87,10 @@ class MicrophoneRouting(
         if (active == state.pending && active != null) {
             cancelTimeout()
             state = state.copy(pending = null)
+            // Only a confirmed user choice is saved; fallbacks and automatic selection never are.
+            if (chosenByUser && active.kind != MicrophoneKind.Other) {
+                remember(active.kind == MicrophoneKind.Bluetooth)
+            }
         }
         state = state.copy(devices = devices, active = active)
         changed(state)

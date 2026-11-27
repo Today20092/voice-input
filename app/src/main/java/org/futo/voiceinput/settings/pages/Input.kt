@@ -19,6 +19,8 @@ import org.futo.voiceinput.settings.EndOfSpeechProfile
 import org.futo.voiceinput.settings.IS_VAD_ENABLED
 import org.futo.voiceinput.settings.MANUAL_STOP_DRAIN_MS
 import org.futo.voiceinput.settings.PARAKEET_USE_VAD
+import org.futo.voiceinput.settings.PREFER_BT_MIC
+import org.futo.voiceinput.settings.REQUEST_AUDIO_FOCUS
 import org.futo.voiceinput.settings.ScreenTitle
 import org.futo.voiceinput.settings.ScrollableList
 import org.futo.voiceinput.settings.SettingSliderDataStore
@@ -47,6 +49,20 @@ fun InputScreen(
             ENABLE_SOUND,
             subtitle = stringResource(R.string.will_play_a_sound_when_started_cancelled),
             disabledSubtitle = stringResource(R.string.will_not_play_sounds_when_started_cancelled)
+        )
+
+        SettingToggleDataStore(
+            stringResource(R.string.prefer_bt_device),
+            PREFER_BT_MIC,
+            subtitle = stringResource(R.string.prefer_bt_device_subtitle),
+            disabledSubtitle = stringResource(R.string.prefer_bt_device_disabled_subtitle)
+        )
+
+        SettingToggleDataStore(
+            stringResource(R.string.request_audio_focus),
+            REQUEST_AUDIO_FOCUS,
+            subtitle = stringResource(R.string.request_audio_focus_subtitle),
+            disabledSubtitle = stringResource(R.string.request_audio_focus_disabled_subtitle)
         )
 
         Spacer(modifier = Modifier.height(32.dp))

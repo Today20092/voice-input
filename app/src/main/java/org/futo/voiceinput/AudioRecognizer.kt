@@ -74,6 +74,9 @@ import org.futo.voiceinput.recognition.RecognitionRuntimeCallbacks
 import org.futo.voiceinput.recognition.loadOrCloseOnFailure
 import org.futo.voiceinput.settings.toSpeechBackendType
 import org.futo.voiceinput.settings.toEndOfSpeechProfile
+import org.futo.voiceinput.settings.PREFER_BT_MIC
+import org.futo.voiceinput.settings.REQUEST_AUDIO_FOCUS
+import org.futo.voiceinput.settings.setSetting
 import java.nio.FloatBuffer
 import java.nio.ShortBuffer
 import kotlin.math.min
@@ -194,12 +197,20 @@ abstract class RecordingSession {
         failed(error)
     }
 
-    private fun observeMicrophone(activeRecorder: AudioRecord, generation: Long) {
+    private fun rememberMicrophone(preferBluetooth: Boolean) {
+        // An IME can finish right after the switch, so the write must outlive the session.
+        lifecycleScope.launch(NonCancellable) {
+            runCatching { context.setSetting(PREFER_BT_MIC, preferBluetooth) }
+        }
+    }
+
+    private fun observeMicrophone(activeRecorder: AudioRecord, generation: Long, preferBluetooth: Boolean) {
         routingHandler.post {
             if (generation != recognitionGeneration || recorder !== activeRecorder || !isRecording) return@post
             microphoneRouting?.second?.close()
             var lastCategories: List<Long>? = null
-            val routing = MicrophoneRouting(AndroidMicrophonePlatform(context, activeRecorder)) { state ->
+            val routing = MicrophoneRouting(AndroidMicrophonePlatform(context, activeRecorder),
+                ::rememberMicrophone) { state ->
                 if (generation == recognitionGeneration) {
                     // Categories only: no device IDs, names, addresses or platform exception text.
                     val categories = listOf(state.active?.kind?.ordinal?.toLong() ?: -1L,
@@ -216,7 +227,7 @@ abstract class RecordingSession {
                 }
             }
             microphoneRouting = activeRecorder to routing
-            routing.start()
+            routing.start(preferBluetooth)
         }
     }
 
@@ -699,6 +710,8 @@ abstract class RecordingSession {
     private fun startRecordingWithModelSession() {
         val generation = recognitionGeneration
         lifecycleScope.launch {
+            val preferBluetooth = context.getSetting(PREFER_BT_MIC)
+            val pauseMedia = context.getSetting(REQUEST_AUDIO_FOCUS)
             val lease = try { modelLifecycle.acquireSession(selectedManagedModel) } catch (failure: Exception) {
                 failRecognition(failure, generation)
                 return@launch
@@ -710,14 +723,14 @@ abstract class RecordingSession {
                 }
             }
             if (!current) { lease?.close(); return@launch }
-            try { startRecording() } catch (failure: Throwable) {
+            try { startRecording(preferBluetooth, pauseMedia) } catch (failure: Throwable) {
                 releaseModelSession(generation)
                 throw failure
             }
         }
     }
 
-    private fun startRecording(numTries: Int = 0) {
+    private fun startRecording(preferBluetooth: Boolean, pauseMedia: Boolean, numTries: Int = 0) {
         val report = diagnostics
         if (BuildConfig.DEBUG) Log.d("WaveformTiming", "recorder_requested t=${SystemClock.elapsedRealtime()}")
         if (isRecording) {
@@ -750,7 +763,7 @@ abstract class RecordingSession {
                     throw IllegalStateException("AudioRecord could not be initialized in 32 tries")
                 }
 
-                return startRecording(numTries + 1)
+                return startRecording(preferBluetooth, pauseMedia, numTries + 1)
             }
 
             try {
@@ -770,9 +783,9 @@ abstract class RecordingSession {
             val evidence = CaptureEvidence()
             captureEvidence = captureGeneration to evidence
 
-            focusAudio()
+            if (pauseMedia) focusAudio()
             isRecording = true
-            observeMicrophone(activeRecorder, captureGeneration)
+            observeMicrophone(activeRecorder, captureGeneration, preferBluetooth)
 
             (backend as? StreamingSpeechBackend)?.let(::startStreaming)
 
